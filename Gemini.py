@@ -245,6 +245,24 @@ class Gemini:
         response = self.chat.send_message(message)  # Send the message
         return response.text  # Return the output text
 
+    def generate_content(self, prompt, config=None):
+        """
+        Generate content without maintaining chat history (stateless).
+        
+        :param prompt: The prompt to send to the model.
+        :param config: Optional configuration (temperature, system_instruction, etc.).
+        :return: The generated text.
+        """
+        
+        verbose_output(true_string=f"{BackgroundColors.GREEN}Generating content...{Style.RESET_ALL}")
+        
+        response = self.client.models.generate_content(
+            model=self.model,
+            contents=prompt,
+            config=config
+        )  # Generate content
+        return response.text  # Return the generated text
+
     def write_output_to_file(self, output, file_path=OUTPUT_FILE):
         """
         Writes the chat output to a specified file.
