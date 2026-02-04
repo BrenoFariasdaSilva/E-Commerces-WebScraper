@@ -305,6 +305,73 @@ def scrape_product(url):
         return None, None, None  # Return None values
 
 
+def generate_marketing_text(product_description, product_name_safe, description_file):
+    """
+    Generates marketing text from product description using Gemini AI.
+    
+    :param product_description: The raw product description text
+    :param product_name_safe: Sanitized product name for file naming
+    :param description_file: Path to the description file (used to determine output directory)
+    :return: True if successful, False otherwise
+    """
+    
+    try:  # Try to generate marketing text
+        api_key = os.getenv(ENV_VARIABLES["GEMINI"])  # Get Gemini API key
+        gemini = Gemini(api_key)  # Create Gemini instance
+        
+        # Create the prompt for Gemini with strict formatting instructions
+        prompt = f"""Você é um especialista em marketing de e-commerce. Sua tarefa é transformar as informações do produto abaixo em um texto de marketing persuasivo e formatado.
+
+INFORMAÇÕES DO PRODUTO:
+{product_description}
+
+FORMATO OBRIGATÓRIO (siga EXATAMENTE este formato):
+**{{NOME DO PRODUTO}} – {{DIFERENCIAL CURTO}}**
+
+**{{FRASE DE IMPACTO / BENEFÍCIO PRINCIPAL}}**
+
+{{CARACTERÍSTICA 1}}
+{{CARACTERÍSTICA 2}}
+{{ONDE / COMO USAR}}
+{{IDEIA DE PRESENTE / OCASIÃO}}
+
+💰 DE **R${{PREÇO_ANTIGO}}** POR APENAS **R${{PREÇO_ATUAL}}**
+🎟️ {{INFORMAÇÃO DE CUPOM / % DE DESCONTO}}
+
+🛒 Encontre na {{LOJA / PLATAFORMA}}:
+👉 {{LINK DO PRODUTO}}
+
+INSTRUÇÕES:
+1. Use as informações fornecidas para preencher cada campo
+2. Seja persuasivo e criativo
+3. Mantenha o formato EXATAMENTE como mostrado
+4. Use os preços e descontos reais do produto
+5. Inclua o link real do produto
+6. Crie 2-3 características principais marcantes
+7. Sugira onde/como usar o produto
+8. Se aplicável, sugira como presente ou ocasião especial
+
+Gere APENAS o texto formatado, sem explicações adicionais."""
+        
+        formatted_output = gemini.generate_content(prompt) # Generate formatted marketing text
+        
+        if formatted_output: # If generation successful
+            description_dir = os.path.dirname(description_file)  # Get directory of description file
+            formatted_file = os.path.join(description_dir, f"{product_name_safe}_marketing.txt")  # Output file path
+            gemini.write_output_to_file(formatted_output, formatted_file)  # Write output to file
+            
+            gemini.close()  # Close Gemini client
+            return True  # Return success
+        else:  # If generation failed
+            print(f"{BackgroundColors.RED}Failed to generate formatted text.{Style.RESET_ALL}")
+            gemini.close()  # Close Gemini client
+            return False  # Return failure
+        
+    except Exception as e:  # If an error occurs during formatting
+        print(f"{BackgroundColors.RED}Error during AI formatting: {e}{Style.RESET_ALL}")
+        return False  # Return failure
+
+
 def to_seconds(obj):
     """
     Converts various time-like objects to seconds.
