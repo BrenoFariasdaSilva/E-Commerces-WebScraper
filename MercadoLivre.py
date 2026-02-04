@@ -537,6 +537,35 @@ class MercadoLivre:
             )  # Output error
             return None  # Return None on failure
 
+    def download_product_images(self, session, product_url, output_dir):
+        """
+        Downloads all product images from the gallery.
+        
+        :param session: Requests session object
+        :param product_url: URL of the product page
+        :param output_dir: Directory to save images
+        :return: List of downloaded image file paths
+        """
+        
+        downloaded_images = []  # List to store downloaded image file paths
+        
+        soup = self.fetch_product_page(session, product_url)  # Fetch and parse the product page
+        
+        image_urls = self.find_image_urls(soup)  # Find all image URLs
+        
+        print(
+            f"{BackgroundColors.GREEN}Found {BackgroundColors.CYAN}{len(image_urls)}{BackgroundColors.GREEN} images in gallery.{Style.RESET_ALL}"
+        )  # Output count
+        
+        image_count = 0  # Counter for images
+        for img_url in image_urls:  # Iterate through image URLs
+            image_count += 1  # Increment counter
+            filepath = self.download_single_image(session, img_url, output_dir, image_count)  # Download image
+            if filepath:  # If download successful
+                downloaded_images.append(filepath)  # Add to list
+        
+        return downloaded_images  # Return list of downloaded image files
+
 
 # Functions Definitions:
 
