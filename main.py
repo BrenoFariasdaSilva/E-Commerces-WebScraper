@@ -1,11 +1,11 @@
 """
 ================================================================================
-E-Commerce WebScraper
+E-Commerces WebScraper
 ================================================================================
 Author      : Breno Farias da Silva
 Created     : <2026-03-04>
 Description :
-    This script is an E-Commerce WebScraper designed to scrape product information
+    This script is an E-Commerces WebScraper designed to scrape product information
     from popular e-commerce websites such as AliExpress, Mercado Livre, Shein, and Shopee.
     It automates the process of collecting data like product names, prices, descriptions,
     and other relevant details for analysis or monitoring purposes.
@@ -320,7 +320,7 @@ def main():
     """
 
     print(
-        f"{BackgroundColors.CLEAR_TERMINAL}{BackgroundColors.BOLD}{BackgroundColors.GREEN}Welcome to the {BackgroundColors.CYAN}E-Commerce WebScraper{BackgroundColors.GREEN} program!{Style.RESET_ALL}",
+        f"{BackgroundColors.CLEAR_TERMINAL}{BackgroundColors.BOLD}{BackgroundColors.GREEN}Welcome to the {BackgroundColors.CYAN}E-Commerces WebScraper{BackgroundColors.GREEN} program!{Style.RESET_ALL}",
         end="\n\n",
     )  # Output the welcome message
     start_time = datetime.datetime.now()  # Get the start time of the program
