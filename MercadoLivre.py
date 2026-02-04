@@ -499,6 +499,44 @@ class MercadoLivre:
         
         return image_urls  # Return list of image URLs
 
+    def download_single_image(self, session, img_url, output_dir, image_count):
+        """
+        Downloads a single image to the specified output directory.
+        
+        :param session: Requests session object
+        :param img_url: URL of the image to download
+        :param output_dir: Directory to save the image
+        :param image_count: Counter for generating unique filenames
+        :return: Path to the downloaded file or None if download failed
+        """
+        
+        try:  # Try to download the image
+            img_response = session.get(img_url, timeout=10)  # Download image
+            img_response.raise_for_status()  # Raise exception on bad status
+            
+            parsed_url = urlparse(img_url)  # Parse URL
+            ext = os.path.splitext(parsed_url.path)[1]  # Get file extension
+            if not ext:  # If no extension
+                ext = ".webp"  # Default to webp (common on Mercado Livre)
+            
+            filename = f"image_{image_count:03d}{ext}"  # Create filename
+            filepath = os.path.join(output_dir, filename)  # Create path
+            
+            with open(filepath, "wb") as f:  # Write file
+                f.write(img_response.content)  # Write content
+            
+            verbose_output(
+                f"{BackgroundColors.GREEN}Downloaded: {BackgroundColors.CYAN}{filename}{Style.RESET_ALL}"
+            )  # Output verbose
+            
+            return filepath  # Return the file path
+            
+        except Exception as e:  # If error
+            verbose_output(
+                f"{BackgroundColors.RED}Error downloading image: {e}{Style.RESET_ALL}"
+            )  # Output error
+            return None  # Return None on failure
+
 
 # Functions Definitions:
 
