@@ -340,12 +340,12 @@ class MercadoLivre:
             f"  {BackgroundColors.CYAN}Description:{Style.RESET_ALL} {product_data.get('description', 'N/A')[:100]}..."
         )  # Output the extracted information
 
-    def scrape_product_info(self, verbose_output):
+    def scrape_product_info(self, verbose):
         """
         Scrapes product information from the product page by orchestrating
         the extraction of individual data components.
 
-        :param verbose_output: Function to output verbose messages
+        :param verbose: Boolean flag to enable verbose output
         :return: Dictionary containing the scraped product data
         """
 
@@ -378,7 +378,7 @@ class MercadoLivre:
             self.product_data["discount_percentage"] = self.extract_discount_percentage(soup)  # Extract discount percentage
             self.product_data["description"] = self.extract_product_description(soup)  # Extract product description
             
-            self.print_product_info(self.product_data)  if VERBOSE else None  # Print the extracted product information if verbose
+            self.print_product_info(self.product_data) if VERBOSE else None  # Print the extracted product information if verbose
             
             return self.product_data  # Return the scraped data
             
@@ -685,7 +685,7 @@ class MercadoLivre:
         
         self.get_product_url()  # Step 1: Get the actual product URL
         
-        product_info = self.scrape_product_info(verbose_output)  # Step 2: Scrape product information
+        product_info = self.scrape_product_info(verbose=VERBOSE)  # Step 2: Scrape product information
         
         if not product_info:  # If scraping failed
             print(
