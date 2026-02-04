@@ -84,6 +84,16 @@ VERBOSE = False  # Set to True to output verbose messages
 # Output Directory Constants:
 OUTPUT_DIRECTORY = "./Outputs/"  # The base path to the output directory
 
+# Template Constants:
+PRODUCT_DESCRIPTION_TEMPLATE = """Product Name: {product_name}
+
+Price: From R${current_price} to R${old_price} ({discount} OFF)
+
+Description: {description}
+
+🛒 Encontre no Mercado Livre:
+👉 {url}"""
+
 # Logger Setup:
 logger = Logger(f"./Logs/{Path(__file__).stem}.log", clean=True)  # Create a Logger instance
 sys.stdout = logger  # Redirect stdout to the logger
