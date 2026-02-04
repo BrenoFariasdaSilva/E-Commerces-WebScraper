@@ -621,6 +621,56 @@ class MercadoLivre:
             )  # Output warning
             return None  # Return None on failure
 
+    def download_media(self):
+        """
+        Downloads product images from the gallery and creates a product description file.
+
+        :return: List of downloaded file paths (images and description file)
+        """
+
+        verbose_output(
+            f"{BackgroundColors.GREEN}Downloading product media...{Style.RESET_ALL}"
+        )  # Output the verbose message
+
+        downloaded_files = []  # List to store downloaded file paths
+        
+        if not self.product_url or not isinstance(self.product_url, str):  # If product URL is invalid
+            print(
+                f"{BackgroundColors.RED}Invalid product URL. Cannot download media.{Style.RESET_ALL}"
+            )  # Output the error message
+            return downloaded_files  # Return empty list
+        
+        try:  # Try to fetch and parse the product page
+            product_name_safe = re.sub(r'[<>:"/\\|?*]', '_', self.product_data.get("name", "Unknown_Product"))  # Create a safe filename
+            output_dir = self.create_output_directory(product_name_safe)  # Create the output directory
+            
+            print(
+                f"{BackgroundColors.GREEN}Downloading images from gallery...{Style.RESET_ALL}"
+            )  # Output the step message
+            
+            downloaded_images = self.download_product_images(self.session, self.product_url, output_dir)  # Download images
+            downloaded_files.extend(downloaded_images)  # Add images to downloaded files
+            
+            print(
+                f"{BackgroundColors.GREEN}Creating product description file...{Style.RESET_ALL}"
+            )  # Output message
+            
+            txt_file = self.create_product_description_file(self.product_data, output_dir, product_name_safe, self.url)  # Create description file
+            if txt_file:  # If file was created successfully
+                downloaded_files.append(txt_file)  # Add to downloaded files
+            
+            print(
+                f"{BackgroundColors.GREEN}Media download complete. Total files: {BackgroundColors.CYAN}{len(downloaded_files)}{Style.RESET_ALL}"
+            )  # Output completion
+            
+            return downloaded_files  # Return list
+            
+        except Exception as e:  # If error
+            print(
+                f"{BackgroundColors.RED}Unexpected error in download_media: {e}{Style.RESET_ALL}"
+            )  # Output error
+            return downloaded_files  # Return whatever was downloaded
+
 
 # Functions Definitions:
 
