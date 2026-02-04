@@ -288,7 +288,6 @@ class Gemini:
         with open(file_path, "w") as file:  # Open the file for writing
             file.write(output)  # Write the output to the file
 
-
     def close(self):
         """
         Close the client to release resources.
@@ -430,20 +429,11 @@ def main():
 
     input_data = gemini.read_input_file(INPUT_FILE)  # Read the input file
 
-    #  Setup the context message
-    context_message = f"""
-    Hi, Gemini.
+    gemini.start_chat_session()  # Start the chat session
     
-    {input_data}
-    """
-
-    # Setup the task message
-    task_message = f""""
-    Please analyze the provided data.
-    """
-
-    chat_session = gemini.start_chat_session(context_message)  # Start the chat session
-    output = gemini.send_message(chat_session, task_message)  # Send the message
+    output = gemini.send_message(
+        f"""Hi, Gemini. Please analyze the following data:\n\n{input_data}"""
+    )  # Send the context and get response
 
     gemini.write_output_to_file(output, OUTPUT_FILE)  # Write the output to a file
     
