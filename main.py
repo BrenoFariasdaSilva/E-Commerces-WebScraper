@@ -244,6 +244,8 @@ def main():
         end="\n\n",
     )  # Output the welcome message
     start_time = datetime.datetime.now()  # Get the start time of the program
+    
+    verify_dot_env_file()  # Verify if the .env file exists
 
     finish_time = datetime.datetime.now()  # Get the finish time of the program
     print(
@@ -252,8 +254,6 @@ def main():
     print(
         f"\n{BackgroundColors.BOLD}{BackgroundColors.GREEN}Program finished.{Style.RESET_ALL}"
     )  # Output the end of the program message
-    
-    verify_dot_env_file()  # Verify if the .env file exists
 
     (
         atexit.register(play_sound) if RUN_FUNCTIONS["Play Sound"] else None
