@@ -485,11 +485,19 @@ def main():
 
     print(
         f"{BackgroundColors.CLEAR_TERMINAL}{BackgroundColors.BOLD}{BackgroundColors.GREEN}Welcome to the {BackgroundColors.CYAN}E-Commerces WebScraper{BackgroundColors.GREEN} program!{Style.RESET_ALL}",
-        end="\n\n",
+        end="\n",
     )  # Output the welcome message
     start_time = datetime.datetime.now()  # Get the start time of the program
     
-    verify_dot_env_file()  # Verify if the .env file exists
+    if not verify_dot_env_file():  # Verify if the .env file exists
+        print(f"{BackgroundColors.RED}Environment setup failed. Exiting...{Style.RESET_ALL}")
+        return
+    
+    load_dotenv(ENV_PATH)  # Load environment variables
+    
+    if not verify_env_variables():  # Verify if the required environment variables are set
+        print(f"{BackgroundColors.RED}Environment variables missing. Exiting...{Style.RESET_ALL}")
+        return
     
     create_directory(
         os.path.abspath(INPUT_DIRECTORY), INPUT_DIRECTORY.replace(".", "")
@@ -499,14 +507,40 @@ def main():
         os.path.abspath(OUTPUT_DIRECTORY), OUTPUT_DIRECTORY.replace(".", "")
     )  # Create the output directory
     
-    verify_filepath_exists(INPUT_FILE)  # Verify if the input file exists
+    successful_scrapes = 0  # Counter for successful operations
+    total_urls = len(TEST_URLs)  # Total number of URLs to process
+    
+    for index, url in enumerate(TEST_URLs, 1):  # Iterate through all URLs
+        print(f"{BackgroundColors.GREEN}Processing URL {BackgroundColors.CYAN}{index}{BackgroundColors.GREEN}/{BackgroundColors.CYAN}{total_urls}{BackgroundColors.GREEN}: {BackgroundColors.CYAN}{url}{Style.RESET_ALL}") # Print section header
+        
+        print(f"{BackgroundColors.CYAN}Step 1{BackgroundColors.GREEN}: Scraping the product information{Style.RESET_ALL}")  # Step 1: Scrape the product information
+        product_data, description_file, product_name_safe = scrape_product(url)  # Scrape the product
+        
+        if not product_data:  # If scraping failed
+            print(f"{BackgroundColors.RED}Skipping URL due to scraping failure.{Style.RESET_ALL}\n")
+            continue  # Move to next URL
+        
+        try:  # Read the product description from the file
+            with open(str(description_file), "r", encoding="utf-8") as f:  # Open the description file with UTF-8 encoding
+                product_description = f.read()  # Read the product description
+        except Exception as e:  # If reading the file fails
+            print(f"{BackgroundColors.RED}Error reading description file: {e}{Style.RESET_ALL}")
+            continue  # Move to next URL
+        
+        print(f"{BackgroundColors.CYAN}Step 2{BackgroundColors.GREEN}: Formatting with Gemini AI{Style.RESET_ALL}")  # Step 2: Format the product description with Gemini AI
+        success = generate_marketing_text(product_description, product_name_safe, description_file)  # Generate marketing text
+        
+        if success:  # If both scraping and formatting succeeded
+            successful_scrapes += 1  # Increment successful scrapes counter
+    
+    print(f"{BackgroundColors.GREEN}Successfully processed: {BackgroundColors.CYAN}{successful_scrapes}/{total_urls}{BackgroundColors.GREEN} URLs{Style.RESET_ALL}\n")  # Output the number of successful operations
 
     finish_time = datetime.datetime.now()  # Get the finish time of the program
     print(
         f"{BackgroundColors.GREEN}Start time: {BackgroundColors.CYAN}{start_time.strftime('%d/%m/%Y - %H:%M:%S')}\n{BackgroundColors.GREEN}Finish time: {BackgroundColors.CYAN}{finish_time.strftime('%d/%m/%Y - %H:%M:%S')}\n{BackgroundColors.GREEN}Execution time: {BackgroundColors.CYAN}{calculate_execution_time(start_time, finish_time)}{Style.RESET_ALL}"
     )  # Output the start and finish times
     print(
-        f"\n{BackgroundColors.BOLD}{BackgroundColors.GREEN}Program finished.{Style.RESET_ALL}"
+        f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Program finished.{Style.RESET_ALL}"
     )  # Output the end of the program message
 
     (
