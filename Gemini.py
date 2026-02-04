@@ -215,28 +215,17 @@ class Gemini:
         
         return content  # Return the content of the file
 
-    def start_chat_session(self, initial_user_message):
+    def start_chat_session(self):
         """
         Start a chat session with the model.
         
-        :param initial_user_message: The initial user message.
         :return: The chat session.
         """
         
         verbose_output(true_string=f"{BackgroundColors.GREEN}Starting the chat session...{Style.RESET_ALL}")
         
-        chat_session = self.model.start_chat(  # Start the chat session
-            history=[  # Chat history
-                {
-                    "role": "user",  # The role of the message
-                    "parts": [
-                        initial_user_message,  # The initial user message
-                    ],  # The parts of the message
-                }
-            ]
-        )
-        
-        return chat_session  # Return the chat session
+        self.chat = self.client.chats.create(model=self.model)  # Create a new chat session
+        return self.chat  # Return the chat session
 
     def send_message(self, chat_session, user_message):
         """
