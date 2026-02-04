@@ -223,6 +223,43 @@ def create_directory(full_directory_name, relative_directory_name):
         )
 
 
+def load_urls_to_process(test_urls, input_file):
+    """
+    Determine and return the list of URLs to process.
+
+    Priority:
+        1) Non-empty entries in `test_urls` (keeps order and strips whitespace).
+        2) If none present, read one URL per line from `input_file` (ignore blank lines).
+
+    Args:
+        test_urls (list): list of test URL strings (may contain empty/blank entries).
+        input_file (str): path to the input file to read fallback URLs from.
+
+    Returns:
+        list: cleaned URLs to process (may be empty).
+    """
+
+    urls_from_test = [u.strip() for u in (test_urls or []) if u and u.strip()]  # Normalize and filter non-empty test URLs first
+    if urls_from_test:  # If any valid test URLs found
+        return urls_from_test  # Return test URLs
+
+    urls = []  # List to store URLs from input file
+    
+    try:  # Try to read URLs from input file
+        if verify_filepath_exists(input_file):  # If the input file exists
+            with open(input_file, "r", encoding="utf-8") as fh:  # Open the input file with UTF-8 encoding
+                for line in fh:  # Read each line in the file
+                    line = line.strip()  # Strip whitespace
+                    if line:  # If the line is not empty
+                        urls.append(line)  # Add the URL to the list
+        else:  # If the input file does not exist
+            print(f"{BackgroundColors.YELLOW}Input file not found: {input_file}{Style.RESET_ALL}")
+    except Exception as e:  # If an error occurs while reading the file
+        print(f"{BackgroundColors.RED}Error reading input file {input_file}: {e}{Style.RESET_ALL}")
+
+    return urls  # Return the list of URLs
+
+
 def sanitize_filename(filename):
     """
     Sanitizes a filename by removing invalid characters for filesystem compatibility.
@@ -508,9 +545,12 @@ def main():
     )  # Create the output directory
     
     successful_scrapes = 0  # Counter for successful operations
-    total_urls = len(TEST_URLs)  # Total number of URLs to process
+
+    urls_to_process = load_urls_to_process(TEST_URLs, INPUT_FILE)  # Load URLs to process
     
-    for index, url in enumerate(TEST_URLs, 1):  # Iterate through all URLs
+    total_urls = len(urls_to_process)  # Total number of URLs to process
+
+    for index, url in enumerate(urls_to_process, 1):  # Iterate through all URLs
         print(f"{BackgroundColors.GREEN}Processing URL {BackgroundColors.CYAN}{index}{BackgroundColors.GREEN}/{BackgroundColors.CYAN}{total_urls}{BackgroundColors.GREEN}: {BackgroundColors.CYAN}{url}{Style.RESET_ALL}") # Print section header
         
         print(f"{BackgroundColors.CYAN}Step 1{BackgroundColors.GREEN}: Scraping the product information{Style.RESET_ALL}")  # Step 1: Scrape the product information
