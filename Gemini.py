@@ -177,7 +177,7 @@ class Gemini:
     Class for interacting with Google's Gemini AI model.
     
     This class provides methods to configure the model, read input files,
-    start chat sessions, send messages, and write outputs.
+    start chat sessions, send messages, and write outputs using the google.genai SDK.
     """
     
     def __init__(self, api_key):
@@ -187,8 +187,12 @@ class Gemini:
         :param api_key: The API key for Google's Gemini AI.
         """
         
+        verbose_output(true_string=f"{BackgroundColors.GREEN}Initializing Gemini Client...{Style.RESET_ALL}")
+        
         self.api_key = api_key  # Store the API key
-        self.model = self.configure_model(api_key)  # Configure the model
+        self.client = genai.Client(api_key=api_key)  # Create the Gemini client
+        self.model = "gemini-2.5-flash"  # Latest free model currently
+        self.chat = None  # Placeholder for chat session
 
     def read_input_file(self, file_path=INPUT_FILE):
         """
