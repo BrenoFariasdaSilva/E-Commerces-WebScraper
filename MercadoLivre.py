@@ -62,7 +62,6 @@ import sys  # For system-specific parameters and functions
 from bs4 import BeautifulSoup, Tag  # For parsing HTML content
 from colorama import Style  # For coloring the terminal
 from Logger import Logger  # For logging output to both terminal and file
-from main import create_directory  # For creating directories
 from pathlib import Path  # For handling file paths
 from urllib.parse import urlparse  # For URL manipulation
 
@@ -445,6 +444,28 @@ class MercadoLivre:
         
         return "".join(result)  # Join and return
 
+    def create_directory(self, full_directory_name, relative_directory_name):
+        """
+        Creates a directory.
+
+        :param full_directory_name: Name of the directory to be created.
+        :param relative_directory_name: Relative name of the directory to be created that will be shown in the terminal.
+        :return: None
+        """
+
+        verbose_output(
+            true_string=f"{BackgroundColors.GREEN}Creating the {BackgroundColors.CYAN}{relative_directory_name}{BackgroundColors.GREEN} directory...{Style.RESET_ALL}"
+        )
+
+        if os.path.isdir(full_directory_name):  # Verify if the directory already exists
+            return  # Return if the directory already exists
+        try:  # Try to create the directory
+            os.makedirs(full_directory_name)  # Create the directory
+        except OSError:  # If the directory cannot be created
+            print(
+                f"{BackgroundColors.GREEN}The creation of the {BackgroundColors.CYAN}{relative_directory_name}{BackgroundColors.GREEN} directory failed.{Style.RESET_ALL}"
+            )
+    
     def create_output_directory(self, product_name_safe):
         """
         Creates the output directory for storing downloaded media files.
@@ -454,7 +475,7 @@ class MercadoLivre:
         """
         
         output_dir = os.path.join(OUTPUT_DIRECTORY, product_name_safe)  # Create the output directory path
-        create_directory(os.path.abspath(output_dir), output_dir.replace(".", ""))  # Create the output directory
+        self.create_directory(os.path.abspath(output_dir), output_dir.replace(".", ""))  # Create the output directory
         
         return output_dir  # Return the output directory path
 
