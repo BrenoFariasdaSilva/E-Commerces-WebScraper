@@ -670,6 +670,38 @@ class MercadoLivre:
                 f"{BackgroundColors.RED}Unexpected error in download_media: {e}{Style.RESET_ALL}"
             )  # Output error
             return downloaded_files  # Return whatever was downloaded
+        
+    def scrape(self, verbose_output):
+        """
+        Main scraping method that orchestrates the entire scraping process.
+
+        :param verbose_output: Function to output verbose messages
+        :return: Dictionary containing all scraped data and downloaded file paths
+        """
+
+        print(
+            f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Starting Mercado Livre scraping process...{Style.RESET_ALL}"
+        )  # Output the start message
+        
+        self.get_product_url()  # Step 1: Get the actual product URL
+        
+        product_info = self.scrape_product_info(verbose_output)  # Step 2: Scrape product information
+        
+        if not product_info:  # If scraping failed
+            print(
+                f"{BackgroundColors.RED}Failed to scrape product information.{Style.RESET_ALL}"
+            )  # Output the error message
+            return None  # Return None on failure
+        
+        downloaded_files = self.download_media()  # Step 3: Download media files
+        
+        self.product_data["downloaded_media"] = downloaded_files  # Step 4: Store downloaded file paths
+        
+        print(
+            f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Scraping process completed successfully!{Style.RESET_ALL}"
+        )  # Output the completion message
+        
+        return self.product_data  # Return the complete product data
 
 
 # Functions Definitions:
