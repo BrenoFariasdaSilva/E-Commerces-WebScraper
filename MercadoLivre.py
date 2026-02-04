@@ -134,6 +134,70 @@ class MercadoLivre:
             f"{BackgroundColors.GREEN}MercadoLivre scraper initialized with URL: {BackgroundColors.CYAN}{url}{Style.RESET_ALL}"
         )  # Output the verbose message
 
+    def get_product_url(self):
+        """
+        Extracts the actual product URL from the listing page by finding the href
+        that comes right before the "Ir para produto" button.
+
+        :return: The product URL if found, None otherwise
+        """
+
+        verbose_output(
+            f"{BackgroundColors.GREEN}Extracting product URL from listing page...{Style.RESET_ALL}"
+        )  # Output the verbose message
+
+        try:  # Try to fetch and parse the page
+            response = self.session.get(self.url, timeout=10)  # Make a GET request to the URL
+            response.raise_for_status()  # Raise an exception for bad status codes
+            
+            soup = BeautifulSoup(response.content, "html.parser")  # Parse the HTML content
+            
+            ir_para_produto = soup.find(string=re.compile(r"Ir para produto", re.IGNORECASE))  # Find the "Ir para produto" text
+            
+            if ir_para_produto:  # If the button text was found
+                parent_link = ir_para_produto.find_parent("a")  # Find the parent anchor tag
+                
+                if isinstance(parent_link, Tag):  # If a parent link was found and is a Tag
+                    href = parent_link.get("href")  # Extract the href attribute
+                    if href and isinstance(href, str):  # If href exists and is a string
+                        self.product_url = href  # Store the product URL
+                        print(
+                            f"{BackgroundColors.GREEN}Product URL found: {BackgroundColors.CYAN}{self.product_url}{Style.RESET_ALL}"
+                        )  # Output the success message
+                        return self.product_url  # Return the product URL
+            
+            product_links = soup.find_all("a", href=re.compile(r"/p/|/MLB"))  # Find all product links
+            
+            if product_links:  # If product links were found
+                first_link = product_links[0]  # Get the first product link
+                if isinstance(first_link, Tag):  # If it's a Tag element
+                    href = first_link.get("href")  # Get the href attribute
+                    if href and isinstance(href, str):  # If href exists and is a string
+                        self.product_url = href  # Store the product URL
+                        print(
+                            f"{BackgroundColors.GREEN}Product URL found (alternative method): {BackgroundColors.CYAN}{self.product_url}{Style.RESET_ALL}"
+                        )  # Output the success message
+                        return self.product_url  # Return the product URL
+            
+            print(
+                f"{BackgroundColors.YELLOW}Could not find product URL. Using original URL.{Style.RESET_ALL}"
+            )  # Output the warning message
+            self.product_url = self.url  # Use the original URL as fallback
+            return self.product_url  # Return the URL
+            
+        except requests.RequestException as e:  # If a request error occurred
+            print(
+                f"{BackgroundColors.RED}Error fetching listing page: {e}{Style.RESET_ALL}"
+            )  # Output the error message
+            self.product_url = self.url  # Use the original URL as fallback
+            return self.product_url  # Return the URL
+        except Exception as e:  # If any other error occurred
+            print(
+                f"{BackgroundColors.RED}Unexpected error in get_product_url: {e}{Style.RESET_ALL}"
+            )  # Output the error message
+            self.product_url = self.url  # Use the original URL as fallback
+            return self.product_url  # Return the URL
+
 
 # Functions Definitions:
 
