@@ -135,68 +135,80 @@ dmypy.json
 # Temp Folders
 /tmp*/
 
-# Dagster tmp folder
-Dagster/tmp*/
-
-# Non Repetitive Combinations folder
-Non\ Repetitive\ Combinations/non_repetitive_combinations.txt
-
 # System Files
-.DS_Store
-**/.DS_Store/**
-**/Thumbs.db/**
+**/.DS_Store
+**/Thumbs.db
 Icon? # match Icon<CR>
 **/Icon? # explicit: match at any nested level
 
 # Ignore the Windows .Desktop Files
-desktop.ini
+**/desktop.ini
 
-# Bill Folder
-Credit\ Card\ Bill/Bills/*
-
-# Ignore every file inside PyDriller specified folders
-/PyDriller/ck_metrics
-/PyDriller/compressed
-/PyDriller/diffs
-/PyDriller/junk
-/PyDriller/metrics_data
-/PyDriller/metrics_evolution
-/PyDriller/metrics_predictions
-/PyDriller/metrics_statistics
-/PyDriller/progress
-/PyDriller/tmp
-PyDriller/repositories
-
-# Ignore RefactoringMiner/RefactoringMiner folder
-/RefactoringMiner/RefactoringMiner
-/RefactoringMiner/repositories/
-/RefactoringMiner/json_files/
-
-# Ignore any 7z or tar.gz or zip file
-**.7z
-**.tar.gz
-**.zip
-
-# Ignore any .csv or .txt file inside the URLs List Filter and Magnet Links from URL folders
-URLs\ List\ Filter/*.txt
-URLs\ List\ Filter/*.csv
-Magnet\ Links\ from\ URL/*.txt
-Magnet\ Links\ from\ URL/*.csv
-
-# Ignore any .txt file inside the Files Without Extension folder
-**/Files\ Without\ Extension/*.txt
-
-# Ignore any files from Steam Games folder
-**/Steam\ Games/**
+# Ignore the Compressed Files
+**/.zip
+**/.rar
+**/*.gz
+**/*.7z
+**/*.tar.gz
 
 # Ignore the Data Directories
-**/dataset/**
-**/Dados/**
-**/Data/**
-**/Dataset/**
-**/Results/**
-**/Images/**
-**/Input/**
-**/Output/**
+# Input folders
+**/Input/*
+**/Inputs/*
+**/input/*
+**/inputs/*
 
+# Output folders
+**/Output/*
+**/Outputs/*
+**/output/*
+**/outputs/*
+
+# Data folders
+**/Dados/*
+**/Data/*
+**/dados/*
+**/data/*
+
+# Dataset folders
+**/Dataset/*
+**/Datasets/*
+**/dataset/*
+**/datasets/*
+
+# Results folders
+**/Result/*
+**/Results/*
+**/result/*
+**/results/*
+
+!.assets/*
+
+# Ignore the Data Files
+**/*.csv
+**/*.json
+**/*.xml
+**/*.xls
+**/*.xlsx
+**/*.txt
+**/*.parquet
+**/*.arff
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.gif
+**/*.bmp
+**/*.tiff
+**/*.svg
+**/*.~lock*
 !**/requirements.txt
+!**/README.md
+
+# Environments
+**/.env
+**/.venv
+**/env/
+**/venv/
+**/ENV/
+**/env.bak/
+**/venv.bak/
