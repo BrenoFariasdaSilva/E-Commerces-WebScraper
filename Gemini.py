@@ -274,7 +274,7 @@ class Gemini:
         
         verbose_output(true_string=f"{BackgroundColors.GREEN}Writing the output to the file...{Style.RESET_ALL}")
         
-        with open(file_path, "w") as file:  # Open the file for writing
+        with open(file_path, "w", encoding="utf-8") as file:  # Open the file for writing with UTF-8
             file.write(output)  # Write the output to the file
 
     def close(self):
