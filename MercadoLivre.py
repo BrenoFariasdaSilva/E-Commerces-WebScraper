@@ -360,12 +360,25 @@ def main():
     """
 
     print(
-        f"{BackgroundColors.CLEAR_TERMINAL}{BackgroundColors.BOLD}{BackgroundColors.GREEN}Welcome to the {BackgroundColors.CYAN}Main Template Python{BackgroundColors.GREEN} program!{Style.RESET_ALL}",
+        f"{BackgroundColors.CLEAR_TERMINAL}{BackgroundColors.BOLD}{BackgroundColors.GREEN}Welcome to the {BackgroundColors.CYAN}Mercado Livre Scraper Test{BackgroundColors.GREEN} program!{Style.RESET_ALL}",
         end="\n\n",
     )  # Output the welcome message
     start_time = datetime.datetime.now()  # Get the start time of the program
+
+    test_url = "https://mercadolivre.com/sec/2XY9zrA"  # Test URL
     
-    # Implement main program logic here
+    verbose_output(
+        f"{BackgroundColors.GREEN}Testing MercadoLivre scraper with URL: {BackgroundColors.CYAN}{test_url}{Style.RESET_ALL}\n"
+    )  # Output the test URL
+    
+    try:  # Try to scrape the product
+        scraper = MercadoLivre(test_url)  # Create a MercadoLivre instance
+        result = scraper.scrape()  # Scrape the product
+        output_result(result)  # Output the result
+    except Exception as e:  # If an error occurred
+        print(
+            f"\n{BackgroundColors.RED}Error during scraping: {e}{Style.RESET_ALL}\n"
+        )  # Output the error message
 
     finish_time = datetime.datetime.now()  # Get the finish time of the program
     print(
