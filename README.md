@@ -1,6 +1,6 @@
 <div align="center">
   
-# [E-Commerce-WebScrapper.](https://github.com/BrenoFariasdaSilva/E-Commerce-WebScrapper) <img src="https://github.com/BrenoFariasdaSilva/E-Commerce-WebScrapper/blob/main/.assets/Icons/web-scraper.png"  width="3%" height="3%">
+# [E-Commerce-WebScrapper.](https://github.com/BrenoFariasdaSilva/E-Commerce-WebScrapper) <img src="https://github.com/BrenoFariasdaSilva/E-Commerce-WebScrapper/blob/main/.assets/Icons/web-scraper.png"  width="4%" height="4%">
 
 </div>
 
