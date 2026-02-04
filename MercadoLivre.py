@@ -293,6 +293,19 @@ class MercadoLivre:
         
         return integer_part, decimal_part  # Return the price parts
 
+    def extract_discount_percentage(self, soup):
+        """
+        Extracts the discount percentage from the parsed HTML soup.
+        
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: Discount percentage string or "N/A" if not found
+        """
+        
+        discount_element = soup.find(class_=re.compile(r"andes-money-amount__discount.*ui-pdp-family--SEMIBOLD.*ui-pdp-color--GREEN", re.IGNORECASE))  # Find discount element
+        discount_percentage = discount_element.get_text(strip=True) if discount_element else "N/A"  # Extract discount percentage
+        
+        return discount_percentage  # Return the discount percentage
+
 
 # Functions Definitions:
 
