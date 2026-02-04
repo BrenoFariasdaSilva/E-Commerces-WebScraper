@@ -223,6 +223,17 @@ def create_directory(full_directory_name, relative_directory_name):
         )
 
 
+def sanitize_filename(filename):
+    """
+    Sanitizes a filename by removing invalid characters for filesystem compatibility.
+    
+    :param filename: The filename string to sanitize
+    :return: Sanitized filename string containing only alphanumeric characters, spaces, hyphens, and underscores
+    """
+    
+    return "".join(c if c.isalnum() or c in (" ", "-", "_") else "" for c in filename).strip()  # Remove invalid characters
+
+
 def to_seconds(obj):
     """
     Converts various time-like objects to seconds.
