@@ -66,10 +66,10 @@ Bullet points of the requirements.
 
 1. Clone the repository with the following command:
 
-   ```bash
-   git clone https://github.com/BrenoFariasDaSilva/E-Commerce-WebScrapper.git
-   cd E-Commerce-WebScrapper
-   ```
+    ```bash
+    git clone https://github.com/BrenoFariasDaSilva/E-Commerce-WebScrapper.git
+    cd E-Commerce-WebScrapper
+    ```
 
 ## Installation:
 
