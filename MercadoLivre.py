@@ -257,6 +257,42 @@ class MercadoLivre:
         
         return integer_part, decimal_part  # Return the price parts
 
+    def extract_old_price(self, soup):
+        """
+        Extracts the old price from the parsed HTML soup.
+        
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: Tuple of (integer_part, decimal_part) for old price
+        """
+        
+        old_price_container = soup.find("span", class_=re.compile(r"andes-money-amount.*andes-money-amount--superscript-16"))  # Find the old price with superscript-16 cents
+        if old_price_container and isinstance(old_price_container, Tag):  # If found
+            old_fraction = old_price_container.find(class_="andes-money-amount__fraction")  # Find the fraction within this container
+            old_cents = old_price_container.find(class_="andes-money-amount__cents")  # Find the cents within this container
+            
+            integer_part = old_fraction.get_text(strip=True) if old_fraction and isinstance(old_fraction, Tag) else "N/A"  # Extract integer part
+            decimal_part = old_cents.get_text(strip=True) if old_cents and isinstance(old_cents, Tag) else "N/A"  # Extract decimal part
+        else:  # If not found
+            all_prices = soup.find_all(class_="andes-money-amount__fraction")  # Find all price fractions
+            if len(all_prices) > 1:  # If more than one price found
+                first_fraction = all_prices[0]  # Assume the first is the old price
+                if isinstance(first_fraction, Tag):  # If it's a Tag
+                    integer_part = first_fraction.get_text(strip=True)  # Extract integer part
+                    parent = first_fraction.find_parent(class_=re.compile(r"andes-money-amount"))  # Find the parent container
+                    if parent and isinstance(parent, Tag):  # If parent found
+                        cents = parent.find(class_="andes-money-amount__cents")  # Find the cents within this container
+                        decimal_part = cents.get_text(strip=True) if cents and isinstance(cents, Tag) else "00"  # Extract decimal part
+                    else:  # If parent not found
+                        decimal_part = "00"  # Default decimal part
+                else:  # If not a Tag
+                    integer_part = "N/A"  # Default to N/A
+                    decimal_part = "N/A"  # Default to N/A
+            else:  # If no old price found
+                integer_part = "N/A"  # Default to N/A
+                decimal_part = "N/A"  # Default to N/A
+        
+        return integer_part, decimal_part  # Return the price parts
+
 
 # Functions Definitions:
 
