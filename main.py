@@ -78,7 +78,10 @@ OUTPUT_FILE = f"{OUTPUT_DIRECTORY}output.txt"  # The path to the output file
 
 # Environment Variables:
 ENV_PATH = "./.env"  # The path to the .env file
-ENV_VARIABLES = ["GEMINI_API_KEY"]  # The environment variables to load from the .env file
+ENV_VARIABLES = {
+    "GEMINI": "GEMINI_API_KEY"
+}  # The environment variables to load from the .env file
+
 
 # Logger Setup:
 logger = Logger(f"./Logs/{Path(__file__).stem}.log", clean=True)  # Create a Logger instance
