@@ -137,6 +137,31 @@ def verify_dot_env_file():
     return True  # Return True if the .env file exists
 
 
+def to_seconds(obj):
+    """
+    Converts various time-like objects to seconds.
+    
+    :param obj: The object to convert (can be int, float, timedelta, datetime, etc.)
+    :return: The equivalent time in seconds as a float, or None if conversion fails
+    """
+    
+    if obj is None:  # None can't be converted
+        return None  # Signal failure to convert
+    if isinstance(obj, (int, float)):  # Already numeric (seconds or timestamp)
+        return float(obj)  # Return as float seconds
+    if hasattr(obj, "total_seconds"):  # Timedelta-like objects
+        try:  # Attempt to call total_seconds()
+            return float(obj.total_seconds())  # Use the total_seconds() method
+        except Exception:
+            pass  # Fallthrough on error
+    if hasattr(obj, "timestamp"):  # Datetime-like objects
+        try:  # Attempt to call timestamp()
+            return float(obj.timestamp())  # Use timestamp() to get seconds since epoch
+        except Exception:
+            pass  # Fallthrough on error
+    return None  # Couldn't convert
+
+
 def calculate_execution_time(start_time, finish_time=None):
     """
     Calculates the execution time and returns a human-readable string.
@@ -149,33 +174,16 @@ def calculate_execution_time(start_time, finish_time=None):
     Returns a string like "1h 2m 3s".
     """
 
-    def _to_seconds(obj):  # Convert various time-like objects to seconds
-        if obj is None:  # None can't be converted
-            return None  # Signal failure to convert
-        if isinstance(obj, (int, float)):  # Already numeric (seconds or timestamp)
-            return float(obj)  # Return as float seconds
-        if hasattr(obj, "total_seconds"):  # Timedelta-like objects
-            try:  # Attempt to call total_seconds()
-                return float(obj.total_seconds())  # Use the total_seconds() method
-            except Exception:
-                pass  # Fallthrough on error
-        if hasattr(obj, "timestamp"):  # Datetime-like objects
-            try:  # Attempt to call timestamp()
-                return float(obj.timestamp())  # Use timestamp() to get seconds since epoch
-            except Exception:
-                pass  # Fallthrough on error
-        return None  # Couldn't convert
-
     if finish_time is None:  # Single-argument mode: start_time already represents duration or seconds
-        total_seconds = _to_seconds(start_time)  # Try to convert provided value to seconds
+        total_seconds = to_seconds(start_time)  # Try to convert provided value to seconds
         if total_seconds is None:  # Conversion failed
             try:  # Attempt numeric coercion
                 total_seconds = float(start_time)  # Attempt numeric coercion
             except Exception:
                 total_seconds = 0.0  # Fallback to zero
     else:  # Two-argument mode: Compute difference finish_time - start_time
-        st = _to_seconds(start_time)  # Convert start to seconds if possible
-        ft = _to_seconds(finish_time)  # Convert finish to seconds if possible
+        st = to_seconds(start_time)  # Convert start to seconds if possible
+        ft = to_seconds(finish_time)  # Convert finish to seconds if possible
         if st is not None and ft is not None:  # Both converted successfully
             total_seconds = ft - st  # Direct numeric subtraction
         else:  # Fallback to other methods
