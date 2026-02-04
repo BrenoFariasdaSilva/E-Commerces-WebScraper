@@ -149,6 +149,29 @@ def verify_dot_env_file():
     return True  # Return True if the .env file exists
 
 
+def verify_env_variables():
+    """
+    Verifies if the required environment variables are set in the .env file.
+
+    :return: True if all required environment variables are set, False otherwise
+    """
+
+    missing_variables = []  # List to store missing environment variables
+
+    for ref_name, env_var in ENV_VARIABLES.items():  # ENV_VARIABLES = {"REFERENCE_NAME": "ENV_VAR_NAME"}
+        if os.getenv(env_var) is None:  # If the environment variable is not set
+            missing_variables.append(f"{ref_name} ({env_var})")  # Add the missing variable to the list
+
+    if missing_variables:  # If there are any missing variables
+        print(
+            f"{BackgroundColors.YELLOW}The following environment variables are missing from the .env file: "
+            f"{BackgroundColors.CYAN}{', '.join(missing_variables)}{Style.RESET_ALL}"
+        )
+        return False  # Return False if any required environment variable is missing
+
+    return True  # Return True if all required environment variables are set
+
+
 def to_seconds(obj):
     """
     Converts various time-like objects to seconds.
