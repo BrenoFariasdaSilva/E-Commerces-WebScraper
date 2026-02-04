@@ -48,10 +48,12 @@ Assumptions & Notes:
 
 import atexit  # For playing a sound when the program finishes
 import datetime  # For getting the current date and time
+import google.generativeai as genai  # Import the Google AI Python SDK
 import os  # For running a command in the terminal
 import platform  # For getting the operating system name
 import sys  # For system-specific parameters and functions
 from colorama import Style  # For coloring the terminal
+from dotenv import load_dotenv  # For loading .env files
 from Logger import Logger  # For logging output to both terminal and file
 from pathlib import Path  # For handling file paths
 
