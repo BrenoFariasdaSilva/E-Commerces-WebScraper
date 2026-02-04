@@ -289,6 +289,19 @@ class Gemini:
             file.write(output)  # Write the output to the file
 
 
+    def close(self):
+        """
+        Close the client to release resources.
+        
+        :return: None
+        """
+        
+        try:  # Close the client
+            self.client.close()  # Close the client
+        except Exception:  # Fail silently
+            pass  # Silent
+
+
 def to_seconds(obj):
     """
     Converts various time-like objects to seconds.
@@ -433,6 +446,8 @@ def main():
     output = gemini.send_message(chat_session, task_message)  # Send the message
 
     gemini.write_output_to_file(output, OUTPUT_FILE)  # Write the output to a file
+    
+    gemini.close()  # Close the client to release resources
 
     finish_time = datetime.datetime.now()  # Get the finish time of the program
     print(
