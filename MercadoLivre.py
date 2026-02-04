@@ -102,6 +102,39 @@ RUN_FUNCTIONS = {
     "Play Sound": True,  # Set to True to play a sound when the program finishes
 }
 
+# Classes Definitions:
+
+
+class MercadoLivre:
+    """
+    A web scraper class for extracting product information from Mercado Livre.
+    
+    This class handles the extraction of product details including name, prices,
+    discounts, descriptions, and media files from Mercado Livre product pages.
+    It also generates a marketing description file in a predefined template format.
+    """
+
+    def __init__(self, url):
+        """
+        Initializes the MercadoLivre scraper with a product URL.
+
+        :param url: The URL of the Mercado Livre product page to scrape
+        :return: None
+        """
+
+        self.url = url  # Store the initial URL
+        self.product_url = None  # Will store the actual product page URL
+        self.session = requests.Session()  # Create a session for making requests
+        self.session.headers.update({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        })  # Set a realistic User-Agent to avoid being blocked
+        self.product_data = {}  # Dictionary to store scraped product data
+
+        verbose_output(
+            f"{BackgroundColors.GREEN}MercadoLivre scraper initialized with URL: {BackgroundColors.CYAN}{url}{Style.RESET_ALL}"
+        )  # Output the verbose message
+
+
 # Functions Definitions:
 
 
