@@ -1,49 +1,55 @@
 """
 ================================================================================
-<PROJECT OR SCRIPT TITLE>
+Mercado Livre Web Scraper
 ================================================================================
 Author      : Breno Farias da Silva
-Created     : <YYYY-MM-DD>
+Created     : 2026-02-04
 Description :
-    <Provide a concise and complete overview of what this script does.>
-    <Mention its purpose, scope, and relevance to the larger project.>
+    This script provides a MercadoLivre class for scraping product information
+    from Mercado Livre product pages. It extracts comprehensive product details
+    including name, prices, discount information, descriptions, and media assets.
 
     Key features include:
-        - <Feature 1 — e.g., automatic data loading and preprocessing>
-        - <Feature 2 — e.g., model training and evaluation>
-        - <Feature 3 — e.g., visualization or report generation>
-        - <Feature 4 — e.g., logging or notification system>
-        - <Feature 5 — e.g., integration with other modules or datasets>
+        - Automatic product URL extraction from listing pages
+        - Product name and description extraction
+        - Price information (current and old prices with integer and decimal parts)
+        - Discount percentage extraction
+        - Product images download
+        - Product description file generation in marketing template format
+        - Organized output in product-specific directories
 
 Usage:
-    1. <Explain any configuration steps before running, such as editing variables or paths.>
-    2. <Describe how to execute the script — typically via Makefile or Python.>
-            $ make <target>   or   $ python <script_name>.py
-    3. <List what outputs are expected or where results are saved.>
+    1. Import the MercadoLivre class in your main script.
+    2. Create an instance with a product URL:
+            scraper = MercadoLivre("https://mercadolivre.com.br/product-url")
+    3. Call the scrape method to extract product information:
+            product_data = scraper.scrape()
+    4. Media files are saved in ./Outputs/{Product Name}/ directory.
 
 Outputs:
-    - <Output file or directory 1 — e.g., results.csv>
-    - <Output file or directory 2 — e.g., Feature_Analysis/plots/>
-    - <Output file or directory 3 — e.g., logs/output.txt>
+    - Product data dictionary with all extracted information
+    - Downloaded images in ./Outputs/{Product Name}/ directory
+    - Product description .txt file with marketing template in ./Outputs/{Product Name}/ directory
+    - Log files in ./Logs/ directory
 
 TODOs:
-    - <Add a task or improvement — e.g., implement CLI argument parsing.>
-    - <Add another improvement — e.g., extend support to Parquet files.>
-    - <Add optimization — e.g., parallelize evaluation loop.>
-    - <Add robustness — e.g., error handling or data validation.>
+    - Add support for multiple product variations
+    - Implement retry mechanism for failed requests
+    - Add data export to CSV/JSON formats
+    - Implement rate limiting to respect website policies
 
 Dependencies:
-    - Python >= <version>
-    - <Library 1 — e.g., pandas>
-    - <Library 2 — e.g., numpy>
-    - <Library 3 — e.g., scikit-learn>
-    - <Library 4 — e.g., matplotlib, seaborn, tqdm, colorama>
+    - Python >= 3.8
+    - requests
+    - beautifulsoup4
+    - lxml
+    - colorama
 
 Assumptions & Notes:
-    - <List any key assumptions — e.g., last column is the target variable.>
-    - <Mention data format — e.g., CSV files only.>
-    - <Mention platform or OS-specific notes — e.g., sound disabled on Windows.>
-    - <Note on output structure or reusability.>
+    - Requires stable internet connection
+    - Website structure may change over time
+    - Respects robots.txt and ethical scraping practices
+    - Creates output directories automatically if they don't exist
 """
 
 import atexit  # For playing a sound when the program finishes
