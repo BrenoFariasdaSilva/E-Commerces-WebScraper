@@ -398,7 +398,7 @@ def main():
     
     try:  # Try to scrape the product
         scraper = MercadoLivre(test_url)  # Create a MercadoLivre instance
-        result = scraper.scrape()  # Scrape the product
+        result = scraper.scrape(VERBOSE)  # Scrape the product
         output_result(result)  # Output the result
     except Exception as e:  # If an error occurred
         print(
@@ -412,7 +412,7 @@ def main():
     print(
         f"\n{BackgroundColors.BOLD}{BackgroundColors.GREEN}Program finished.{Style.RESET_ALL}"
     )  # Output the end of the program message
-    
+
     (
         atexit.register(play_sound) if RUN_FUNCTIONS["Play Sound"] else None
     )  # Register the play_sound function to be called when the program finishes
