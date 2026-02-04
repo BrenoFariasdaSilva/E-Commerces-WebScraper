@@ -234,6 +234,27 @@ def sanitize_filename(filename):
     return "".join(c if c.isalnum() or c in (" ", "-", "_") else "" for c in filename).strip()  # Remove invalid characters
 
 
+def detect_platform(url):
+    """
+    Detects the e-commerce platform from a given URL by checking domain names.
+    
+    :param url: The product URL to analyze
+    :return: Platform name (e.g., 'mercadolivre', 'shein', 'shopee') or None if not recognized
+    """
+    
+    url_lower = url.lower()  # Convert URL to lowercase for case-insensitive matching
+    
+    for platform_name, platform_id in PLATFORMS_MAP.items():  # Iterate through supported platforms
+        if platform_id in url_lower:  # Check if platform identifier is in URL
+            verbose_output(
+                f"{BackgroundColors.GREEN}Detected platform: {BackgroundColors.CYAN}{platform_name}{Style.RESET_ALL}"
+            )
+            return platform_id  # Return the platform identifier
+    
+    print(f"{BackgroundColors.YELLOW}Warning: Could not detect platform from URL: {url}{Style.RESET_ALL}")
+    return None  # Return None if platform not recognized
+
+
 def to_seconds(obj):
     """
     Converts various time-like objects to seconds.
