@@ -87,7 +87,7 @@ OUTPUT_DIRECTORY = "./Outputs/"  # The base path to the output directory
 # Template Constants:
 PRODUCT_DESCRIPTION_TEMPLATE = """Product Name: {product_name}
 
-Price: From R${current_price} to R${old_price} ({discount} OFF)
+Price: From R${current_price} to R${old_price} ({discount})
 
 Description: {description}
 
