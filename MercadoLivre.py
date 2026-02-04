@@ -208,6 +208,23 @@ class MercadoLivre:
             self.product_url = self.url  # Use the original URL as fallback
             return self.product_url  # Return the URL
 
+    def extract_product_name(self, soup):
+        """
+        Extracts the product name from the parsed HTML soup.
+        
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: Product name string or "Unknown Product" if not found
+        """
+        
+        name_element = soup.find(class_="ui-pdp-title")  # Find the product name element
+        product_name = name_element.get_text(strip=True) if name_element else "Unknown Product"  # Extract the product name
+        
+        verbose_output(
+            f"{BackgroundColors.GREEN}Product name: {BackgroundColors.CYAN}{product_name}{Style.RESET_ALL}"
+        )  # Output the verbose message
+        
+        return product_name  # Return the product name
+
 
 # Functions Definitions:
 
@@ -422,7 +439,7 @@ def main():
     print(
         f"\n{BackgroundColors.BOLD}{BackgroundColors.GREEN}Program finished.{Style.RESET_ALL}"
     )  # Output the end of the program message
-
+    
     (
         atexit.register(play_sound) if RUN_FUNCTIONS["Play Sound"] else None
     )  # Register the play_sound function to be called when the program finishes
