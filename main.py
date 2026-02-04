@@ -137,6 +137,10 @@ def verify_dot_env_file():
 
     :return: True if the .env file exists, False otherwise
     """
+    
+    verbose_output(
+        f"{BackgroundColors.GREEN}Verifying if the {BackgroundColors.CYAN}.env{BackgroundColors.GREEN} file exists...{Style.RESET_ALL}"
+    )  # Output the verbose message
 
     env_path = Path(__file__).parent / ".env"  # Path to the .env file
     
