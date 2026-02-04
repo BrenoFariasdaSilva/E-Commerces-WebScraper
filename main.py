@@ -58,9 +58,14 @@ import datetime  # For getting the current date and time
 import os  # For running a command in the terminal
 import platform  # For getting the operating system name
 import sys  # For system-specific parameters and functions
+# from AliExpress import AliExpress  # Import the AliExpress class
 from colorama import Style  # For coloring the terminal
+from dotenv import load_dotenv  # For loading environment variables
 from Gemini import Gemini  # Import the Gemini class
 from Logger import Logger  # For logging output to both terminal and file
+from MercadoLivre import MercadoLivre  # Import the MercadoLivre class
+# from Shein import Shein  # Import the Shein class
+# from Shopee import Shopee  # Import the Shopee class
 from pathlib import Path  # For handling file paths
 
 
@@ -77,6 +82,16 @@ class BackgroundColors:  # Colors for the terminal
 
 # Execution Constants:
 VERBOSE = False  # Set to True to output verbose messages
+
+TEST_URLs = ["https://mercadolivre.com/sec/2XY9zrA"]  # Test URLs for scraping
+
+PLATFORMS_MAP = {
+    "AliExpress": "aliexpress",
+    "MercadoLivre": "mercadolivre",
+    "Shein": "shein",
+    "Shopee": "shopee",
+}  # Mapping of platform names to identifiers
+    
 
 # File Path Constants:
 INPUT_DIRECTORY = "./Inputs/"  # The path to the input directory
