@@ -600,6 +600,12 @@ class MercadoLivre:
         
         try:  # Try to create the .txt file
             product_name = product_data.get("name", "Produto")  # Get product name
+
+            if isinstance(product_name, str) and product_name.strip().lower() == "unknown product":  # If product name is "Unknown Product", don't create file
+                verbose_output(
+                    f"{BackgroundColors.YELLOW}Skipping description file creation for Unknown Product.{Style.RESET_ALL}"
+                )
+                return None  # Return None
             
             description = product_data.get("description", "")  # Get description
             if description:  # If description exists
@@ -662,6 +668,13 @@ class MercadoLivre:
             return downloaded_files  # Return empty list
         
         try:  # Try to fetch and parse the product page
+            product_name_raw = self.product_data.get("name", "").strip()  # Get the raw product name
+            if isinstance(product_name_raw, str) and product_name_raw.lower() == "unknown product":  # If product name is "Unknown Product", skip media download and file creation
+                verbose_output(
+                    f"{BackgroundColors.YELLOW}Product name is 'Unknown Product' — skipping media download and file creation.{Style.RESET_ALL}"
+                )
+                return downloaded_files  # Return empty list
+
             product_name_safe = re.sub(r'[<>:"/\\|?*]', '_', self.product_data.get("name", "Unknown_Product"))  # Create a safe filename
             output_dir = self.create_output_directory(product_name_safe)  # Create the output directory
             
