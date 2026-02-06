@@ -530,8 +530,9 @@ class MercadoLivre:
         :return: List of valid image URLs
         """
         
+        image_urls = set()  # Use a set to store unique image URLs
+        
         figures = soup.find_all("figure", class_="ui-pdp-gallery__figure__with-overlay")  # Find figure elements
-        image_urls = []  # List to store image URLs
         
         for figure in figures:  # Iterate through figures
             if not isinstance(figure, Tag):  # If not a Tag
@@ -540,22 +541,20 @@ class MercadoLivre:
             img = figure.find("img", class_="ui-pdp-gallery__figure__image")  # Find image
             
             if isinstance(img, Tag):  # If image found
-                img_url = img.get("data-zoom") or img.get("src")  # Get URL
-                
+                img_url = img.get("data-zoom") or img.get("src")  # Prefer data-zoom for higher resolution
                 if img_url and isinstance(img_url, str):  # If URL is valid
                     if not img_url.startswith("data:") and not img_url.startswith("blob:"):  # Skip invalid URLs
-                        image_urls.append(img_url)  # Add to list
+                        image_urls.add(img_url)  # Add to set
         
         additional_imgs = soup.find_all("img", class_="ui-pdp-image")  # Find additional image elements
         for img in additional_imgs:  # Iterate through additional images
             if isinstance(img, Tag):  # If it's a Tag
-                img_url = img.get("data-zoom") or img.get("src")  # Get URL
+                img_url = img.get("data-zoom") or img.get("src")  # Prefer data-zoom
                 if img_url and isinstance(img_url, str):  # If URL is valid
                     if not img_url.startswith("data:") and not img_url.startswith("blob:"):  # Skip invalid URLs
-                        if img_url not in image_urls:  # Avoid duplicates
-                            image_urls.append(img_url)  # Add to list
+                        image_urls.add(img_url)  # Add to set, avoiding duplicates
         
-        return image_urls  # Return list of image URLs
+        return list(image_urls)  # Return list of unique image URLs
 
     def download_single_image(self, session, img_url, output_dir, image_count):
         """
