@@ -245,7 +245,7 @@ def clean_unknown_product_directories(output_directory):
             item_path = os.path.join(output_directory, item)  # Get the full path of the item
             if os.path.isdir(item_path) and item == "Unknown Product":  # If the item is a directory named "Unknown Product"
                 shutil.rmtree(item_path)  # Remove the directory and its contents
-                print(f"{BackgroundColors.YELLOW}Removed old 'Unknown Product' directory: {item_path}{Style.RESET_ALL}")
+                verbose_output(f"{BackgroundColors.YELLOW}Removed old 'Unknown Product' directory: {item_path}{Style.RESET_ALL}")
     except Exception as e:  # If an error occurs during cleanup
         print(f"{BackgroundColors.RED}Error during cleanup of 'Unknown Product' directories: {e}{Style.RESET_ALL}")
 
