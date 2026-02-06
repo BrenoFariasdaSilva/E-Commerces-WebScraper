@@ -58,6 +58,7 @@ import datetime  # For getting the current date and time
 import os  # For running a command in the terminal
 import platform  # For getting the operating system name
 import sys  # For system-specific parameters and functions
+import time  # For adding delays between requests
 # from AliExpress import AliExpress  # Import the AliExpress class
 from colorama import Style  # For coloring the terminal
 from dotenv import load_dotenv  # For loading environment variables
@@ -123,6 +124,9 @@ SOUND_FILE = "./.assets/Sounds/NotificationSound.wav"  # The path to the sound f
 RUN_FUNCTIONS = {
     "Play Sound": True,  # Set to True to play a sound when the program finishes
 }
+
+# Delay Constants:
+DELAY_BETWEEN_REQUESTS = 5  # Seconds to wait between processing URLs to avoid rate limiting
 
 # Functions Definitions:
 
@@ -613,6 +617,10 @@ def main():
         
         if success:  # If both scraping and formatting succeeded
             successful_scrapes += 1  # Increment successful scrapes counter
+        
+        if index < total_urls:  # Add delay between requests to avoid rate limiting, but not after the last URL
+            print(f"{BackgroundColors.YELLOW}Waiting {DELAY_BETWEEN_REQUESTS} seconds before processing the next URL...{Style.RESET_ALL}")
+            time.sleep(DELAY_BETWEEN_REQUESTS)
     
     print(f"{BackgroundColors.GREEN}Successfully processed: {BackgroundColors.CYAN}{successful_scrapes}/{total_urls}{BackgroundColors.GREEN} URLs{Style.RESET_ALL}\n")  # Output the number of successful operations
 
