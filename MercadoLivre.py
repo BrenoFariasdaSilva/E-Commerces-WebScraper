@@ -524,7 +524,7 @@ class MercadoLivre:
 
     def find_image_urls(self, soup):
         """
-        Finds all valid image URLs from the product gallery figures.
+        Finds all valid image URLs from the product gallery figures and additional image elements.
         
         :param soup: BeautifulSoup object containing the parsed HTML
         :return: List of valid image URLs
@@ -545,6 +545,15 @@ class MercadoLivre:
                 if img_url and isinstance(img_url, str):  # If URL is valid
                     if not img_url.startswith("data:") and not img_url.startswith("blob:"):  # Skip invalid URLs
                         image_urls.append(img_url)  # Add to list
+        
+        additional_imgs = soup.find_all("img", class_="ui-pdp-image")  # Find additional image elements
+        for img in additional_imgs:  # Iterate through additional images
+            if isinstance(img, Tag):  # If it's a Tag
+                img_url = img.get("data-zoom") or img.get("src")  # Get URL
+                if img_url and isinstance(img_url, str):  # If URL is valid
+                    if not img_url.startswith("data:") and not img_url.startswith("blob:"):  # Skip invalid URLs
+                        if img_url not in image_urls:  # Avoid duplicates
+                            image_urls.append(img_url)  # Add to list
         
         return image_urls  # Return list of image URLs
 
