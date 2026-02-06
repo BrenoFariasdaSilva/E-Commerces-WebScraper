@@ -57,6 +57,7 @@ import atexit  # For playing a sound when the program finishes
 import datetime  # For getting the current date and time
 import os  # For running a command in the terminal
 import platform  # For getting the operating system name
+import shutil  # For removing directories
 import sys  # For system-specific parameters and functions
 import time  # For adding delays between requests
 # from AliExpress import AliExpress  # Import the AliExpress class
@@ -225,6 +226,28 @@ def create_directory(full_directory_name, relative_directory_name):
         print(
             f"{BackgroundColors.GREEN}The creation of the {BackgroundColors.CYAN}{relative_directory_name}{BackgroundColors.GREEN} directory failed.{Style.RESET_ALL}"
         )
+
+
+def clean_unknown_product_directories(output_directory):
+    """
+    Cleans up any "Unknown Product" directories from previous runs in the output directory.
+
+    :param output_directory: The path to the output directory to clean
+    :return: None
+    """
+    
+    verbose_output(
+        f"{BackgroundColors.GREEN}Cleaning up any 'Unknown Product' directories in {BackgroundColors.CYAN}{output_directory}{BackgroundColors.GREEN}...{Style.RESET_ALL}"
+    )
+    
+    try:  # Try to clean up "Unknown Product" directories
+        for item in os.listdir(output_directory):  # List all items in the output directory
+            item_path = os.path.join(output_directory, item)  # Get the full path of the item
+            if os.path.isdir(item_path) and item == "Unknown Product":  # If the item is a directory named "Unknown Product"
+                shutil.rmtree(item_path)  # Remove the directory and its contents
+                print(f"{BackgroundColors.YELLOW}Removed old 'Unknown Product' directory: {item_path}{Style.RESET_ALL}")
+    except Exception as e:  # If an error occurs during cleanup
+        print(f"{BackgroundColors.RED}Error during cleanup of 'Unknown Product' directories: {e}{Style.RESET_ALL}")
 
 
 def load_urls_to_process(test_urls, input_file):
@@ -579,6 +602,8 @@ def main():
     create_directory(
         os.path.abspath(OUTPUT_DIRECTORY), OUTPUT_DIRECTORY.replace(".", "")
     )  # Create the output directory
+    
+    clean_unknown_product_directories(OUTPUT_DIRECTORY)  # Clean up any "Unknown Product" directories from previous runs
     
     successful_scrapes = 0  # Counter for successful operations
 
