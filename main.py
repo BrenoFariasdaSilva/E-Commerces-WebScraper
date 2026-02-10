@@ -764,11 +764,17 @@ def main():
         print(f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Processing URL {BackgroundColors.CYAN}{index}{BackgroundColors.GREEN}/{BackgroundColors.CYAN}{total_urls}{BackgroundColors.GREEN}: {BackgroundColors.CYAN}{url}{Style.RESET_ALL}") # Print section header
         
         print(f"{BackgroundColors.CYAN}Step 1{BackgroundColors.GREEN}: Scraping the product information{Style.RESET_ALL}")  # Step 1: Scrape the product information
-        product_data, description_file, product_name_safe = scrape_product(url)  # Scrape the product
+        scrape_result = scrape_product(url)  # Scrape the product
         
-        clean_duplicate_images(product_name_safe)  # Clean up duplicate images in the product directory
+        if not scrape_result or len(scrape_result) != 3:  # If scraping failed or returned invalid result
+            print(f"{BackgroundColors.RED}Skipping {BackgroundColors.CYAN}{url}{BackgroundColors.RED} due to scraping failure.{Style.RESET_ALL}\n")
+            continue  # Move to next URL
         
-        exclude_small_images(product_name_safe)  # Exclude images smaller than 2KB
+        product_data, description_file, product_name_safe = scrape_result  # Unpack the scrape result
+        
+        if product_name_safe and isinstance(product_name_safe, str):  # If product name is valid
+            clean_duplicate_images(product_name_safe)  # Clean up duplicate images in the product directory
+            exclude_small_images(product_name_safe)  # Exclude images smaller than 2KB
         
         if not product_data:  # If scraping failed
             print(f"{BackgroundColors.RED}Skipping {BackgroundColors.CYAN}{url}{BackgroundColors.RED} due to scraping failure.{Style.RESET_ALL}\n")
