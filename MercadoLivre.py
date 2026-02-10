@@ -224,6 +224,22 @@ class MercadoLivre:
         
         return product_name  # Return the product name
 
+    def detect_international(self, soup):
+        """
+        Detect Mercado Livre "international" marker (id="cbt_summary_rebranding--title").
+
+        Returns True if the international marker is present, False otherwise.
+        Also sets `self.product_data['is_international']` accordingly.
+        """
+        
+        try:  # Try to detect the international marker
+            found = bool(soup.find(attrs={"id": "cbt_summary_rebranding--title"}))  # Verify for the presence of the international marker
+            self.product_data["is_international"] = True if found else False  # Set the product data flag
+            return found  # Return the detection result
+        except Exception:  # If any error occurs during detection, assume it's not international
+            self.product_data["is_international"] = False  # Set the product data flag to False
+            return False  # Return False on error
+
     def extract_current_price(self, soup):
         """
         Extracts the current price from the parsed HTML soup.
@@ -365,6 +381,9 @@ class MercadoLivre:
             soup = BeautifulSoup(response.content, "html.parser")  # Parse the HTML content
             
             self.product_data["name"] = self.extract_product_name(soup)  # Extract product name
+
+            if self.detect_international(soup):  # Detect if the product is marked as international
+                pass
             
             current_price_int, current_price_dec = self.extract_current_price(soup)  # Extract current price
             self.product_data["current_price_integer"] = current_price_int  # Store integer part
