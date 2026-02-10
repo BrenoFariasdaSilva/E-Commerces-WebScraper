@@ -159,7 +159,7 @@ class MercadoLivre:
             response = self.session.get(self.url, timeout=10)  # Make a GET request to the URL
             response.raise_for_status()  # Raise an exception for bad status codes
             
-            soup = BeautifulSoup(response.content, "html.parser")  # Parse the HTML content
+            soup = BeautifulSoup(response.text, "html.parser")  # Parse the HTML content (use str to satisfy type checkers)
             
             ir_para_produto = soup.find(string=re.compile(r"Ir para produto", re.IGNORECASE))  # Find the "Ir para produto" text
             
@@ -398,7 +398,7 @@ class MercadoLivre:
             response = self.session.get(self.product_url, timeout=10)  # Make a GET request to the product URL
             response.raise_for_status()  # Raise an exception for bad status codes
             
-            soup = BeautifulSoup(response.content, "html.parser")  # Parse the HTML content
+            soup = BeautifulSoup(response.text, "html.parser")  # Parse the HTML content (use str to satisfy type checkers)
             
             self.product_data["name"] = self.extract_product_name(soup)  # Extract product name
 
@@ -557,7 +557,7 @@ class MercadoLivre:
         
         response = session.get(product_url, timeout=10)  # Make a GET request to the product URL
         response.raise_for_status()  # Raise exception for bad status
-        soup = BeautifulSoup(response.content, "html.parser")  # Parse the HTML content
+        soup = BeautifulSoup(response.text, "html.parser")  # Parse the HTML content (use str to satisfy type checkers)
         
         return soup  # Return the parsed soup
 
