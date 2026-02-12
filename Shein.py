@@ -64,10 +64,16 @@ import atexit  # For playing a sound when the program finishes
 import datetime  # For getting the current date and time
 import os  # For running a command in the terminal
 import platform  # For getting the operating system name
+import re  # For regular expressions
 import sys  # For system-specific parameters and functions
+import time  # For delays during page rendering
+from bs4 import BeautifulSoup, Tag  # For parsing HTML content
 from colorama import Style  # For coloring the terminal
 from Logger import Logger  # For logging output to both terminal and file
 from pathlib import Path  # For handling file paths
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError  # For browser automation
+from typing import Optional, Dict, Any, List, Tuple, cast  # For type hints
+from urllib.parse import urljoin, urlparse  # For URL manipulation
 
 # Macros:
 class BackgroundColors:  # Colors for the terminal
