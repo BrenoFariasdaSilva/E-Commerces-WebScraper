@@ -89,6 +89,28 @@ class BackgroundColors:  # Colors for the terminal
 # Execution Constants:
 VERBOSE = False  # Set to True to output verbose messages
 
+# Output Directory Constants:
+OUTPUT_DIRECTORY = "./Outputs/"  # The base path to the output directory
+
+# Browser Constants:
+CHROME_PROFILE_PATH = os.getenv("CHROME_PROFILE_PATH", "")  # Path to Chrome profile
+CHROME_EXECUTABLE_PATH = os.getenv("CHROME_EXECUTABLE_PATH", "")  # Path to Chrome executable
+HEADLESS = os.getenv("HEADLESS", "False").lower() == "true"  # Headless mode flag
+PAGE_LOAD_TIMEOUT = 30000  # 30 seconds timeout for page load
+NETWORK_IDLE_TIMEOUT = 5000  # 5 seconds of network idle
+SCROLL_PAUSE_TIME = 0.5  # Seconds to pause between scrolls
+SCROLL_STEP = 300  # Pixels to scroll per step
+
+# Template Constants:
+PRODUCT_DESCRIPTION_TEMPLATE = """Product Name: {product_name}
+
+Price: From R${current_price} to R${old_price} ({discount})
+
+Description: {description}
+
+🛒 Encontre na Shein:
+👉 {url}"""
+
 # Logger Setup:
 logger = Logger(f"./Logs/{Path(__file__).stem}.log", clean=True)  # Create a Logger instance
 sys.stdout = logger  # Redirect stdout to the logger
