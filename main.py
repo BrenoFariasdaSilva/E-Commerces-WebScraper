@@ -69,8 +69,8 @@ from Logger import Logger  # For logging output to both terminal and file
 from MercadoLivre import MercadoLivre  # Import the MercadoLivre class
 from pathlib import Path  # For handling file paths
 from PIL import Image  # For image processing
-# from Shopee import Shopee  # Import the Shopee class
-from pathlib import Path  # For handling file paths
+from Shein import Shein  # Import the Shein class
+from Shopee import Shopee  # Import the Shopee class
 
 
 # Macros:
@@ -485,8 +485,8 @@ def scrape_product(url):
     scraper_classes = {  # Mapping of platform identifiers to scraper classes
         # "aliexpress": AliExpress,
         "mercadolivre": MercadoLivre,
-        # "shein": Shein,
-        # "shopee": Shopee,
+        "shein": Shein,
+        "shopee": Shopee,
     }
     
     scraper_class = scraper_classes.get(platform)  # Get the appropriate scraper class
