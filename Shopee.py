@@ -497,7 +497,37 @@ class Shopee:
         verbose_output(  # Warn that old price could not be extracted
             f"{BackgroundColors.YELLOW}Old price not found.{Style.RESET_ALL}"
         )  # End of verbose output call
-        return "N/A", "N/A"  # Return N/A when old price is not available# Functions Definitions:
+        return "N/A", "N/A"  # Return N/A when old price is not available
+
+
+    def extract_discount_percentage(self, soup: BeautifulSoup) -> str:
+        """
+        Extracts the discount percentage from the parsed HTML soup.
+        
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: Discount percentage string or "N/A" if not found
+        """
+        
+        # Try multiple selectors for discount
+        discount_selectors = [  # Define list of CSS selectors to find discount percentage in priority order
+            ("div", {"class": re.compile(r".*discount.*", re.IGNORECASE)}),  # Shopee discount container with regex pattern
+            ("span", {"class": re.compile(r".*discount.*", re.IGNORECASE)}),  # Alternative discount span with regex pattern
+            ("div", {"class": re.compile(r".*sale.*badge.*", re.IGNORECASE)}),  # Sale badge container as fallback
+        ]  # End of discount_selectors list
+        
+        for tag, attrs in discount_selectors:  # Iterate through each selector combination
+            discount_element = soup.find(tag, attrs if attrs else None)  # type: ignore[arg-type]  # Search for element matching current selector
+            if discount_element:  # Verify if matching element was found
+                discount_text = discount_element.get_text(strip=True)  # Extract and clean text content from element
+                # Look for percentage pattern
+                match = re.search(r"(\d+%)", discount_text)  # Search for discount percentage pattern
+                if match:  # Verify if discount pattern was found in text
+                    verbose_output(  # Log successfully extracted discount percentage
+                        f"{BackgroundColors.GREEN}Discount: {match.group(1)}{Style.RESET_ALL}"
+                    )  # End of verbose output call
+                    return match.group(1)  # Return the discount percentage string
+        
+        return "N/A"  # Return N/A when discount is not available# Functions Definitions:
 
 
 def verbose_output(true_string="", false_string=""):
