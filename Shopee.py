@@ -130,6 +130,39 @@ RUN_FUNCTIONS = {
     "Play Sound": True,  # Set to True to play a sound when the program finishes
 }
 
+# Classes Definitions:
+
+
+class Shopee:
+    """
+    A web scraper class for extracting product information from Shopee using
+    authenticated browser sessions.
+    
+    This class handles the extraction of product details including name, prices,
+    discounts, descriptions, and media files from Shopee product pages using
+    Playwright for full page rendering and authenticated access.
+    """
+
+    def __init__(self, url: str) -> None:
+        """
+        Initializes the Shopee scraper with a product URL.
+
+        :param url: The URL of the Shopee product page to scrape
+        :return: None
+        """
+
+        self.url: str = url  # Store the initial product URL for reference
+        self.product_url: str = url  # Maintain separate copy of product URL for Shopee direct usage
+        self.product_data: Dict[str, Any] = {}  # Initialize empty dictionary to store extracted product data
+        self.playwright: Optional[Any] = None  # Placeholder for Playwright instance
+        self.browser: Optional[Any] = None  # Placeholder for browser instance
+        self.page: Optional[Any] = None  # Placeholder for page object
+
+        verbose_output(  # Output initialization message to user
+            f"{BackgroundColors.GREEN}Shopee scraper initialized with URL: {BackgroundColors.CYAN}{url}{Style.RESET_ALL}"
+        )  # End of verbose output call
+
+
 # Functions Definitions:
 
 
