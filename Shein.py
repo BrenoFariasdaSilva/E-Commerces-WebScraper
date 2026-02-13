@@ -167,12 +167,13 @@ class Shein:
     :return: None
     """
 
-    def __init__(self, url="", local_html_path=None):
+    def __init__(self, url="", local_html_path=None, prefix=""):
         """
         Initializes the Shein scraper with a product URL and optional local HTML file path.
 
         :param url: The URL of the Shein product page to scrape
         :param local_html_path: Optional path to a local HTML file for offline scraping
+        :param prefix: Optional platform prefix for output directory naming (e.g., "Shein")
         :return: None
         """
 
@@ -181,6 +182,7 @@ class Shein:
         self.local_html_path = local_html_path  # Store path to local HTML file for offline scraping
         self.html_content = None  # Store HTML content for reuse (from browser or local file)
         self.product_data = {}  # Initialize empty dictionary to store extracted product data
+        self.prefix = prefix  # Store the platform prefix for directory naming
         self.playwright = None  # Placeholder for Playwright instance
         self.browser = None  # Placeholder for browser instance
         self.page = None  # Placeholder for page object
@@ -519,7 +521,8 @@ class Shein:
         :return: Path to the created output directory
         """
 
-        output_dir = os.path.join(OUTPUT_DIRECTORY, f"Shein - {product_name_safe}")  # Construct full path for product output directory with website prefix
+        directory_name = f"{self.prefix} - {product_name_safe}" if self.prefix else product_name_safe  # Construct directory name with platform prefix if available
+        output_dir = os.path.join(OUTPUT_DIRECTORY, directory_name)  # Construct full path for product output directory
         self.create_directory(os.path.abspath(output_dir), output_dir.replace(".", ""))  # Create directory with absolute path and cleaned relative name
         return output_dir  # Return the created output directory path
 
