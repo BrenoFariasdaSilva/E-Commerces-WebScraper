@@ -603,7 +603,7 @@ class MercadoLivre:
         :return: Path to the created output directory
         """
         
-        output_dir = os.path.join(OUTPUT_DIRECTORY, product_name_safe)  # Create the output directory path
+        output_dir = os.path.join(OUTPUT_DIRECTORY, f"MercadoLivre - {product_name_safe}")  # Create the output directory path with website prefix
         self.create_directory(os.path.abspath(output_dir), output_dir.replace(".", ""))  # Create the output directory
         
         return output_dir  # Return the output directory path
