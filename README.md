@@ -468,3 +468,33 @@ The project uses the following production dependencies:
 - `pydantic_core==2.41.5` - Core validation logic
 
 For a complete list, see [requirements.txt](requirements.txt).
+
+## File Structure
+
+```
+E-Commerces-WebScraper/
+├── main.py                              # Main orchestration script
+├── MercadoLivre.py                      # Mercado Livre scraper class
+├── Shein.py                             # Shein scraper class
+├── Shopee.py                            # Shopee scraper class
+├── Gemini.py                            # AI integration module
+├── Logger.py                            # Custom logging utility
+├── requirements.txt                     # Python dependencies
+├── Makefile                             # Build and run commands
+├── .env                                 # Environment configuration (not tracked)
+├── .env.example                         # Environment template
+├── README.md                            # This file
+├── AUTHENTICATED_SCRAPING_SETUP.md      # Detailed authentication guide
+├── IMPLEMENTATION_SUMMARY.md            # Technical implementation details
+├── CONTRIBUTING.md                      # Contribution guidelines
+├── LICENSE                              # Apache 2.0 license
+├── Inputs/                              # Input files directory
+│   └── urls.txt                         # URLs to scrape
+├── Outputs/                             # Scraped data output directory
+│   └── {Platform} - {Product}/          # Product-specific directories
+├── Logs/                                # Execution logs
+│   └── main.log                         # Main script log file
+└── .assets/                             # Project assets
+    ├── Icons/                           # Icon files
+    └── Sounds/                          # Notification sounds
+```
