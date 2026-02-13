@@ -106,3 +106,16 @@ The scraper extracts detailed product data including names, prices, discount inf
 | **Mercado Livre** | HTTP Requests                   | No                      | ✅ Active |
 | **Shein**         | Browser Automation (Playwright) | Yes                     | ✅ Active |
 | **Shopee**        | Browser Automation (Playwright) | Yes                     | ✅ Active |
+
+## Architecture
+
+The application follows a modular, class-based architecture with clear separation of concerns:
+
+### Core Components
+
+- **main.py**: Orchestration layer that handles URL routing, batch processing, validation, and output management
+- **MercadoLivre.py**: HTTP-based scraper using `requests` and `BeautifulSoup` for static content extraction
+- **Shein.py**: Browser automation scraper using `Playwright` for JavaScript-rendered pages
+- **Shopee.py**: Browser automation scraper using `Playwright` for JavaScript-rendered pages
+- **Gemini.py**: AI integration module for generating marketing content via Google Gemini API
+- **Logger.py**: Custom logging utility for simultaneous terminal and file output
