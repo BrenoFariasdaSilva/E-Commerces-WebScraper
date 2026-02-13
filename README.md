@@ -277,3 +277,19 @@ The scraper will reuse your authenticated session without requiring credentials 
 3. **Check Outputs**
 
    Results are saved in `Outputs/` directory organized by platform and product name.
+
+### Input File Format
+
+The `Inputs/urls.txt` file supports two formats per line:
+
+**Online Scraping (URL only)**:
+```
+https://mercadolivre.com.br/product-url
+```
+
+**Offline Scraping (URL + Local HTML Path)**:
+```
+https://shopee.com.br/product-url ./Inputs/shopee-product/index.html
+```
+
+The scraper automatically detects which format is provided and routes accordingly.
