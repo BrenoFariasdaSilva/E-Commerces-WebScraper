@@ -545,11 +545,10 @@ def scrape_product(url, local_html_path=None):
             print(f"{BackgroundColors.RED}Description file not found: {description_file}{Style.RESET_ALL}")
             return None, None, None  # Return None values
         
-        # Clean up zip and extracted directory if extraction was performed
-        if extracted_dir:
-            try:
-                os.remove(zip_path)
-                shutil.rmtree(extracted_dir)
+        if extracted_dir and zip_path:  # Ensure both paths are not None before cleanup
+            try:  # Try to clean up the zip file and extracted directory
+                os.remove(zip_path)  # Remove the original zip file
+                shutil.rmtree(extracted_dir)  # Remove the extracted directory
                 verbose_output(f"{BackgroundColors.GREEN}Cleaned up zip file and extracted directory{Style.RESET_ALL}")
             except Exception as e:
                 print(f"{BackgroundColors.YELLOW}Warning: Failed to clean up zip and extracted dir: {e}{Style.RESET_ALL}")
