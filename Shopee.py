@@ -281,7 +281,57 @@ class Shopee:
             return True  # Return success despite timeout to allow scraping partial content
         except Exception as e:  # Catch any other exceptions during page loading
             print(f"{BackgroundColors.RED}Failed to load page: {e}{Style.RESET_ALL}")  # Alert user about page loading failure
-            return False  # Return failure status for unhandled errors# Functions Definitions:
+            return False  # Return failure status for unhandled errors
+
+
+    def _auto_scroll(self) -> None:
+        """
+        Automatically scrolls the page to trigger lazy-loaded content.
+
+        :return: None
+        """
+
+        verbose_output(  # Output status message to user
+            f"{BackgroundColors.GREEN}Auto-scrolling to load lazy content...{Style.RESET_ALL}"
+        )  # End of verbose output call
+
+        if self.page is None:  # Validate that page instance exists before scrolling
+            print(f"{BackgroundColors.YELLOW}Warning: Page not initialized, skipping scroll.{Style.RESET_ALL}")  # Warn user that scrolling will be skipped
+            return  # Exit method early if page is not initialized
+
+        try:  # Attempt auto-scrolling with error handling
+            # Get the total page height
+            previous_height = self.page.evaluate("document.body.scrollHeight")  # Get initial page height for comparison
+            
+            while True:  # Loop indefinitely until break condition is met
+                # Scroll down by SCROLL_STEP pixels
+                self.page.evaluate(f"window.scrollBy(0, {SCROLL_STEP})")  # Scroll down by configured step pixels
+                time.sleep(SCROLL_PAUSE_TIME)  # Pause to allow lazy content to load
+                
+                # Get new height
+                new_height = self.page.evaluate("document.body.scrollHeight")  # Get updated page height after scroll
+                
+                # Verify if we've reached the bottom
+                scroll_position = self.page.evaluate("window.pageYOffset + window.innerHeight")  # Calculate current scroll position
+                if scroll_position >= new_height:  # Verify if scrolled to bottom of page
+                    break  # Exit loop when bottom is reached
+                    
+                # Verify if page height hasn't changed (no more content loading)
+                if new_height == previous_height:  # Verify if page height stopped changing
+                    break  # Exit loop when no new content is loaded
+                    
+                previous_height = new_height  # Update previous height for next iteration
+
+            # Scroll back to top
+            self.page.evaluate("window.scrollTo(0, 0)")  # Scroll back to top of page
+            time.sleep(SCROLL_PAUSE_TIME)  # Pause briefly after scrolling to top
+            
+            verbose_output(  # Output success message to user
+                f"{BackgroundColors.GREEN}Auto-scroll completed.{Style.RESET_ALL}"
+            )  # End of verbose output call
+
+        except Exception as e:  # Catch any exceptions during auto-scroll
+            print(f"{BackgroundColors.YELLOW}Warning during auto-scroll: {e}{Style.RESET_ALL}")  # Warn user about scroll issues without failing# Functions Definitions:
 
 
 def verbose_output(true_string="", false_string=""):
