@@ -83,3 +83,18 @@ A production-ready web scraper for extracting product information from multiple 
 **E-Commerces-WebScraper** is a comprehensive, production-ready Python application designed to automate the extraction of product information from multiple e-commerce platforms. Built with maintainability and extensibility in mind, it supports both traditional HTTP scraping and advanced authenticated browser automation for JavaScript-heavy websites.
 
 The scraper extracts detailed product data including names, prices, discount information, descriptions, and high-resolution images. It features intelligent duplicate detection, asset optimization, batch processing capabilities, and optional AI-powered marketing content generation via Google Gemini.
+
+## Features
+
+- **Multi-Platform Support**: Scrapes Mercado Livre, Shein, and Shopee with dedicated, platform-specific scrapers
+- **Authenticated Scraping**: Uses existing Chrome profiles to bypass login requirements for Shopee and Shein
+- **Intelligent Path Resolution**: Automatically resolves local HTML paths with multiple fallback strategies
+- **Batch Processing**: Process multiple URLs from input files with configurable delays between requests
+- **Offline Scraping**: Support for scraping from local HTML files and zip archives
+- **Image Optimization**: Automatic duplicate detection and removal of low-quality images
+- **Asset Localization**: Downloads and localizes external assets (images, CSS, JavaScript)
+- **AI Integration**: Optional marketing content generation using Google Gemini API
+- **Comprehensive Logging**: Detailed logs for all operations with timestamp tracking
+- **Error Recovery**: Robust exception handling with detailed error reporting
+- **Platform-Specific Output**: Organized directory structure with platform prefixes
+- **Product Validation**: Validates scraped data to filter out placeholder entries
