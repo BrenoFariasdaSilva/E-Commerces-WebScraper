@@ -233,3 +233,17 @@ HEADLESS=False
 **HEADLESS** (Optional)
 - `False`: Show browser window (recommended for debugging)
 - `True`: Run browser in background without window
+
+### Browser Profile Setup for Authenticated Scraping
+
+For Shopee and Shein scraping, you must authenticate once in your regular Chrome browser:
+
+1. Open Google Chrome normally
+2. Navigate to https://shopee.com.br and https://br.shein.com
+3. Log into both websites with your credentials
+4. Verify you can access product pages while logged in
+5. Close all Chrome windows completely
+6. Configure `CHROME_PROFILE_PATH` in `.env` file
+7. Run the scraper - it will automatically use your saved sessions
+
+The scraper will reuse your authenticated session without requiring credentials in the code.
