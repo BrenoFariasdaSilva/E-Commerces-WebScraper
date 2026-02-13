@@ -582,6 +582,47 @@ def delete_local_html_file(local_html_path):
         return False  # Return False on failure
 
 
+def copy_assets_from_local_html_dir(local_html_path, product_name_safe):
+    """
+    Copies 'images' or 'assets' directories from the local HTML file's directory
+    to the product's output directory if they exist.
+
+    :param local_html_path: Path to the local HTML file
+    :param product_name_safe: Safe product name for directory path
+    :return: None
+    """
+    
+    if not local_html_path:  # If no local HTML path provided
+        return  # Return as nothing to copy
+    
+    if not verify_filepath_exists(local_html_path):  # If the local HTML file doesn't exist
+        return  # Return as source doesn't exist
+    
+    local_html_dir = os.path.dirname(os.path.abspath(local_html_path))  # Get the directory of the local HTML file
+    product_output_dir = os.path.join(OUTPUT_DIRECTORY, product_name_safe)  # Path to the product output directory
+    
+    if not os.path.exists(product_output_dir):  # If the product output directory doesn't exist
+        verbose_output(f"{BackgroundColors.YELLOW}Product output directory not found: {product_output_dir}{Style.RESET_ALL}")
+        return  # Return as destination doesn't exist
+    
+    # Check for 'images' and 'assets' directories
+    for dir_name in ["images", "assets"]:  # Iterate through possible asset directory names
+        source_dir = os.path.join(local_html_dir, dir_name)  # Full path to source directory
+        
+        if os.path.exists(source_dir) and os.path.isdir(source_dir):  # If the directory exists
+            destination_dir = os.path.join(product_output_dir, dir_name)  # Full path to destination directory
+            
+            try:  # Try to copy the directory
+                if os.path.exists(destination_dir):  # If destination already exists
+                    shutil.rmtree(destination_dir)  # Remove existing directory
+                
+                shutil.copytree(source_dir, destination_dir)  # Copy the entire directory tree
+                verbose_output(f"{BackgroundColors.GREEN}Copied {BackgroundColors.CYAN}{dir_name}{BackgroundColors.GREEN} directory from {BackgroundColors.CYAN}{source_dir}{BackgroundColors.GREEN} to {BackgroundColors.CYAN}{destination_dir}{Style.RESET_ALL}")
+                
+            except Exception as e:  # If copying fails
+                print(f"{BackgroundColors.RED}Error copying {BackgroundColors.CYAN}{dir_name}{BackgroundColors.RED} directory from {BackgroundColors.CYAN}{source_dir}{BackgroundColors.RED}: {BackgroundColors.YELLOW}{e}{Style.RESET_ALL}")
+
+
 def generate_marketing_text(product_description, product_name_safe, description_file):
     """
     Generates marketing text from product description using Gemini AI.
@@ -810,6 +851,7 @@ def main():
         if product_name_safe and isinstance(product_name_safe, str):  # If product name is valid
             clean_duplicate_images(product_name_safe)  # Clean up duplicate images in the product directory
             exclude_small_images(product_name_safe)  # Exclude images smaller than 2KB
+            copy_assets_from_local_html_dir(local_html_path, product_name_safe)  # Copy images/assets from local HTML directory if present
         
         if not product_data:  # If scraping failed
             print(f"{BackgroundColors.RED}Skipping {BackgroundColors.CYAN}{url}{BackgroundColors.RED} due to scraping failure.{Style.RESET_ALL}\n")
@@ -841,7 +883,6 @@ def main():
             successful_scrapes += 1  # Increment successful scrapes counter
         
         if index < total_urls:  # Add delay between requests to avoid rate limiting, but not after the last URL
-            print(f"{BackgroundColors.YELLOW}Waiting {DELAY_BETWEEN_REQUESTS} seconds before processing the next URL...{Style.RESET_ALL}")
             time.sleep(DELAY_BETWEEN_REQUESTS)
     
     print(f"{BackgroundColors.GREEN}Successfully processed: {BackgroundColors.CYAN}{successful_scrapes}/{total_urls}{BackgroundColors.GREEN} URLs{Style.RESET_ALL}\n")  # Output the number of successful operations
