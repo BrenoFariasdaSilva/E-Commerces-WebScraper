@@ -428,7 +428,42 @@ class Shopee:
         verbose_output(  # Warn that product name could not be extracted
             f"{BackgroundColors.YELLOW}Product name not found, using default.{Style.RESET_ALL}"
         )  # End of verbose output call
-        return "Unknown Product"  # Return default placeholder when name extraction fails# Functions Definitions:
+        return "Unknown Product"  # Return default placeholder when name extraction fails
+
+
+    def extract_current_price(self, soup: BeautifulSoup) -> Tuple[str, str]:
+        """
+        Extracts the current price from the parsed HTML soup.
+        
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: Tuple of (integer_part, decimal_part) for current price
+        """
+        
+        # Try multiple selectors for Shopee prices
+        price_selectors = [  # Define list of CSS selectors to find current price in priority order
+            ("div", {"class": re.compile(r".*price.*current.*", re.IGNORECASE)}),  # Shopee current price container with regex pattern
+            ("div", {"class": re.compile(r".*price.*sale.*", re.IGNORECASE)}),  # Alternative sale price container with regex pattern
+            ("span", {"class": re.compile(r".*price.*", re.IGNORECASE)}),  # Generic price span as fallback
+        ]  # End of price_selectors list
+        
+        for tag, attrs in price_selectors:  # Iterate through each selector combination
+            price_element = soup.find(tag, attrs if attrs else None)  # type: ignore[arg-type]  # Search for element matching current selector
+            if price_element:  # Verify if matching element was found
+                price_text = price_element.get_text(strip=True)  # Extract and clean text content from element
+                # Extract numeric values from price text
+                match = re.search(r"(\d+)[,.](\d{2})", price_text)  # Search for price pattern with integer and decimal parts
+                if match:  # Verify if price pattern was found in text
+                    integer_part = match.group(1)  # Extract integer part of price
+                    decimal_part = match.group(2)  # Extract decimal part of price
+                    verbose_output(  # Log successfully extracted current price
+                        f"{BackgroundColors.GREEN}Current price: R${integer_part},{decimal_part}{Style.RESET_ALL}"
+                    )  # End of verbose output call
+                    return integer_part, decimal_part  # Return price components as tuple
+        
+        verbose_output(  # Warn that current price could not be extracted
+            f"{BackgroundColors.YELLOW}Current price not found, using default.{Style.RESET_ALL}"
+        )  # End of verbose output call
+        return "0", "00"  # Return default zero price when extraction fails# Functions Definitions:
 
 
 def verbose_output(true_string="", false_string=""):
