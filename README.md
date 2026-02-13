@@ -623,3 +623,28 @@ For more detailed troubleshooting, see [AUTHENTICATED_SCRAPING_SETUP.md](AUTHENT
 - Uses authenticated sessions to avoid detection
 - Implements delays between requests
 - Does not attempt to bypass CAPTCHAs or security challenges
+
+## Contributing
+
+Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**. If you have suggestions for improving the code, your insights will be highly welcome.
+
+Please follow the guidelines in [CONTRIBUTING.md](CONTRIBUTING.md) for detailed information about the commit standards and the entire pull request process.
+
+### Quick Contribution Guide
+
+1. **Set Up Your Environment**: Follow the [Installation](#installation) section
+
+2. **Make Your Changes**:
+   - Create a branch: `git checkout -b feature/YourFeatureName`
+   - Implement your changes with tests
+   - Commit with clear messages:
+     - Features: `git commit -m "FEAT: Add some AmazingFeature"`
+     - Bug fixes: `git commit -m "FIX: Resolve Issue #123"`
+     - Documentation: `git commit -m "DOCS: Update README with new instructions"`
+     - Refactoring: `git commit -m "REFACTOR: Enhance component for better aspect"`
+
+3. **Submit Your Contribution**:
+   - Push changes: `git push origin feature/YourFeatureName`
+   - Open a Pull Request with detailed description
+
+4. **Stay Engaged**: Respond to feedback and make necessary adjustments
