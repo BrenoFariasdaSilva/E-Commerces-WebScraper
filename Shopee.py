@@ -642,7 +642,21 @@ class Shopee:
             print(  # Alert user about directory creation failure
                 f"{BackgroundColors.GREEN}The creation of the {BackgroundColors.CYAN}{relative_directory_name}{BackgroundColors.GREEN} directory failed.{Style.RESET_ALL}"
             )  # End of print statement
-    def verbose_output(true_string="", false_string=""):
+    
+
+
+    def create_output_directory(self, product_name_safe):
+        """
+        Creates the output directory for storing downloaded media files.
+        
+        :param product_name_safe: Safe product name for directory naming
+        :return: Path to the created output directory
+        """
+        
+        output_dir = os.path.join(OUTPUT_DIRECTORY, product_name_safe)  # Construct full path for product output directory
+        self.create_directory(os.path.abspath(output_dir), output_dir.replace(".", ""))  # Create directory with absolute path and cleaned relative name
+        
+        return output_dir  # Return the created output directory pathdef verbose_output(true_string="", false_string=""):
     """
     Outputs a message if the VERBOSE constant is set to True.
 
