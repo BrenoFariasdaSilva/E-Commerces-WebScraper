@@ -304,3 +304,37 @@ DELAY_BETWEEN_REQUESTS = 5  # Seconds between requests (default: 5)
 ```
 
 The scraper processes all URLs in `Inputs/urls.txt` with rate limiting to avoid triggering anti-bot measures.
+
+### Offline Scraping
+
+The scraper supports offline scraping from local HTML files or zip archives:
+
+**From HTML File**:
+```
+https://product-url ./Inputs/product-directory/index.html
+```
+
+**From Zip Archive**:
+```
+https://product-url ./Inputs/product-archive.zip
+```
+
+The scraper will:
+1. Extract zip files to temporary directories
+2. Scrape product information from local HTML
+3. Copy associated assets (images, scripts, styles)
+4. Clean up temporary files after processing
+
+#### Path Resolution
+
+The scraper includes intelligent path resolution with multiple fallback strategies:
+
+If a path like `product-dir/index.html` is specified but not found, it automatically tries:
+1. Original path as provided
+2. With `./Inputs/` prefix
+3. With `.zip` suffix
+4. With `/index.html` suffix
+5. All combinations of prefixes and suffixes
+6. Base directory extraction for `.html` files
+
+This ensures maximum flexibility in specifying input paths.
