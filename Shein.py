@@ -109,7 +109,7 @@ Price: From R${current_price} to R${old_price} ({discount})
 Description: {description}
 
 🛒 Encontre na Shein:
-👉 {url}"""
+👉 {url}"""  # Template for product description text file with placeholders
 
 # Logger Setup:
 logger = Logger(f"./Logs/{Path(__file__).stem}.log", clean=True)  # Create a Logger instance
@@ -128,6 +128,9 @@ SOUND_FILE = "./.assets/Sounds/NotificationSound.wav"  # The path to the sound f
 RUN_FUNCTIONS = {
     "Play Sound": True,  # Set to True to play a sound when the program finishes
 }
+
+# Class Definition:
+
 
 # Functions Definitions:
 
