@@ -618,7 +618,31 @@ class Shopee:
             
         except Exception as e:  # Catch any exceptions during parsing
             print(f"{BackgroundColors.RED}Error parsing product info: {e}{Style.RESET_ALL}")  # Alert user about parsing error
-            return None  # Return None to indicate parsing faileddef verbose_output(true_string="", false_string=""):
+            return None  # Return None to indicate parsing failed
+
+
+    def create_directory(self, full_directory_name, relative_directory_name):
+        """
+        Creates a directory.
+
+        :param full_directory_name: Name of the directory to be created.
+        :param relative_directory_name: Relative name of the directory to be created that will be shown in the terminal.
+        :return: None
+        """
+
+        verbose_output(  # Output status message to user if verbose enabled
+            true_string=f"{BackgroundColors.GREEN}Creating the {BackgroundColors.CYAN}{relative_directory_name}{BackgroundColors.GREEN} directory...{Style.RESET_ALL}"
+        )  # End of verbose output call
+
+        if os.path.isdir(full_directory_name):  # Verify if directory already exists
+            return  # Exit early if directory exists to avoid redundant creation
+        try:  # Attempt directory creation with error handling
+            os.makedirs(full_directory_name)  # Create directory including all intermediate directories
+        except OSError:  # Catch OS-level errors during directory creation
+            print(  # Alert user about directory creation failure
+                f"{BackgroundColors.GREEN}The creation of the {BackgroundColors.CYAN}{relative_directory_name}{BackgroundColors.GREEN} directory failed.{Style.RESET_ALL}"
+            )  # End of print statement
+    def verbose_output(true_string="", false_string=""):
     """
     Outputs a message if the VERBOSE constant is set to True.
 
