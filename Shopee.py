@@ -147,6 +147,7 @@ def verbose_output(true_string="", false_string=""):
     elif false_string != "":  # If a false_string was provided
         print(false_string)  # Output the false statement string
 
+
 def output_result(result):
     """
     Outputs the result to the terminal.
