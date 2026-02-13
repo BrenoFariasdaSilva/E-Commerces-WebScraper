@@ -492,14 +492,14 @@ def scrape_product(url, local_html_path=None):
     
     :param url: The product URL to scrape
     :param local_html_path: Optional path to a local HTML file for offline scraping
-    :return: Tuple of (product_data dict, description_file path, product_directory string) or (None, None, None) on failure
+    :return: Tuple of (product_data dict, description_file path, product_directory string, html_path_for_assets string, zip_path string, extracted_dir string) or (None, None, None, None, None, None) on failure
     """
     
     platform = detect_platform(url)  # Detect the e-commerce platform
     
     if not platform:  # If platform detection failed
         print(f"{BackgroundColors.RED}Unsupported platform. Skipping URL: {url}{Style.RESET_ALL}")
-        return None, None, None
+        return None, None, None, None, None, None
     
     extracted_dir = None  # Directory where zip is extracted
     zip_path = None  # Path to the zip file for cleanup
@@ -519,12 +519,12 @@ def scrape_product(url, local_html_path=None):
             if not os.path.exists(html_path):  # Verify if the expected HTML file exists after extraction
                 print(f"{BackgroundColors.RED}Error: index.html not found in extracted directory {extracted_dir}{Style.RESET_ALL}")
                 shutil.rmtree(extracted_dir)  # Clean up the extracted directory if the expected HTML file is not found
-                return None, None, None  # Return None values if extraction failed or expected file not found
+                return None, None, None, None, None, None  # Return None values if extraction failed or expected file not found
         except Exception as e:  # If an error occurs during extraction
             print(f"{BackgroundColors.RED}Error extracting zip {zip_path}: {e}{Style.RESET_ALL}")
             if os.path.exists(extracted_dir):  # If the extracted directory was created before the error, attempt to clean it up
                 shutil.rmtree(extracted_dir)  # Clean up the extracted directory if extraction failed
-            return None, None, None  # Return None values if extraction failed
+            return None, None, None, None, None, None  # Return None values if extraction failed
     
     scraper_classes = {  # Mapping of platform identifiers to scraper classes
         # "aliexpress": AliExpress,
@@ -537,7 +537,7 @@ def scrape_product(url, local_html_path=None):
     
     if not scraper_class:  # If scraper class not found
         print(f"{BackgroundColors.RED}Scraper not implemented for platform: {platform}{Style.RESET_ALL}")
-        return None, None, None  # Return None values
+        return None, None, None, None, None, None  # Return None values
     
     platform_prefix = PLATFORM_PREFIXES.get(platform, "")  # Get the platform prefix for output directory naming
     
@@ -546,7 +546,11 @@ def scrape_product(url, local_html_path=None):
         product_data = scraper.scrape()  # Scrape the product
         
         if not product_data:  # If scraping failed
-            return None, None, None  # Return None values
+            if extracted_dir and os.path.exists(extracted_dir):  # If extraction occurred and directory exists
+                shutil.rmtree(extracted_dir)  # Remove the extracted directory
+            if zip_path and os.path.exists(zip_path):  # If zip file exists
+                os.remove(zip_path)  # Remove the original zip file
+            return None, None, None, None, None, None  # Return None values
         
         product_name = product_data.get("name", "Unknown Product")  # Get product name
         product_name_safe = sanitize_filename(product_name)  # Sanitize filename
@@ -555,21 +559,27 @@ def scrape_product(url, local_html_path=None):
         
         if not verify_filepath_exists(description_file):  # If description file not found
             print(f"{BackgroundColors.RED}Description file not found: {description_file}{Style.RESET_ALL}")
-            return None, None, None  # Return None values
-        
-        if extracted_dir and zip_path:  # Ensure both paths are not None before cleanup
-            try:  # Try to clean up the zip file and extracted directory
-                os.remove(zip_path)  # Remove the original zip file
+            if extracted_dir and os.path.exists(extracted_dir):  # If extraction occurred and directory exists
                 shutil.rmtree(extracted_dir)  # Remove the extracted directory
-                verbose_output(f"{BackgroundColors.GREEN}Cleaned up zip file and extracted directory{Style.RESET_ALL}")
-            except Exception as e:
-                print(f"{BackgroundColors.YELLOW}Warning: Failed to clean up zip and extracted dir: {e}{Style.RESET_ALL}")
+            if zip_path and os.path.exists(zip_path):  # If zip file exists
+                os.remove(zip_path)  # Remove the original zip file
+            return None, None, None, None, None, None  # Return None values
         
-        return product_data, description_file, product_directory  # Return scraped data and file paths including directory name with prefix
+        return product_data, description_file, product_directory, html_path, zip_path, extracted_dir
         
     except Exception as e:  # If an error occurs during scraping
         print(f"{BackgroundColors.RED}Error during scraping: {e}{Style.RESET_ALL}")  # Print error message
-        return None, None, None  # Return None values
+        if extracted_dir and os.path.exists(extracted_dir):  # If extraction occurred and directory exists
+            try:  # Try to clean up
+                shutil.rmtree(extracted_dir)  # Remove the extracted directory
+            except Exception:  # If cleanup fails
+                pass  # Ignore cleanup errors
+        if zip_path and os.path.exists(zip_path):  # If zip file exists
+            try:  # Try to clean up
+                os.remove(zip_path)  # Remove the original zip file
+            except Exception:  # If cleanup fails
+                pass  # Ignore cleanup errors
+        return None, None, None, None, None, None  # Return None values
 
 
 def validate_product_information(product_data, product_name_safe, description_file):
@@ -942,16 +952,30 @@ def main():
         print(f"{BackgroundColors.CYAN}Step 1{BackgroundColors.GREEN}: Scraping the product information{Style.RESET_ALL}")  # Step 1: Scrape the product information
         scrape_result = scrape_product(url, local_html_path)  # Scrape the product with optional local HTML path
         
-        if not scrape_result or len(scrape_result) != 3:  # If scraping failed or returned invalid result
+        if not scrape_result or len(scrape_result) != 6:  # If scraping failed or returned invalid result
             print(f"{BackgroundColors.RED}Skipping {BackgroundColors.CYAN}{url}{BackgroundColors.RED} due to scraping failure.{Style.RESET_ALL}\n")
             continue  # Move to next URL
         
-        product_data, description_file, product_directory = scrape_result  # Unpack the scrape result
+        product_data, description_file, product_directory, html_path_for_assets, zip_path_to_cleanup, extracted_dir_to_cleanup = scrape_result  # Unpack the scrape result
         
         if product_directory and isinstance(product_directory, str):  # If product directory is valid
             clean_duplicate_images(product_directory)  # Clean up duplicate images in the product directory
             exclude_small_images(product_directory)  # Exclude images smaller than 2KB
-            copy_assets_from_local_html_dir(local_html_path, product_directory)  # Copy images/assets from local HTML directory if present
+            copy_assets_from_local_html_dir(html_path_for_assets if html_path_for_assets else local_html_path, product_directory)  # Copy images/assets from local HTML directory if present
+        
+        if extracted_dir_to_cleanup and os.path.exists(extracted_dir_to_cleanup):  # If extraction occurred and directory exists
+            try:  # Try to clean up the extracted directory
+                shutil.rmtree(extracted_dir_to_cleanup)  # Remove the extracted directory
+                verbose_output(f"{BackgroundColors.GREEN}Cleaned up extracted directory: {BackgroundColors.CYAN}{extracted_dir_to_cleanup}{Style.RESET_ALL}")
+            except Exception as e:  # If cleanup fails
+                print(f"{BackgroundColors.YELLOW}Warning: Failed to clean up extracted directory: {e}{Style.RESET_ALL}")
+        
+        if zip_path_to_cleanup and os.path.exists(zip_path_to_cleanup):  # If zip file exists
+            try:  # Try to clean up the zip file
+                os.remove(zip_path_to_cleanup)  # Remove the original zip file
+                verbose_output(f"{BackgroundColors.GREEN}Cleaned up zip file: {BackgroundColors.CYAN}{zip_path_to_cleanup}{Style.RESET_ALL}")
+            except Exception as e:  # If cleanup fails
+                print(f"{BackgroundColors.YELLOW}Warning: Failed to clean up zip file: {e}{Style.RESET_ALL}")
         
         if not product_data:  # If scraping failed
             print(f"{BackgroundColors.RED}Skipping {BackgroundColors.CYAN}{url}{BackgroundColors.RED} due to scraping failure.{Style.RESET_ALL}\n")
