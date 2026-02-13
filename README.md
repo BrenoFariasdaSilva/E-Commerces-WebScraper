@@ -579,3 +579,21 @@ This ensures maximum user convenience when specifying local HTML paths.
 - **Solution**: Increase `DELAY_BETWEEN_REQUESTS` in main.py, use VPN if necessary
 
 For more detailed troubleshooting, see [AUTHENTICATED_SCRAPING_SETUP.md](AUTHENTICATED_SCRAPING_SETUP.md).
+
+## Performance Considerations
+
+**Execution Speed**:
+- **Mercado Livre**: ~5-10 seconds per product (HTTP requests)
+- **Shopee/Shein**: ~15-30 seconds per product (browser automation with rendering)
+
+**Resource Usage**:
+- **CPU**: Moderate during image processing and hash computation
+- **Memory**: ~500MB-1GB for browser automation
+- **Disk**: Depends on image quantity and quality
+- **Network**: Varies by product image count and asset size
+
+**Optimization Tips**:
+- Process large batches during off-peak hours
+- Use `HEADLESS=True` for production runs
+- Increase `DELAY_BETWEEN_REQUESTS` to avoid rate limiting
+- Consider parallel execution for independent URLs (not implemented)
