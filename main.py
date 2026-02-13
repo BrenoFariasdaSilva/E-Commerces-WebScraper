@@ -58,6 +58,7 @@ import datetime  # For getting the current date and time
 import hashlib  # For hashing image data
 import os  # For running a command in the terminal
 import platform  # For getting the operating system name
+import re # For regular expressions in text processing
 import shutil  # For removing directories
 import sys  # For system-specific parameters and functions
 import time  # For adding delays between requests
@@ -658,6 +659,60 @@ def copy_assets_from_local_html_dir(local_html_path, product_name_safe):
                 print(f"{BackgroundColors.RED}Error copying {BackgroundColors.CYAN}{dir_name}{BackgroundColors.RED} directory from {BackgroundColors.CYAN}{source_dir}{BackgroundColors.RED}: {BackgroundColors.YELLOW}{e}{Style.RESET_ALL}")
 
 
+def validate_and_fix_output_file(file_path):
+    """
+    Validates and fixes common formatting issues in output files.
+    
+    This function removes:
+    - Multiple consecutive empty lines (reduces to single empty line)
+    - Multiple consecutive spaces (reduces to single space)
+    - Multiple consecutive asterisks (reduces to single asterisk)
+    
+    :param file_path: Path to the file to validate and fix
+    :return: True if validation and fix were successful, False otherwise
+    """
+    
+    verbose_output(
+        f"{BackgroundColors.GREEN}Validating and fixing output file: {BackgroundColors.CYAN}{file_path}{Style.RESET_ALL}"
+    )  # Output the verbose message
+    
+    if not verify_filepath_exists(file_path):  # If the file doesn't exist
+        print(f"{BackgroundColors.RED}File not found for validation: {file_path}{Style.RESET_ALL}")
+        return False  # Return False if file doesn't exist
+    
+    try:  # Try to read and fix the file
+        with open(file_path, "r", encoding="utf-8") as f:  # Open the file for reading
+            content = f.read()  # Read the entire content
+        
+        original_content = content  # Store original content for comparison
+        
+        # Fix 1: Replace multiple consecutive empty lines with single empty line
+        content = re.sub(r'\n\n\n+', '\n\n', content)  # Replace 3 or more newlines with exactly 2
+        
+        # Fix 2: Replace multiple consecutive spaces with single space
+        content = re.sub(r' {2,}', ' ', content)  # Replace 2 or more spaces with single space
+        
+        # Fix 3: Replace multiple consecutive asterisks with single asterisk
+        content = re.sub(r'\*{2,}', '*', content)  # Replace 2 or more asterisks with single asterisk
+        
+        if content != original_content:  # If any fixes were applied
+            with open(file_path, "w", encoding="utf-8") as f:  # Open the file for writing
+                f.write(content)  # Write the fixed content back to the file
+            verbose_output(
+                f"{BackgroundColors.GREEN}Fixed formatting issues in: {BackgroundColors.CYAN}{file_path}{Style.RESET_ALL}"
+            )
+        else:  # If no fixes were needed
+            verbose_output(
+                f"{BackgroundColors.GREEN}No formatting issues found in: {BackgroundColors.CYAN}{file_path}{Style.RESET_ALL}"
+            )
+        
+        return True  # Return success
+        
+    except Exception as e:  # If an error occurs during validation
+        print(f"{BackgroundColors.RED}Error during file validation: {e}{Style.RESET_ALL}")
+        return False  # Return failure
+
+
 def generate_marketing_text(product_description, product_name_safe, description_file):
     """
     Generates marketing text from product description using Gemini AI.
@@ -915,6 +970,11 @@ def main():
         success = generate_marketing_text(product_description, product_name_safe, description_file)  # Generate marketing text
         
         if success:  # If both scraping and formatting succeeded
+            # Step 3: Validate and fix the generated output file
+            description_dir = os.path.dirname(description_file)  # Get directory of description file
+            template_file = os.path.join(description_dir, "Template.txt")  # Path to the generated template file
+            validate_and_fix_output_file(template_file)  # Validate and fix formatting issues in the output file
+            
             successful_scrapes += 1  # Increment successful scrapes counter
         
         if index < total_urls:  # Add delay between requests to avoid rate limiting, but not after the last URL
