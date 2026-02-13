@@ -412,3 +412,21 @@ Description: High-precision wireless gaming mouse with RGB lighting...
 🛒 Encontre na Shopee:
 👉 https://shopee.com.br/product-url
 ```
+
+## AI-Powered Marketing Content
+
+When `GEMINI_API_KEY` is configured, the scraper automatically generates marketing content for each product.
+
+**Generated Content Includes**:
+- Professional product descriptions
+- Key feature highlights
+- Usage scenarios
+- Target audience recommendations
+- Call-to-action text
+
+**Output**: `{Product Name}_Template.txt` in the product directory.
+
+**Processing**:
+- Automatically triggered after successful scrape
+- Validates and fixes formatting issues
+- Retries on failures with error logging
