@@ -271,7 +271,7 @@ class MercadoLivre:
         """
         
         name_element = soup.find(**HTML_SELECTORS["product_name"])  # Find the product name element using centralized selector
-        product_name = name_element.get_text(strip=True) if name_element else "Unknown Product"  # Extract the product name
+        product_name = name_element.get_text(strip=True).title() if name_element else "Unknown Product"  # Extract and capitalize the product name
         
         verbose_output(
             f"{BackgroundColors.GREEN}Product name: {BackgroundColors.CYAN}{product_name}{Style.RESET_ALL}"
