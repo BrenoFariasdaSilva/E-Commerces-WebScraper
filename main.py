@@ -401,25 +401,28 @@ def exclude_small_images(product_name_safe, min_size_bytes=2048):
 
 def load_urls_to_process(test_urls, input_file):
     """
-    Determine and return the list of URLs to process.
+    Determine and return the list of URLs and optional local HTML paths to process.
 
     Priority:
         1) Non-empty entries in `test_urls` (keeps order and strips whitespace).
         2) If none present, read one URL per line from `input_file` (ignore blank lines).
+           Each line can be either:
+           - Just a URL (for online scraping)
+           - URL local_html_path (space-separated, for offline scraping)
 
     Args:
         test_urls (list): list of test URL strings (may contain empty/blank entries).
         input_file (str): path to the input file to read fallback URLs from.
 
     Returns:
-        list: cleaned URLs to process (may be empty).
+        list: list of tuples (url, local_html_path) where local_html_path may be None.
     """
 
     urls_from_test = [u.strip() for u in (test_urls or []) if u and u.strip()]  # Normalize and filter non-empty test URLs first
     if urls_from_test:  # If any valid test URLs found
-        return urls_from_test  # Return test URLs
+        return [(url, None) for url in urls_from_test]  # Return test URLs as tuples with None for local_html_path
 
-    urls = []  # List to store URLs from input file
+    url_data = []  # List to store URL tuples (url, local_html_path)
     
     try:  # Try to read URLs from input file
         if verify_filepath_exists(input_file):  # If the input file exists
@@ -427,13 +430,16 @@ def load_urls_to_process(test_urls, input_file):
                 for line in fh:  # Read each line in the file
                     line = line.strip()  # Strip whitespace
                     if line:  # If the line is not empty
-                        urls.append(line)  # Add the URL to the list
+                        parts = line.split(maxsplit=1)  # Split by first space to separate URL and local_html_path
+                        url = parts[0]  # First part is always the URL
+                        local_html_path = parts[1] if len(parts) > 1 else None  # Second part is optional local_html_path
+                        url_data.append((url, local_html_path))  # Add tuple to the list
         else:  # If the input file does not exist
             print(f"{BackgroundColors.YELLOW}Input file not found: {input_file}{Style.RESET_ALL}")
     except Exception as e:  # If an error occurs while reading the file
         print(f"{BackgroundColors.RED}Error reading input file {input_file}: {e}{Style.RESET_ALL}")
 
-    return urls  # Return the list of URLs
+    return url_data  # Return the list of URL tuples
 
 
 def sanitize_filename(filename):
@@ -468,11 +474,13 @@ def detect_platform(url):
     return None  # Return None if platform not recognized
 
 
-def scrape_product(url):
+def scrape_product(url, local_html_path=None):
     """
     Scrapes product information from a URL by detecting the platform and using the appropriate scraper.
+    Supports both online scraping (via browser) and offline scraping (from local HTML file).
     
     :param url: The product URL to scrape
+    :param local_html_path: Optional path to a local HTML file for offline scraping
     :return: Tuple of (product_data dict, description_file path, product_name_safe string) or (None, None, None) on failure
     """
     
@@ -496,7 +504,7 @@ def scrape_product(url):
         return None, None, None  # Return None values
     
     try:  # Try to scrape the product
-        scraper = scraper_class(url)  # Create scraper instance
+        scraper = scraper_class(url, local_html_path=local_html_path)  # Create scraper instance with optional local HTML path
         product_data = scraper.scrape()  # Scrape the product
         
         if not product_data:  # If scraping failed
@@ -756,15 +764,18 @@ def main():
     
     successful_scrapes = 0  # Counter for successful operations
 
-    urls_to_process = load_urls_to_process(TEST_URLs, INPUT_FILE)  # Load URLs to process
+    urls_to_process = load_urls_to_process(TEST_URLs, INPUT_FILE)  # Load URLs to process (returns list of tuples)
     
     total_urls = len(urls_to_process)  # Total number of URLs to process
 
-    for index, url in enumerate(urls_to_process, 1):  # Iterate through all URLs
+    for index, (url, local_html_path) in enumerate(urls_to_process, 1):  # Iterate through all URLs with optional local HTML paths
         print(f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Processing URL {BackgroundColors.CYAN}{index}{BackgroundColors.GREEN}/{BackgroundColors.CYAN}{total_urls}{BackgroundColors.GREEN}: {BackgroundColors.CYAN}{url}{Style.RESET_ALL}") # Print section header
         
+        if local_html_path:  # If a local HTML file path is provided
+            print(f"{BackgroundColors.GREEN}Using local HTML file: {BackgroundColors.CYAN}{local_html_path}{Style.RESET_ALL}")  # Inform user about offline mode
+        
         print(f"{BackgroundColors.CYAN}Step 1{BackgroundColors.GREEN}: Scraping the product information{Style.RESET_ALL}")  # Step 1: Scrape the product information
-        scrape_result = scrape_product(url)  # Scrape the product
+        scrape_result = scrape_product(url, local_html_path)  # Scrape the product with optional local HTML path
         
         if not scrape_result or len(scrape_result) != 3:  # If scraping failed or returned invalid result
             print(f"{BackgroundColors.RED}Skipping {BackgroundColors.CYAN}{url}{BackgroundColors.RED} due to scraping failure.{Style.RESET_ALL}\n")
