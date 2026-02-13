@@ -800,7 +800,64 @@ class Shopee:
             
         except Exception as e:  # Catch any exceptions during file creation
             print(f"{BackgroundColors.RED}Failed to create description file: {e}{Style.RESET_ALL}")  # Alert user about file creation failure
-            return None  # Return None to indicate creation failed# Functions Definitions:
+            return None  # Return None to indicate creation failed
+
+
+    def download_media(self) -> List[str]:
+        """
+        Downloads product media and creates snapshot after browser automation.
+
+        :return: List of downloaded file paths
+        """
+
+        verbose_output(  # Output status message to user
+            f"{BackgroundColors.GREEN}Processing product media...{Style.RESET_ALL}"
+        )  # End of verbose output call
+
+        downloaded_files: List[str] = []  # Initialize empty list to track downloaded file paths
+        
+        try:  # Attempt media download with error handling
+            if not self.product_data or not self.product_data.get("name"):  # Validate that product data with name exists
+                print(f"{BackgroundColors.RED}No product data available for media download.{Style.RESET_ALL}")  # Alert user that required data is missing
+                return downloaded_files  # Return empty list when data is unavailable
+            
+            # Sanitize product name for directory
+            product_name = self.product_data.get("name", "Unknown Product")  # Get product name or use default
+            product_name_safe = "".join(c if c.isalnum() or c in (" ", "-", "_") else "" for c in product_name).strip()  # Sanitize product name for filesystem use
+            
+            # Create output directory
+            output_dir = self.create_output_directory(product_name_safe)  # Create output directory for product
+            
+            # Get rendered HTML
+            html_content = self._get_rendered_html()  # Get fully rendered HTML content
+            if not html_content:  # Verify if HTML content retrieval failed
+                print(f"{BackgroundColors.RED}Failed to get rendered HTML.{Style.RESET_ALL}")  # Alert user about HTML retrieval failure
+                return downloaded_files  # Return empty list when HTML is unavailable
+            
+            # Collect and download assets
+            asset_map = self._collect_assets(html_content, output_dir)  # Download and collect all page assets
+            
+            # Save page snapshot with localized assets
+            snapshot_path = self._save_snapshot(html_content, output_dir, asset_map)  # Save HTML snapshot with localized assets
+            if snapshot_path:  # Verify if snapshot was saved successfully
+                downloaded_files.append(snapshot_path)  # Add snapshot path to downloaded files list
+            
+            # Create description file
+            description_file = self.create_product_description_file(  # Create product description text file
+                self.product_data, output_dir, product_name_safe, self.product_url  # Pass all required parameters
+            )  # End of method call
+            if description_file:  # Verify if description file was created successfully
+                downloaded_files.append(description_file)  # Add description file path to downloaded files list
+            
+            verbose_output(  # Output success message with file count
+                f"{BackgroundColors.GREEN}Media processing completed. {len(downloaded_files)} files saved.{Style.RESET_ALL}"
+            )  # End of verbose output call
+            
+        except Exception as e:  # Catch any exceptions during media download
+            print(f"{BackgroundColors.RED}Error during media download: {e}{Style.RESET_ALL}")  # Alert user about media download error
+        
+        return downloaded_files  # Return list of all downloaded file paths
+        # Functions Definitions:
 
 
 def verbose_output(true_string="", false_string=""):
