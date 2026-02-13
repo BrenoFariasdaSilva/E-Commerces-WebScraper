@@ -314,29 +314,36 @@ def main():
     :return: None
     """
 
-    print(
-        f"{BackgroundColors.CLEAR_TERMINAL}{BackgroundColors.BOLD}{BackgroundColors.GREEN}Welcome to the {BackgroundColors.CYAN}Main Template Python{BackgroundColors.GREEN} program!{Style.RESET_ALL}",
-        end="\n\n",
-    )  # Output the welcome message
-    start_time = datetime.datetime.now()  # Get the start time of the program
+    print(  # Clear terminal and display welcome message
+        f"{BackgroundColors.CLEAR_TERMINAL}{BackgroundColors.BOLD}{BackgroundColors.GREEN}Welcome to the {BackgroundColors.CYAN}Shopee Scraper{BackgroundColors.GREEN} program!{Style.RESET_ALL}",
+        end="\n",  # End with newline
+    )  # End of print statement
+    start_time = datetime.datetime.now()  # Record program start time
+
+    test_url = "https://shopee.com.br/product-example"  # Test URL  # Define test URL for scraping demonstration
     
-    # Implement logic here
+    verbose_output(  # Log test URL being used
+        f"{BackgroundColors.GREEN}Testing Shopee scraper with URL: {BackgroundColors.CYAN}{test_url}{Style.RESET_ALL}\n"
+    )  # End of verbose output call
+    
+    try:  # Attempt scraping process with error handling
+        scraper = Shopee(test_url)  # Create Shopee scraper instance with test URL
+        result = scraper.scrape()  # Execute scraping process
+        output_result(result)  # Display scraping results to user
+    except Exception as e:  # Catch any exceptions during test execution
+        print(f"{BackgroundColors.RED}Error during test: {e}{Style.RESET_ALL}")  # Alert user about test error
 
-    send_telegram_message(TELEGRAM_BOT, [f"Starting the Main Template Python program at {start_time.strftime('%d/%m/%Y - %H:%M:%S')}"])  # Send start message to Telegram
-
-    finish_time = datetime.datetime.now()  # Get the finish time of the program
-    print(
+    finish_time = datetime.datetime.now()  # Record program finish time
+    print(  # Display execution time statistics
         f"{BackgroundColors.GREEN}Start time: {BackgroundColors.CYAN}{start_time.strftime('%d/%m/%Y - %H:%M:%S')}\n{BackgroundColors.GREEN}Finish time: {BackgroundColors.CYAN}{finish_time.strftime('%d/%m/%Y - %H:%M:%S')}\n{BackgroundColors.GREEN}Execution time: {BackgroundColors.CYAN}{calculate_execution_time(start_time, finish_time)}{Style.RESET_ALL}"
-    )  # Output the start and finish times
-    print(
-        f"\n{BackgroundColors.BOLD}{BackgroundColors.GREEN}Program finished.{Style.RESET_ALL}"
-    )  # Output the end of the program message
+    )  # End of print statement
+    print(  # Display program completion message
+        f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Program finished.{Style.RESET_ALL}"
+    )  # End of print statement
     
-    send_telegram_message(TELEGRAM_BOT, [f"Finished the Main Template Python program at {finish_time.strftime('%d/%m/%Y - %H:%M:%S')} with execution time {calculate_execution_time(start_time, finish_time)}"])  # Send finish message to Telegram
-
-    (
-        atexit.register(play_sound) if RUN_FUNCTIONS["Play Sound"] else None
-    )  # Register the play_sound function to be called when the program finishes
+    (  # Register sound playback function if enabled using ternary expression
+        atexit.register(play_sound) if RUN_FUNCTIONS["Play Sound"] else None  # Register play_sound to run at exit if enabled
+    )  # End of ternary expression
 
 
 if __name__ == "__main__":
