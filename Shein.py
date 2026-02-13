@@ -352,4 +352,4 @@ if __name__ == "__main__":
     :return: None
     """
 
-    main()
+    main()  # Call the main function
