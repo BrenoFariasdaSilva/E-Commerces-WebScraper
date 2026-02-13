@@ -706,7 +706,6 @@ def delete_local_html_file(local_html_path):
         return False  # Return False as nothing to delete
     
     if not verify_filepath_exists(local_html_path):  # If file doesn't exist
-        print(f"{BackgroundColors.YELLOW}Local HTML file not found: {local_html_path}{Style.RESET_ALL}")  # Output warning message
         return False  # Return False as file doesn't exist
     
     try:  # Try to delete the file
@@ -721,7 +720,8 @@ def delete_local_html_file(local_html_path):
 def copy_assets_from_local_html_dir(local_html_path, product_directory):
     """
     Copies 'images' or 'assets' directories from the local HTML file's directory
-    to the product's output directory if they exist.
+    to the product's output directory if they exist. After copying, removes unwanted
+    file types (fonts, binaries, icons) and keeps only image files.
 
     :param local_html_path: Path to the local HTML file
     :param product_directory: Directory name (may include platform prefix) for the product output
@@ -741,6 +741,12 @@ def copy_assets_from_local_html_dir(local_html_path, product_directory):
         verbose_output(f"{BackgroundColors.YELLOW}Product output directory not found: {product_output_dir}{Style.RESET_ALL}")
         return  # Return as destination doesn't exist
     
+    # Extensions to remove after copying (fonts, binaries, icons)
+    extensions_to_remove = [".bin", ".eot", ".ttf", ".woff", ".woff2", ".ico"]  # List of file extensions to delete
+    
+    # Extensions to keep (image files only)
+    extensions_to_keep = [".gif", ".jpg", ".png", ".svg", ".webp"]  # List of file extensions to preserve
+    
     # Check for 'images' and 'assets' directories
     for dir_name in ["images", "assets"]:  # Iterate through possible asset directory names
         source_dir = os.path.join(local_html_dir, dir_name)  # Full path to source directory
@@ -754,6 +760,32 @@ def copy_assets_from_local_html_dir(local_html_path, product_directory):
                 
                 shutil.copytree(source_dir, destination_dir)  # Copy the entire directory tree
                 verbose_output(f"{BackgroundColors.GREEN}Copied {BackgroundColors.CYAN}{dir_name}{BackgroundColors.GREEN} directory from {BackgroundColors.CYAN}{source_dir}{BackgroundColors.GREEN} to {BackgroundColors.CYAN}{destination_dir}{Style.RESET_ALL}")
+                
+                # Clean up unwanted file types after copying
+                removed_count = 0  # Counter for removed files
+                for root, dirs, files in os.walk(destination_dir):  # Walk through all files in the copied directory
+                    for file in files:  # Iterate through each file
+                        file_path = os.path.join(root, file)  # Full path to the file
+                        file_ext = os.path.splitext(file)[1].lower()  # Get file extension in lowercase
+                        
+                        # Remove files with unwanted extensions
+                        if file_ext in extensions_to_remove:  # If file has an unwanted extension
+                            try:  # Try to remove the file
+                                os.remove(file_path)  # Delete the file
+                                removed_count += 1  # Increment removal counter
+                                verbose_output(f"{BackgroundColors.YELLOW}Removed unwanted file: {BackgroundColors.CYAN}{file}{BackgroundColors.YELLOW} ({file_ext}){Style.RESET_ALL}")
+                            except Exception as remove_error:  # If removal fails
+                                print(f"{BackgroundColors.RED}Error removing file {BackgroundColors.CYAN}{file_path}{BackgroundColors.RED}: {BackgroundColors.YELLOW}{remove_error}{Style.RESET_ALL}")
+                        elif file_ext not in extensions_to_keep:  # If file extension is not in the keep list
+                            try:  # Try to remove the file
+                                os.remove(file_path)  # Delete the file
+                                removed_count += 1  # Increment removal counter
+                                verbose_output(f"{BackgroundColors.YELLOW}Removed non-image file: {BackgroundColors.CYAN}{file}{BackgroundColors.YELLOW} ({file_ext}){Style.RESET_ALL}")
+                            except Exception as remove_error:  # If removal fails
+                                print(f"{BackgroundColors.RED}Error removing file {BackgroundColors.CYAN}{file_path}{BackgroundColors.RED}: {BackgroundColors.YELLOW}{remove_error}{Style.RESET_ALL}")
+                
+                if removed_count > 0:  # If any files were removed
+                    print(f"{BackgroundColors.GREEN}Cleaned up {BackgroundColors.CYAN}{removed_count}{BackgroundColors.GREEN} unwanted files from {BackgroundColors.CYAN}{dir_name}{BackgroundColors.GREEN} directory{Style.RESET_ALL}")
                 
             except Exception as e:  # If copying fails
                 print(f"{BackgroundColors.RED}Error copying {BackgroundColors.CYAN}{dir_name}{BackgroundColors.RED} directory from {BackgroundColors.CYAN}{source_dir}{BackgroundColors.RED}: {BackgroundColors.YELLOW}{e}{Style.RESET_ALL}")
