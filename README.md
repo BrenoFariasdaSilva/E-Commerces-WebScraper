@@ -338,3 +338,17 @@ If a path like `product-dir/index.html` is specified but not found, it automatic
 6. Base directory extraction for `.html` files
 
 This ensures maximum flexibility in specifying input paths.
+
+## Authenticated Scraping
+
+Shopee and Shein require JavaScript rendering and authenticated sessions. The scraper uses Playwright browser automation with existing Chrome profiles.
+
+### How Authentication Works
+
+Instead of storing credentials or automating logins, the scraper:
+
+1. Reuses your existing Chrome profile with saved cookies
+2. Launches Chrome with `--user-data-dir` pointing to your profile
+3. Inherits authentication automatically from saved session cookies
+4. No credentials stored in code or configuration files
+5. Works with 2FA/MFA-enabled accounts
