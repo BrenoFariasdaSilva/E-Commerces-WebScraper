@@ -93,29 +93,29 @@ VERBOSE = False  # Set to True to output verbose messages
 # HTML Selectors Dictionary:
 HTML_SELECTORS = {
     "product_name": [  # List of CSS selectors for product name in priority order
-        ("div", {"class": re.compile(r".*product.*name.*", re.IGNORECASE)}),  # Shopee product name container with regex pattern
-        ("span", {"class": re.compile(r".*product.*title.*", re.IGNORECASE)}),  # Alternative product title span with regex pattern
-        ("h1", {}),  # Generic H1 heading as fallback
+        ("div", {"class": "vR6K3w"}),  # Shopee product name container with specific class
+        ("div", {"class": re.compile(r".*product.*name.*", re.IGNORECASE)}),  # Generic product name pattern fallback
+        ("h1", {}),  # Generic H1 heading as last resort fallback
     ],
     "current_price": [  # List of CSS selectors for current price in priority order
-        ("div", {"class": re.compile(r".*price.*current.*", re.IGNORECASE)}),  # Shopee current price container with regex pattern
-        ("div", {"class": re.compile(r".*price.*sale.*", re.IGNORECASE)}),  # Alternative sale price container with regex pattern
-        ("span", {"class": re.compile(r".*price.*", re.IGNORECASE)}),  # Generic price span as fallback
+        ("div", {"class": ["IZPeQz", "B67UQ0"]}),  # Shopee current price container with multiple classes
+        ("div", {"class": re.compile(r".*price.*current.*", re.IGNORECASE)}),  # Generic current price pattern fallback
+        ("span", {"class": re.compile(r".*price.*", re.IGNORECASE)}),  # Generic price span as last resort fallback
     ],
     "old_price": [  # List of CSS selectors for old price in priority order
-        ("div", {"class": re.compile(r".*price.*original.*", re.IGNORECASE)}),  # Shopee original price container with regex pattern
-        ("div", {"class": re.compile(r".*price.*before.*", re.IGNORECASE)}),  # Alternative before discount price container with regex pattern
-        ("span", {"class": re.compile(r".*old.*price.*", re.IGNORECASE)}),  # Generic old price span as fallback
+        ("div", {"class": "ZA5sW5"}),  # Shopee old price container with specific class
+        ("div", {"class": re.compile(r".*price.*original.*", re.IGNORECASE)}),  # Generic original price pattern fallback
+        ("span", {"class": re.compile(r".*old.*price.*", re.IGNORECASE)}),  # Generic old price span as last resort fallback
     ],
     "discount": [  # List of CSS selectors for discount percentage in priority order
-        ("div", {"class": re.compile(r".*discount.*", re.IGNORECASE)}),  # Shopee discount container with regex pattern
-        ("span", {"class": re.compile(r".*discount.*", re.IGNORECASE)}),  # Alternative discount span with regex pattern
-        ("div", {"class": re.compile(r".*sale.*badge.*", re.IGNORECASE)}),  # Sale badge container as fallback
+        ("div", {"class": "vms4_3"}),  # Shopee discount container with specific class
+        ("span", {"class": re.compile(r".*discount.*", re.IGNORECASE)}),  # Generic discount span fallback
+        ("div", {"class": re.compile(r".*sale.*badge.*", re.IGNORECASE)}),  # Sale badge container as last resort fallback
     ],
     "description": [  # List of CSS selectors for product description in priority order
-        ("div", {"class": re.compile(r".*description.*", re.IGNORECASE)}),  # Shopee description container with regex pattern
-        ("div", {"class": re.compile(r".*product.*detail.*", re.IGNORECASE)}),  # Alternative product detail container with regex pattern
-        ("section", {"class": re.compile(r".*description.*", re.IGNORECASE)}),  # Section element containing description as fallback
+        ("div", {"class": "e8lZp3"}),  # Shopee description container with specific class
+        ("div", {"class": re.compile(r".*description.*", re.IGNORECASE)}),  # Generic description pattern fallback
+        ("section", {"class": re.compile(r".*description.*", re.IGNORECASE)}),  # Section element containing description as last resort fallback
     ],
 }  # Dictionary containing all HTML selectors used for scraping product information
 
