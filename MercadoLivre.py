@@ -83,11 +83,8 @@ VERBOSE = False  # Set to True to output verbose messages
 # HTML Selectors Dictionary:
 HTML_SELECTORS = {
     "product_name": {"class": "ui-pdp-title"},  # CSS selector for product name element
-    "current_price_container": {"class": re.compile(r"andes-money-amount.*andes-money-amount--superscript-36")},  # CSS selector for current price container with superscript-36
-    "current_price_fraction": {"class": "andes-money-amount__fraction"},  # CSS selector for current price integer part
+    "price_fraction": {"class": "andes-money-amount__fraction"},  # CSS selector for price integer part (used for both current and old prices)
     "current_price_cents": {"class": "andes-money-amount__cents"},  # CSS selector for current price decimal part
-    "cents_superscript_36": {"class": "andes-money-amount__cents--superscript-36"},  # CSS selector for cents with superscript-36
-    "old_price_container": {"class": re.compile(r"andes-money-amount.*andes-money-amount--superscript-16")},  # CSS selector for old price container with superscript-16
     "discount": {"class": re.compile(r"andes-money-amount__discount.*ui-pdp-family--SEMIBOLD.*ui-pdp-color--GREEN", re.IGNORECASE)},  # CSS selector for discount percentage element
     "description": {"class": "ui-pdp-description__content"},  # CSS selector for product description content
     "international_marker": {"id": "cbt_summary_rebranding--title"},  # ID selector for international product marker
@@ -320,68 +317,66 @@ class MercadoLivre:
     def extract_current_price(self, soup):
         """
         Extracts the current price from the parsed HTML soup.
+        Current price is typically the first/primary price displayed.
         
         :param soup: BeautifulSoup object containing the parsed HTML
         :return: Tuple of (integer_part, decimal_part) for current price
         """
         
-        current_price_container = soup.find("span", **HTML_SELECTORS["current_price_container"])  # Find the current price with superscript-36 cents using centralized selector
-        if current_price_container and isinstance(current_price_container, Tag):  # If found
-            current_fraction = current_price_container.find(**HTML_SELECTORS["current_price_fraction"])  # Find the fraction within this container using centralized selector
-            current_cents = current_price_container.find(**HTML_SELECTORS["current_price_cents"])  # Find the cents within this container using centralized selector
-            
-            integer_part = current_fraction.get_text(strip=True) if current_fraction and isinstance(current_fraction, Tag) else "0"  # Extract integer part
-            decimal_part = current_cents.get_text(strip=True) if current_cents and isinstance(current_cents, Tag) else "00"  # Extract decimal part
-        else:  # If not found
-            cents_element = soup.find(**HTML_SELECTORS["cents_superscript_36"])  # Find the cents with superscript-36 using centralized selector
-            if cents_element and isinstance(cents_element, Tag):  # If found
-                parent = cents_element.find_parent(class_=re.compile(r"andes-money-amount"))  # Find the parent container
-                if parent and isinstance(parent, Tag):  # If parent found
-                    fraction = parent.find(**HTML_SELECTORS["current_price_fraction"])  # Find the fraction within this container using centralized selector
-                    integer_part = fraction.get_text(strip=True) if fraction and isinstance(fraction, Tag) else "0"  # Extract integer part
-                    decimal_part = cents_element.get_text(strip=True)  # Extract decimal part
-                else:  # If parent not found
-                    integer_part = "0"  # Default integer part
-                    decimal_part = "00"  # Default decimal part
-            else:  # If no superscript-36 cents found
-                integer_part = "0"  # Default integer part
-                decimal_part = "00"  # Default decimal part
+        # Find all price fractions - current price is typically the first one
+        price_fractions = soup.find_all(**HTML_SELECTORS["price_fraction"])
+        
+        if price_fractions and len(price_fractions) > 0:
+            first_fraction = price_fractions[0]
+            if isinstance(first_fraction, Tag):
+                integer_part = first_fraction.get_text(strip=True)
+                
+                # Try to find cents near the fraction
+                parent = first_fraction.find_parent(class_=re.compile(r"andes-money-amount"))
+                if parent and isinstance(parent, Tag):
+                    cents = parent.find(**HTML_SELECTORS["current_price_cents"])
+                    decimal_part = cents.get_text(strip=True) if cents and isinstance(cents, Tag) else "00"
+                else:
+                    decimal_part = "00"
+            else:
+                integer_part = "0"
+                decimal_part = "00"
+        else:
+            integer_part = "0"
+            decimal_part = "00"
         
         return integer_part, decimal_part  # Return the price parts
 
     def extract_old_price(self, soup):
         """
         Extracts the old price from the parsed HTML soup.
+        Old price is typically the second price displayed (if exists).
         
         :param soup: BeautifulSoup object containing the parsed HTML
         :return: Tuple of (integer_part, decimal_part) for old price
         """
         
-        old_price_container = soup.find("span", **HTML_SELECTORS["old_price_container"])  # Find the old price with superscript-16 cents using centralized selector
-        if old_price_container and isinstance(old_price_container, Tag):  # If found
-            old_fraction = old_price_container.find(**HTML_SELECTORS["current_price_fraction"])  # Find the fraction within this container using centralized selector
-            old_cents = old_price_container.find(**HTML_SELECTORS["current_price_cents"])  # Find the cents within this container using centralized selector
-            
-            integer_part = old_fraction.get_text(strip=True) if old_fraction and isinstance(old_fraction, Tag) else "N/A"  # Extract integer part
-            decimal_part = old_cents.get_text(strip=True) if old_cents and isinstance(old_cents, Tag) else "N/A"  # Extract decimal part
-        else:  # If not found
-            all_prices = soup.find_all(**HTML_SELECTORS["current_price_fraction"])  # Find all price fractions using centralized selector
-            if len(all_prices) > 1:  # If more than one price found
-                first_fraction = all_prices[0]  # Assume the first is the old price
-                if isinstance(first_fraction, Tag):  # If it's a Tag
-                    integer_part = first_fraction.get_text(strip=True)  # Extract integer part
-                    parent = first_fraction.find_parent(class_=re.compile(r"andes-money-amount"))  # Find the parent container
-                    if parent and isinstance(parent, Tag):  # If parent found
-                        cents = parent.find(**HTML_SELECTORS["current_price_cents"])  # Find the cents within this container using centralized selector
-                        decimal_part = cents.get_text(strip=True) if cents and isinstance(cents, Tag) else "00"  # Extract decimal part
-                    else:  # If parent not found
-                        decimal_part = "00"  # Default decimal part
-                else:  # If not a Tag
-                    integer_part = "N/A"  # Default to N/A
-                    decimal_part = "N/A"  # Default to N/A
-            else:  # If no old price found
-                integer_part = "N/A"  # Default to N/A
-                decimal_part = "N/A"  # Default to N/A
+        # Find all price fractions - old price is typically the second one
+        price_fractions = soup.find_all(**HTML_SELECTORS["price_fraction"])
+        
+        if len(price_fractions) > 1:  # If multiple prices found
+            second_fraction = price_fractions[1]  # Get the second price (old price)
+            if isinstance(second_fraction, Tag):  # If it's a valid Tag
+                integer_part = second_fraction.get_text(strip=True)  # Extract integer part
+                
+                # Try to find cents near the fraction
+                parent = second_fraction.find_parent(class_=re.compile(r"andes-money-amount"))
+                if parent and isinstance(parent, Tag):  # If parent found
+                    old_cents = parent.find(**HTML_SELECTORS["current_price_cents"])  # Find cents using centralized selector
+                    decimal_part = old_cents.get_text(strip=True) if old_cents and isinstance(old_cents, Tag) else "00"  # Extract decimal part
+                else:  # If parent not found
+                    decimal_part = "00"  # Default to 00
+            else:  # If not a valid Tag
+                integer_part = "N/A"  # No old price
+                decimal_part = "N/A"  # No old price
+        else:  # If only one price found (no old price)
+            integer_part = "N/A"  # No old price
+            decimal_part = "N/A"  # No old price
         
         return integer_part, decimal_part  # Return the price parts
 
