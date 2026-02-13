@@ -848,18 +848,21 @@ def validate_and_fix_output_file(file_path):
 def generate_marketing_text(product_description, description_file):
     """
     Generates marketing text from product description using Gemini AI.
+    Supports multiple API keys with automatic failover on rate limit errors.
     
     :param product_description: The raw product description text
     :param description_file: Path to the description file (used to determine output directory)
     :return: True if successful, False otherwise
     """
     
-    try:  # Try to generate marketing text
-        api_key = os.getenv(ENV_VARIABLES["GEMINI"])  # Get Gemini API key
-        gemini = Gemini(api_key)  # Create Gemini instance
-        
-        # Create the prompt for Gemini with strict formatting instructions
-        prompt = f"""Você é um especialista em marketing de e-commerce. Sua tarefa é transformar as informações do produto abaixo em um texto de marketing persuasivo e formatado.
+    api_keys_raw = os.getenv(ENV_VARIABLES["GEMINI"], "")  # Get Gemini API key(s)
+    api_keys = [key.strip() for key in api_keys_raw.split(",") if key.strip()]  # Split and clean keys
+    
+    if not api_keys:  # If no API keys are configured
+        print(f"{BackgroundColors.RED}Error: No Gemini API keys configured in .env file.{Style.RESET_ALL}")
+        return False  # Return failure
+    
+    prompt = f"""Você é um especialista em marketing de e-commerce. Sua tarefa é transformar as informações do produto abaixo em um texto de marketing persuasivo e formatado.
 
 INFORMAÇÕES DO PRODUTO:
 {product_description}
@@ -891,24 +894,58 @@ INSTRUÇÕES:
 8. Se aplicável, sugira como presente ou ocasião especial
 
 Gere APENAS o texto formatado, sem explicações adicionais."""
-        
-        formatted_output = gemini.generate_content(prompt) # Generate formatted marketing text
-        
-        if formatted_output: # If generation successful
-            description_dir = os.path.dirname(description_file)  # Get directory of description file
-            formatted_file = os.path.join(description_dir, f"Template.txt")  # Output file path
-            gemini.write_output_to_file(formatted_output, formatted_file)  # Write output to file
+    
+    # Try each API key in sequence until one succeeds
+    last_error = None  # Store the last error for reporting
+    for key_index, api_key in enumerate(api_keys, 1):  # Iterate through API keys
+        try:  # Try to generate marketing text with current key
+            verbose_output(
+                true_string=f"{BackgroundColors.GREEN}Attempting to use Gemini API key {key_index} of {len(api_keys)}...{Style.RESET_ALL}"
+            )  # Output verbose message
             
-            gemini.close()  # Close Gemini client
-            return True  # Return success
-        else:  # If generation failed
-            print(f"{BackgroundColors.RED}Failed to generate formatted text.{Style.RESET_ALL}")
-            gemini.close()  # Close Gemini client
-            return False  # Return failure
-        
-    except Exception as e:  # If an error occurs during formatting
-        print(f"{BackgroundColors.RED}Error during AI formatting: {e}{Style.RESET_ALL}")
-        return False  # Return failure
+            gemini = Gemini(api_key)  # Create Gemini instance with current key
+            formatted_output = gemini.generate_content(prompt)  # Generate formatted marketing text
+            
+            if formatted_output:  # If generation successful
+                description_dir = os.path.dirname(description_file)  # Get directory of description file
+                formatted_file = os.path.join(description_dir, f"Template.txt")  # Output file path
+                gemini.write_output_to_file(formatted_output, formatted_file)  # Write output to file
+                
+                gemini.close()  # Close Gemini client
+                
+                return True  # Return success
+            else:  # If generation failed but no exception
+                print(f"{BackgroundColors.YELLOW}API key {key_index} returned empty response.{Style.RESET_ALL}")
+                gemini.close()  # Close Gemini client
+                last_error = "Empty response from API"
+                continue  # Try next key
+                
+        except Exception as e:  # If an error occurs with current key
+            error_str = str(e).lower()  # Convert error to lowercase for checking
+            
+            is_rate_limit = any(keyword in error_str for keyword in [
+                "rate", "quota", "limit", "429", "resource_exhausted", 
+                "too many requests", "quota exceeded"
+            ])  # Check for rate limit indicators
+            
+            if is_rate_limit:  # If rate limit error detected
+                last_error = e  # Store error
+                
+                if key_index < len(api_keys):  # If more keys available
+                    continue  # Try next key
+                else:  # No more keys to try
+                    print(f"{BackgroundColors.RED}All API keys exhausted.{Style.RESET_ALL}")
+            else:  # Non-rate-limit error
+                print(f"{BackgroundColors.RED}Error with API key {key_index}: {e}{Style.RESET_ALL}")
+                last_error = e  # Store error
+                
+                return False  # Return failure
+    
+    print(f"{BackgroundColors.RED}Failed to generate marketing text after trying all {len(api_keys)} API key(s).{Style.RESET_ALL}")
+    if last_error:  # If we have a stored error
+        print(f"{BackgroundColors.RED}Last error: {last_error}{Style.RESET_ALL}")
+    
+    return False  # Return failure
 
 
 def to_seconds(obj):
