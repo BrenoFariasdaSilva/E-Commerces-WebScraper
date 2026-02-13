@@ -644,7 +644,6 @@ class Shopee:
             )  # End of print statement
     
 
-
     def create_output_directory(self, product_name_safe):
         """
         Creates the output directory for storing downloaded media files.
@@ -909,7 +908,13 @@ class Shopee:
             return None  # Return None to indicate scraping failed
         finally:  # Always execute cleanup regardless of success or failure
             # Always close browser
-            self._close_browser()  # Close browser and release resources# Functions Definitions:def verbose_output(true_string="", false_string=""):
+            self._close_browser()  # Close browser and release resources
+   
+            
+# Functions Definitions
+
+
+def verbose_output(true_string="", false_string=""):
     """
     Outputs a message if the VERBOSE constant is set to True.
 
