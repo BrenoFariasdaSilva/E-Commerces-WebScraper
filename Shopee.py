@@ -397,7 +397,38 @@ class Shopee:
             return html  # Return extracted HTML content
         except Exception as e:  # Catch any exceptions during HTML extraction
             print(f"{BackgroundColors.RED}Failed to extract HTML: {e}{Style.RESET_ALL}")  # Alert user about extraction failure
-            return None  # Return None to indicate extraction faileddef verbose_output(true_string="", false_string=""):
+            return None  # Return None to indicate extraction failed
+
+
+    def extract_product_name(self, soup: BeautifulSoup) -> str:
+        """
+        Extracts the product name from the parsed HTML soup.
+        
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: Product name string or "Unknown Product" if not found
+        """
+        
+        # Try multiple selectors for Shopee product name
+        selectors = [  # Define list of CSS selectors to find product name in priority order
+            ("div", {"class": re.compile(r".*product.*name.*", re.IGNORECASE)}),  # Shopee product name container with regex pattern
+            ("span", {"class": re.compile(r".*product.*title.*", re.IGNORECASE)}),  # Alternative product title span with regex pattern
+            ("h1", {}),  # Generic H1 heading as fallback
+        ]  # End of selectors list
+        
+        for tag, attrs in selectors:  # Iterate through each selector combination
+            name_element = soup.find(tag, attrs if attrs else None)  # type: ignore[arg-type]  # Search for element matching current selector
+            if name_element:  # Verify if matching element was found
+                product_name = name_element.get_text(strip=True)  # Extract and clean text content from element
+                if product_name and product_name != "":  # Validate that extracted name is not empty
+                    verbose_output(  # Log successfully extracted product name
+                        f"{BackgroundColors.GREEN}Product name: {BackgroundColors.CYAN}{product_name}{Style.RESET_ALL}"
+                    )  # End of verbose output call
+                    return product_name  # Return the product name immediately when found
+        
+        verbose_output(  # Warn that product name could not be extracted
+            f"{BackgroundColors.YELLOW}Product name not found, using default.{Style.RESET_ALL}"
+        )  # End of verbose output call
+        return "Unknown Product"  # Return default placeholder when name extraction failsdef verbose_output(true_string="", false_string=""):
     """
     Outputs a message if the VERBOSE constant is set to True.
 
