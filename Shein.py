@@ -89,6 +89,35 @@ class BackgroundColors:  # Colors for the terminal
 # Execution Constants:
 VERBOSE = False  # Set to True to output verbose messages
 
+# HTML Selectors Dictionary:
+HTML_SELECTORS = {
+    "product_name": [  # List of CSS selectors for product name in priority order
+        ("h1", {"class": re.compile(r".*product.*title.*", re.IGNORECASE)}),  # Shein product title heading with regex pattern
+        ("h1", {}),  # Generic H1 heading as fallback
+        ("div", {"class": re.compile(r".*product.*name.*", re.IGNORECASE)}),  # Product name div container with regex pattern
+    ],
+    "current_price": [  # List of CSS selectors for current price in priority order
+        ("div", {"class": re.compile(r".*price.*sale.*", re.IGNORECASE)}),  # Shein sale price container with regex pattern
+        ("span", {"class": re.compile(r".*price.*current.*", re.IGNORECASE)}),  # Alternative current price span with regex pattern
+        ("div", {"class": re.compile(r".*price.*", re.IGNORECASE)}),  # Generic price div as fallback
+    ],
+    "old_price": [  # List of CSS selectors for old price in priority order
+        ("span", {"class": re.compile(r".*price.*original.*", re.IGNORECASE)}),  # Shein original price span with regex pattern
+        ("del", {}),  # Deleted text element for old price
+        ("div", {"class": re.compile(r".*old.*price.*", re.IGNORECASE)}),  # Old price div container as fallback
+    ],
+    "discount": [  # List of CSS selectors for discount percentage in priority order
+        ("span", {"class": re.compile(r".*discount.*", re.IGNORECASE)}),  # Shein discount span with regex pattern
+        ("div", {"class": re.compile(r".*save.*", re.IGNORECASE)}),  # Alternative save indicator with regex pattern
+        ("span", {"class": re.compile(r".*percent.*", re.IGNORECASE)}),  # Percentage span as fallback
+    ],
+    "description": [  # List of CSS selectors for product description in priority order
+        ("div", {"class": re.compile(r".*description.*", re.IGNORECASE)}),  # Shein description container with regex pattern
+        ("div", {"class": re.compile(r".*detail.*", re.IGNORECASE)}),  # Alternative detail container with regex pattern
+        ("p", {"class": re.compile(r".*description.*", re.IGNORECASE)}),  # Paragraph element containing description as fallback
+    ],
+}  # Dictionary containing all HTML selectors used for scraping product information
+
 # Output Directory Constants:
 OUTPUT_DIRECTORY = "./Outputs/"  # The base path to the output directory
 
@@ -334,8 +363,7 @@ class Shein:
 
         if soup is None:  # Guard against None to satisfy static checkers and avoid attribute access on None
             return "Unknown Product"  # Return default when no soup provided
-        selectors = [("h1", {"class": re.compile(r".*product.*title.*", re.IGNORECASE)}), ("h1", {}), ("div", {"class": re.compile(r".*product.*name.*", re.IGNORECASE)})]  # Define list of CSS selectors to find product name in priority order
-        for tag, attrs in selectors:  # Iterate through each selector combination
+        for tag, attrs in HTML_SELECTORS["product_name"]:  # Iterate through each selector combination from centralized dictionary
             name_element = soup.find(tag, attrs if attrs else None)  # Search for element matching current selector
             if name_element:  # Verify if matching element was found
                 product_name = name_element.get_text(strip=True)  # Extract and clean text content from element
@@ -355,8 +383,7 @@ class Shein:
 
         if soup is None:  # Guard against None to avoid attribute access on None
             return "0", "00"  # Default price when no soup provided
-        price_selectors = [("div", {"class": re.compile(r".*price.*sale.*", re.IGNORECASE)}), ("span", {"class": re.compile(r".*price.*current.*", re.IGNORECASE)}), ("div", {"class": re.compile(r".*price.*", re.IGNORECASE)})]  # Define list of CSS selectors to find current price in priority order
-        for tag, attrs in price_selectors:  # Iterate through each selector combination
+        for tag, attrs in HTML_SELECTORS["current_price"]:  # Iterate through each selector combination from centralized dictionary
             price_element = soup.find(tag, attrs if attrs else None)  # Search for element matching current selector
             if price_element:  # Verify if matching element was found
                 price_text = price_element.get_text(strip=True)  # Extract and clean text content from element
@@ -379,8 +406,7 @@ class Shein:
 
         if soup is None:  # Guard against None to avoid attribute access on None
             return "N/A", "N/A"  # Default old price when no soup provided
-        price_selectors = [("span", {"class": re.compile(r".*price.*original.*", re.IGNORECASE)}), ("del", {}), ("div", {"class": re.compile(r".*old.*price.*", re.IGNORECASE)})]  # Define list of CSS selectors to find old price in priority order
-        for tag, attrs in price_selectors:  # Iterate through each selector combination
+        for tag, attrs in HTML_SELECTORS["old_price"]:  # Iterate through each selector combination from centralized dictionary
             price_element = soup.find(tag, attrs if attrs else None)  # Search for element matching current selector
             if price_element:  # Verify if matching element was found
                 price_text = price_element.get_text(strip=True)  # Extract and clean text content from element
@@ -403,8 +429,7 @@ class Shein:
 
         if soup is None:  # Guard against None to avoid attribute access on None
             return "N/A"  # Default discount when no soup provided
-        discount_selectors = [("span", {"class": re.compile(r".*discount.*", re.IGNORECASE)}), ("div", {"class": re.compile(r".*save.*", re.IGNORECASE)}), ("span", {"class": re.compile(r".*percent.*", re.IGNORECASE)})]  # Define list of CSS selectors to find discount percentage in priority order
-        for tag, attrs in discount_selectors:  # Iterate through each selector combination
+        for tag, attrs in HTML_SELECTORS["discount"]:  # Iterate through each selector combination from centralized dictionary
             discount_element = soup.find(tag, attrs if attrs else None)  # Search for element matching current selector
             if discount_element:  # Verify if matching element was found
                 discount_text = discount_element.get_text(strip=True)  # Extract and clean text content from element
@@ -424,8 +449,7 @@ class Shein:
 
         if soup is None:  # Guard against None to avoid attribute access on None
             return "No description available"  # Default description when no soup provided
-        description_selectors = [("div", {"class": re.compile(r".*description.*", re.IGNORECASE)}), ("div", {"class": re.compile(r".*detail.*", re.IGNORECASE)}), ("p", {"class": re.compile(r".*description.*", re.IGNORECASE)})]  # Define list of CSS selectors to find product description in priority order
-        for tag, attrs in description_selectors:  # Iterate through each selector combination
+        for tag, attrs in HTML_SELECTORS["description"]:  # Iterate through each selector combination from centralized dictionary
             description_element = soup.find(tag, attrs if attrs else None)  # Search for element matching current selector
             if description_element:  # Verify if matching element was found
                 description = description_element.get_text(strip=True)  # Extract and clean text content from element
