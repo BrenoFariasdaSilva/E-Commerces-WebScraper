@@ -463,7 +463,41 @@ class Shopee:
         verbose_output(  # Warn that current price could not be extracted
             f"{BackgroundColors.YELLOW}Current price not found, using default.{Style.RESET_ALL}"
         )  # End of verbose output call
-        return "0", "00"  # Return default zero price when extraction fails# Functions Definitions:
+        return "0", "00"  # Return default zero price when extraction fails
+
+
+    def extract_old_price(self, soup: BeautifulSoup) -> Tuple[str, str]:
+        """
+        Extracts the old price from the parsed HTML soup.
+        
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: Tuple of (integer_part, decimal_part) for old price
+        """
+        
+        # Try multiple selectors for Shopee old prices
+        price_selectors = [  # Define list of CSS selectors to find old price in priority order
+            ("div", {"class": re.compile(r".*price.*original.*", re.IGNORECASE)}),  # Shopee original price container with regex pattern
+            ("div", {"class": re.compile(r".*price.*before.*", re.IGNORECASE)}),  # Alternative before discount price container with regex pattern
+            ("span", {"class": re.compile(r".*old.*price.*", re.IGNORECASE)}),  # Generic old price span as fallback
+        ]  # End of price_selectors list
+        
+        for tag, attrs in price_selectors:  # Iterate through each selector combination
+            price_element = soup.find(tag, attrs if attrs else None)  # type: ignore[arg-type]  # Search for element matching current selector
+            if price_element:  # Verify if matching element was found
+                price_text = price_element.get_text(strip=True)  # Extract and clean text content from element
+                match = re.search(r"(\d+)[,.](\d{2})", price_text)  # Search for price pattern with integer and decimal parts
+                if match:  # Verify if price pattern was found in text
+                    integer_part = match.group(1)  # Extract integer part of price
+                    decimal_part = match.group(2)  # Extract decimal part of price
+                    verbose_output(  # Log successfully extracted old price
+                        f"{BackgroundColors.GREEN}Old price: R${integer_part},{decimal_part}{Style.RESET_ALL}"
+                    )  # End of verbose output call
+                    return integer_part, decimal_part  # Return price components as tuple
+        
+        verbose_output(  # Warn that old price could not be extracted
+            f"{BackgroundColors.YELLOW}Old price not found.{Style.RESET_ALL}"
+        )  # End of verbose output call
+        return "N/A", "N/A"  # Return N/A when old price is not available# Functions Definitions:
 
 
 def verbose_output(true_string="", false_string=""):
