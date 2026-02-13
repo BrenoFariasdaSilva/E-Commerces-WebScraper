@@ -97,6 +97,15 @@ PLATFORMS_MAP = {
     "Shein": "shein",
     "Shopee": "shopee",
 }  # Mapping of platform names to identifiers
+
+PLATFORM_PREFIXES = {
+    "aliexpress": "AliExpress",
+    "mercadolivre": "MercadoLivre",
+    "shein": "Shein",
+    "shopee": "Shopee",
+}  # Mapping of platform identifiers to display prefixes for output directories
+
+PLATFORM_PREFIX_SEPARATOR = " - "  # Separator between platform prefix and product name in directory structure
     
 
 # File Path Constants:
@@ -345,7 +354,7 @@ def remove_duplicate_images(groups):
                     print(f"{BackgroundColors.RED}Error removing image {BackgroundColors.CYAN}{img_path}{BackgroundColors.RED}: {BackgroundColors.YELLOW}{e}{Style.RESET_ALL}")
 
 
-def clean_duplicate_images(product_name_safe):
+def clean_duplicate_images(product_directory):
     """
     Cleans up duplicate images in the product directory by normalizing all images to the smallest size,
     computing MD5 hashes of the resized versions, and removing lower-resolution duplicates while keeping
@@ -354,11 +363,11 @@ def clean_duplicate_images(product_name_safe):
     This approach detects duplicates that may have different resolutions but represent the same content,
     such as thumbnails and full-size images.
 
-    :param product_name_safe: Safe product name for directory path
+    :param product_directory: Directory name (may include platform prefix) for the product
     :return: None
     """
     
-    product_dir = os.path.join(OUTPUT_DIRECTORY, product_name_safe)  # Path to the product directory
+    product_dir = os.path.join(OUTPUT_DIRECTORY, product_directory)  # Path to the product directory
     if not os.path.exists(product_dir):  # If the product directory does not exist
         return  # Return if the directory does not exist
     
@@ -375,17 +384,17 @@ def clean_duplicate_images(product_name_safe):
     remove_duplicate_images(groups)  # Remove duplicate images
 
 
-def exclude_small_images(product_name_safe, min_size_bytes=2048):
+def exclude_small_images(product_directory, min_size_bytes=2048):
     """
     Excludes (deletes) image files smaller than the specified minimum size in bytes.
     This helps remove very small or corrupted images that are likely thumbnails or placeholders.
 
-    :param product_name_safe: Safe product name for directory path
+    :param product_directory: Directory name (may include platform prefix) for the product
     :param min_size_bytes: Minimum file size in bytes (default 2048 = 2KB)
     :return: None
     """
     
-    product_dir = os.path.join(OUTPUT_DIRECTORY, product_name_safe)  # Path to the product directory
+    product_dir = os.path.join(OUTPUT_DIRECTORY, product_directory)  # Path to the product directory
     
     if not os.path.exists(product_dir):  # If the product directory does not exist
         return  # Return if the directory does not exist
@@ -483,7 +492,7 @@ def scrape_product(url, local_html_path=None):
     
     :param url: The product URL to scrape
     :param local_html_path: Optional path to a local HTML file for offline scraping
-    :return: Tuple of (product_data dict, description_file path, product_name_safe string) or (None, None, None) on failure
+    :return: Tuple of (product_data dict, description_file path, product_directory string) or (None, None, None) on failure
     """
     
     platform = detect_platform(url)  # Detect the e-commerce platform
@@ -530,8 +539,10 @@ def scrape_product(url, local_html_path=None):
         print(f"{BackgroundColors.RED}Scraper not implemented for platform: {platform}{Style.RESET_ALL}")
         return None, None, None  # Return None values
     
+    platform_prefix = PLATFORM_PREFIXES.get(platform, "")  # Get the platform prefix for output directory naming
+    
     try:  # Try to scrape the product
-        scraper = scraper_class(url, local_html_path=html_path)  # Create scraper instance with optional local HTML path
+        scraper = scraper_class(url, local_html_path=html_path, prefix=platform_prefix)  # Create scraper instance with optional local HTML path and platform prefix
         product_data = scraper.scrape()  # Scrape the product
         
         if not product_data:  # If scraping failed
@@ -539,7 +550,8 @@ def scrape_product(url, local_html_path=None):
         
         product_name = product_data.get("name", "Unknown Product")  # Get product name
         product_name_safe = sanitize_filename(product_name)  # Sanitize filename
-        description_file = f"./Outputs/{product_name_safe}/{product_name_safe}_description.txt"
+        product_directory = f"{platform_prefix}{PLATFORM_PREFIX_SEPARATOR}{product_name_safe}" if platform_prefix else product_name_safe  # Construct directory name with platform prefix
+        description_file = f"./Outputs/{product_directory}/{product_name_safe}_description.txt"  # Construct full path to description file using prefixed directory
         
         if not verify_filepath_exists(description_file):  # If description file not found
             print(f"{BackgroundColors.RED}Description file not found: {description_file}{Style.RESET_ALL}")
@@ -553,7 +565,7 @@ def scrape_product(url, local_html_path=None):
             except Exception as e:
                 print(f"{BackgroundColors.YELLOW}Warning: Failed to clean up zip and extracted dir: {e}{Style.RESET_ALL}")
         
-        return product_data, description_file, product_name_safe  # Return scraped data and file paths
+        return product_data, description_file, product_directory  # Return scraped data and file paths including directory name with prefix
         
     except Exception as e:  # If an error occurs during scraping
         print(f"{BackgroundColors.RED}Error during scraping: {e}{Style.RESET_ALL}")  # Print error message
@@ -617,13 +629,13 @@ def delete_local_html_file(local_html_path):
         return False  # Return False on failure
 
 
-def copy_assets_from_local_html_dir(local_html_path, product_name_safe):
+def copy_assets_from_local_html_dir(local_html_path, product_directory):
     """
     Copies 'images' or 'assets' directories from the local HTML file's directory
     to the product's output directory if they exist.
 
     :param local_html_path: Path to the local HTML file
-    :param product_name_safe: Safe product name for directory path
+    :param product_directory: Directory name (may include platform prefix) for the product output
     :return: None
     """
     
@@ -634,7 +646,7 @@ def copy_assets_from_local_html_dir(local_html_path, product_name_safe):
         return  # Return as source doesn't exist
     
     local_html_dir = os.path.dirname(os.path.abspath(local_html_path))  # Get the directory of the local HTML file
-    product_output_dir = os.path.join(OUTPUT_DIRECTORY, product_name_safe)  # Path to the product output directory
+    product_output_dir = os.path.join(OUTPUT_DIRECTORY, product_directory)  # Path to the product output directory
     
     if not os.path.exists(product_output_dir):  # If the product output directory doesn't exist
         verbose_output(f"{BackgroundColors.YELLOW}Product output directory not found: {product_output_dir}{Style.RESET_ALL}")
@@ -712,12 +724,11 @@ def validate_and_fix_output_file(file_path):
         return False  # Return failure
 
 
-def generate_marketing_text(product_description, product_name_safe, description_file):
+def generate_marketing_text(product_description, description_file):
     """
     Generates marketing text from product description using Gemini AI.
     
     :param product_description: The raw product description text
-    :param product_name_safe: Sanitized product name for file naming
     :param description_file: Path to the description file (used to determine output directory)
     :return: True if successful, False otherwise
     """
@@ -935,12 +946,12 @@ def main():
             print(f"{BackgroundColors.RED}Skipping {BackgroundColors.CYAN}{url}{BackgroundColors.RED} due to scraping failure.{Style.RESET_ALL}\n")
             continue  # Move to next URL
         
-        product_data, description_file, product_name_safe = scrape_result  # Unpack the scrape result
+        product_data, description_file, product_directory = scrape_result  # Unpack the scrape result
         
-        if product_name_safe and isinstance(product_name_safe, str):  # If product name is valid
-            clean_duplicate_images(product_name_safe)  # Clean up duplicate images in the product directory
-            exclude_small_images(product_name_safe)  # Exclude images smaller than 2KB
-            copy_assets_from_local_html_dir(local_html_path, product_name_safe)  # Copy images/assets from local HTML directory if present
+        if product_directory and isinstance(product_directory, str):  # If product directory is valid
+            clean_duplicate_images(product_directory)  # Clean up duplicate images in the product directory
+            exclude_small_images(product_directory)  # Exclude images smaller than 2KB
+            copy_assets_from_local_html_dir(local_html_path, product_directory)  # Copy images/assets from local HTML directory if present
         
         if not product_data:  # If scraping failed
             print(f"{BackgroundColors.RED}Skipping {BackgroundColors.CYAN}{url}{BackgroundColors.RED} due to scraping failure.{Style.RESET_ALL}\n")
@@ -953,7 +964,7 @@ def main():
             print(f"{BackgroundColors.RED}Error reading description file: {e}{Style.RESET_ALL}")
             continue  # Move to next URL
         
-        valid, invalid_reasons = validate_product_information(product_data, product_name_safe, description_file)  # Validate the product information
+        valid, invalid_reasons = validate_product_information(product_data, product_directory, description_file)  # Validate the product information
 
         if not valid:  # If the product information is not valid, skip Gemini formatting and output the reasons
             print(
@@ -966,7 +977,7 @@ def main():
 
         print(f"{BackgroundColors.CYAN}Step 2{BackgroundColors.GREEN}: Formatting with Gemini AI{Style.RESET_ALL}")  # Step 2: Format the product description with Gemini AI
         
-        success = generate_marketing_text(product_description, product_name_safe, description_file)  # Generate marketing text
+        success = generate_marketing_text(product_description, description_file)  # Generate marketing text
         
         if success:  # If both scraping and formatting succeeded
             # Step 3: Validate and fix the generated output file
