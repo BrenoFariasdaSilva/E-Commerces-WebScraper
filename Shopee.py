@@ -143,16 +143,19 @@ class Shopee:
     Playwright for full page rendering and authenticated access.
     """
 
-    def __init__(self, url: str) -> None:
+    def __init__(self, url: str, local_html_path: Optional[str] = None) -> None:
         """
-        Initializes the Shopee scraper with a product URL.
+        Initializes the Shopee scraper with a product URL and optional local HTML file path.
 
         :param url: The URL of the Shopee product page to scrape
+        :param local_html_path: Optional path to a local HTML file for offline scraping
         :return: None
         """
 
         self.url: str = url  # Store the initial product URL for reference
         self.product_url: str = url  # Maintain separate copy of product URL for Shopee direct usage
+        self.local_html_path: Optional[str] = local_html_path  # Store path to local HTML file for offline scraping
+        self.html_content: Optional[str] = None  # Store HTML content for reuse (from browser or local file)
         self.product_data: Dict[str, Any] = {}  # Initialize empty dictionary to store extracted product data
         self.playwright: Optional[Any] = None  # Placeholder for Playwright instance
         self.browser: Optional[Any] = None  # Placeholder for browser instance
@@ -161,6 +164,10 @@ class Shopee:
         verbose_output(  # Output initialization message to user
             f"{BackgroundColors.GREEN}Shopee scraper initialized with URL: {BackgroundColors.CYAN}{url}{Style.RESET_ALL}"
         )  # End of verbose output call
+        if local_html_path:  # If local HTML file path is provided
+            verbose_output(  # Output offline mode message
+                f"{BackgroundColors.GREEN}Offline mode enabled. Will read from: {BackgroundColors.CYAN}{local_html_path}{Style.RESET_ALL}"
+            )  # End of verbose output call
 
 
     def _launch_browser(self):
@@ -398,6 +405,39 @@ class Shopee:
         except Exception as e:  # Catch any exceptions during HTML extraction
             print(f"{BackgroundColors.RED}Failed to extract HTML: {e}{Style.RESET_ALL}")  # Alert user about extraction failure
             return None  # Return None to indicate extraction failed
+
+
+    def _read_local_html(self) -> Optional[str]:
+        """
+        Reads HTML content from a local file for offline scraping.
+
+        :return: HTML content string or None if failed
+        """
+
+        verbose_output(  # Output status message to user
+            f"{BackgroundColors.GREEN}Reading local HTML file: {BackgroundColors.CYAN}{self.local_html_path}{Style.RESET_ALL}"
+        )  # End of verbose output call
+
+        try:  # Attempt to read file with error handling
+            if not self.local_html_path:  # Verify if local HTML path is not set
+                print(f"{BackgroundColors.RED}No local HTML path provided.{Style.RESET_ALL}")  # Alert user that path is missing
+                return None  # Return None if path doesn't exist
+            
+            if not os.path.exists(self.local_html_path):  # Verify if file doesn't exist
+                print(f"{BackgroundColors.RED}Local HTML file not found: {BackgroundColors.CYAN}{self.local_html_path}{Style.RESET_ALL}")  # Alert user that file is missing
+                return None  # Return None if file doesn't exist
+            
+            with open(self.local_html_path, "r", encoding="utf-8") as file:  # Open file with UTF-8 encoding
+                html_content = file.read()  # Read entire file content
+            
+            verbose_output(  # Output success message to user
+                f"{BackgroundColors.GREEN}Local HTML content loaded successfully.{Style.RESET_ALL}"
+            )  # End of verbose output call
+            return html_content  # Return the HTML content string
+            
+        except Exception as e:  # Catch any exceptions during file reading
+            print(f"{BackgroundColors.RED}Error reading local HTML file: {e}{Style.RESET_ALL}")  # Alert user about file reading error
+            return None  # Return None to indicate reading failed
 
 
     def extract_product_name(self, soup: BeautifulSoup) -> str:
@@ -804,7 +844,8 @@ class Shopee:
 
     def download_media(self) -> List[str]:
         """
-        Downloads product media and creates snapshot after browser automation.
+        Downloads product media and creates snapshot.
+        Works for both online (browser) and offline (local HTML) modes.
 
         :return: List of downloaded file paths
         """
@@ -827,10 +868,10 @@ class Shopee:
             # Create output directory
             output_dir = self.create_output_directory(product_name_safe)  # Create output directory for product
             
-            # Get rendered HTML
-            html_content = self._get_rendered_html()  # Get fully rendered HTML content
-            if not html_content:  # Verify if HTML content retrieval failed
-                print(f"{BackgroundColors.RED}Failed to get rendered HTML.{Style.RESET_ALL}")  # Alert user about HTML retrieval failure
+            # Get HTML content (from stored content for both online and offline modes)
+            html_content = self.html_content  # Use stored HTML content
+            if not html_content:  # Verify if HTML content is unavailable
+                print(f"{BackgroundColors.RED}No HTML content available.{Style.RESET_ALL}")  # Alert user about HTML unavailability
                 return downloaded_files  # Return empty list when HTML is unavailable
             
             # Collect and download assets
@@ -862,6 +903,7 @@ class Shopee:
     def scrape(self, verbose: bool = VERBOSE) -> Optional[Dict[str, Any]]:
         """
         Main scraping method that orchestrates the entire scraping process.
+        Supports both online scraping (via browser) and offline scraping (from local HTML file).
 
         :param verbose: Boolean flag to enable verbose output
         :return: Dictionary containing all scraped data and downloaded file paths
@@ -872,28 +914,47 @@ class Shopee:
         )  # End of print statement
         
         try:  # Attempt scraping process with error handling
-            # Step 1: Launch authenticated browser
-            self._launch_browser()  # Initialize and launch browser instance
+            if self.local_html_path:  # If local HTML file path is provided
+                print(  # Display offline mode message
+                    f"{BackgroundColors.GREEN}Using offline mode with local HTML file{Style.RESET_ALL}"
+                )  # End of print statement
+                
+                # Read HTML from local file
+                html_content = self._read_local_html()  # Read HTML content from local file
+                if not html_content:  # Verify if HTML reading failed
+                    return None  # Return None if HTML is unavailable
+                
+                self.html_content = html_content  # Store HTML content for later use
+                
+            else:  # Online scraping mode
+                print(  # Display online mode message
+                    f"{BackgroundColors.GREEN}Using online mode with browser automation{Style.RESET_ALL}"
+                )  # End of print statement
+                
+                # Step 1: Launch authenticated browser
+                self._launch_browser()  # Initialize and launch browser instance
+                
+                # Step 2: Load page
+                if not self._load_page():  # Attempt to load product page
+                    return None  # Return None if page loading failed
+                
+                # Step 3: Wait for full render and auto-scroll
+                self._wait_full_render()  # Wait for page to fully render with dynamic content
+                self._auto_scroll()  # Scroll page to trigger lazy-loaded content
+                
+                # Step 4: Get rendered HTML
+                html_content = self._get_rendered_html()  # Extract fully rendered HTML content
+                if not html_content:  # Verify if HTML extraction failed
+                    return None  # Return None if HTML is unavailable
+                
+                self.html_content = html_content  # Store HTML content for later use
             
-            # Step 2: Load page
-            if not self._load_page():  # Attempt to load product page
-                return None  # Return None if page loading failed
-            
-            # Step 3: Wait for full render and auto-scroll
-            self._wait_full_render()  # Wait for page to fully render with dynamic content
-            self._auto_scroll()  # Scroll page to trigger lazy-loaded content
-            
-            # Step 4: Get rendered HTML
-            html_content = self._get_rendered_html()  # Extract fully rendered HTML content
-            if not html_content:  # Verify if HTML extraction failed
-                return None  # Return None if HTML is unavailable
-            
-            # Step 5: Scrape product information
+            # Step 5: Scrape product information (works for both online and offline)
             product_info = self.scrape_product_info(html_content)  # Parse and extract product information
             if not product_info:  # Verify if product info extraction failed
                 return None  # Return None if extraction failed
             
-            # Step 6: Download media and create snapshot
+            # Step 6: Download media and create snapshot (works for both online and offline)
             downloaded_files = self.download_media()  # Download product media and create snapshot
             product_info["downloaded_files"] = downloaded_files  # Add downloaded files to product info dictionary
             
@@ -907,8 +968,9 @@ class Shopee:
             print(f"{BackgroundColors.RED}Scraping failed: {e}{Style.RESET_ALL}")  # Alert user about scraping failure
             return None  # Return None to indicate scraping failed
         finally:  # Always execute cleanup regardless of success or failure
-            # Always close browser
-            self._close_browser()  # Close browser and release resources
+            # Always close browser (only if it was launched)
+            if not self.local_html_path:  # Only close browser in online mode
+                self._close_browser()  # Close browser and release resources
    
             
 # Functions Definitions
