@@ -498,3 +498,19 @@ E-Commerces-WebScraper/
     ├── Icons/                           # Icon files
     └── Sounds/                          # Notification sounds
 ```
+
+## Implementation Details
+
+### Platform Detection
+
+The scraper automatically detects platforms by analyzing URL patterns:
+
+```python
+PLATFORMS_MAP = {
+    "MercadoLivre": "mercadolivre",
+    "Shein": "shein",
+    "Shopee": "shopee",
+}
+```
+
+Detection logic checks for platform-specific domain keywords in the URL and routes to the appropriate scraper class.
