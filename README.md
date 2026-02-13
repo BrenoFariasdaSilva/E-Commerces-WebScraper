@@ -157,3 +157,40 @@ Content Extraction
 - **Chrome Browser**: Required for authenticated scraping (Shopee/Shein)
 - **Internet Connection**: Required for online scraping and AI features
 - **Google Gemini API Key**: Optional, for AI-powered marketing content generation
+
+## Installation
+
+1. **Clone the Repository**
+
+   ```bash
+   git clone https://github.com/BrenoFariasDaSilva/E-Commerces-WebScraper.git
+   cd E-Commerces-WebScraper
+   ```
+
+2. **Create Virtual Environment** (Recommended)
+
+   ```bash
+   python -m venv venv
+   
+   # Windows
+   venv\Scripts\activate
+   
+   # macOS/Linux
+   source venv/bin/activate
+   ```
+
+3. **Install Dependencies**
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Install Playwright Browsers** (Required for Shopee/Shein)
+
+   ```bash
+   python -m playwright install chromium
+   ```
+
+5. **Configure Environment Variables**
+
+   Create a `.env` file in the project root (see [Configuration](#configuration) section).
