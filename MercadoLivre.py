@@ -738,6 +738,8 @@ class MercadoLivre:
         
         try:  # Try to create the .txt file
             product_name = product_data.get("name", "Produto")  # Get product name
+            if isinstance(product_name, str):
+                product_name = product_name.title()
 
             if isinstance(product_name, str) and product_name.strip().lower() == "unknown product":  # If product name is "Unknown Product", don't create file
                 verbose_output(
@@ -813,7 +815,8 @@ class MercadoLivre:
                 )
                 return downloaded_files  # Return empty list
 
-            product_name_safe = re.sub(r'[<>:"/\\|?*]', '_', self.product_data.get("name", "Unknown_Product"))  # Create a safe filename
+            raw_name_for_safe = self.product_data.get("name", "Unknown_Product")
+            product_name_safe = re.sub(r'[<>:"/\\|?*]', '_', raw_name_for_safe.title())  # Create a safe filename
             output_dir = self.create_output_directory(product_name_safe)  # Create the output directory
             
             verbose_output(
