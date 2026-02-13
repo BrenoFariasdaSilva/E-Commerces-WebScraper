@@ -857,7 +857,59 @@ class Shopee:
             print(f"{BackgroundColors.RED}Error during media download: {e}{Style.RESET_ALL}")  # Alert user about media download error
         
         return downloaded_files  # Return list of all downloaded file paths
-        def verbose_output(true_string="", false_string=""):
+        
+
+
+    def scrape(self, verbose: bool = VERBOSE) -> Optional[Dict[str, Any]]:
+        """
+        Main scraping method that orchestrates the entire scraping process.
+
+        :param verbose: Boolean flag to enable verbose output
+        :return: Dictionary containing all scraped data and downloaded file paths
+        """
+
+        print(  # Display scraping start message to user
+            f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Starting {BackgroundColors.CYAN}Shopee{BackgroundColors.GREEN} Scraping process...{Style.RESET_ALL}"
+        )  # End of print statement
+        
+        try:  # Attempt scraping process with error handling
+            # Step 1: Launch authenticated browser
+            self._launch_browser()  # Initialize and launch browser instance
+            
+            # Step 2: Load page
+            if not self._load_page():  # Attempt to load product page
+                return None  # Return None if page loading failed
+            
+            # Step 3: Wait for full render and auto-scroll
+            self._wait_full_render()  # Wait for page to fully render with dynamic content
+            self._auto_scroll()  # Scroll page to trigger lazy-loaded content
+            
+            # Step 4: Get rendered HTML
+            html_content = self._get_rendered_html()  # Extract fully rendered HTML content
+            if not html_content:  # Verify if HTML extraction failed
+                return None  # Return None if HTML is unavailable
+            
+            # Step 5: Scrape product information
+            product_info = self.scrape_product_info(html_content)  # Parse and extract product information
+            if not product_info:  # Verify if product info extraction failed
+                return None  # Return None if extraction failed
+            
+            # Step 6: Download media and create snapshot
+            downloaded_files = self.download_media()  # Download product media and create snapshot
+            product_info["downloaded_files"] = downloaded_files  # Add downloaded files to product info dictionary
+            
+            print(  # Display success message to user
+                f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Shopee scraping completed successfully!{Style.RESET_ALL}"
+            )  # End of print statement
+            
+            return product_info  # Return complete product information with downloaded files
+            
+        except Exception as e:  # Catch any exceptions during scraping process
+            print(f"{BackgroundColors.RED}Scraping failed: {e}{Style.RESET_ALL}")  # Alert user about scraping failure
+            return None  # Return None to indicate scraping failed
+        finally:  # Always execute cleanup regardless of success or failure
+            # Always close browser
+            self._close_browser()  # Close browser and release resources# Functions Definitions:def verbose_output(true_string="", false_string=""):
     """
     Outputs a message if the VERBOSE constant is set to True.
 
