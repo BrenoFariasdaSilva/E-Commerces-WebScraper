@@ -221,7 +221,32 @@ class Shopee:
 
         except Exception as e:  # Catch any exceptions during browser launch
             print(f"{BackgroundColors.RED}Failed to launch browser: {e}{Style.RESET_ALL}")  # Alert user about browser launch failure
-            raise  # Re-raise exception for caller to handledef verbose_output(true_string="", false_string=""):
+            raise  # Re-raise exception for caller to handle
+
+
+    def _close_browser(self):
+        """
+        Safely closes the browser and Playwright instances.
+
+        :return: None
+        """
+
+        verbose_output(  # Output status message to user
+            f"{BackgroundColors.GREEN}Closing browser...{Style.RESET_ALL}"
+        )  # End of verbose output call
+
+        try:  # Attempt to close browser resources with error handling
+            if self.page:  # Verify if page instance exists before closing
+                self.page.close()  # Close the browser page to release resources
+            if self.browser:  # Verify if browser instance exists before closing
+                self.browser.close()  # Close the browser to release resources
+            if self.playwright:  # Verify if Playwright instance exists before stopping
+                self.playwright.stop()  # Stop the Playwright instance
+            verbose_output(  # Output success message to user
+                f"{BackgroundColors.GREEN}Browser closed successfully.{Style.RESET_ALL}"
+            )  # End of verbose output call
+        except Exception as e:  # Catch any exceptions during browser close
+            print(f"{BackgroundColors.YELLOW}Warning during browser close: {e}{Style.RESET_ALL}")  # Warn user about close issues without failingdef verbose_output(true_string="", false_string=""):
     """
     Outputs a message if the VERBOSE constant is set to True.
 
