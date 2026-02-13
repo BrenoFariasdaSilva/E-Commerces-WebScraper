@@ -577,7 +577,48 @@ class Shopee:
             f"  {BackgroundColors.CYAN}Current Price:{Style.RESET_ALL} R${product_data.get('current_price_integer', 'N/A')},{product_data.get('current_price_decimal', 'N/A')}\n"
             f"  {BackgroundColors.CYAN}Discount:{Style.RESET_ALL} {product_data.get('discount_percentage', 'N/A')}\n"
             f"  {BackgroundColors.CYAN}Description:{Style.RESET_ALL} {product_data.get('description', 'N/A')[:100]}..."
-        )  # End of print statement# Functions Definitions:
+        )  # End of print statement
+
+
+    def scrape_product_info(self, html_content: str) -> Optional[Dict[str, Any]]:
+        """
+        Scrapes product information from rendered HTML content.
+
+        :param html_content: Rendered HTML string
+        :return: Dictionary containing the scraped product data
+        """
+
+        verbose_output(  # Output status message to user
+            f"{BackgroundColors.GREEN}Parsing product information...{Style.RESET_ALL}"
+        )  # End of verbose output call
+
+        try:  # Attempt to parse product information with error handling
+            soup = BeautifulSoup(html_content, "html.parser")  # Parse HTML content into BeautifulSoup object
+            
+            # Extract all product information
+            product_name = self.extract_product_name(soup)  # Extract product name from parsed HTML
+            current_price_int, current_price_dec = self.extract_current_price(soup)  # Extract current price integer and decimal parts
+            old_price_int, old_price_dec = self.extract_old_price(soup)  # Extract old price integer and decimal parts
+            discount_percentage = self.extract_discount_percentage(soup)  # Extract discount percentage value
+            description = self.extract_product_description(soup)  # Extract product description text
+            
+            self.product_data = {  # Store all extracted data in dictionary
+                "name": product_name,  # Product name string
+                "current_price_integer": current_price_int,  # Current price integer part
+                "current_price_decimal": current_price_dec,  # Current price decimal part
+                "old_price_integer": old_price_int,  # Old price integer part
+                "old_price_decimal": old_price_dec,  # Old price decimal part
+                "discount_percentage": discount_percentage,  # Discount percentage string
+                "description": description,  # Product description text
+                "url": self.product_url  # Original product URL
+            }  # End of product_data dictionary
+            
+            self.print_product_info(self.product_data)  # Display extracted product information to user
+            return self.product_data  # Return complete product data dictionary
+            
+        except Exception as e:  # Catch any exceptions during parsing
+            print(f"{BackgroundColors.RED}Error parsing product info: {e}{Style.RESET_ALL}")  # Alert user about parsing error
+            return None  # Return None to indicate parsing failed# Functions Definitions:
 
 
 def verbose_output(true_string="", false_string=""):
