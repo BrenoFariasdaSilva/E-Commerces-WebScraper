@@ -375,6 +375,32 @@ class Shein:
             return None  # Return None to indicate reading failed
 
 
+    def download_product_videos(self, video_urls: List[str], output_dir: str) -> List[str]:
+        """
+        Downloads all product videos from the gallery.
+
+        :param video_urls: List of video URLs or relative paths
+        :param output_dir: Directory where videos should be saved
+        :return: List of paths to successfully downloaded video files
+        """
+        
+        downloaded_videos = []
+        
+        if not video_urls:
+            verbose_output(f"{BackgroundColors.YELLOW}No video URLs to download.{Style.RESET_ALL}")
+            return downloaded_videos
+        
+        verbose_output(f"{BackgroundColors.CYAN}Downloading {len(video_urls)} videos...{Style.RESET_ALL}")
+        
+        for idx, video_url in enumerate(video_urls, start=1):
+            video_path = self.download_single_video(video_url, output_dir, idx)
+            if video_path:
+                downloaded_videos.append(video_path)
+        
+        verbose_output(f"{BackgroundColors.GREEN}Successfully downloaded {len(downloaded_videos)} of {len(video_urls)} videos.{Style.RESET_ALL}")
+        return downloaded_videos
+
+
     def download_media(self):
         """
         Downloads product media and creates snapshot.
