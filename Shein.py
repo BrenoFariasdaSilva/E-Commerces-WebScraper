@@ -374,6 +374,90 @@ class Shein:
             print(f"{BackgroundColors.RED}Error reading local HTML file: {e}{Style.RESET_ALL}")  # Alert user about file reading error
             return None  # Return None to indicate reading failed
 
+    def extract_product_description(self, soup=None):
+        """
+        Extracts the product description from the parsed HTML soup.
+        First tries HTML extraction from class="product-intro__attr-list-text",
+        then falls back to JSON productDetails (searched recursively) if needed.
+
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: Product description string or "No description available" if not found
+        """
+
+        if soup is None:  # Guard against None to avoid attribute access on None
+            return "No description available"  # Default description when no soup provided
+        
+        for tag, attrs in HTML_SELECTORS["description"]:  # Iterate through each selector combination from centralized dictionary
+            description_element = soup.find(tag, attrs if attrs else None)  # Search for element matching current selector
+            if description_element:  # Verify if matching element was found
+                description = description_element.get_text(strip=True)  # Extract and clean text content from element
+                if description and len(description) > 10:  # Validate that description has substantial content
+                    verbose_output(f"{BackgroundColors.GREEN}Description found from HTML ({len(description)} chars).{Style.RESET_ALL}")  # Log successfully extracted description with character count
+                    return description  # Return the product description
+        
+        verbose_output(f"{BackgroundColors.YELLOW}HTML description not found, trying JSON extraction...{Style.RESET_ALL}")
+        
+        try:
+            script_tags = soup.find_all("script", {"type": "application/json"})
+            for script_tag in script_tags:
+                try:
+                    if not script_tag.string:  # Skip if no content
+                        continue
+                    
+                    json_data = json.loads(script_tag.string)  # Parse JSON data
+                    
+                    verbose_output(f"{BackgroundColors.GREEN}Searching for productDetails in JSON...{Style.RESET_ALL}")
+                    
+                    def find_product_details(obj, depth=0, max_depth=15):
+                        """Recursively search for productDetails array in nested structures"""
+                        if depth > max_depth:  # Prevent infinite recursion
+                            return None
+                        
+                        if isinstance(obj, dict):
+                            if "productDetails" in obj:
+                                product_details = obj["productDetails"]
+                                if isinstance(product_details, list) and len(product_details) > 0:
+                                    return product_details
+                            
+                            for value in obj.values():
+                                result = find_product_details(value, depth + 1, max_depth)
+                                if result:
+                                    return result
+                        
+                        elif isinstance(obj, list):
+                            for item in obj:
+                                result = find_product_details(item, depth + 1, max_depth)
+                                if result:
+                                    return result
+                        
+                        return None
+                    
+                    product_details = find_product_details(json_data)
+                    
+                    if product_details and isinstance(product_details, list):
+                        description_parts = []
+                        for detail in product_details:
+                            if isinstance(detail, dict):
+                                attr_name = detail.get("attr_name")
+                                attr_value = detail.get("attr_value")
+                                if attr_name and attr_value and attr_name.strip() and attr_value.strip():
+                                    description_parts.append(f"{attr_name}: {attr_value}")
+                        
+                        if description_parts:
+                            description = "; ".join(description_parts)
+                            verbose_output(f"{BackgroundColors.GREEN}Description extracted from JSON productDetails ({len(description_parts)} attributes, {len(description)} chars).{Style.RESET_ALL}")
+                            return description
+                
+                except (json.JSONDecodeError, AttributeError, TypeError, KeyError) as e:
+                    verbose_output(f"{BackgroundColors.YELLOW}Error parsing JSON script tag: {e}{Style.RESET_ALL}")
+                    continue  # Skip invalid or incompatible JSON
+        
+        except Exception as e:
+            verbose_output(f"{BackgroundColors.YELLOW}Error extracting description from JSON: {e}{Style.RESET_ALL}")
+        
+        return "No description available"  # Return default message when description is not found
+
+
     def detect_international(self, soup=None) -> bool:
         """
         Detects whether the product has only international shipping available.
