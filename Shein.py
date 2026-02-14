@@ -701,48 +701,75 @@ class Shein:
         """
         
         if soup is None:  # Guard against None to avoid attribute access on None
-            verbose_output(f"{BackgroundColors.YELLOW}No soup provided for shipping detection.{Style.RESET_ALL}")
-            return False  # Default to False when no soup provided
-        
-        try:
-            for tag, attrs in HTML_SELECTORS["shipping_options"]:  # Iterate through each selector combination
-                shipping_elements = soup.find_all(tag, attrs if attrs else None)  # Search for all matching elements
-                if shipping_elements:  # Verify if matching elements were found
-                    verbose_output(f"{BackgroundColors.GREEN}Found {len(shipping_elements)} shipping option elements.{Style.RESET_ALL}")
-                    
-                    national_available = False
-                    international_available = False
-                    
-                    for element in shipping_elements:  # Check each shipping option
-                        inner_element = element.find("div", {"class": "product-intro__size-radio-inner"})
-                        if inner_element:
-                            shipping_text = inner_element.get_text(strip=True)
-                            
-                            if "Envio Nacional" in shipping_text or "Nacional" in shipping_text:
-                                is_soldout = "product-intro__size-radio_soldout" in element.get("class", [])
-                                is_disabled = "product-intro__size-radio_disabled" in element.get("class", [])
-                                if not is_soldout and not is_disabled:
-                                    national_available = True
-                                    verbose_output(f"{BackgroundColors.GREEN}National shipping is available.{Style.RESET_ALL}")
-                            
-                            elif "Internacional" in shipping_text:
-                                is_active = "product-intro__size-radio_active" in element.get("class", [])
-                                if is_active or not national_available:  # International is active or national is not available
-                                    international_available = True
-                                    verbose_output(f"{BackgroundColors.GREEN}International shipping is available.{Style.RESET_ALL}")
-                    
-                    if international_available and not national_available:
-                        verbose_output(f"{BackgroundColors.YELLOW}Product has ONLY international shipping.{Style.RESET_ALL}")
-                        return True
-                    else:
-                        verbose_output(f"{BackgroundColors.GREEN}Product has national shipping available.{Style.RESET_ALL}")
-                        return False
-            
-            verbose_output(f"{BackgroundColors.YELLOW}No shipping options found.{Style.RESET_ALL}")
-            return False  # Default to False if no shipping elements found
-        
-        except Exception as e:
-            verbose_output(f"{BackgroundColors.RED}Error detecting international shipping: {e}{Style.RESET_ALL}")
+            verbose_output(f"{BackgroundColors.YELLOW}No soup provided for shipping detection.{Style.RESET_ALL}")  # Log missing soup
+            return False  # Default to False
+
+        try:  # Begin detection
+            for tag, attrs in HTML_SELECTORS["shipping_options"]:  # Iterate shipping selectors
+                shipping_elements = soup.find_all(tag, attrs if attrs else None)  # Find matching elements
+                if not shipping_elements:  # No elements for this selector
+                    continue  # Try next selector
+
+                verbose_output(f"{BackgroundColors.GREEN}Found {len(shipping_elements)} shipping option elements.{Style.RESET_ALL}")  # Log count
+
+                national_available = False  # Flag: national available
+                national_soldout = False  # Flag: national sold out
+                international_available = False  # Flag: international available
+                international_soldout = False  # Flag: international sold out
+
+                for element in shipping_elements:  # Iterate found elements
+                    aria = element.get("aria-label")  # Read aria-label
+                    if aria is None:  # Missing aria-label
+                        continue  # Skip element
+
+                    classes = element.get("class") or []  # Get class list
+                    is_soldout = any("_soldout" in c for c in classes)  # Detect sold-out via class
+
+                    if aria == "Envio Nacional":  # Exact match national
+                        if is_soldout:  # If marked sold out
+                            national_soldout = True  # Mark sold out
+                            verbose_output(f"{BackgroundColors.YELLOW}Found 'Envio Nacional' marked sold out.{Style.RESET_ALL}")  # Log sold out
+                        else:  # Available
+                            national_available = True  # Mark available
+                            verbose_output(f"{BackgroundColors.GREEN}Found available 'Envio Nacional'.{Style.RESET_ALL}")  # Log available
+
+                    elif aria == "Internacional":  # Exact match international
+                        if is_soldout:  # If marked sold out
+                            international_soldout = True  # Mark sold out
+                            verbose_output(f"{BackgroundColors.YELLOW}Found 'Internacional' marked sold out.{Style.RESET_ALL}")  # Log sold out
+                        else:  # Available
+                            international_available = True  # Mark available
+                            verbose_output(f"{BackgroundColors.GREEN}Found available 'Internacional'.{Style.RESET_ALL}")  # Log available
+
+                if (not national_available) and international_available:  # National not available and international available
+                    self.product_data["INTERNATIONAL_ONLY"] = True  # Set international-only
+                    self.product_data.pop("OUT_OF_STOCK", None)  # Clear out_of_stock
+                    verbose_output(f"{BackgroundColors.YELLOW}Product has ONLY international shipping.{Style.RESET_ALL}")  # Log result
+                    return True  # Return True
+
+                if national_available and international_available:  # Both available
+                    self.product_data["INTERNATIONAL_ONLY"] = False  # Not international-only
+                    self.product_data.pop("OUT_OF_STOCK", None)  # Clear out_of_stock
+                    verbose_output(f"{BackgroundColors.GREEN}Product has both national and international shipping available.{Style.RESET_ALL}")  # Log result
+                    return False  # Return False
+
+                if (national_soldout or (not national_available)) and (international_soldout or (not international_available)) and (national_soldout or international_soldout):  # Both unavailable
+                    self.product_data["OUT_OF_STOCK"] = True  # Mark out of stock
+                    self.product_data["INTERNATIONAL_ONLY"] = False  # Clear international-only
+                    verbose_output(f"{BackgroundColors.RED}Both shipping options are sold out — treating product as OUT_OF_STOCK.{Style.RESET_ALL}")  # Log out of stock
+                    return False  # Return False
+
+                if national_available:  # National available only or detected
+                    self.product_data["INTERNATIONAL_ONLY"] = False  # Not international-only
+                    self.product_data.pop("OUT_OF_STOCK", None)  # Clear out_of_stock
+                    verbose_output(f"{BackgroundColors.GREEN}National shipping available or detected; not international-only.{Style.RESET_ALL}")  # Log national available
+                    return False  # Return False
+
+            verbose_output(f"{BackgroundColors.YELLOW}No shipping options found.{Style.RESET_ALL}")  # No shipping elements found
+            return False  # Preserve behavior when missing
+
+        except Exception as e:  # Unexpected error
+            verbose_output(f"{BackgroundColors.RED}Error detecting international shipping: {e}{Style.RESET_ALL}")  # Log exception
             return False  # Default to False on error
 
 
