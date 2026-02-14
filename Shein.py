@@ -374,6 +374,27 @@ class Shein:
             print(f"{BackgroundColors.RED}Error reading local HTML file: {e}{Style.RESET_ALL}")  # Alert user about file reading error
             return None  # Return None to indicate reading failed
 
+    def extract_product_name(self, soup=None):
+        """
+        Extracts the product name from the parsed HTML soup.
+
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: Product name string or "Unknown Product" if not found
+        """
+
+        if soup is None:  # Guard against None to satisfy static checkers and avoid attribute access on None
+            return "Unknown Product"  # Return default when no soup provided
+        for tag, attrs in HTML_SELECTORS["product_name"]:  # Iterate through each selector combination from centralized dictionary
+            name_element = soup.find(tag, attrs if attrs else None)  # Search for element matching current selector
+            if name_element:  # Verify if matching element was found
+                product_name = name_element.get_text(strip=True)  # Extract and clean text content from element (preserve original casing)
+                if product_name and product_name != "":  # Validate that extracted name is not empty
+                    verbose_output(f"{BackgroundColors.GREEN}Product name: {BackgroundColors.CYAN}{product_name}{Style.RESET_ALL}")  # Log successfully extracted product name
+                    return product_name  # Return the product name immediately when found
+        verbose_output(f"{BackgroundColors.YELLOW}Product name not found, using default.{Style.RESET_ALL}")  # Warn that product name could not be extracted
+        return "Unknown Product"  # Return default placeholder when name extraction fails
+
+
     def extract_current_price(self, soup=None):
         """
         Extracts the current price from the parsed HTML soup.
