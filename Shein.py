@@ -121,6 +121,9 @@ HTML_SELECTORS = {
     ],
     "description": [  # List of CSS selectors for product description in priority order
         ("div", {"class": "product-intro__attr-list-text"}),  # Shein description container with specific class
+        ("div", {"class": "product-intro__attr-des"}),  # Shein description container with attr-des class
+        ("div", {"class": "product-intro__attr-list-text product-intro__attr-list-textMargin"}),  # Shein description container with attr-des class
+        ("div", {"class": "product-intro__attr-wrap"}),  # Shein description container with attr-des class
         ("div", {"class": re.compile(r".*description.*", re.IGNORECASE)}),  # Generic description pattern fallback
         ("p", {"class": re.compile(r".*description.*", re.IGNORECASE)}),  # Paragraph element containing description as last resort fallback
     ],
