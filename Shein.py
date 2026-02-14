@@ -374,6 +374,30 @@ class Shein:
             print(f"{BackgroundColors.RED}Error reading local HTML file: {e}{Style.RESET_ALL}")  # Alert user about file reading error
             return None  # Return None to indicate reading failed
 
+    def to_sentence_case(self, text=""):
+        """
+        Converts text to sentence case (first letter of each sentence uppercase).
+
+        :param text: The text to convert
+        :return: Text in sentence case
+        """
+
+        if not text:  # Validate that input text is not empty or None
+            return text  # Return original text if it's empty to avoid unnecessary processing
+
+        sentences = re.split(r"([.!?]\s*)", text)  # Split text into sentences while keeping delimiters
+        result = []  # Initialize list to hold processed sentences
+        for i, sentence in enumerate(sentences):  # Iterate through each sentence with index for processing
+            if sentence.strip():  # Check if sentence has non-whitespace content before processing
+                if i % 2 == 0:  # Process only the actual sentences, not the delimiters
+                    sentence = sentence.strip()  # Remove leading and trailing whitespace from sentence
+                    if sentence:  # Validate that sentence is not empty after stripping
+                        sentence = sentence[0].upper() + sentence[1:].lower()  # Convert first character to uppercase and the rest to lowercase for sentence case formatting
+                result.append(sentence)  # Add processed sentence or delimiter back to result list
+
+        return "".join(result)  # Join all processed sentences and delimiters back into a single string and return it
+
+
     def download_single_image(self, image_url: str, output_dir: str, index: int) -> Optional[str]:
         """
         Downloads a single product image from URL or copies from local path.
