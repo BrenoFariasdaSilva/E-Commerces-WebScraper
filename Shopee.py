@@ -206,6 +206,23 @@ class Shopee:
             )  # End of verbose output call
 
 
+ def prefix_international_name(self, product_name: str) -> str:
+        """
+        Adds "INTERNACIONAL - " prefix to product name if not already present.
+        
+        :param product_name: Original product name
+        :return: Product name with INTERNACIONAL prefix
+        """
+        
+        if not product_name.upper().startswith("INTERNACIONAL"):  # Check if prefix not already present
+            product_name = f"INTERNACIONAL - {product_name}"  # Add INTERNACIONAL prefix
+            verbose_output(  # Log name modification
+                f"{BackgroundColors.GREEN}Updated product name: {BackgroundColors.CYAN}{product_name}{Style.RESET_ALL}"
+            )  # End of verbose output call
+        
+        return product_name  # Return modified product name
+
+
  def extract_current_price(self, soup: BeautifulSoup) -> Tuple[str, str]:
         """
         Extracts the current price from the parsed HTML soup.
