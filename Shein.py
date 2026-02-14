@@ -177,7 +177,7 @@ RUN_FUNCTIONS = {
     "Play Sound": True,  # Set to True to play a sound when the program finishes
 }
 
-# Class Definition:
+# Classes Definitions:
 
 class Shein:
     """
