@@ -205,6 +205,75 @@ class Shopee:
             )  # End of verbose output call
 
 
+    def detect_international(self, soup: BeautifulSoup) -> bool:
+        """
+        Detects if the product is international by checking for the international import declaration text.
+        Looks for "Produto internacional objeto de declaração de importação e sujeito a impostos estaduais e federais"
+        in elements with class="NzLZHV", or falls back to checking "País de Origem" (Country of Origin) field.
+        
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: True if product is international, False otherwise
+        """
+        
+        verbose_output(  # Log detection attempt
+            f"{BackgroundColors.GREEN}Checking if product is international...{Style.RESET_ALL}"
+        )  # End of verbose output call
+        
+        try:  # Attempt to detect international status with error handling
+            international_elements = soup.find_all("span", class_="NzLZHV")
+            
+            for element in international_elements:  # Iterate through each element
+                if not isinstance(element, Tag):  # Ensure element is a BeautifulSoup Tag
+                    continue  # Skip non-Tag elements
+                
+                element_text = element.get_text(strip=True)  # Extract and clean element text
+                
+                if "Produto internacional objeto de declaração de importação" in element_text:
+                    verbose_output(  # Log international detection
+                        f"{BackgroundColors.YELLOW}Product is INTERNATIONAL (import declaration found){Style.RESET_ALL}"
+                    )  # End of verbose output call
+                    return True  # Return True for international product
+            
+            detail_labels = soup.find_all("h3", HTML_SELECTORS["detail_label"])
+            
+            for label in detail_labels:  # Iterate through each detail label
+                if not isinstance(label, Tag):  # Ensure element is a BeautifulSoup Tag
+                    continue  # Skip non-Tag elements
+                
+                label_text = label.get_text(strip=True)  # Extract and clean label text
+                
+                if "País de Origem" in label_text or "Country of Origin" in label_text:
+                    parent = label.parent  # Get parent container
+                    if parent and isinstance(parent, Tag):  # Ensure parent is a Tag
+                        value_element = parent.find("div")  # Get first div in parent (contains the value)
+                        if value_element and isinstance(value_element, Tag):
+                            country_value = value_element.get_text(strip=True)  # Extract country value
+                            
+                            verbose_output(  # Log detected country
+                                f"{BackgroundColors.GREEN}Country of Origin: {BackgroundColors.CYAN}{country_value}{Style.RESET_ALL}"
+                            )  # End of verbose output call
+                            
+                            if country_value.lower() not in ["brasil", "brazil"]:
+                                verbose_output(  # Log international detection
+                                    f"{BackgroundColors.YELLOW}Product is INTERNATIONAL (from {country_value}){Style.RESET_ALL}"
+                                )  # End of verbose output call
+                                return True  # Return True for international product
+                            else:
+                                verbose_output(  # Log domestic product
+                                    f"{BackgroundColors.GREEN}Product is domestic (from Brazil){Style.RESET_ALL}"
+                                )  # End of verbose output call
+                                return False  # Return False for domestic product
+            
+            verbose_output(  # Log country field not found
+                f"{BackgroundColors.YELLOW}International indicators not found, assuming domestic.{Style.RESET_ALL}"
+            )  # End of verbose output call
+            return False  # Default to domestic if no indicators found
+            
+        except Exception as e:  # Catch any exceptions during detection
+            print(f"{BackgroundColors.YELLOW}Warning: Error detecting international status: {e}{Style.RESET_ALL}")  # Warn user about detection error
+            return False  # Default to domestic on error
+
+
     def prefix_international_name(self, product_name: str) -> str:
         """
         Adds "INTERNACIONAL - " prefix to product name if not already present.
