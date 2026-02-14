@@ -375,6 +375,71 @@ class Shein:
             return None  # Return None to indicate reading failed
 
 
+    def find_video_urls(self, soup=None) -> List[str]:
+        """
+        Extracts all video URLs from the product gallery.
+        Searches for video elements or JSON data containing video information.
+
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: List of video URLs (absolute URLs or relative paths for offline mode)
+        """
+        
+        if soup is None:  # Guard against None to avoid attribute access on None
+            verbose_output(f"{BackgroundColors.YELLOW}No soup provided for video extraction.{Style.RESET_ALL}")
+            return []  # Return empty list when no soup provided
+        
+        video_urls = []
+        
+        try:
+            video_tags = soup.find_all("video")
+            for video_tag in video_tags:
+                video_src = video_tag.get("src")
+                if video_src:
+                    if not video_src.startswith(("http://", "https://")):
+                        if self.local_html_path:
+                            video_urls.append(video_src)
+                        else:
+                            video_src = urljoin(self.url, video_src)
+                            video_urls.append(video_src)
+                    else:
+                        video_urls.append(video_src)
+                
+                source_tags = video_tag.find_all("source")
+                for source_tag in source_tags:
+                    src = source_tag.get("src")
+                    if src and src not in video_urls:
+                        if not src.startswith(("http://", "https://")):
+                            if self.local_html_path:
+                                video_urls.append(src)
+                            else:
+                                src = urljoin(self.url, src)
+                                video_urls.append(src)
+                        else:
+                            video_urls.append(src)
+            
+            script_tags = soup.find_all("script", {"type": "application/json"})
+            for script_tag in script_tags:
+                try:
+                    json_data = json.loads(script_tag.string)
+                    if isinstance(json_data, dict):
+                        video_url = self.extract_video_from_json(json_data)
+                        if video_url and video_url not in video_urls:
+                            video_urls.append(video_url)
+                except (json.JSONDecodeError, AttributeError, TypeError):
+                    continue  # Skip invalid JSON
+            
+            if video_urls:
+                verbose_output(f"{BackgroundColors.GREEN}Extracted {len(video_urls)} video URLs.{Style.RESET_ALL}")
+            else:
+                verbose_output(f"{BackgroundColors.YELLOW}No videos found in gallery.{Style.RESET_ALL}")
+            
+            return video_urls
+        
+        except Exception as e:
+            verbose_output(f"{BackgroundColors.RED}Error extracting video URLs: {e}{Style.RESET_ALL}")
+            return []  # Return empty list on error
+
+
     def extract_video_from_json(self, data: Any) -> Optional[str]:
         """
         Helper method to recursively search for video URLs in JSON data.
