@@ -374,6 +374,62 @@ class Shein:
             print(f"{BackgroundColors.RED}Error reading local HTML file: {e}{Style.RESET_ALL}")  # Alert user about file reading error
             return None  # Return None to indicate reading failed
 
+    def detect_international(self, soup=None) -> bool:
+        """
+        Detects whether the product has only international shipping available.
+        Checks for "Envio Nacional" (National Shipping) availability.
+        If "Envio Nacional" is sold out or not available, and "Internacional" is active/available, returns True.
+
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: True if only international shipping is available, False otherwise
+        """
+        
+        if soup is None:  # Guard against None to avoid attribute access on None
+            verbose_output(f"{BackgroundColors.YELLOW}No soup provided for shipping detection.{Style.RESET_ALL}")
+            return False  # Default to False when no soup provided
+        
+        try:
+            for tag, attrs in HTML_SELECTORS["shipping_options"]:  # Iterate through each selector combination
+                shipping_elements = soup.find_all(tag, attrs if attrs else None)  # Search for all matching elements
+                if shipping_elements:  # Verify if matching elements were found
+                    verbose_output(f"{BackgroundColors.GREEN}Found {len(shipping_elements)} shipping option elements.{Style.RESET_ALL}")
+                    
+                    national_available = False
+                    international_available = False
+                    
+                    for element in shipping_elements:  # Check each shipping option
+                        inner_element = element.find("div", {"class": "product-intro__size-radio-inner"})
+                        if inner_element:
+                            shipping_text = inner_element.get_text(strip=True)
+                            
+                            if "Envio Nacional" in shipping_text or "Nacional" in shipping_text:
+                                is_soldout = "product-intro__size-radio_soldout" in element.get("class", [])
+                                is_disabled = "product-intro__size-radio_disabled" in element.get("class", [])
+                                if not is_soldout and not is_disabled:
+                                    national_available = True
+                                    verbose_output(f"{BackgroundColors.GREEN}National shipping is available.{Style.RESET_ALL}")
+                            
+                            elif "Internacional" in shipping_text:
+                                is_active = "product-intro__size-radio_active" in element.get("class", [])
+                                if is_active or not national_available:  # International is active or national is not available
+                                    international_available = True
+                                    verbose_output(f"{BackgroundColors.GREEN}International shipping is available.{Style.RESET_ALL}")
+                    
+                    if international_available and not national_available:
+                        verbose_output(f"{BackgroundColors.YELLOW}Product has ONLY international shipping.{Style.RESET_ALL}")
+                        return True
+                    else:
+                        verbose_output(f"{BackgroundColors.GREEN}Product has national shipping available.{Style.RESET_ALL}")
+                        return False
+            
+            verbose_output(f"{BackgroundColors.YELLOW}No shipping options found.{Style.RESET_ALL}")
+            return False  # Default to False if no shipping elements found
+        
+        except Exception as e:
+            verbose_output(f"{BackgroundColors.RED}Error detecting international shipping: {e}{Style.RESET_ALL}")
+            return False  # Default to False on error
+
+
     def find_image_urls(self, soup=None) -> List[str]:
         """
         Extracts all image URLs from the product gallery.
