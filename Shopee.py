@@ -205,6 +205,33 @@ class Shopee:
             )  # End of verbose output call
 
 
+    def extract_current_price(self, soup: BeautifulSoup) -> Tuple[str, str]:
+        """
+        Extracts the current price from the parsed HTML soup.
+        
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: Tuple of (integer_part, decimal_part) for current price
+        """
+        
+        for tag, attrs in HTML_SELECTORS["current_price"]:  # Iterate through each selector combination from centralized dictionary
+            price_element = soup.find(tag, attrs if attrs else None)  # type: ignore[arg-type]  # Search for element matching current selector
+            if price_element:  # Verify if matching element was found
+                price_text = price_element.get_text(strip=True)  # Extract and clean text content from element
+                match = re.search(r"(\d+)[,.](\d{2})", price_text)  # Search for price pattern with integer and decimal parts
+                if match:  # Verify if price pattern was found in text
+                    integer_part = match.group(1)  # Extract integer part of price
+                    decimal_part = match.group(2)  # Extract decimal part of price
+                    verbose_output(  # Log successfully extracted current price
+                        f"{BackgroundColors.GREEN}Current price: R${integer_part},{decimal_part}{Style.RESET_ALL}"
+                    )  # End of verbose output call
+                    return integer_part, decimal_part  # Return price components as tuple
+        
+        verbose_output(  # Warn that current price could not be extracted
+            f"{BackgroundColors.YELLOW}Current price not found, using default.{Style.RESET_ALL}"
+        )  # End of verbose output call
+        return "0", "00"  # Return default zero price when extraction fails
+
+
     def extract_old_price(self, soup: BeautifulSoup) -> Tuple[str, str]:
         """
         Extracts the old price from the parsed HTML soup.
