@@ -838,6 +838,167 @@ class MercadoLivre:
             )  # Output error
             return None  # Return None on failure
     
+    def download_single_video(self, session, video_url, thumbnail_url, output_dir, video_count):
+        """
+        Downloads a single video and its thumbnail to the specified output directory.
+        Supports HLS (.m3u8) downloads using ffmpeg, HTTP downloads, and local file copying.
+        
+        :param session: Requests session object
+        :param video_url: URL of the video to download (HLS .m3u8, HTTP URL, or local path)
+        :param thumbnail_url: URL of the video thumbnail (optional, HTTP URL or local path)
+        :param output_dir: Directory to save the video
+        :param video_count: Counter for generating unique filenames
+        :return: Tuple of (video_path, thumbnail_path) or (None, None) if download failed
+        """
+        
+        video_path = None  # Path to the downloaded video file
+        thumbnail_path = None  # Path to the downloaded thumbnail file
+        
+        is_hls = video_url.endswith(".m3u8")  # Check if the video URL is an HLS stream (based on .m3u8 extension)
+        
+        try:  # Try to download or copy the video
+            if self.local_html_path and (video_url.startswith("./") or video_url.startswith("../") or not video_url.startswith(("http://", "https://"))):  # Check if this is a local file path (when using local_html_path)
+                html_dir = os.path.dirname(os.path.abspath(self.local_html_path))  # Get the directory of the local HTML file
+                local_video_path = os.path.normpath(os.path.join(html_dir, video_url))  # Resolve the local video path
+                
+                if not os.path.exists(local_video_path):  # Check if the local video file exists
+                    verbose_output(
+                        f"{BackgroundColors.YELLOW}Local video file not found: {local_video_path}{Style.RESET_ALL}"
+                    )  # Output a warning if the local video file is not found
+                    return (None, None)  # Return None for both video and thumbnail if the local video file is not found
+                
+                ext = os.path.splitext(local_video_path)[1]  # Get the file extension of the local video file
+                if not ext or ext not in [".mp4", ".webm", ".mov", ".avi"]:  # If the extension is missing or not a common video format
+                    ext = ".mp4"  # Default to mp4 (common video format)
+                
+                filename = f"video_{video_count:03d}{ext}"  # Create a filename for the video using the video count and extension
+                video_path = os.path.join(output_dir, filename)  # Create the full path for the video file in the output directory
+                
+                shutil.copy2(local_video_path, video_path)  # Copy the local video file to the output directory
+                
+                verbose_output(
+                    f"{BackgroundColors.GREEN}Copied video: {BackgroundColors.CYAN}{filename}{Style.RESET_ALL}"
+                )
+            elif is_hls:  # HLS streaming format - requires ffmpeg
+                verbose_output(
+                    f"{BackgroundColors.CYAN}Detected HLS stream (.m3u8), using ffmpeg...{Style.RESET_ALL}"
+                )
+                
+                try:  # Try to download HLS stream using ffmpeg
+                    filename = f"video_{video_count:03d}.mp4"  # Output filename (mp4 container for HLS)
+                    video_path = os.path.join(output_dir, filename)  # Create the full path for the video file in the output directory
+                    
+                    ffmpeg_cmd = [  # Construct the ffmpeg command to download the HLS stream
+                        "ffmpeg",
+                        "-i", video_url,  # Input HLS URL
+                        "-c", "copy",  # Copy codec (no re-encoding for speed)
+                        "-bsf:a", "aac_adtstoasc",  # AAC bitstream filter
+                        "-y",  # Overwrite output file if exists
+                        video_path  # Output file path
+                    ]
+                    
+                    result = subprocess.run(  # Run the ffmpeg command
+                        ffmpeg_cmd,  # Command to execute
+                        capture_output=True,  # Capture stdout and stderr
+                        text=True,  # Capture output as text
+                        timeout=120  # 2 minute timeout
+                    )
+                    
+                    if result.returncode == 0:  # Success
+                        verbose_output(
+                            f"{BackgroundColors.GREEN}Downloaded HLS video: {BackgroundColors.CYAN}{filename}{Style.RESET_ALL}"
+                        )
+                    else:  # ffmpeg failed
+                        print(
+                            f"{BackgroundColors.RED}ffmpeg failed with error: {result.stderr}{Style.RESET_ALL}"
+                        )
+                        video_path = None  # Set video_path to None on failure
+                        return (None, None)  # Return None for both video and thumbnail if ffmpeg failed
+                
+                except FileNotFoundError:  # ffmpeg not found
+                    print(
+                        f"{BackgroundColors.YELLOW}ffmpeg not found. Please install ffmpeg to download HLS videos.{Style.RESET_ALL}"
+                    )
+                    print(
+                        f"{BackgroundColors.YELLOW}Windows: Download from https://ffmpeg.org/download.html{Style.RESET_ALL}"
+                    )
+                    print(
+                        f"{BackgroundColors.YELLOW}Video URL saved: {video_url}{Style.RESET_ALL}"
+                    )
+                    return (None, None)  # Return None for both video and thumbnail if ffmpeg is not available
+                except subprocess.TimeoutExpired:  # ffmpeg timed out
+                    print(
+                        f"{BackgroundColors.RED}ffmpeg timeout while downloading video (2 min exceeded){Style.RESET_ALL}"
+                    )
+                    return (None, None)  # Return None for both video and thumbnail if ffmpeg timed out
+            else:  # Regular HTTP video URL
+                video_response = session.get(video_url, timeout=30)  # Download video (longer timeout)
+                video_response.raise_for_status()  # Raise exception on bad status
+                
+                parsed_url = urlparse(video_url)  # Parse URL
+                ext = os.path.splitext(parsed_url.path)[1]  # Get file extension
+                if not ext or ext not in [".mp4", ".webm", ".mov", ".avi"]:  # If no extension or not a common video format
+                    ext = ".mp4"  # Default to mp4 (common video format)
+                
+                filename = f"video_{video_count:03d}{ext}"  # Create filename
+                video_path = os.path.join(output_dir, filename)  # Create path
+                
+                with open(video_path, "wb") as f:  # Write file
+                    f.write(video_response.content)  # Write content
+                
+                verbose_output(
+                    f"{BackgroundColors.GREEN}Downloaded video: {BackgroundColors.CYAN}{filename}{Style.RESET_ALL}"
+                )  # Output verbose
+            
+            if thumbnail_url and video_path:  # Only download thumbnail if video succeeded
+                try:  # Try to download or copy the thumbnail
+                    if self.local_html_path and (thumbnail_url.startswith("./") or thumbnail_url.startswith("../") or not thumbnail_url.startswith(("http://", "https://"))):  # Check if this is a local file path (when using local_html_path)
+                        html_dir = os.path.dirname(os.path.abspath(self.local_html_path))  # Get the directory of the local HTML file
+                        local_thumb_path = os.path.normpath(os.path.join(html_dir, thumbnail_url))  # Resolve the local thumbnail path
+                        
+                        if os.path.exists(local_thumb_path):  # Check if the local thumbnail file exists
+                            thumb_ext = os.path.splitext(local_thumb_path)[1]  # Get the file extension of the local thumbnail file
+                            if not thumb_ext:  # If the extension is missing
+                                thumb_ext = ".jpg"  # Default to jpg for thumbnails
+                            
+                            thumb_filename = f"video_{video_count:03d}_thumb{thumb_ext}"  # Create a filename for the thumbnail using the video count and extension
+                            thumbnail_path = os.path.join(output_dir, thumb_filename)  # Create the full path for the thumbnail file in the output directory
+                            
+                            shutil.copy2(local_thumb_path, thumbnail_path)  # Copy the local thumbnail file to the output directory
+                            
+                            verbose_output(
+                                f"{BackgroundColors.GREEN}Copied thumbnail: {BackgroundColors.CYAN}{thumb_filename}{Style.RESET_ALL}"
+                            )
+                    else:  # Download from HTTP URL
+                        thumb_response = session.get(thumbnail_url, timeout=10)  # Download thumbnail
+                        thumb_response.raise_for_status()  # Raise exception on bad status
+                        
+                        thumb_ext = os.path.splitext(urlparse(thumbnail_url).path)[1]  # Get file extension from thumbnail URL
+                        if not thumb_ext:  # If no extension
+                            thumb_ext = ".jpg"  # Default to jpg for thumbnails
+                        
+                        thumb_filename = f"video_{video_count:03d}_thumb{thumb_ext}"  # Create filename for thumbnail
+                        thumbnail_path = os.path.join(output_dir, thumb_filename)  # Create path for thumbnail
+                        
+                        with open(thumbnail_path, "wb") as f:  # Write thumbnail file
+                            f.write(thumb_response.content)  # Write content
+                        
+                        verbose_output(
+                            f"{BackgroundColors.GREEN}Downloaded thumbnail: {BackgroundColors.CYAN}{thumb_filename}{Style.RESET_ALL}"
+                        )
+                except Exception as e:  # If error downloading/copying thumbnail
+                    verbose_output(
+                        f"{BackgroundColors.YELLOW}Warning: Could not download/copy thumbnail: {e}{Style.RESET_ALL}"
+                    )
+            
+            return (video_path, thumbnail_path)  # Return the paths to the downloaded video and thumbnail (thumbnail may be None if it failed or was not provided)
+            
+        except Exception as e:  # If error
+            verbose_output(
+                f"{BackgroundColors.RED}Error downloading/copying video: {e}{Style.RESET_ALL}"
+            )  # Output error
+            return (None, None)  # Return None on failure
+
     def create_product_description_file(self, product_data, output_dir, product_name_safe, url):
         """
         Creates a text file with product description and details.
