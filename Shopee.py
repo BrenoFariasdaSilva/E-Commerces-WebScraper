@@ -206,6 +206,158 @@ class Shopee:
             )  # End of verbose output call
 
 
+ def download_single_video(self, video_url: str, output_dir: str, video_count: int) -> Optional[str]:
+        """
+        Downloads or copies a single video to the specified output directory.
+        Supports HLS (.m3u8) downloads using ffmpeg, HTTP downloads, and local file copying.
+        
+        :param video_url: URL of the video to download (HLS .m3u8, HTTP URL, or local path)
+        :param output_dir: Directory to save the video
+        :param video_count: Counter for generating unique filenames
+        :return: Path to downloaded video file or None if download failed
+        """
+        
+        video_path = None  # Initialize video path variable
+        is_hls = video_url.endswith(".m3u8")  # Check if video URL is HLS stream
+        
+        try:  # Attempt to download or copy the video with error handling
+            if self.local_html_path and (video_url.startswith("./") or video_url.startswith("../") or not video_url.startswith(("http://", "https://"))):
+                html_dir = os.path.dirname(os.path.abspath(self.local_html_path))  # Get directory of local HTML file
+                local_video_path = os.path.normpath(os.path.join(html_dir, video_url))  # Resolve local video path
+                
+                if not os.path.exists(local_video_path):  # Check if local video file exists
+                    verbose_output(  # Log warning about missing file
+                        f"{BackgroundColors.YELLOW}Local video file not found: {local_video_path}{Style.RESET_ALL}"
+                    )  # End of verbose output call
+                    return None  # Return None if file not found
+                
+                ext = os.path.splitext(local_video_path)[1]  # Get file extension
+                if not ext or ext not in [".mp4", ".webm", ".mov", ".avi"]:  # If extension is missing or not common video format
+                    ext = ".mp4"  # Default to mp4
+                
+                filename = f"video_{video_count:03d}{ext}"  # Generate filename with index and extension
+                video_path = os.path.join(output_dir, filename)  # Create full path for video file
+                
+                shutil.copy2(local_video_path, video_path)  # Copy local video to output directory
+                
+                verbose_output(  # Log successful copy
+                    f"{BackgroundColors.GREEN}Copied video: {BackgroundColors.CYAN}{filename}{Style.RESET_ALL}"
+                )  # End of verbose output call
+                
+                return video_path  # Return file path
+            
+            if self.local_html_path and video_url.startswith(("http://", "https://")):
+                html_dir = os.path.dirname(os.path.abspath(self.local_html_path))  # Get directory of local HTML file
+                images_dir = os.path.join(html_dir, "images")  # Get images subdirectory path
+                
+                video_filename = os.path.basename(urlparse(video_url).path)  # Extract filename from URL
+                if video_filename:  # If filename was extracted
+                    local_video_in_images = os.path.join(images_dir, video_filename)  # Check in images directory
+                    
+                    if os.path.exists(local_video_in_images):  # Check if video exists in images directory
+                        verbose_output(  # Log found in images directory
+                            f"{BackgroundColors.GREEN}Found video in images/ subdirectory: {video_filename}{Style.RESET_ALL}"
+                        )  # End of verbose output call
+                        
+                        ext = os.path.splitext(local_video_in_images)[1]  # Get file extension
+                        if not ext or ext not in [".mp4", ".webm", ".mov", ".avi"]:  # If extension is missing or not common video format
+                            ext = ".mp4"  # Default to mp4
+                        
+                        filename = f"video_{video_count:03d}{ext}"  # Generate filename with index and extension
+                        video_path = os.path.join(output_dir, filename)  # Create full path for video file
+                        
+                        shutil.copy2(local_video_in_images, video_path)  # Copy local video to output directory
+                        
+                        verbose_output(  # Log successful copy
+                            f"{BackgroundColors.GREEN}Copied video from images/: {BackgroundColors.CYAN}{filename}{Style.RESET_ALL}"
+                        )  # End of verbose output call
+                        
+                        return video_path  # Return file path
+            
+            if is_hls:  # HLS streaming format - requires ffmpeg
+                verbose_output(  # Log HLS detection
+                    f"{BackgroundColors.CYAN}Detected HLS stream (.m3u8), using ffmpeg...{Style.RESET_ALL}"
+                )  # End of verbose output call
+                
+                try:  # Try to download HLS stream with ffmpeg
+                    filename = f"video_{video_count:03d}.mp4"  # Output filename (mp4 container)
+                    video_path = os.path.join(output_dir, filename)  # Create full path
+                    
+                    ffmpeg_cmd = [  # Construct ffmpeg command
+                        "ffmpeg",
+                        "-i", video_url,  # Input HLS URL
+                        "-c", "copy",  # Copy codec (no re-encoding)
+                        "-bsf:a", "aac_adtstoasc",  # AAC bitstream filter
+                        "-y",  # Overwrite output file if exists
+                        video_path  # Output file path
+                    ]
+                    
+                    result = subprocess.run(  # Run ffmpeg command
+                        ffmpeg_cmd,  # Command to execute
+                        capture_output=True,  # Capture stdout and stderr
+                        text=True,  # Decode output as text
+                        timeout=300  # 5 minute timeout
+                    )
+                    
+                    if result.returncode == 0:  # Check if command succeeded
+                        verbose_output(  # Log successful download
+                            f"{BackgroundColors.GREEN}Downloaded HLS video: {BackgroundColors.CYAN}{filename}{Style.RESET_ALL}"
+                        )  # End of verbose output call
+                        return video_path  # Return file path
+                    else:  # ffmpeg command failed
+                        print(f"{BackgroundColors.RED}ffmpeg failed: {result.stderr}{Style.RESET_ALL}")  # Log error
+                        return None  # Return None on failure
+                        
+                except FileNotFoundError:  # ffmpeg not installed
+                    print(f"{BackgroundColors.RED}ffmpeg not found. Please install ffmpeg to download HLS videos.{Style.RESET_ALL}")  # Alert user
+                    return None  # Return None on failure
+                except subprocess.TimeoutExpired:  # ffmpeg timeout
+                    print(f"{BackgroundColors.RED}ffmpeg timeout after 5 minutes.{Style.RESET_ALL}")  # Alert user
+                    return None  # Return None on failure
+                    
+            else:  # Regular HTTP video download
+                if not video_url.startswith(("http://", "https://")):
+                    video_url = "https:" + video_url if video_url.startswith("//") else "https:" + video_url
+                
+                if self.page:  # If browser is available
+                    response = self.page.goto(video_url, timeout=30000)  # Navigate to video URL
+                    if response and response.ok:  # Verify response is successful
+                        ext = os.path.splitext(urlparse(video_url).path)[1] or ".mp4"  # Get extension
+                        filename = f"video_{video_count:03d}{ext}"  # Generate filename
+                        video_path = os.path.join(output_dir, filename)  # Create full path
+                        
+                        with open(video_path, "wb") as f:  # Open file in binary write mode
+                            f.write(response.body())  # Write response body to file
+                        
+                        verbose_output(  # Log successful download
+                            f"{BackgroundColors.GREEN}Downloaded video: {BackgroundColors.CYAN}{filename}{Style.RESET_ALL}"
+                        )  # End of verbose output call
+                        
+                        return video_path  # Return file path
+                else:  # Browser not available, use requests
+                    import requests  # Import requests for fallback
+                    response = requests.get(video_url, timeout=30)  # Download video
+                    if response.status_code == 200:  # Verify success
+                        ext = os.path.splitext(urlparse(video_url).path)[1] or ".mp4"  # Get extension
+                        filename = f"video_{video_count:03d}{ext}"  # Generate filename
+                        video_path = os.path.join(output_dir, filename)  # Create full path
+                        
+                        with open(video_path, "wb") as f:  # Open file in binary write mode
+                            f.write(response.content)  # Write content to file
+                        
+                        verbose_output(  # Log successful download
+                            f"{BackgroundColors.GREEN}Downloaded video: {BackgroundColors.CYAN}{filename}{Style.RESET_ALL}"
+                        )  # End of verbose output call
+                        
+                        return video_path  # Return file path
+        
+        except Exception as e:  # Catch any exceptions during download
+            verbose_output(  # Log error
+                f"{BackgroundColors.RED}Error downloading/copying video: {e}{Style.RESET_ALL}"
+            )  # End of verbose output call
+            return None  # Return None on failure
+
+
  def download_product_images(self, soup: BeautifulSoup, output_dir: str) -> List[str]:
         """
         Downloads all product images from the gallery.
