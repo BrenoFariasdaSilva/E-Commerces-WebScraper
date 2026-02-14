@@ -769,6 +769,75 @@ class MercadoLivre:
         
         return video_data  # Return list of (video_url, thumbnail_url) tuples
 
+    def download_single_image(self, session, img_url, output_dir, image_count):
+        """
+        Downloads a single image to the specified output directory.
+        Supports both HTTP downloads and local file copying.
+        
+        :param session: Requests session object
+        :param img_url: URL of the image to download (HTTP URL or local path)
+        :param output_dir: Directory to save the image
+        :param image_count: Counter for generating unique filenames
+        :return: Path to the downloaded file or None if download failed
+        """
+        
+        try:  # Try to download or copy the image
+            # Check if this is a local file path (when using local_html_path)
+            if self.local_html_path and (img_url.startswith("./") or img_url.startswith("../") or not img_url.startswith(("http://", "https://"))):
+                # Resolve local file path relative to HTML file location
+                html_dir = os.path.dirname(os.path.abspath(self.local_html_path))
+                local_img_path = os.path.normpath(os.path.join(html_dir, img_url))
+                
+                if not os.path.exists(local_img_path):
+                    verbose_output(
+                        f"{BackgroundColors.YELLOW}Local image file not found: {local_img_path}{Style.RESET_ALL}"
+                    )
+                    return None
+                
+                # Get file extension
+                ext = os.path.splitext(local_img_path)[1]
+                if not ext:
+                    ext = ".webp"
+                
+                filename = f"image_{image_count:03d}{ext}"
+                filepath = os.path.join(output_dir, filename)
+                
+                # Copy local file to output directory
+                shutil.copy2(local_img_path, filepath)
+                
+                verbose_output(
+                    f"{BackgroundColors.GREEN}Copied: {BackgroundColors.CYAN}{filename}{Style.RESET_ALL}"
+                )
+                
+                return filepath
+            else:
+                # Download from HTTP URL
+                img_response = session.get(img_url, timeout=10)  # Download image
+                img_response.raise_for_status()  # Raise exception on bad status
+                
+                parsed_url = urlparse(img_url)  # Parse URL
+                ext = os.path.splitext(parsed_url.path)[1]  # Get file extension
+                if not ext:  # If no extension
+                    ext = ".webp"  # Default to webp (common on Mercado Livre)
+                
+                filename = f"image_{image_count:03d}{ext}"  # Create filename
+                filepath = os.path.join(output_dir, filename)  # Create path
+                
+                with open(filepath, "wb") as f:  # Write file
+                    f.write(img_response.content)  # Write content
+                
+                verbose_output(
+                    f"{BackgroundColors.GREEN}Downloaded: {BackgroundColors.CYAN}{filename}{Style.RESET_ALL}"
+                )  # Output verbose
+                
+                return filepath  # Return the file path
+            
+        except Exception as e:  # If error
+            verbose_output(
+                f"{BackgroundColors.RED}Error downloading/copying image: {e}{Style.RESET_ALL}"
+            )  # Output error
+            return None  # Return None on failure
+    
     def create_product_description_file(self, product_data, output_dir, product_name_safe, url):
         """
         Creates a text file with product description and details.
