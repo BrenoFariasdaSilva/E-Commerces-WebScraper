@@ -838,21 +838,19 @@ class MercadoLivre:
             )  # Output error
             return None  # Return None on failure
     
-    def download_single_video(self, session, video_url, thumbnail_url, output_dir, video_count):
+    def download_single_video(self, session, video_url, output_dir, video_count):
         """
-        Downloads a single video and its thumbnail to the specified output directory.
+        Downloads a single video to the specified output directory.
         Supports HLS (.m3u8) downloads using ffmpeg, HTTP downloads, and local file copying.
         
         :param session: Requests session object
         :param video_url: URL of the video to download (HLS .m3u8, HTTP URL, or local path)
-        :param thumbnail_url: URL of the video thumbnail (optional, HTTP URL or local path)
         :param output_dir: Directory to save the video
         :param video_count: Counter for generating unique filenames
-        :return: Tuple of (video_path, thumbnail_path) or (None, None) if download failed
+        :return: Path to downloaded video file or None if download failed
         """
         
         video_path = None  # Path to the downloaded video file
-        thumbnail_path = None  # Path to the downloaded thumbnail file
         
         is_hls = video_url.endswith(".m3u8")  # Check if the video URL is an HLS stream (based on .m3u8 extension)
         
@@ -865,7 +863,7 @@ class MercadoLivre:
                     verbose_output(
                         f"{BackgroundColors.YELLOW}Local video file not found: {local_video_path}{Style.RESET_ALL}"
                     )  # Output a warning if the local video file is not found
-                    return (None, None)  # Return None for both video and thumbnail if the local video file is not found
+                    return None  # Return None if the local video file is not found
                 
                 ext = os.path.splitext(local_video_path)[1]  # Get the file extension of the local video file
                 if not ext or ext not in [".mp4", ".webm", ".mov", ".avi"]:  # If the extension is missing or not a common video format
@@ -913,7 +911,7 @@ class MercadoLivre:
                             f"{BackgroundColors.RED}ffmpeg failed with error: {result.stderr}{Style.RESET_ALL}"
                         )
                         video_path = None  # Set video_path to None on failure
-                        return (None, None)  # Return None for both video and thumbnail if ffmpeg failed
+                        return None  # Return None if ffmpeg failed
                 
                 except FileNotFoundError:  # ffmpeg not found
                     print(
@@ -925,12 +923,12 @@ class MercadoLivre:
                     print(
                         f"{BackgroundColors.YELLOW}Video URL saved: {video_url}{Style.RESET_ALL}"
                     )
-                    return (None, None)  # Return None for both video and thumbnail if ffmpeg is not available
+                    return None  # Return None if ffmpeg is not available
                 except subprocess.TimeoutExpired:  # ffmpeg timed out
                     print(
                         f"{BackgroundColors.RED}ffmpeg timeout while downloading video (2 min exceeded){Style.RESET_ALL}"
                     )
-                    return (None, None)  # Return None for both video and thumbnail if ffmpeg timed out
+                    return None  # Return None if ffmpeg timed out
             else:  # Regular HTTP video URL
                 video_response = session.get(video_url, timeout=30)  # Download video (longer timeout)
                 video_response.raise_for_status()  # Raise exception on bad status
@@ -950,54 +948,13 @@ class MercadoLivre:
                     f"{BackgroundColors.GREEN}Downloaded video: {BackgroundColors.CYAN}{filename}{Style.RESET_ALL}"
                 )  # Output verbose
             
-            if thumbnail_url and video_path:  # Only download thumbnail if video succeeded
-                try:  # Try to download or copy the thumbnail
-                    if self.local_html_path and (thumbnail_url.startswith("./") or thumbnail_url.startswith("../") or not thumbnail_url.startswith(("http://", "https://"))):  # Check if this is a local file path (when using local_html_path)
-                        html_dir = os.path.dirname(os.path.abspath(self.local_html_path))  # Get the directory of the local HTML file
-                        local_thumb_path = os.path.normpath(os.path.join(html_dir, thumbnail_url))  # Resolve the local thumbnail path
-                        
-                        if os.path.exists(local_thumb_path):  # Check if the local thumbnail file exists
-                            thumb_ext = os.path.splitext(local_thumb_path)[1]  # Get the file extension of the local thumbnail file
-                            if not thumb_ext:  # If the extension is missing
-                                thumb_ext = ".jpg"  # Default to jpg for thumbnails
-                            
-                            thumb_filename = f"video_{video_count:03d}_thumb{thumb_ext}"  # Create a filename for the thumbnail using the video count and extension
-                            thumbnail_path = os.path.join(output_dir, thumb_filename)  # Create the full path for the thumbnail file in the output directory
-                            
-                            shutil.copy2(local_thumb_path, thumbnail_path)  # Copy the local thumbnail file to the output directory
-                            
-                            verbose_output(
-                                f"{BackgroundColors.GREEN}Copied thumbnail: {BackgroundColors.CYAN}{thumb_filename}{Style.RESET_ALL}"
-                            )
-                    else:  # Download from HTTP URL
-                        thumb_response = session.get(thumbnail_url, timeout=10)  # Download thumbnail
-                        thumb_response.raise_for_status()  # Raise exception on bad status
-                        
-                        thumb_ext = os.path.splitext(urlparse(thumbnail_url).path)[1]  # Get file extension from thumbnail URL
-                        if not thumb_ext:  # If no extension
-                            thumb_ext = ".jpg"  # Default to jpg for thumbnails
-                        
-                        thumb_filename = f"video_{video_count:03d}_thumb{thumb_ext}"  # Create filename for thumbnail
-                        thumbnail_path = os.path.join(output_dir, thumb_filename)  # Create path for thumbnail
-                        
-                        with open(thumbnail_path, "wb") as f:  # Write thumbnail file
-                            f.write(thumb_response.content)  # Write content
-                        
-                        verbose_output(
-                            f"{BackgroundColors.GREEN}Downloaded thumbnail: {BackgroundColors.CYAN}{thumb_filename}{Style.RESET_ALL}"
-                        )
-                except Exception as e:  # If error downloading/copying thumbnail
-                    verbose_output(
-                        f"{BackgroundColors.YELLOW}Warning: Could not download/copy thumbnail: {e}{Style.RESET_ALL}"
-                    )
-            
-            return (video_path, thumbnail_path)  # Return the paths to the downloaded video and thumbnail (thumbnail may be None if it failed or was not provided)
+            return video_path  # Return the path to the downloaded video
             
         except Exception as e:  # If error
             verbose_output(
                 f"{BackgroundColors.RED}Error downloading/copying video: {e}{Style.RESET_ALL}"
             )  # Output error
-            return (None, None)  # Return None on failure
+            return None  # Return None on failure
 
     def download_product_images(self, session, product_url, output_dir, soup=None):
         """
@@ -1034,7 +991,7 @@ class MercadoLivre:
         :param product_url: URL of the product page
         :param output_dir: Directory to save videos
         :param soup: Optional BeautifulSoup object (to avoid re-fetching page)
-        :return: List of tuples (video_path, thumbnail_path) for downloaded videos
+        :return: List of downloaded video file paths
         """
         
         downloaded_videos = []  # List to store downloaded video file paths
@@ -1045,11 +1002,11 @@ class MercadoLivre:
         video_data = self.find_video_urls(soup)  # Find all video URLs
         
         video_count = 0  # Counter for videos
-        for video_url, thumbnail_url in video_data:  # Iterate through video data
+        for video_url, _thumbnail_url in video_data:  # Iterate through video data (ignore thumbnail_url)
             video_count += 1  # Increment counter
-            paths = self.download_single_video(session, video_url, thumbnail_url, output_dir, video_count)  # Download video
-            if paths[0]:  # If download successful
-                downloaded_videos.append(paths)  # Add to list
+            video_path = self.download_single_video(session, video_url, output_dir, video_count)  # Download video
+            if video_path:  # If download successful
+                downloaded_videos.append(video_path)  # Add to list
         
         return downloaded_videos  # Return list of downloaded video files
 
@@ -1161,11 +1118,7 @@ class MercadoLivre:
             )  # Output the step message
             
             downloaded_videos = self.download_product_videos(self.session, self.product_url, output_dir, soup)  # Download videos
-            for video_path, thumbnail_path in downloaded_videos:  # Add videos and thumbnails to downloaded files
-                if video_path:  # Only add if video was downloaded successfully
-                    downloaded_files.append(video_path)  # Add video to downloaded files
-                if thumbnail_path:  # Only add if thumbnail was downloaded successfully
-                    downloaded_files.append(thumbnail_path)  # Add thumbnail to downloaded files
+            downloaded_files.extend(downloaded_videos)  # Add videos to downloaded files
             
             verbose_output(
                 f"{BackgroundColors.GREEN}Creating product description file...{Style.RESET_ALL}"
