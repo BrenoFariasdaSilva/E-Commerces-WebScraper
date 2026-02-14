@@ -375,6 +375,31 @@ class Shein:
             return None  # Return None to indicate reading failed
 
 
+    def scrape_product_info(self, html_content=""):
+        """
+        Scrapes product information from rendered HTML content.
+
+        :param html_content: Rendered HTML string
+        :return: Dictionary containing the scraped product data
+        """
+
+        verbose_output(f"{BackgroundColors.GREEN}Parsing product information...{Style.RESET_ALL}")
+        try:  # Attempt to parse product information with error handling
+            soup = BeautifulSoup(html_content, "html.parser")  # Parse HTML content into BeautifulSoup object
+            product_name = self.extract_product_name(soup)  # Extract product name from parsed HTML
+            current_price_int, current_price_dec = self.extract_current_price(soup)  # Extract current price integer and decimal parts
+            discount_percentage = self.extract_discount_percentage(soup)  # Extract discount percentage value
+            old_price_int, old_price_dec = self.extract_old_price(soup, current_price_int, current_price_dec, discount_percentage)  # Extract old price with computational fallback
+            description = self.extract_product_description(soup)  # Extract product description text
+            is_international = self.detect_international(soup)  # Detect if product has only international shipping
+            self.product_data = {"name": product_name, "current_price_integer": current_price_int, "current_price_decimal": current_price_dec, "old_price_integer": old_price_int, "old_price_decimal": old_price_dec, "discount_percentage": discount_percentage, "description": description, "url": self.product_url, "is_international": is_international}  # Store all extracted data in dictionary
+            self.print_product_info(self.product_data)  # Display extracted product information to user
+            return self.product_data  # Return complete product data dictionary
+        except Exception as e:  # Catch any exceptions during parsing
+            print(f"{BackgroundColors.RED}Error parsing product info: {e}{Style.RESET_ALL}")  # Alert user about parsing error
+            return None  # Return None to indicate parsing failed
+
+
     def create_directory(self, full_directory_name="", relative_directory_name=""):
         """
         Creates a directory if it does not exist.
