@@ -143,6 +143,7 @@ class MercadoLivre:
     It also generates a marketing description file in a predefined template format.
     """
 
+
     def __init__(self, url, local_html_path=None, prefix=""):
         """
         Initializes the MercadoLivre scraper with a product URL and optional local HTML file path.
@@ -171,6 +172,7 @@ class MercadoLivre:
             verbose_output(
                 f"{BackgroundColors.GREEN}Offline mode enabled. Will read from: {BackgroundColors.CYAN}{local_html_path}{Style.RESET_ALL}"
             )  # Output offline mode message
+
 
     def get_product_url(self):
         """
@@ -236,6 +238,7 @@ class MercadoLivre:
             self.product_url = self.url  # Use the original URL as fallback
             return self.product_url  # Return the URL
 
+
     def read_local_html(self):
         """
         Reads HTML content from a local file for offline scraping.
@@ -268,6 +271,7 @@ class MercadoLivre:
             print(f"{BackgroundColors.RED}Error reading local HTML file: {e}{Style.RESET_ALL}")  # Alert user about file reading error
             return None  # Return None to indicate reading failed
 
+
     def extract_product_name(self, soup):
         """
         Extracts the product name from the parsed HTML soup.
@@ -284,6 +288,7 @@ class MercadoLivre:
         )  # Output the verbose message
         
         return product_name  # Return the product name
+
 
     def detect_international(self, soup):
         """
@@ -303,6 +308,7 @@ class MercadoLivre:
             self.product_data["is_international"] = False  # Set the product data flag to False
             return False  # Return False on error
 
+
     def prefix_international_name(self):
         """
         Prefix the scraped product name with "INTERNACIONAL - " when
@@ -321,6 +327,7 @@ class MercadoLivre:
                 )  # Output the verbose message
         except Exception:  # If any error occurs during prefixing, skip it without changing the name
             pass
+
 
     def extract_current_price(self, soup):
         """
@@ -353,6 +360,7 @@ class MercadoLivre:
         
         return integer_part, decimal_part  # Return the price parts
 
+
     def extract_old_price(self, soup):
         """
         Extracts the old price from the parsed HTML soup.
@@ -384,6 +392,7 @@ class MercadoLivre:
         
         return integer_part, decimal_part  # Return the price parts
 
+
     def extract_discount_percentage(self, soup):
         """
         Extracts the discount percentage from the parsed HTML soup.
@@ -397,6 +406,7 @@ class MercadoLivre:
         
         return discount_percentage  # Return the discount percentage
 
+
     def extract_product_description(self, soup):
         """
         Extracts the product description from the parsed HTML soup.
@@ -409,6 +419,7 @@ class MercadoLivre:
         description = description_element.get_text(strip=True) if description_element else "No description available"  # Extract description
         
         return description  # Return the description
+
 
     def print_product_info(self, product_data):
         """
@@ -430,6 +441,7 @@ class MercadoLivre:
             f"  {BackgroundColors.CYAN}Discount:{Style.RESET_ALL} {product_data.get('discount_percentage', 'N/A')}\n"
             f"  {BackgroundColors.CYAN}Description:{Style.RESET_ALL} {product_data.get('description', 'N/A')[:100]}..."
         )  # Output the extracted information
+
 
     def scrape_product_info(self, verbose):
         """
@@ -496,6 +508,7 @@ class MercadoLivre:
             )  # Output the error message
             return None  # Return None on error
 
+
     def clean_description(self, text):
         """
         Cleans and preprocesses the product description by removing markdown formatting
@@ -524,6 +537,7 @@ class MercadoLivre:
         
         return text.strip()  # Return cleaned text
 
+
     def to_sentence_case(self, text):
         """
         Converts text to sentence case (first letter of each sentence uppercase).
@@ -547,6 +561,7 @@ class MercadoLivre:
                 result.append(sentence)  # Add to result
         
         return "".join(result)  # Join and return
+
 
     def is_valid_product_info(self, product_info):
         """
@@ -576,6 +591,7 @@ class MercadoLivre:
 
         return True  # Return True if data appears valid
 
+
     def create_directory(self, full_directory_name, relative_directory_name):
         """
         Creates a directory.
@@ -597,7 +613,8 @@ class MercadoLivre:
             print(
                 f"{BackgroundColors.GREEN}The creation of the {BackgroundColors.CYAN}{relative_directory_name}{BackgroundColors.GREEN} directory failed.{Style.RESET_ALL}"
             )
-    
+
+
     def create_output_directory(self, product_name_safe):
         """
         Creates the output directory for storing downloaded media files.
@@ -611,6 +628,7 @@ class MercadoLivre:
         self.create_directory(os.path.abspath(output_dir), output_dir.replace(".", ""))  # Create the output directory
         
         return output_dir  # Return the output directory path
+
 
     def fetch_product_page(self, session, product_url):
         """
@@ -631,6 +649,7 @@ class MercadoLivre:
         soup = BeautifulSoup(response.text, "html.parser")  # Parse the HTML content (use str to satisfy type checkers)
         
         return soup  # Return the parsed soup
+
 
     def find_image_urls(self, soup):
         """
@@ -677,7 +696,8 @@ class MercadoLivre:
         )
         
         return image_urls  # Return list of image URLs
-    
+
+
     def find_video_urls(self, soup):
         """
         Finds all video URLs from the product page's __PRELOADED_STATE__ JSON data.
@@ -752,6 +772,7 @@ class MercadoLivre:
         
         return video_data  # Return list of (video_url, thumbnail_url) tuples
 
+
     def download_single_image(self, session, img_url, output_dir, image_count):
         """
         Downloads a single image to the specified output directory.
@@ -815,7 +836,8 @@ class MercadoLivre:
                 f"{BackgroundColors.RED}Error downloading/copying image: {e}{Style.RESET_ALL}"
             )  # Output error
             return None  # Return None on failure
-    
+
+
     def download_single_video(self, session, video_url, output_dir, video_count):
         """
         Downloads a single video to the specified output directory.
@@ -934,6 +956,7 @@ class MercadoLivre:
             )  # Output error
             return None  # Return None on failure
 
+
     def download_product_images(self, session, product_url, output_dir, soup=None):
         """
         Downloads all product images from the gallery.
@@ -960,7 +983,8 @@ class MercadoLivre:
                 downloaded_images.append(filepath)  # Add to list
         
         return downloaded_images  # Return list of downloaded image files
-    
+
+
     def download_product_videos(self, session, product_url, output_dir, soup=None):
         """
         Downloads all product videos from the gallery.
@@ -987,6 +1011,7 @@ class MercadoLivre:
                 downloaded_videos.append(video_path)  # Add to list
         
         return downloaded_videos  # Return list of downloaded video files
+
 
     def create_product_description_file(self, product_data, output_dir, product_name_safe, url):
         """
@@ -1050,6 +1075,7 @@ class MercadoLivre:
                 f"{BackgroundColors.YELLOW}Warning: Could not create product description file: {e}{Style.RESET_ALL}"
             )  # Output warning
             return None  # Return None on failure
+
 
     def download_media(self):
         """
@@ -1117,7 +1143,8 @@ class MercadoLivre:
                 f"{BackgroundColors.RED}Unexpected error in download_media: {e}{Style.RESET_ALL}"
             )  # Output error
             return downloaded_files  # Return whatever was downloaded
-        
+
+
     def scrape(self, verbose=VERBOSE):
         """
         Main scraping method that orchestrates the entire scraping process.
