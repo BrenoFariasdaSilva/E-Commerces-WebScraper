@@ -374,6 +374,138 @@ class Shein:
             print(f"{BackgroundColors.RED}Error reading local HTML file: {e}{Style.RESET_ALL}")  # Alert user about file reading error
             return None  # Return None to indicate reading failed
 
+    def find_image_urls(self, soup=None) -> List[str]:
+        """
+        Extracts all image URLs from the product gallery.
+        Only extracts preload image links that appear BEFORE the canonical link tag.
+
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: List of image URLs (absolute URLs or relative paths for offline mode)
+        """
+        
+        if soup is None:  # Guard against None to avoid attribute access on None
+            verbose_output(f"{BackgroundColors.YELLOW}No soup provided for image extraction.{Style.RESET_ALL}")
+            return []  # Return empty list when no soup provided
+        
+        image_urls = []
+        
+        images_dir = None
+        if self.local_html_path:
+            html_dir = os.path.dirname(os.path.abspath(self.local_html_path))
+            potential_images_dir = os.path.join(html_dir, "images")
+            if os.path.exists(potential_images_dir) and os.path.isdir(potential_images_dir):
+                images_dir = potential_images_dir
+                verbose_output(f"{BackgroundColors.GREEN}Found local images directory: {images_dir}{Style.RESET_ALL}")
+        
+        try:
+            canonical_link = soup.find("link", {"rel": "canonical"})
+            
+            all_preload_links = soup.find_all("link", {"rel": "preload", "as": "image"})
+            verbose_output(f"{BackgroundColors.GREEN}Found {len(all_preload_links)} total preload image links.{Style.RESET_ALL}")
+            
+            product_image_links = []
+            if canonical_link:
+                for link in all_preload_links:
+                    if link.sourceline and canonical_link.sourceline:
+                        if link.sourceline < canonical_link.sourceline:
+                            product_image_links.append(link)
+                    else:
+                        all_links = soup.find_all("link")
+                        preload_idx = all_links.index(link) if link in all_links else -1
+                        canonical_idx = all_links.index(canonical_link) if canonical_link in all_links else -1
+                        if preload_idx != -1 and canonical_idx != -1 and preload_idx < canonical_idx:
+                            product_image_links.append(link)
+                
+                verbose_output(f"{BackgroundColors.GREEN}Filtered to {len(product_image_links)} product image preload links (before canonical link).{Style.RESET_ALL}")
+            else:
+                product_image_links = all_preload_links
+                verbose_output(f"{BackgroundColors.YELLOW}No canonical link found, using all preload links.{Style.RESET_ALL}")
+            
+            if product_image_links:
+                for link in product_image_links:
+                    href = link.get("href")
+                    if href:
+                        if "_thumbnail_220x293" in href:
+                            href = href.replace("_thumbnail_220x293", "_thumbnail_900x")
+                        
+                        if self.local_html_path and images_dir:
+                            filename = os.path.basename(urlparse(href).path)
+                            local_file_path = os.path.join(images_dir, filename)
+                            
+                            if os.path.exists(local_file_path):
+                                relative_path = f"./images/{filename}"
+                                image_urls.append(relative_path)
+                                verbose_output(f"{BackgroundColors.GREEN}Using local image: {filename}{Style.RESET_ALL}")
+                            else:
+                                if not href.startswith(("http://", "https://")):
+                                    href = urljoin(self.url if self.url else "https://www.shein.com", href)
+                                image_urls.append(href)
+                                verbose_output(f"{BackgroundColors.YELLOW}Image not local, will download: {filename}{Style.RESET_ALL}")
+                        else:
+                            if not href.startswith(("http://", "https://")):
+                                href = urljoin(self.url, href)
+                            image_urls.append(href)
+                
+                if image_urls:
+                    seen = set()
+                    unique_urls = []
+                    for url in image_urls:
+                        if url not in seen:
+                            seen.add(url)
+                            unique_urls.append(url)
+                    image_urls = unique_urls
+                    verbose_output(f"{BackgroundColors.GREEN}Extracted {len(image_urls)} unique product image URLs.{Style.RESET_ALL}")
+                    return image_urls
+            
+            for tag, attrs in HTML_SELECTORS["gallery_images"]:  # Iterate through each selector combination
+                gallery_container = soup.find(tag, attrs if attrs else None)
+                if gallery_container:
+                    verbose_output(f"{BackgroundColors.GREEN}Found gallery container.{Style.RESET_ALL}")
+                    
+                    gallery_items = gallery_container.find_all("li", {"class": re.compile(r"thumbs-picture__column")})
+                    
+                    if gallery_items:
+                        verbose_output(f"{BackgroundColors.GREEN}Found {len(gallery_items)} gallery items.{Style.RESET_ALL}")
+                        
+                        for item in gallery_items:  # Process each gallery item
+                            img_tag = item.find("img")
+                            if img_tag:
+                                img_src = img_tag.get("src") or img_tag.get("data-src") or img_tag.get("data-before-crop-src")
+                                if img_src:
+                                    if not img_src.startswith(("http://", "https://", "data:")):
+                                        if self.local_html_path:
+                                            image_urls.append(img_src)
+                                        else:
+                                            img_src = urljoin(self.url, img_src)
+                                            image_urls.append(img_src)
+                                    else:
+                                        image_urls.append(img_src)
+                    else:
+                        img_tags = gallery_container.find_all("img")
+                        for img_tag in img_tags:
+                            img_src = img_tag.get("src") or img_tag.get("data-src") or img_tag.get("data-before-crop-src")
+                            if img_src:
+                                if not img_src.startswith(("http://", "https://", "data:")):
+                                    if self.local_html_path:
+                                        image_urls.append(img_src)
+                                    else:
+                                        img_src = urljoin(self.url, img_src)
+                                        image_urls.append(img_src)
+                                else:
+                                    image_urls.append(img_src)
+                    
+                    if image_urls:
+                        verbose_output(f"{BackgroundColors.GREEN}Extracted {len(image_urls)} image URLs from gallery.{Style.RESET_ALL}")
+                        return image_urls  # Return images once found
+            
+            verbose_output(f"{BackgroundColors.YELLOW}No gallery images found.{Style.RESET_ALL}")
+            return []  # Return empty list if no images found
+        
+        except Exception as e:
+            verbose_output(f"{BackgroundColors.RED}Error extracting image URLs: {e}{Style.RESET_ALL}")
+            return []  # Return empty list on error
+
+
     def find_video_urls(self, soup=None) -> List[str]:
         """
         Extracts all video URLs from the product gallery.
