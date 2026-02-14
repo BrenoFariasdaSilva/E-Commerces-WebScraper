@@ -295,6 +295,8 @@ class MercadoLivre:
         
         try:  # Try to detect the international marker
             found = bool(soup.find(attrs=HTML_SELECTORS["international_marker"]))  # Verify for the presence of the international marker using centralized selector
+            if not found:  # If element not found by ID, search for text containing "Internacional" or "International"
+                found = bool(soup.find(string=re.compile(r"Internacional|International", re.IGNORECASE)))  # Search for Portuguese or English text
             self.product_data["is_international"] = True if found else False  # Set the product data flag
             return found  # Return the detection result
         except Exception:  # If any error occurs during detection, assume it's not international
