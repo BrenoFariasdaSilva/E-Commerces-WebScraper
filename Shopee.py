@@ -206,6 +206,72 @@ class Shopee:
             )  # End of verbose output call
 
 
+ def download_media(self) -> List[str]:
+        """
+        Downloads product media and creates snapshot.
+        Works for both online (browser) and offline (local HTML) modes.
+
+        :return: List of downloaded file paths
+        """
+
+        verbose_output(  # Output status message to user
+            f"{BackgroundColors.GREEN}Processing product media...{Style.RESET_ALL}"
+        )  # End of verbose output call
+
+        downloaded_files: List[str] = []  # Initialize empty list to track downloaded file paths
+        
+        try:  # Attempt media download with error handling
+            if not self.product_data or not self.product_data.get("name"):  # Validate that product data with name exists
+                print(f"{BackgroundColors.RED}No product data available for media download.{Style.RESET_ALL}")  # Alert user that required data is missing
+                return downloaded_files  # Return empty list when data is unavailable
+            
+            html_content = self.html_content  # Use stored HTML content
+            if not html_content:  # Verify if HTML content is unavailable
+                print(f"{BackgroundColors.RED}No HTML content available.{Style.RESET_ALL}")  # Alert user about HTML unavailability
+                return downloaded_files  # Return empty list when HTML is unavailable
+            
+            soup = BeautifulSoup(html_content, "html.parser")  # Parse HTML content into BeautifulSoup object
+            
+            product_name = self.product_data.get("name", "Unknown Product")  # Get product name or use default
+            is_international = self.detect_international(soup)
+            if is_international and not product_name.startswith("INTERNACIONAL"):
+                product_name = f"INTERNACIONAL - {product_name}"
+                self.product_data["name"] = product_name  # Update product data with prefixed name
+                verbose_output(f"{BackgroundColors.YELLOW}Product name prefixed with 'INTERNACIONAL'.{Style.RESET_ALL}")
+            
+            product_name_safe = "".join(c if c.isalnum() or c in (" ", "-", "_") else "" for c in product_name).strip()  # Sanitize product name for filesystem use
+            
+            output_dir = self.create_output_directory(product_name_safe)  # Create output directory for product
+            
+            image_files = self.download_product_images(soup, output_dir)  # Download all product images
+            downloaded_files.extend(image_files)  # Add image files to downloaded list
+            
+            video_files = self.download_product_videos(soup, output_dir)  # Download all product videos
+            downloaded_files.extend(video_files)  # Add video files to downloaded list
+            
+            asset_map = self.collect_assets(html_content, output_dir)  # Download and collect all page assets
+            
+            snapshot_path = self.save_snapshot(html_content, output_dir, asset_map)  # Save HTML snapshot with localized assets
+            if snapshot_path:  # Verify if snapshot was saved successfully
+                downloaded_files.append(snapshot_path)  # Add snapshot path to downloaded files list
+            
+            description_file = self.create_product_description_file(  # Create product description text file
+                self.product_data, output_dir, product_name_safe, self.product_url  # Pass all required parameters
+            )  # End of method call
+            if description_file:  # Verify if description file was created successfully
+                downloaded_files.append(description_file)  # Add description file path to downloaded files list
+            
+            verbose_output(  # Output success message with file count
+                f"{BackgroundColors.GREEN}Media processing completed. {len(downloaded_files)} files saved.{Style.RESET_ALL}"
+            )  # End of verbose output call
+            
+        except Exception as e:  # Catch any exceptions during media download
+            print(f"{BackgroundColors.RED}Error during media download: {e}{Style.RESET_ALL}")  # Alert user about media download error
+        
+        return downloaded_files  # Return list of all downloaded file paths
+        
+
+
  def scrape(self, verbose: bool = VERBOSE) -> Optional[Dict[str, Any]]:
         """
         Main scraping method that orchestrates the entire scraping process.
