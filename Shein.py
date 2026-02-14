@@ -374,7 +374,6 @@ class Shein:
             print(f"{BackgroundColors.RED}Error reading local HTML file: {e}{Style.RESET_ALL}")  # Alert user about file reading error
             return None  # Return None to indicate reading failed
 
-
     def extract_product_name(self, soup=None):
         """
         Extracts the product name from the parsed HTML soup.
@@ -394,7 +393,6 @@ class Shein:
                     return product_name  # Return the product name immediately when found
         verbose_output(f"{BackgroundColors.YELLOW}Product name not found, using default.{Style.RESET_ALL}")  # Warn that product name could not be extracted
         return "Unknown Product"  # Return default placeholder when name extraction fails
-
 
     def extract_current_price(self, soup=None):
         """
@@ -456,7 +454,6 @@ class Shein:
         
         verbose_output(f"{BackgroundColors.YELLOW}Current price not found, using default.{Style.RESET_ALL}")  # Warn that current price could not be extracted
         return "0", "00"  # Return default zero price when extraction fails
-
 
     def extract_old_price(self, soup=None, current_price_int="0", current_price_dec="00", discount_percentage="N/A"):
         """
@@ -574,7 +571,6 @@ class Shein:
         verbose_output(f"{BackgroundColors.YELLOW}Old price not found by any method.{Style.RESET_ALL}")  # Warn that old price could not be extracted
         return "N/A", "N/A"  # Return N/A when old price is not available
 
-
     def extract_discount_percentage(self, soup=None):
         """
         Extracts the discount percentage from the parsed HTML soup.
@@ -594,7 +590,6 @@ class Shein:
                     verbose_output(f"{BackgroundColors.GREEN}Discount: {match.group(1)}{Style.RESET_ALL}")  # Log successfully extracted discount percentage
                     return match.group(1)  # Return the discount percentage string
         return "N/A"  # Return N/A when discount is not available
-
 
     def extract_product_description(self, soup=None):
         """
@@ -679,7 +674,6 @@ class Shein:
         
         return "No description available"  # Return default message when description is not found
 
-
     def detect_international(self, soup=None) -> bool:
         """
         Detects whether the product has only international shipping available.
@@ -734,7 +728,6 @@ class Shein:
         except Exception as e:
             verbose_output(f"{BackgroundColors.RED}Error detecting international shipping: {e}{Style.RESET_ALL}")
             return False  # Default to False on error
-
 
     def find_image_urls(self, soup=None) -> List[str]:
         """
@@ -867,7 +860,6 @@ class Shein:
             verbose_output(f"{BackgroundColors.RED}Error extracting image URLs: {e}{Style.RESET_ALL}")
             return []  # Return empty list on error
 
-
     def find_video_urls(self, soup=None) -> List[str]:
         """
         Extracts all video URLs from the product gallery.
@@ -932,7 +924,6 @@ class Shein:
             verbose_output(f"{BackgroundColors.RED}Error extracting video URLs: {e}{Style.RESET_ALL}")
             return []  # Return empty list on error
 
-
     def extract_video_from_json(self, data: Any) -> Optional[str]:
         """
         Helper method to recursively search for video URLs in JSON data.
@@ -961,7 +952,6 @@ class Shein:
         
         return None
 
-
     def print_product_info(self, product_data=None):
         """
         Prints the extracted product information in a formatted manner.
@@ -974,7 +964,6 @@ class Shein:
             print(f"{BackgroundColors.RED}No product data to display.{Style.RESET_ALL}")  # Alert user that no data is available
             return  # Exit method early when no data to print
         print(f"{BackgroundColors.GREEN}Product information extracted successfully:{Style.RESET_ALL}\n  {BackgroundColors.CYAN}Name:{Style.RESET_ALL} {product_data.get('name', 'N/A')}\n  {BackgroundColors.CYAN}Old Price:{Style.RESET_ALL} R${product_data.get('old_price_integer', 'N/A')},{product_data.get('old_price_decimal', 'N/A') if product_data.get('old_price_integer', 'N/A') != 'N/A' else 'N/A'}\n  {BackgroundColors.CYAN}Current Price:{Style.RESET_ALL} R${product_data.get('current_price_integer', 'N/A')},{product_data.get('current_price_decimal', 'N/A')}\n  {BackgroundColors.CYAN}Discount:{Style.RESET_ALL} {product_data.get('discount_percentage', 'N/A')}\n  {BackgroundColors.CYAN}Description:{Style.RESET_ALL} {product_data.get('description', 'N/A')[:100]}...")
-
 
     def scrape_product_info(self, html_content=""):
         """
@@ -1000,7 +989,6 @@ class Shein:
             print(f"{BackgroundColors.RED}Error parsing product info: {e}{Style.RESET_ALL}")  # Alert user about parsing error
             return None  # Return None to indicate parsing failed
 
-
     def create_directory(self, full_directory_name="", relative_directory_name=""):
         """
         Creates a directory if it does not exist.
@@ -1018,8 +1006,6 @@ class Shein:
         except OSError:  # Catch OS-level errors during directory creation
             print(f"{BackgroundColors.GREEN}The creation of the {BackgroundColors.CYAN}{relative_directory_name}{BackgroundColors.GREEN} directory failed.{Style.RESET_ALL}")  # Alert user about directory creation failure
     
-
-
     def create_output_directory(self, product_name_safe=""):
         """
         Creates the output directory for storing downloaded media files.
@@ -1032,7 +1018,6 @@ class Shein:
         output_dir = os.path.join(OUTPUT_DIRECTORY, directory_name)  # Construct full path for product output directory
         self.create_directory(os.path.abspath(output_dir), output_dir.replace(".", ""))  # Create directory with absolute path and cleaned relative name
         return output_dir  # Return the created output directory path
-
 
     def collect_assets(self, html_content="", output_dir=""):
         """
@@ -1074,7 +1059,6 @@ class Shein:
         verbose_output(f"{BackgroundColors.GREEN}Collected {len(asset_map)} assets.{Style.RESET_ALL}")  # Log total number of assets collected
         return asset_map  # Return dictionary mapping URLs to local paths
 
-
     def save_snapshot(self, html_content="", output_dir="", asset_map=None):
         """
         Saves the complete page snapshot with localized asset references.
@@ -1100,7 +1084,6 @@ class Shein:
         except Exception as e:  # Catch any exceptions during snapshot saving
             print(f"{BackgroundColors.RED}Failed to save snapshot: {e}{Style.RESET_ALL}")  # Alert user about snapshot saving failure
             return None  # Return None to indicate save operation failed
-
 
     def create_product_description_file(self, product_data=None, output_dir="", product_name_safe="", url=""):
         """
@@ -1141,7 +1124,6 @@ class Shein:
             print(f"{BackgroundColors.RED}Failed to create description file: {e}{Style.RESET_ALL}")  # Alert user about file creation failure
             return None  # Return None to indicate creation failed
 
-
     def to_sentence_case(self, text=""):
         """
         Converts text to sentence case (first letter of each sentence uppercase).
@@ -1164,7 +1146,6 @@ class Shein:
                 result.append(sentence)  # Add processed sentence or delimiter back to result list
 
         return "".join(result)  # Join all processed sentences and delimiters back into a single string and return it
-
 
     def download_single_image(self, image_url: str, output_dir: str, index: int) -> Optional[str]:
         """
@@ -1224,7 +1205,6 @@ class Shein:
         except Exception as e:
             verbose_output(f"{BackgroundColors.RED}Error downloading image {index}: {e}{Style.RESET_ALL}")
             return None
-
 
     def download_single_video(self, video_url: str, output_dir: str, index: int) -> Optional[str]:
         """
@@ -1307,7 +1287,6 @@ class Shein:
             verbose_output(f"{BackgroundColors.RED}Error downloading video {index}: {e}{Style.RESET_ALL}")
             return None
 
-
     def download_product_images(self, image_urls: List[str], output_dir: str) -> List[str]:
         """
         Downloads all product images from the gallery.
@@ -1333,7 +1312,6 @@ class Shein:
         verbose_output(f"{BackgroundColors.GREEN}Successfully downloaded {len(downloaded_images)} of {len(image_urls)} images.{Style.RESET_ALL}")
         return downloaded_images
 
-
     def download_product_videos(self, video_urls: List[str], output_dir: str) -> List[str]:
         """
         Downloads all product videos from the gallery.
@@ -1358,7 +1336,6 @@ class Shein:
         
         verbose_output(f"{BackgroundColors.GREEN}Successfully downloaded {len(downloaded_videos)} of {len(video_urls)} videos.{Style.RESET_ALL}")
         return downloaded_videos
-
 
     def download_media(self):
         """
@@ -1424,8 +1401,6 @@ class Shein:
             print(f"{BackgroundColors.RED}Error during media download: {e}{Style.RESET_ALL}")  # Alert user about media download error
         return downloaded_files  # Return list of all downloaded file paths
         
-
-
     def scrape(self, verbose=False):
         """
         Main scraping method that orchestrates the entire scraping process.
