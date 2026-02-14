@@ -174,6 +174,7 @@ INSTRUÇÕES:
 7. Crie 2-3 características principais marcantes
 8. Sugira onde/como usar o produto
 9. Se aplicável, sugira como presente ou ocasião especial
+10. Para o desconto, quando existir, nunca usar o termo "off", prefira algo como "20% de desconto"
 
 Gere APENAS o texto formatado, sem explicações adicionais."""  # Template for Gemini AI marketing text generation
 
