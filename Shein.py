@@ -374,6 +374,35 @@ class Shein:
             print(f"{BackgroundColors.RED}Error reading local HTML file: {e}{Style.RESET_ALL}")  # Alert user about file reading error
             return None  # Return None to indicate reading failed
 
+    def extract_video_from_json(self, data: Any) -> Optional[str]:
+        """
+        Helper method to recursively search for video URLs in JSON data.
+
+        :param data: JSON data (dict, list, or primitive)
+        :return: First video URL found, or None
+        """
+        
+        if isinstance(data, dict):
+            for key in ["video", "videoUrl", "video_url", "url", "src", "source"]:
+                if key in data:
+                    value = data[key]
+                    if isinstance(value, str) and (".mp4" in value or ".m3u8" in value or "video" in value):
+                        return value
+            
+            for value in data.values():
+                result = self.extract_video_from_json(value)
+                if result:
+                    return result
+        
+        elif isinstance(data, list):
+            for item in data:
+                result = self.extract_video_from_json(item)
+                if result:
+                    return result
+        
+        return None
+
+
     def print_product_info(self, product_data=None):
         """
         Prints the extracted product information in a formatted manner.
