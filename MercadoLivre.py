@@ -686,6 +686,88 @@ class MercadoLivre:
         verbose_output(
             f"{BackgroundColors.GREEN}Found {BackgroundColors.CYAN}{len(image_urls)}{BackgroundColors.GREEN} unique images in gallery column.{Style.RESET_ALL}"
         )
+        
+        return image_urls  # Return list of image URLs
+    
+    def find_video_urls(self, soup):
+        """
+        Finds all video URLs from the product page's __PRELOADED_STATE__ JSON data.
+        Extracts HLS (.m3u8) video URLs which are loaded dynamically.
+        
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: List of tuples (video_url, thumbnail_url)
+        """
+        
+        video_data = []  # List to store video data tuples
+        
+        verbose_output(
+            f"{BackgroundColors.GREEN}Extracting video URLs from __PRELOADED_STATE__ JSON...{Style.RESET_ALL}"
+        )
+        
+        try:  # Try to parse JSON data
+            # Find the script tag containing __PRELOADED_STATE__
+            preloaded_state_script = soup.find("script", {"id": "__PRELOADED_STATE__"})
+            
+            if preloaded_state_script and preloaded_state_script.string:  # If script found
+                # Parse the JSON data
+                state_data = json.loads(preloaded_state_script.string)
+                
+                # Navigate to clips: pageState → initialState → components → gallery → clips → shorts
+                clips_data = (
+                    state_data.get("pageState", {})
+                    .get("initialState", {})
+                    .get("components", {})
+                    .get("gallery", {})
+                    .get("clips", {})
+                    .get("shorts", [])
+                )
+                
+                for clip in clips_data:  # Iterate through video clips
+                    video_url = clip.get("video_url")  # Get HLS video URL (.m3u8)
+                    thumbnail_data = clip.get("thumbnail", {})
+                    thumbnail_url = thumbnail_data.get("url", {}).get("src")  # Get thumbnail
+                    video_duration = clip.get("video_duration", 0)
+                    
+                    if video_url:  # If video URL found
+                        video_data.append((video_url, thumbnail_url))
+                        verbose_output(
+                            f"{BackgroundColors.GREEN}Found HLS video: {BackgroundColors.CYAN}{video_url}{BackgroundColors.GREEN} (duration: {video_duration}s){Style.RESET_ALL}"
+                        )
+            else:  # If JSON not found, fall back to HTML parsing
+                verbose_output(
+                    f"{BackgroundColors.YELLOW}__PRELOADED_STATE__ not found, checking HTML...{Style.RESET_ALL}"
+                )
+                
+                # Find the gallery column container
+                gallery_column = soup.find("div", **HTML_SELECTORS["gallery_column"])
+                
+                if gallery_column and isinstance(gallery_column, Tag):
+                    # Find all clip-wrapper sections
+                    clip_wrappers = gallery_column.find_all("section", **HTML_SELECTORS["clip_wrapper"])
+                    
+                    for clip_wrapper in clip_wrappers:
+                        if not isinstance(clip_wrapper, Tag):
+                            continue
+                        
+                        # Get thumbnail (videos are dynamically loaded)
+                        thumbnail_url = None
+                        thumbnail_img = clip_wrapper.find("img", class_="clip-wrapper__thumbnail")
+                        if thumbnail_img and isinstance(thumbnail_img, Tag):
+                            thumbnail_url = thumbnail_img.get("src")
+                            verbose_output(
+                                f"{BackgroundColors.YELLOW}Found video thumbnail in HTML (video URL requires JSON): {thumbnail_url}{Style.RESET_ALL}"
+                            )
+        
+        except json.JSONDecodeError as e:
+            print(f"{BackgroundColors.RED}Error parsing JSON: {e}{Style.RESET_ALL}")
+        except Exception as e:
+            print(f"{BackgroundColors.RED}Error finding videos: {e}{Style.RESET_ALL}")
+        
+        verbose_output(
+            f"{BackgroundColors.GREEN}Found {BackgroundColors.CYAN}{len(video_data)}{BackgroundColors.GREEN} videos.{Style.RESET_ALL}"
+        )
+        
+        return video_data  # Return list of (video_url, thumbnail_url) tuples
 
     def create_product_description_file(self, product_data, output_dir, product_name_safe, url):
         """
