@@ -374,6 +374,33 @@ class Shein:
             print(f"{BackgroundColors.RED}Error reading local HTML file: {e}{Style.RESET_ALL}")  # Alert user about file reading error
             return None  # Return None to indicate reading failed
 
+    def save_snapshot(self, html_content="", output_dir="", asset_map=None):
+        """
+        Saves the complete page snapshot with localized asset references.
+
+        :param html_content: Rendered HTML string
+        :param output_dir: Directory to save the snapshot
+        :param asset_map: Dictionary mapping original URLs to local paths
+        :return: Path to saved HTML file or None if failed
+        """
+
+        verbose_output(f"{BackgroundColors.GREEN}Saving page snapshot...{Style.RESET_ALL}")
+        if asset_map is None:  # Verify if asset_map parameter was not provided
+            asset_map = {}  # Initialize empty dictionary as default
+        try:  # Attempt to save snapshot with error handling
+            modified_html = html_content  # Create copy of HTML content for modification
+            for original_url, local_path in asset_map.items():  # Iterate through each URL to local path mapping
+                modified_html = modified_html.replace(original_url, local_path)  # Replace original URL with local path in HTML
+            snapshot_path = os.path.join(output_dir, "page.html")  # Construct path for snapshot HTML file
+            with open(snapshot_path, "w", encoding="utf-8") as f:  # Open file in write mode with UTF-8 encoding
+                f.write(modified_html)  # Write modified HTML content to file
+            verbose_output(f"{BackgroundColors.GREEN}Snapshot saved: {snapshot_path}{Style.RESET_ALL}")
+            return snapshot_path  # Return path to saved snapshot file
+        except Exception as e:  # Catch any exceptions during snapshot saving
+            print(f"{BackgroundColors.RED}Failed to save snapshot: {e}{Style.RESET_ALL}")  # Alert user about snapshot saving failure
+            return None  # Return None to indicate save operation failed
+
+
     def create_product_description_file(self, product_data=None, output_dir="", product_name_safe="", url=""):
         """
         Creates a text file with product description and details.
