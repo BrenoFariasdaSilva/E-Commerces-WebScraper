@@ -374,6 +374,32 @@ class Shein:
             print(f"{BackgroundColors.RED}Error reading local HTML file: {e}{Style.RESET_ALL}")  # Alert user about file reading error
             return None  # Return None to indicate reading failed
 
+    def download_product_images(self, image_urls: List[str], output_dir: str) -> List[str]:
+        """
+        Downloads all product images from the gallery.
+
+        :param image_urls: List of image URLs or relative paths
+        :param output_dir: Directory where images should be saved
+        :return: List of paths to successfully downloaded image files
+        """
+        
+        downloaded_images = []
+        
+        if not image_urls:
+            verbose_output(f"{BackgroundColors.YELLOW}No image URLs to download.{Style.RESET_ALL}")
+            return downloaded_images
+        
+        verbose_output(f"{BackgroundColors.CYAN}Downloading {len(image_urls)} images...{Style.RESET_ALL}")
+        
+        for idx, image_url in enumerate(image_urls, start=1):
+            image_path = self.download_single_image(image_url, output_dir, idx)
+            if image_path:
+                downloaded_images.append(image_path)
+        
+        verbose_output(f"{BackgroundColors.GREEN}Successfully downloaded {len(downloaded_images)} of {len(image_urls)} images.{Style.RESET_ALL}")
+        return downloaded_images
+
+
     def download_product_videos(self, video_urls: List[str], output_dir: str) -> List[str]:
         """
         Downloads all product videos from the gallery.
