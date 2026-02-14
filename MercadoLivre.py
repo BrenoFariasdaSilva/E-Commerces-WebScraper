@@ -91,8 +91,12 @@ HTML_SELECTORS = {
     "discount": {"class": re.compile(r"andes-money-amount__discount.*ui-pdp-family--SEMIBOLD.*ui-pdp-color--GREEN", re.IGNORECASE)},  # CSS selector for discount percentage element
     "description": {"class": "ui-pdp-description__content"},  # CSS selector for product description content
     "international_marker": {"id": "cbt_summary_rebranding--title"},  # ID selector for international product marker
-    "gallery_figure": {"class": "ui-pdp-gallery__figure__with-overlay"},  # CSS selector for gallery figure element
+    "gallery_column": {"class": "ui-pdp-gallery__column"},  # CSS selector for gallery column container
+    "gallery_wrapper": {"class": "ui-pdp-gallery__wrapper"},  # CSS selector for gallery wrapper elements
+    "gallery_figure": {"class": "ui-pdp-gallery__figure"},  # CSS selector for gallery figure element
     "gallery_image": {"class": "ui-pdp-gallery__figure__image"},  # CSS selector for gallery image element
+    "clip_wrapper": {"class": "clip-wrapper"},  # CSS selector for video clip wrapper
+    "video_element": {"name": "video"},  # Tag name selector for video elements
     "additional_image": {"class": "ui-pdp-image"},  # CSS selector for additional image element
 }  # Dictionary containing all HTML selectors used for scraping product information
 
