@@ -374,309 +374,11 @@ class Shein:
             print(f"{BackgroundColors.RED}Error reading local HTML file: {e}{Style.RESET_ALL}")  # Alert user about file reading error
             return None  # Return None to indicate reading failed
 
-    def extract_product_name(self, soup=None):
-        """
-        Extracts the product name from the parsed HTML soup.
-
-        :param soup: BeautifulSoup object containing the parsed HTML
-        :return: Product name string or "Unknown Product" if not found
-        """
-
-        if soup is None:  # Guard against None to satisfy static checkers and avoid attribute access on None
-            return "Unknown Product"  # Return default when no soup provided
-        for tag, attrs in HTML_SELECTORS["product_name"]:  # Iterate through each selector combination from centralized dictionary
-            name_element = soup.find(tag, attrs if attrs else None)  # Search for element matching current selector
-            if name_element:  # Verify if matching element was found
-                product_name = name_element.get_text(strip=True).title()  # Extract, clean, and capitalize text content from element
-                if product_name and product_name != "":  # Validate that extracted name is not empty
-                    verbose_output(f"{BackgroundColors.GREEN}Product name: {BackgroundColors.CYAN}{product_name}{Style.RESET_ALL}")  # Log successfully extracted product name
-                    return product_name  # Return the product name immediately when found
-        verbose_output(f"{BackgroundColors.YELLOW}Product name not found, using default.{Style.RESET_ALL}")  # Warn that product name could not be extracted
-        return "Unknown Product"  # Return default placeholder when name extraction fails
-
-    def extract_current_price(self, soup=None):
-        """
-        Extracts the current price from the parsed HTML soup.
-
-        :param soup: BeautifulSoup object containing the parsed HTML
-        :return: Tuple of (integer_part, decimal_part) for current price
-        """
-
-        if soup is None:  # Guard against None to avoid attribute access on None
-            return "0", "00"  # Default price when no soup provided
-        for tag, attrs in HTML_SELECTORS["current_price"]:  # Iterate through each selector combination from centralized dictionary
-            price_element = soup.find(tag, attrs if attrs else None)  # Search for element matching current selector
-            if price_element:  # Verify if matching element was found
-                price_text = price_element.get_text(strip=True)  # Extract and clean text content from element
-                match = re.search(r"(\d+)[,.](\d{2})", price_text)  # Search for price pattern with integer and decimal parts
-                if match:  # Verify if price pattern was found in text
-                    integer_part = match.group(1)  # Extract integer part of price
-                    decimal_part = match.group(2)  # Extract decimal part of price
-                    verbose_output(f"{BackgroundColors.GREEN}Current price: R${integer_part},{decimal_part}{Style.RESET_ALL}")  # Log successfully extracted current price
-                    return integer_part, decimal_part  # Return price components as tuple
-        verbose_output(f"{BackgroundColors.YELLOW}Current price not found, using default.{Style.RESET_ALL}")  # Warn that current price could not be extracted
-        return "0", "00"  # Return default zero price when extraction fails
-
-    def extract_old_price(self, soup=None):
-        """
-        Extracts the old price from the parsed HTML soup.
-
-        :param soup: BeautifulSoup object containing the parsed HTML
-        :return: Tuple of (integer_part, decimal_part) for old price
-        """
-
-        if soup is None:  # Guard against None to avoid attribute access on None
-            return "N/A", "N/A"  # Default old price when no soup provided
-        for tag, attrs in HTML_SELECTORS["old_price"]:  # Iterate through each selector combination from centralized dictionary
-            price_element = soup.find(tag, attrs if attrs else None)  # Search for element matching current selector
-            if price_element:  # Verify if matching element was found
-                price_text = price_element.get_text(strip=True)  # Extract and clean text content from element
-                match = re.search(r"(\d+)[,.](\d{2})", price_text)  # Search for price pattern with integer and decimal parts
-                if match:  # Verify if price pattern was found in text
-                    integer_part = match.group(1)  # Extract integer part of price
-                    decimal_part = match.group(2)  # Extract decimal part of price
-                    verbose_output(f"{BackgroundColors.GREEN}Old price: R${integer_part},{decimal_part}{Style.RESET_ALL}")  # Log successfully extracted old price
-                    return integer_part, decimal_part  # Return price components as tuple
-        verbose_output(f"{BackgroundColors.YELLOW}Old price not found.{Style.RESET_ALL}")  # Warn that old price could not be extracted
-        return "N/A", "N/A"  # Return N/A when old price is not available
-
-    def extract_discount_percentage(self, soup=None):
-        """
-        Extracts the discount percentage from the parsed HTML soup.
-
-        :param soup: BeautifulSoup object containing the parsed HTML
-        :return: Discount percentage string or "N/A" if not found
-        """
-
-        if soup is None:  # Guard against None to avoid attribute access on None
-            return "N/A"  # Default discount when no soup provided
-        for tag, attrs in HTML_SELECTORS["discount"]:  # Iterate through each selector combination from centralized dictionary
-            discount_element = soup.find(tag, attrs if attrs else None)  # Search for element matching current selector
-            if discount_element:  # Verify if matching element was found
-                discount_text = discount_element.get_text(strip=True)  # Extract and clean text content from element
-                match = re.search(r"(\d+%)", discount_text)  # Search for discount percentage pattern
-                if match:  # Verify if discount pattern was found in text
-                    verbose_output(f"{BackgroundColors.GREEN}Discount: {match.group(1)}{Style.RESET_ALL}")  # Log successfully extracted discount percentage
-                    return match.group(1)  # Return the discount percentage string
-        return "N/A"  # Return N/A when discount is not available
-
-    def extract_product_description(self, soup=None):
-        """
-        Extracts the product description from the parsed HTML soup.
-
-        :param soup: BeautifulSoup object containing the parsed HTML
-        :return: Product description string or "No description available" if not found
-        """
-
-        if soup is None:  # Guard against None to avoid attribute access on None
-            return "No description available"  # Default description when no soup provided
-        for tag, attrs in HTML_SELECTORS["description"]:  # Iterate through each selector combination from centralized dictionary
-            description_element = soup.find(tag, attrs if attrs else None)  # Search for element matching current selector
-            if description_element:  # Verify if matching element was found
-                description = description_element.get_text(strip=True)  # Extract and clean text content from element
-                if description and len(description) > 10:  # Validate that description has substantial content
-                    verbose_output(f"{BackgroundColors.GREEN}Description found ({len(description)} chars).{Style.RESET_ALL}")  # Log successfully extracted description with character count
-                    return description  # Return the product description
-        return "No description available"  # Return default message when description is not found
-
-    def print_product_info(self, product_data=None):
-        """
-        Prints the extracted product information in a formatted manner.
-
-        :param product_data: Dictionary containing the scraped product data
-        :return: None
-        """
-
-        if not product_data:  # Verify if product data dictionary is empty or None
-            print(f"{BackgroundColors.RED}No product data to display.{Style.RESET_ALL}")  # Alert user that no data is available
-            return  # Exit method early when no data to print
-        print(f"{BackgroundColors.GREEN}Product information extracted successfully:{Style.RESET_ALL}\n  {BackgroundColors.CYAN}Name:{Style.RESET_ALL} {product_data.get('name', 'N/A')}\n  {BackgroundColors.CYAN}Old Price:{Style.RESET_ALL} R${product_data.get('old_price_integer', 'N/A')},{product_data.get('old_price_decimal', 'N/A') if product_data.get('old_price_integer', 'N/A') != 'N/A' else 'N/A'}\n  {BackgroundColors.CYAN}Current Price:{Style.RESET_ALL} R${product_data.get('current_price_integer', 'N/A')},{product_data.get('current_price_decimal', 'N/A')}\n  {BackgroundColors.CYAN}Discount:{Style.RESET_ALL} {product_data.get('discount_percentage', 'N/A')}\n  {BackgroundColors.CYAN}Description:{Style.RESET_ALL} {product_data.get('description', 'N/A')[:100]}...")
-
-    def scrape_product_info(self, html_content=""):
-        """
-        Scrapes product information from rendered HTML content.
-
-        :param html_content: Rendered HTML string
-        :return: Dictionary containing the scraped product data
-        """
-
-        verbose_output(f"{BackgroundColors.GREEN}Parsing product information...{Style.RESET_ALL}")
-        try:  # Attempt to parse product information with error handling
-            soup = BeautifulSoup(html_content, "html.parser")  # Parse HTML content into BeautifulSoup object
-            product_name = self.extract_product_name(soup)  # Extract product name from parsed HTML
-            current_price_int, current_price_dec = self.extract_current_price(soup)  # Extract current price integer and decimal parts
-            old_price_int, old_price_dec = self.extract_old_price(soup)  # Extract old price integer and decimal parts
-            discount_percentage = self.extract_discount_percentage(soup)  # Extract discount percentage value
-            description = self.extract_product_description(soup)  # Extract product description text
-            self.product_data = {"name": product_name, "current_price_integer": current_price_int, "current_price_decimal": current_price_dec, "old_price_integer": old_price_int, "old_price_decimal": old_price_dec, "discount_percentage": discount_percentage, "description": description, "url": self.product_url}  # Store all extracted data in dictionary
-            self.print_product_info(self.product_data)  # Display extracted product information to user
-            return self.product_data  # Return complete product data dictionary
-        except Exception as e:  # Catch any exceptions during parsing
-            print(f"{BackgroundColors.RED}Error parsing product info: {e}{Style.RESET_ALL}")  # Alert user about parsing error
-            return None  # Return None to indicate parsing failed
-
-    def create_directory(self, full_directory_name="", relative_directory_name=""):
-        """
-        Creates a directory if it does not exist.
-
-        :param full_directory_name: Full path of the directory to be created
-        :param relative_directory_name: Relative name of the directory for terminal display
-        :return: None
-        """
-
-        verbose_output(true_string=f"{BackgroundColors.GREEN}Creating the {BackgroundColors.CYAN}{relative_directory_name}{BackgroundColors.GREEN} directory...{Style.RESET_ALL}")
-        if os.path.isdir(full_directory_name):  # Verify if directory already exists
-            return  # Exit early if directory exists to avoid redundant creation
-        try:  # Attempt directory creation with error handling
-            os.makedirs(full_directory_name)  # Create directory including all intermediate directories
-        except OSError:  # Catch OS-level errors during directory creation
-            print(f"{BackgroundColors.GREEN}The creation of the {BackgroundColors.CYAN}{relative_directory_name}{BackgroundColors.GREEN} directory failed.{Style.RESET_ALL}")  # Alert user about directory creation failure
-    
-    def create_output_directory(self, product_name_safe=""):
-        """
-        Creates the output directory for storing downloaded media files.
-
-        :param product_name_safe: Safe product name for directory naming
-        :return: Path to the created output directory
-        """
-
-        directory_name = f"{self.prefix} - {product_name_safe}" if self.prefix else product_name_safe  # Construct directory name with platform prefix if available
-        output_dir = os.path.join(OUTPUT_DIRECTORY, directory_name)  # Construct full path for product output directory
-        self.create_directory(os.path.abspath(output_dir), output_dir.replace(".", ""))  # Create directory with absolute path and cleaned relative name
-        return output_dir  # Return the created output directory path
-
-    def collect_assets(self, html_content="", output_dir=""):
-        """
-        Collects and downloads all assets (images, CSS, JS) from the page.
-
-        :param html_content: Rendered HTML string
-        :param output_dir: Directory to save assets
-        :return: Dictionary mapping original URLs to local paths
-        """
-
-        verbose_output(f"{BackgroundColors.GREEN}Collecting page assets...{Style.RESET_ALL}")
-        if self.page is None:  # Validate that page instance exists before collecting assets
-            return {}  # Return empty dictionary when page is not available
-        assets_dir = os.path.join(output_dir, "assets")  # Construct path for assets subdirectory
-        self.create_directory(assets_dir, "assets")  # Create assets subdirectory
-        asset_map = {}  # Initialize empty dictionary to map original URLs to local paths
-        soup = BeautifulSoup(html_content, "html.parser")  # Parse HTML content into BeautifulSoup object
-        img_tags = soup.find_all("img", src=True)  # Find all image tags with src attribute
-        for idx, img in enumerate(img_tags, 1):  # Iterate through each image tag with index starting from 1
-            if not isinstance(img, Tag):  # Ensure element is a Tag before accessing attributes
-                continue  # Skip non-Tag nodes (e.g., NavigableString)
-            src_attr = img.get("src")  # Get the src attribute value from image tag
-            if src_attr and isinstance(src_attr, str):  # Validate that src is a non-empty string
-                src = str(src_attr)  # Cast src to string for consistency
-                absolute_url = urljoin(self.product_url, src)  # Convert relative URL to absolute URL
-                try:  # Attempt to download image with error handling
-                    response = self.page.goto(absolute_url, timeout=10000)  # Navigate to image URL to download it
-                    if response and response.ok:  # Verify if response is successful
-                        parsed_url = urlparse(absolute_url)  # Parse URL to extract components
-                        ext = os.path.splitext(parsed_url.path)[1] or ".jpg"  # Extract file extension or use default .jpg
-                        filename = f"image_{idx}{ext}"  # Generate filename with index and extension
-                        filepath = os.path.join(assets_dir, filename)  # Construct full file path for saving
-                        with open(filepath, "wb") as f:  # Open file in binary write mode
-                            f.write(response.body())  # Write response body to file
-                        asset_map[src] = f"assets/{filename}"  # Map original URL to local relative path
-                        verbose_output(f"{BackgroundColors.GREEN}Downloaded: {filename}{Style.RESET_ALL}")  # Log successful download
-                except Exception as e:  # Catch any exceptions during download
-                    verbose_output(f"{BackgroundColors.YELLOW}Failed to download {src}: {e}{Style.RESET_ALL}")  # Log download failure with error
-        verbose_output(f"{BackgroundColors.GREEN}Collected {len(asset_map)} assets.{Style.RESET_ALL}")  # Log total number of assets collected
-        return asset_map  # Return dictionary mapping URLs to local paths
-
-    def save_snapshot(self, html_content="", output_dir="", asset_map=None):
-        """
-        Saves the complete page snapshot with localized asset references.
-
-        :param html_content: Rendered HTML string
-        :param output_dir: Directory to save the snapshot
-        :param asset_map: Dictionary mapping original URLs to local paths
-        :return: Path to saved HTML file or None if failed
-        """
-
-        verbose_output(f"{BackgroundColors.GREEN}Saving page snapshot...{Style.RESET_ALL}")
-        if asset_map is None:  # Verify if asset_map parameter was not provided
-            asset_map = {}  # Initialize empty dictionary as default
-        try:  # Attempt to save snapshot with error handling
-            modified_html = html_content  # Create copy of HTML content for modification
-            for original_url, local_path in asset_map.items():  # Iterate through each URL to local path mapping
-                modified_html = modified_html.replace(original_url, local_path)  # Replace original URL with local path in HTML
-            snapshot_path = os.path.join(output_dir, "page.html")  # Construct path for snapshot HTML file
-            with open(snapshot_path, "w", encoding="utf-8") as f:  # Open file in write mode with UTF-8 encoding
-                f.write(modified_html)  # Write modified HTML content to file
-            verbose_output(f"{BackgroundColors.GREEN}Snapshot saved: {snapshot_path}{Style.RESET_ALL}")
-            return snapshot_path  # Return path to saved snapshot file
-        except Exception as e:  # Catch any exceptions during snapshot saving
-            print(f"{BackgroundColors.RED}Failed to save snapshot: {e}{Style.RESET_ALL}")  # Alert user about snapshot saving failure
-            return None  # Return None to indicate save operation failed
-
-    def create_product_description_file(self, product_data=None, output_dir="", product_name_safe="", url=""):
-        """
-        Creates a text file with product description and details.
-
-        :param product_data: Dictionary with product information
-        :param output_dir: Directory to save the file
-        :param product_name_safe: Safe product name for filename
-        :param url: Original product URL
-        :return: Path to the created description file or None if failed
-        """
-
-        if product_data is None:  # Verify if product_data parameter was not provided
-            product_data = {}  # Initialize empty dictionary as default
-        try:  # Attempt to create description file with error handling
-            description_file_path = os.path.join(output_dir, f"{product_name_safe}_description.txt")  # Construct path for description text file
-            current_price = f"{product_data.get('current_price_integer', '0')},{product_data.get('current_price_decimal', '00')}"  # Format current price from dictionary values
-            old_price_int = product_data.get('old_price_integer', 'N/A')  # Get old price integer part or default
-            old_price_dec = product_data.get('old_price_decimal', 'N/A')  # Get old price decimal part or default
-            if old_price_int != 'N/A' and old_price_dec != 'N/A':  # Verify if old price components are available
-                old_price = f"{old_price_int},{old_price_dec}"  # Format old price from components
-            else:  # Handle case when old price is not available
-                old_price = "N/A"  # Use N/A as old price placeholder
-            discount = product_data.get('discount_percentage', 'N/A')  # Get discount percentage or default
-
-            description_text = product_data.get('description', 'No description available')  # Get product description or default message
-            try:  # Attempt to convert description to sentence case with error handling
-                description_text = self.to_sentence_case(description_text)  # Convert description text to sentence case for improved readability
-            except Exception:  # Catch any exceptions during sentence case conversion but continue with original description
-                pass  # If conversion fails, use original description without modification
-
-            content = PRODUCT_DESCRIPTION_TEMPLATE.format(product_name=product_data.get('name', 'Unknown Product'), current_price=current_price, old_price=old_price, discount=discount, description=description_text, url=url)  # Format template with product data
-            with open(description_file_path, "w", encoding="utf-8") as f:  # Open file in write mode with UTF-8 encoding
-                f.write(content)  # Write formatted content to file
-            verbose_output(f"{BackgroundColors.GREEN}Description file created: {description_file_path}{Style.RESET_ALL}")
-            return description_file_path  # Return path to created description file
-        except Exception as e:  # Catch any exceptions during file creation
-            print(f"{BackgroundColors.RED}Failed to create description file: {e}{Style.RESET_ALL}")  # Alert user about file creation failure
-            return None  # Return None to indicate creation failed
-
-    def to_sentence_case(self, text=""):
-        """
-        Converts text to sentence case (first letter of each sentence uppercase).
-
-        :param text: The text to convert
-        :return: Text in sentence case
-        """
-
-        if not text:  # Validate that input text is not empty or None
-            return text  # Return original text if it's empty to avoid unnecessary processing
-
-        sentences = re.split(r"([.!?]\s*)", text)  # Split text into sentences while keeping delimiters
-        result = []  # Initialize list to hold processed sentences
-        for i, sentence in enumerate(sentences):  # Iterate through each sentence with index for processing
-            if sentence.strip():  # Check if sentence has non-whitespace content before processing
-                if i % 2 == 0:  # Process only the actual sentences, not the delimiters
-                    sentence = sentence.strip()  # Remove leading and trailing whitespace from sentence
-                    if sentence:  # Validate that sentence is not empty after stripping
-                        sentence = sentence[0].upper() + sentence[1:].lower()  # Convert first character to uppercase and the rest to lowercase for sentence case formatting
-                result.append(sentence)  # Add processed sentence or delimiter back to result list
-
-        return "".join(result)  # Join all processed sentences and delimiters back into a single string and return it
-
     def download_media(self):
         """
         Downloads product media and creates snapshot.
         Works for both online (browser) and offline (local HTML) modes.
+        Extracts and downloads gallery images and videos separately.
 
         :return: List of downloaded file paths
         """
@@ -687,25 +389,57 @@ class Shein:
             if not self.product_data or not self.product_data.get("name"):  # Validate that product data with name exists
                 print(f"{BackgroundColors.RED}No product data available for media download.{Style.RESET_ALL}")  # Alert user that required data is missing
                 return downloaded_files  # Return empty list when data is unavailable
+            
             product_name = self.product_data.get("name", "Unknown Product")  # Get product name or use default
-            product_name_safe = "".join(c if c.isalnum() or c in (" ", "-", "_") else "" for c in product_name).strip()  # Sanitize product name for filesystem use
-            output_dir = self.create_output_directory(product_name_safe)  # Create output directory for product
+            
             html_content = self.html_content  # Use stored HTML content (from browser or local file)
             if not html_content:  # Verify if HTML content is unavailable
                 print(f"{BackgroundColors.RED}No HTML content available.{Style.RESET_ALL}")  # Alert user about HTML unavailability
                 return downloaded_files  # Return empty list when HTML is unavailable
+            
+            soup = BeautifulSoup(html_content, "lxml")  # Parse HTML content with lxml parser
+            
+            is_international = self.detect_international(soup)
+            if is_international and not product_name.startswith("INTERNACIONAL"):
+                product_name = f"INTERNACIONAL - {product_name}"
+                self.product_data["name"] = product_name  # Update product data with prefixed name
+                verbose_output(f"{BackgroundColors.YELLOW}Product name prefixed with 'INTERNACIONAL'.{Style.RESET_ALL}")
+            
+            product_name_safe = "".join(c if c.isalnum() or c in (" ", "-", "_") else "" for c in product_name).strip()  # Sanitize product name for filesystem use
+            output_dir = self.create_output_directory(product_name_safe)  # Create output directory for product
+            
+            image_urls = self.find_image_urls(soup)
+            if image_urls:
+                verbose_output(f"{BackgroundColors.CYAN}Found {len(image_urls)} images in gallery.{Style.RESET_ALL}")
+                image_paths = self.download_product_images(image_urls, output_dir)
+                downloaded_files.extend(image_paths)  # Add all downloaded image paths
+            else:
+                verbose_output(f"{BackgroundColors.YELLOW}No gallery images found.{Style.RESET_ALL}")
+            
+            video_urls = self.find_video_urls(soup)
+            if video_urls:
+                verbose_output(f"{BackgroundColors.CYAN}Found {len(video_urls)} videos in gallery.{Style.RESET_ALL}")
+                video_paths = self.download_product_videos(video_urls, output_dir)
+                downloaded_files.extend(video_paths)  # Add all downloaded video paths
+            else:
+                verbose_output(f"{BackgroundColors.YELLOW}No gallery videos found.{Style.RESET_ALL}")
+            
             asset_map = self.collect_assets(html_content, output_dir)  # Download and collect all page assets
             snapshot_path = self.save_snapshot(html_content, output_dir, asset_map)  # Save HTML snapshot with localized assets
             if snapshot_path:  # Verify if snapshot was saved successfully
                 downloaded_files.append(snapshot_path)  # Add snapshot path to downloaded files list
+            
             description_file = self.create_product_description_file(self.product_data, output_dir, product_name_safe, self.product_url)  # Create product description text file
             if description_file:  # Verify if description file was created successfully
                 downloaded_files.append(description_file)  # Add description file path to downloaded files list
+            
             verbose_output(f"{BackgroundColors.GREEN}Media processing completed. {len(downloaded_files)} files saved.{Style.RESET_ALL}")
         except Exception as e:  # Catch any exceptions during media download
             print(f"{BackgroundColors.RED}Error during media download: {e}{Style.RESET_ALL}")  # Alert user about media download error
         return downloaded_files  # Return list of all downloaded file paths
         
+
+
     def scrape(self, verbose=False):
         """
         Main scraping method that orchestrates the entire scraping process.
