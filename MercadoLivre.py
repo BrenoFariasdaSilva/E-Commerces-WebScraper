@@ -999,6 +999,33 @@ class MercadoLivre:
             )  # Output error
             return (None, None)  # Return None on failure
 
+    def download_product_images(self, session, product_url, output_dir, soup=None):
+        """
+        Downloads all product images from the gallery.
+        
+        :param session: Requests session object
+        :param product_url: URL of the product page
+        :param output_dir: Directory to save images
+        :param soup: Optional BeautifulSoup object (to avoid re-fetching page)
+        :return: List of downloaded image file paths
+        """
+        
+        downloaded_images = []  # List to store downloaded image file paths
+        
+        if soup is None:  # If soup not provided, fetch and parse the product page
+            soup = self.fetch_product_page(session, product_url)  # Fetch and parse the product page
+        
+        image_urls = self.find_image_urls(soup)  # Find all image URLs
+        
+        image_count = 0  # Counter for images
+        for img_url in image_urls:  # Iterate through image URLs
+            image_count += 1  # Increment counter
+            filepath = self.download_single_image(session, img_url, output_dir, image_count)  # Download image
+            if filepath:  # If download successful
+                downloaded_images.append(filepath)  # Add to list
+        
+        return downloaded_images  # Return list of downloaded image files
+
     def create_product_description_file(self, product_data, output_dir, product_name_safe, url):
         """
         Creates a text file with product description and details.
