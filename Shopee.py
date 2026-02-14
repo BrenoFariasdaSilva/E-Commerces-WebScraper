@@ -206,6 +206,70 @@ class Shopee:
             )  # End of verbose output call
 
 
+ def find_video_urls(self, soup: BeautifulSoup) -> List[str]:
+        """
+        Finds all video URLs from the product page.
+        Searches entire page for video elements with classes "tpgcVs" and extracts src attribute.
+        Videos can be inside or outside the gallery container (class="airUhU").
+        
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: List of video URLs
+        """
+        
+        video_urls: List[str] = []  # Initialize empty list to store video URLs
+        seen_urls: set = set()  # Track URLs to avoid duplicates
+        
+        verbose_output(  # Log video extraction attempt
+            f"{BackgroundColors.GREEN}Extracting video URLs from page...{Style.RESET_ALL}"
+        )  # End of verbose output call
+        
+        try:  # Attempt to find videos with error handling
+            video_tags = soup.find_all("video", class_="tpgcVs")
+            
+            verbose_output(  # Log number of videos found
+                f"{BackgroundColors.GREEN}Found {BackgroundColors.CYAN}{len(video_tags)}{BackgroundColors.GREEN} video elements.{Style.RESET_ALL}"
+            )  # End of verbose output call
+            
+            for video in video_tags:  # Iterate through each video tag
+                if not isinstance(video, Tag):  # Ensure element is a BeautifulSoup Tag
+                    continue  # Skip non-Tag elements
+                
+                video_url = video.get("src") or video.get("data-src")
+                
+                if video_url and isinstance(video_url, str):  # Verify URL is valid string
+                    if video_url not in seen_urls:  # Avoid duplicates
+                        video_urls.append(video_url)  # Add video URL to list
+                        seen_urls.add(video_url)  # Track this URL
+                        
+                        verbose_output(  # Log found video URL
+                            f"{BackgroundColors.GREEN}Found video: {BackgroundColors.CYAN}{video_url[:100]}{Style.RESET_ALL}"
+                        )  # End of verbose output call
+                
+                source_tags = video.find_all("source")
+                for source in source_tags:  # Iterate through each source tag
+                    if not isinstance(source, Tag):  # Ensure element is a BeautifulSoup Tag
+                        continue  # Skip non-Tag elements
+                    
+                    source_url = source.get("src") or source.get("data-src")
+                    if source_url and isinstance(source_url, str):  # Verify URL is valid string
+                        if source_url not in seen_urls:  # Avoid duplicates
+                            video_urls.append(source_url)  # Add video URL to list
+                            seen_urls.add(source_url)  # Track this URL
+                            
+                            verbose_output(  # Log found video URL
+                                f"{BackgroundColors.GREEN}Found video (source): {BackgroundColors.CYAN}{source_url[:100]}{Style.RESET_ALL}"
+                            )  # End of verbose output call
+        
+        except Exception as e:  # Catch any exceptions during video extraction
+            print(f"{BackgroundColors.RED}Error finding videos: {e}{Style.RESET_ALL}")  # Alert user about error
+        
+        verbose_output(  # Log total number of videos found
+            f"{BackgroundColors.GREEN}Found {BackgroundColors.CYAN}{len(video_urls)}{BackgroundColors.GREEN} videos.{Style.RESET_ALL}"
+        )  # End of verbose output call
+        
+        return video_urls  # Return list of video URLs
+
+
  def print_product_info(self, product_data: Dict[str, Any]) -> None:
         """
         Prints the extracted product information in a formatted manner.
