@@ -375,6 +375,123 @@ class Shein:
             return None  # Return None to indicate reading failed
 
 
+    def extract_old_price(self, soup=None, current_price_int="0", current_price_dec="00", discount_percentage="N/A"):
+        """
+        Extracts the old price from the parsed HTML soup.
+        PRIMARY: JSON originalPrice.amountWithSymbol extraction (with optimized recursive search)
+        FALLBACK 1: HTML extraction
+        FALLBACK 2: Compute from current price and discount (if available)
+
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :param current_price_int: Current price integer part (for computational fallback)
+        :param current_price_dec: Current price decimal part (for computational fallback)
+        :param discount_percentage: Discount percentage string (for computational fallback)
+        :return: Tuple of (integer_part, decimal_part) for old price
+        """
+
+        if soup is None:  # Guard against None to avoid attribute access on None
+            return "N/A", "N/A"  # Default old price when no soup provided
+        
+        verbose_output(f"{BackgroundColors.GREEN}Trying JSON extraction for old price...{Style.RESET_ALL}")
+        
+        try:
+            script_tags = soup.find_all("script", {"type": "application/json"})
+            for script_tag in script_tags:
+                try:
+                    if not script_tag.string:  # Skip if no content
+                        continue
+                    
+                    if "originalPrice" not in script_tag.string:
+                        continue  # Skip this script tag if it doesn't contain originalPrice
+                    
+                    verbose_output(f"{BackgroundColors.GREEN}Found JSON with 'originalPrice', parsing...{Style.RESET_ALL}")
+                    json_data = json.loads(script_tag.string)  # Parse JSON data
+                    
+                    def find_original_price(obj, depth=0, max_depth=15):
+                        """Recursively search for originalPrice in nested structures"""
+                        if depth > max_depth:  # Prevent infinite recursion
+                            return None
+                        
+                        if isinstance(obj, dict):
+                            if "originalPrice" in obj:
+                                original_price = obj["originalPrice"]
+                                if isinstance(original_price, dict):
+                                    amount_with_symbol = original_price.get("amountWithSymbol", "")
+                                    if amount_with_symbol and isinstance(amount_with_symbol, str):
+                                        verbose_output(f"{BackgroundColors.GREEN}Found originalPrice.amountWithSymbol: {amount_with_symbol}{Style.RESET_ALL}")
+                                        return amount_with_symbol
+                            
+                            for value in obj.values():
+                                result = find_original_price(value, depth + 1, max_depth)
+                                if result:
+                                    return result
+                        
+                        elif isinstance(obj, list):
+                            for item in obj:
+                                result = find_original_price(item, depth + 1, max_depth)
+                                if result:
+                                    return result
+                        
+                        return None
+                    
+                    amount_with_symbol = find_original_price(json_data)
+                    
+                    if amount_with_symbol:
+                        match = re.search(r"(\d+)[,.](\d{2})", amount_with_symbol)
+                        if match:
+                            integer_part = match.group(1)
+                            decimal_part = match.group(2)
+                            verbose_output(f"{BackgroundColors.GREEN}Old price from JSON: R${integer_part},{decimal_part}{Style.RESET_ALL}")
+                            return integer_part, decimal_part
+                
+                except (json.JSONDecodeError, AttributeError, TypeError, KeyError) as e:
+                    verbose_output(f"{BackgroundColors.YELLOW}Error parsing JSON script tag: {e}{Style.RESET_ALL}")
+                    continue  # Skip invalid or incompatible JSON
+        
+        except Exception as e:
+            verbose_output(f"{BackgroundColors.YELLOW}Error extracting old price from JSON: {e}{Style.RESET_ALL}")
+        
+        verbose_output(f"{BackgroundColors.YELLOW}JSON old price not found, trying HTML extraction...{Style.RESET_ALL}")
+        
+        for tag, attrs in HTML_SELECTORS["old_price"]:  # Iterate through each selector combination from centralized dictionary
+            price_element = soup.find(tag, attrs if attrs else None)  # Search for element matching current selector
+            if price_element:  # Verify if matching element was found
+                price_text = price_element.get_text(strip=True)  # Extract and clean text content from element
+                match = re.search(r"(\d+)[,.](\d{2})", price_text)  # Search for price pattern with integer and decimal parts
+                if match:  # Verify if price pattern was found in text
+                    integer_part = match.group(1)  # Extract integer part of price
+                    decimal_part = match.group(2)  # Extract decimal part of price
+                    verbose_output(f"{BackgroundColors.GREEN}Old price from HTML: R${integer_part},{decimal_part}{Style.RESET_ALL}")  # Log successfully extracted old price
+                    return integer_part, decimal_part  # Return price components as tuple
+        
+        verbose_output(f"{BackgroundColors.YELLOW}HTML old price not found, trying computational method...{Style.RESET_ALL}")
+        
+        if current_price_int not in ["0", "N/A"] and discount_percentage not in ["N/A", ""]:
+            try:
+                discount_match = re.search(r"(\d+)%", discount_percentage)
+                if discount_match:
+                    discount_decimal = float(discount_match.group(1)) / 100.0  # Convert percentage to decimal (20% -> 0.20)
+                    
+                    current_price_float = float(f"{current_price_int}.{current_price_dec}")
+                    
+                    if discount_decimal < 1.0:  # Ensure discount is less than 100%
+                        original_price_float = current_price_float / (1.0 - discount_decimal)
+                        
+                        original_price_float = round(original_price_float, 2)
+                        
+                        integer_part = str(int(original_price_float))
+                        decimal_part = str(int((original_price_float % 1) * 100)).zfill(2)
+                        
+                        verbose_output(f"{BackgroundColors.GREEN}Old price calculated from current price and discount: R${integer_part},{decimal_part}{Style.RESET_ALL}")
+                        return integer_part, decimal_part
+            
+            except (ValueError, ZeroDivisionError) as e:
+                verbose_output(f"{BackgroundColors.YELLOW}Error calculating old price from discount: {e}{Style.RESET_ALL}")
+        
+        verbose_output(f"{BackgroundColors.YELLOW}Old price not found by any method.{Style.RESET_ALL}")  # Warn that old price could not be extracted
+        return "N/A", "N/A"  # Return N/A when old price is not available
+
+
     def extract_discount_percentage(self, soup=None):
         """
         Extracts the discount percentage from the parsed HTML soup.
