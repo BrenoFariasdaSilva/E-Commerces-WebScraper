@@ -375,6 +375,88 @@ class Shein:
             return None  # Return None to indicate reading failed
 
 
+    def download_single_video(self, video_url: str, output_dir: str, index: int) -> Optional[str]:
+        """
+        Downloads a single product video from URL or copies from local path.
+        Supports HLS streams (.m3u8), direct video files (.mp4), and local files.
+
+        :param video_url: URL or relative path of the video
+        :param output_dir: Directory where the video should be saved
+        :param index: Index number for the video filename
+        :return: Path to the downloaded video file, or None if download failed
+        """
+        
+        try:
+            if self.local_html_path and not video_url.startswith(("http://", "https://")):
+                local_html_dir = os.path.dirname(self.local_html_path)
+                source_path = os.path.join(local_html_dir, video_url.lstrip("./"))
+                
+                if not os.path.exists(source_path):
+                    verbose_output(f"{BackgroundColors.RED}Local video file not found: {source_path}{Style.RESET_ALL}")
+                    return None
+                
+                _, ext = os.path.splitext(source_path)
+                if not ext:
+                    ext = ".mp4"  # Default extension
+                
+                dest_path = os.path.join(output_dir, f"video_{index:02d}{ext}")
+                
+                shutil.copy2(source_path, dest_path)
+                verbose_output(f"{BackgroundColors.GREEN}Copied local video {index} to {dest_path}{Style.RESET_ALL}")
+                return dest_path
+            
+            else:
+                dest_path = os.path.join(output_dir, f"video_{index:02d}.mp4")
+                
+                if ".m3u8" in video_url:
+                    verbose_output(f"{BackgroundColors.CYAN}Downloading HLS video {index} using ffmpeg...{Style.RESET_ALL}")
+                    
+                    try:
+                        result = subprocess.run(
+                            [
+                                "ffmpeg",
+                                "-i", video_url,
+                                "-c", "copy",
+                                "-bsf:a", "aac_adtstoasc",
+                                "-y",  # Overwrite output file
+                                dest_path
+                            ],
+                            capture_output=True,
+                            text=True,
+                            timeout=300  # 5 minute timeout
+                        )
+                        
+                        if result.returncode == 0 and os.path.exists(dest_path):
+                            verbose_output(f"{BackgroundColors.GREEN}Downloaded HLS video {index} to {dest_path}{Style.RESET_ALL}")
+                            return dest_path
+                        else:
+                            verbose_output(f"{BackgroundColors.RED}ffmpeg failed: {result.stderr}{Style.RESET_ALL}")
+                            return None
+                    
+                    except FileNotFoundError:
+                        verbose_output(f"{BackgroundColors.RED}ffmpeg not found. Please install ffmpeg to download HLS videos.{Style.RESET_ALL}")
+                        return None
+                    except subprocess.TimeoutExpired:
+                        verbose_output(f"{BackgroundColors.RED}ffmpeg timeout while downloading video {index}.{Style.RESET_ALL}")
+                        return None
+                
+                else:
+                    verbose_output(f"{BackgroundColors.CYAN}Downloading video {index}...{Style.RESET_ALL}")
+                    response = requests.get(video_url, timeout=60, stream=True)
+                    response.raise_for_status()
+                    
+                    with open(dest_path, "wb") as f:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                    
+                    verbose_output(f"{BackgroundColors.GREEN}Downloaded video {index} to {dest_path}{Style.RESET_ALL}")
+                    return dest_path
+        
+        except Exception as e:
+            verbose_output(f"{BackgroundColors.RED}Error downloading video {index}: {e}{Style.RESET_ALL}")
+            return None
+
+
     def download_product_images(self, image_urls: List[str], output_dir: str) -> List[str]:
         """
         Downloads all product images from the gallery.
