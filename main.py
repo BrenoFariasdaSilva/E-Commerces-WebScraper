@@ -862,30 +862,30 @@ def generate_marketing_text(product_description, description_file):
         print(f"{BackgroundColors.RED}Error: No Gemini API keys configured in .env file.{Style.RESET_ALL}")
         return False  # Return failure
     
-    prompt = f"""Você é um especialista em marketing de e-commerce. Sua tarefa é transformar as informações do produto abaixo em um texto de marketing persuasivo e formatado.
+    prompt = f"""Você é um especialista em marketing de e-commerce. Sua tarefa é transformar as informações do produto abaixo em um texto de marketing persuasivo, chamativo e formatado.
 
 INFORMAÇÕES DO PRODUTO:
 {product_description}
 
 FORMATO OBRIGATÓRIO (siga EXATAMENTE este formato):
-**{{NOME DO PRODUTO}} – {{DIFERENCIAL CURTO}}**
+*{{NOME DO PRODUTO}} – {{DIFERENCIAL CURTO}}*
 
-**{{FRASE DE IMPACTO / BENEFÍCIO PRINCIPAL}}**
+💰 DE *R${{PREÇO_ANTIGO}}* POR APENAS *R${{PREÇO_ATUAL}}*
+🎟️ *{{INFORMAÇÃO DE CUPOM / % DE DESCONTO}}*
 
-{{CARACTERÍSTICA 1}}
-{{CARACTERÍSTICA 2}}
-{{ONDE / COMO USAR}}
-{{IDEIA DE PRESENTE / OCASIÃO}}
+*{{FRASE DE IMPACTO / BENEFÍCIO PRINCIPAL}}*
 
-💰 DE **R${{PREÇO_ANTIGO}}** POR APENAS **R${{PREÇO_ATUAL}}**
-🎟️ {{INFORMAÇÃO DE CUPOM / % DE DESCONTO}}
+✨ {{CARACTERÍSTICA 1}}
+✨ {{CARACTERÍSTICA 2}}
+✨ {{ONDE / COMO USAR}}
+✨ {{IDEIA DE PRESENTE / OCASIÃO}}
 
 🛒 Encontre na {{LOJA / PLATAFORMA}}:
 👉 {{LINK DO PRODUTO}}
 
 INSTRUÇÕES:
 1. Use as informações fornecidas para preencher cada campo
-2. Seja persuasivo e criativo
+2. Seja persuasivo, criativo e chamativo
 3. Mantenha o formato EXATAMENTE como mostrado
 4. Use os preços e descontos reais do produto
 5. Inclua o link real do produto
