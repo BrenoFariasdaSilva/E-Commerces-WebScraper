@@ -206,6 +206,35 @@ class Shopee:
             )  # End of verbose output call
 
 
+ def download_product_images(self, soup: BeautifulSoup, output_dir: str) -> List[str]:
+        """
+        Downloads all product images from the gallery.
+        
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :param output_dir: Directory to save images
+        :return: List of downloaded image file paths
+        """
+        
+        downloaded_images: List[str] = []  # Initialize list to track downloaded images
+        
+        verbose_output(  # Log download start
+            f"{BackgroundColors.GREEN}Downloading product images...{Style.RESET_ALL}"
+        )  # End of verbose output call
+        
+        image_urls = self.find_image_urls(soup)  # Get all image URLs from gallery
+        
+        for idx, img_url in enumerate(image_urls, 1):  # Iterate through each image URL
+            filepath = self.download_single_image(img_url, output_dir, idx)  # Download image
+            if filepath:  # If download successful
+                downloaded_images.append(filepath)  # Add to downloaded list
+        
+        verbose_output(  # Log download summary
+            f"{BackgroundColors.GREEN}Downloaded {BackgroundColors.CYAN}{len(downloaded_images)}{BackgroundColors.GREEN} images.{Style.RESET_ALL}"
+        )  # End of verbose output call
+        
+        return downloaded_images  # Return list of downloaded image paths
+
+
  def download_product_videos(self, soup: BeautifulSoup, output_dir: str) -> List[str]:
         """
         Downloads all product videos from the gallery.
