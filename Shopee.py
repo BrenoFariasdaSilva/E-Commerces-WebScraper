@@ -206,6 +206,27 @@ class Shopee:
             )  # End of verbose output call
 
 
+ def extract_product_description(self, soup: BeautifulSoup) -> str:
+        """
+        Extracts the product description from the parsed HTML soup.
+        
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: Product description string or "No description available" if not found
+        """
+        
+        for tag, attrs in HTML_SELECTORS["description"]:  # Iterate through each selector combination from centralized dictionary
+            description_element = soup.find(tag, attrs if attrs else None)  # type: ignore[arg-type]  # Search for element matching current selector
+            if description_element:  # Verify if matching element was found
+                description = description_element.get_text(strip=True)  # Extract and clean text content from element
+                if description and len(description) > 10:  # Validate that description has substantial content
+                    verbose_output(  # Log successfully extracted description with character count
+                        f"{BackgroundColors.GREEN}Description found ({len(description)} chars).{Style.RESET_ALL}"
+                    )  # End of verbose output call
+                    return description  # Return the product description
+        
+        return "No description available"  # Return default message when description is not found
+
+
  def find_image_urls(self, soup: BeautifulSoup) -> List[str]:
         """
         Finds all image URLs from the product gallery (class="airUhU").
