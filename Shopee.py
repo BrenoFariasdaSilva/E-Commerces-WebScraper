@@ -205,6 +205,28 @@ class Shopee:
             )  # End of verbose output call
 
 
+    def print_product_info(self, product_data: Dict[str, Any]) -> None:
+        """
+        Prints the extracted product information in a formatted manner.
+        
+        :param product_data: Dictionary containing the scraped product data
+        :return: None
+        """
+        
+        if not product_data:  # Verify if product data dictionary is empty or None
+            print(f"{BackgroundColors.RED}No product data to display.{Style.RESET_ALL}")  # Alert user that no data is available
+            return  # Exit method early when no data to print
+        
+        print(  # Display formatted product information to user
+            f"{BackgroundColors.GREEN}Product information extracted successfully:{Style.RESET_ALL}\n"
+            f"  {BackgroundColors.CYAN}Name:{Style.RESET_ALL} {product_data.get('name', 'N/A')}\n"
+            f"  {BackgroundColors.CYAN}Old Price:{Style.RESET_ALL} R${product_data.get('old_price_integer', 'N/A')},{product_data.get('old_price_decimal', 'N/A') if product_data.get('old_price_integer', 'N/A') != 'N/A' else 'N/A'}\n"
+            f"  {BackgroundColors.CYAN}Current Price:{Style.RESET_ALL} R${product_data.get('current_price_integer', 'N/A')},{product_data.get('current_price_decimal', 'N/A')}\n"
+            f"  {BackgroundColors.CYAN}Discount:{Style.RESET_ALL} {product_data.get('discount_percentage', 'N/A')}\n"
+            f"  {BackgroundColors.CYAN}Description:{Style.RESET_ALL} {product_data.get('description', 'N/A')[:100]}..."
+        )  # End of print statement
+
+
     def scrape_product_info(self, html_content: str) -> Optional[Dict[str, Any]]:
         """
         Scrapes product information from rendered HTML content.
