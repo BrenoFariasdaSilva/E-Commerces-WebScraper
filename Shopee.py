@@ -206,6 +206,32 @@ class Shopee:
             )  # End of verbose output call
 
 
+ def get_rendered_html(self) -> Optional[str]:
+        """
+        Gets the fully rendered HTML content after JavaScript execution.
+
+        :return: Rendered HTML string or None if failed
+        """
+
+        verbose_output(  # Output status message to user
+            f"{BackgroundColors.GREEN}Extracting rendered HTML...{Style.RESET_ALL}"
+        )  # End of verbose output call
+
+        if self.page is None:  # Validate that page instance exists before extracting HTML
+            print(f"{BackgroundColors.RED}Page instance not initialized.{Style.RESET_ALL}")  # Alert user that page is not ready
+            return None  # Return None to indicate extraction failed
+
+        try:  # Attempt HTML extraction with error handling
+            html = self.page.content()  # Extract fully rendered HTML content from page
+            verbose_output(  # Output success message to user
+                f"{BackgroundColors.GREEN}Rendered HTML extracted successfully.{Style.RESET_ALL}"
+            )  # End of verbose output call
+            return html  # Return extracted HTML content
+        except Exception as e:  # Catch any exceptions during HTML extraction
+            print(f"{BackgroundColors.RED}Failed to extract HTML: {e}{Style.RESET_ALL}")  # Alert user about extraction failure
+            return None  # Return None to indicate extraction failed
+
+
  def read_local_html(self) -> Optional[str]:
         """
         Reads HTML content from a local file for offline scraping.
