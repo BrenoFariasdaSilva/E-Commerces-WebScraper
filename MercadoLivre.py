@@ -54,10 +54,13 @@ Assumptions & Notes:
 
 import atexit  # For playing a sound when the program finishes
 import datetime  # For getting the current date and time
+import json  # For parsing JSON data
 import os  # For running a command in the terminal
 import platform  # For getting the operating system name
 import re  # For regular expressions
 import requests  # For making HTTP requests
+import shutil  # For copying files
+import subprocess  # For running ffmpeg commands
 import sys  # For system-specific parameters and functions
 from bs4 import BeautifulSoup, Tag  # For parsing HTML content
 from colorama import Style  # For coloring the terminal
@@ -606,122 +609,6 @@ class MercadoLivre:
         
         return output_dir  # Return the output directory path
 
-    def fetch_product_page(self, session, product_url):
-        """
-        Fetches the product page and returns the parsed BeautifulSoup object.
-        
-        :param session: Requests session object
-        :param product_url: URL of the product page
-        :return: BeautifulSoup object containing the parsed HTML
-        """
-        
-        response = session.get(product_url, timeout=10)  # Make a GET request to the product URL
-        response.raise_for_status()  # Raise exception for bad status
-        soup = BeautifulSoup(response.text, "html.parser")  # Parse the HTML content (use str to satisfy type checkers)
-        
-        return soup  # Return the parsed soup
-
-    def find_image_urls(self, soup):
-        """
-        Finds all valid image URLs from the product gallery figures and additional image elements.
-        
-        :param soup: BeautifulSoup object containing the parsed HTML
-        :return: List of valid image URLs
-        """
-        
-        figures = soup.find_all("figure", **HTML_SELECTORS["gallery_figure"])  # Find figure elements using centralized selector
-        image_urls = []  # List to store image URLs
-        
-        for figure in figures:  # Iterate through figures
-            if not isinstance(figure, Tag):  # If not a Tag
-                continue  # Skip
-            
-            img = figure.find("img", **HTML_SELECTORS["gallery_image"])  # Find image using centralized selector
-            
-            if isinstance(img, Tag):  # If image found
-                img_url = img.get("data-zoom") or img.get("src")  # Get URL
-                
-                if img_url and isinstance(img_url, str):  # If URL is valid
-                    if not img_url.startswith("data:") and not img_url.startswith("blob:"):  # Skip invalid URLs
-                        image_urls.append(img_url)  # Add to list
-        
-        additional_imgs = soup.find_all("img", **HTML_SELECTORS["additional_image"])  # Find additional image elements using centralized selector
-        for img in additional_imgs:  # Iterate through additional images
-            if isinstance(img, Tag):  # If it's a Tag
-                img_url = img.get("data-zoom") or img.get("src")  # Get URL
-                if img_url and isinstance(img_url, str):  # If URL is valid
-                    if not img_url.startswith("data:") and not img_url.startswith("blob:"):  # Skip invalid URLs
-                        if img_url not in image_urls:  # Avoid duplicates
-                            image_urls.append(img_url)  # Add to list
-        
-        return image_urls  # Return list of image URLs
-
-    def download_single_image(self, session, img_url, output_dir, image_count):
-        """
-        Downloads a single image to the specified output directory.
-        
-        :param session: Requests session object
-        :param img_url: URL of the image to download
-        :param output_dir: Directory to save the image
-        :param image_count: Counter for generating unique filenames
-        :return: Path to the downloaded file or None if download failed
-        """
-        
-        try:  # Try to download the image
-            img_response = session.get(img_url, timeout=10)  # Download image
-            img_response.raise_for_status()  # Raise exception on bad status
-            
-            parsed_url = urlparse(img_url)  # Parse URL
-            ext = os.path.splitext(parsed_url.path)[1]  # Get file extension
-            if not ext:  # If no extension
-                ext = ".webp"  # Default to webp (common on Mercado Livre)
-            
-            filename = f"image_{image_count:03d}{ext}"  # Create filename
-            filepath = os.path.join(output_dir, filename)  # Create path
-            
-            with open(filepath, "wb") as f:  # Write file
-                f.write(img_response.content)  # Write content
-            
-            verbose_output(
-                f"{BackgroundColors.GREEN}Downloaded: {BackgroundColors.CYAN}{filename}{Style.RESET_ALL}"
-            )  # Output verbose
-            
-            return filepath  # Return the file path
-            
-        except Exception as e:  # If error
-            verbose_output(
-                f"{BackgroundColors.RED}Error downloading image: {e}{Style.RESET_ALL}"
-            )  # Output error
-            return None  # Return None on failure
-
-    def download_product_images(self, session, product_url, output_dir):
-        """
-        Downloads all product images from the gallery.
-        
-        :param session: Requests session object
-        :param product_url: URL of the product page
-        :param output_dir: Directory to save images
-        :return: List of downloaded image file paths
-        """
-        
-        downloaded_images = []  # List to store downloaded image file paths
-        
-        soup = self.fetch_product_page(session, product_url)  # Fetch and parse the product page
-        
-        image_urls = self.find_image_urls(soup)  # Find all image URLs
-        
-        verbose_output(
-            f"{BackgroundColors.GREEN}Found {BackgroundColors.CYAN}{len(image_urls)}{BackgroundColors.GREEN} images in gallery.{Style.RESET_ALL}"
-        )  # Output count
-        
-        image_count = 0  # Counter for images
-        for img_url in image_urls:  # Iterate through image URLs
-            image_count += 1  # Increment counter
-            filepath = self.download_single_image(session, img_url, output_dir, image_count)  # Download image
-            if filepath:  # If download successful
-                downloaded_images.append(filepath)  # Add to list
-        
-        return downloaded_images  # Return list of downloaded image files
 
     def create_product_description_file(self, product_data, output_dir, product_name_safe, url):
         """
@@ -785,65 +672,7 @@ class MercadoLivre:
                 f"{BackgroundColors.YELLOW}Warning: Could not create product description file: {e}{Style.RESET_ALL}"
             )  # Output warning
             return None  # Return None on failure
-
-    def download_media(self):
-        """
-        Downloads product images from the gallery and creates a product description file.
-
-        :return: List of downloaded file paths (images and description file)
-        """
-
-        verbose_output(
-            f"{BackgroundColors.GREEN}Downloading product media...{Style.RESET_ALL}"
-        )  # Output the verbose message
-
-        downloaded_files = []  # List to store downloaded file paths
-        
-        if not self.product_url or not isinstance(self.product_url, str):  # If product URL is invalid
-            print(
-                f"{BackgroundColors.RED}Invalid product URL. Cannot download media.{Style.RESET_ALL}"
-            )  # Output the error message
-            return downloaded_files  # Return empty list
-        
-        try:  # Try to fetch and parse the product page
-            product_name_raw = self.product_data.get("name", "").strip()  # Get the raw product name
-            if isinstance(product_name_raw, str) and product_name_raw.lower() == "unknown product":  # If product name is "Unknown Product", skip media download and file creation
-                verbose_output(
-                    f"{BackgroundColors.YELLOW}Product name is 'Unknown Product' — skipping media download and file creation.{Style.RESET_ALL}"
-                )
-                return downloaded_files  # Return empty list
-
-            raw_name_for_safe = self.product_data.get("name", "Unknown_Product")
-            product_name_safe = re.sub(r'[<>:"/\\|?*]', '_', raw_name_for_safe.title())  # Create a safe filename
-            output_dir = self.create_output_directory(product_name_safe)  # Create the output directory
-            
-            verbose_output(
-                f"{BackgroundColors.GREEN}Downloading images from gallery...{Style.RESET_ALL}"
-            )  # Output the step message
-            
-            downloaded_images = self.download_product_images(self.session, self.product_url, output_dir)  # Download images
-            downloaded_files.extend(downloaded_images)  # Add images to downloaded files
-            
-            verbose_output(
-                f"{BackgroundColors.GREEN}Creating product description file...{Style.RESET_ALL}"
-            )  # Output message
-            
-            txt_file = self.create_product_description_file(self.product_data, output_dir, product_name_safe, self.url)  # Create description file
-            if txt_file:  # If file was created successfully
-                downloaded_files.append(txt_file)  # Add to downloaded files
-            
-            verbose_output(
-                f"{BackgroundColors.GREEN}Media download complete. Total files: {BackgroundColors.CYAN}{len(downloaded_files)}{Style.RESET_ALL}"
-            )  # Output completion
-            
-            return downloaded_files  # Return list
-            
-        except Exception as e:  # If error
-            print(
-                f"{BackgroundColors.RED}Unexpected error in download_media: {e}{Style.RESET_ALL}"
-            )  # Output error
-            return downloaded_files  # Return whatever was downloaded
-        
+    
     def scrape(self, verbose=VERBOSE):
         """
         Main scraping method that orchestrates the entire scraping process.
