@@ -177,7 +177,7 @@ class Shopee:
     """
 
 
- def __init__(self, url: str, local_html_path: Optional[str] = None, prefix: str = "") -> None:
+    def __init__(self, url: str, local_html_path: Optional[str] = None, prefix: str = "") -> None:
         """
         Initializes the Shopee scraper with a product URL and optional local HTML file path.
 
@@ -206,7 +206,7 @@ class Shopee:
             )  # End of verbose output call
 
 
- def launch_browser(self):
+    def launch_browser(self):
         """
         Launches an authenticated Chrome browser using existing profile.
 
@@ -264,7 +264,7 @@ class Shopee:
             raise  # Re-raise exception for caller to handle
 
 
- def close_browser(self):
+    def close_browser(self):
         """
         Safely closes the browser and Playwright instances.
 
@@ -289,7 +289,7 @@ class Shopee:
             print(f"{BackgroundColors.YELLOW}Warning during browser close: {e}{Style.RESET_ALL}")  # Warn user about close issues without failing
 
 
- def load_page(self) -> bool:
+    def load_page(self) -> bool:
         """
         Loads the product page and waits for network idle.
 
@@ -322,7 +322,7 @@ class Shopee:
             return False  # Return failure status for unhandled errors
 
 
- def auto_scroll(self) -> None:
+    def auto_scroll(self) -> None:
         """
         Automatically scrolls the page to trigger lazy-loaded content.
 
@@ -366,7 +366,7 @@ class Shopee:
             print(f"{BackgroundColors.YELLOW}Warning during auto-scroll: {e}{Style.RESET_ALL}")  # Warn user about scroll issues without failing
 
 
- def wait_full_render(self) -> None:
+    def wait_full_render(self) -> None:
         """
         Waits for the page to be fully rendered with all dynamic content.
 
@@ -404,7 +404,7 @@ class Shopee:
             print(f"{BackgroundColors.YELLOW}Warning during render wait: {e}{Style.RESET_ALL}")  # Warn user about render wait issues without failing
 
 
- def get_rendered_html(self) -> Optional[str]:
+    def get_rendered_html(self) -> Optional[str]:
         """
         Gets the fully rendered HTML content after JavaScript execution.
 
@@ -430,7 +430,7 @@ class Shopee:
             return None  # Return None to indicate extraction failed
 
 
- def read_local_html(self) -> Optional[str]:
+    def read_local_html(self) -> Optional[str]:
         """
         Reads HTML content from a local file for offline scraping.
 
@@ -463,7 +463,7 @@ class Shopee:
             return None  # Return None to indicate reading failed
 
 
- def extract_product_name(self, soup: BeautifulSoup) -> str:
+    def extract_product_name(self, soup: BeautifulSoup) -> str:
         """
         Extracts the product name from the parsed HTML soup.
         
@@ -487,7 +487,7 @@ class Shopee:
         return "Unknown Product"  # Return default placeholder when name extraction fails
 
 
- def detect_international(self, soup: BeautifulSoup) -> bool:
+    def detect_international(self, soup: BeautifulSoup) -> bool:
         """
         Detects if the product is international by checking for the international import declaration text.
         Looks for "Produto internacional objeto de declaração de importação e sujeito a impostos estaduais e federais"
@@ -556,7 +556,7 @@ class Shopee:
             return False  # Default to domestic on error
 
 
- def prefix_international_name(self, product_name: str) -> str:
+    def prefix_international_name(self, product_name: str) -> str:
         """
         Adds "INTERNACIONAL - " prefix to product name if not already present.
         
@@ -573,7 +573,7 @@ class Shopee:
         return product_name  # Return modified product name
 
 
- def extract_current_price(self, soup: BeautifulSoup) -> Tuple[str, str]:
+    def extract_current_price(self, soup: BeautifulSoup) -> Tuple[str, str]:
         """
         Extracts the current price from the parsed HTML soup.
         
@@ -600,7 +600,7 @@ class Shopee:
         return "0", "00"  # Return default zero price when extraction fails
 
 
- def extract_old_price(self, soup: BeautifulSoup) -> Tuple[str, str]:
+    def extract_old_price(self, soup: BeautifulSoup) -> Tuple[str, str]:
         """
         Extracts the old price from the parsed HTML soup.
         
@@ -627,7 +627,7 @@ class Shopee:
         return "N/A", "N/A"  # Return N/A when old price is not available
 
 
- def extract_discount_percentage(self, soup: BeautifulSoup) -> str:
+    def extract_discount_percentage(self, soup: BeautifulSoup) -> str:
         """
         Extracts the discount percentage from the parsed HTML soup.
         
@@ -649,7 +649,7 @@ class Shopee:
         return "N/A"  # Return N/A when discount is not available
 
 
- def extract_product_description(self, soup: BeautifulSoup) -> str:
+    def extract_product_description(self, soup: BeautifulSoup) -> str:
         """
         Extracts the product description from the parsed HTML soup.
         
@@ -670,7 +670,7 @@ class Shopee:
         return "No description available"  # Return default message when description is not found
 
 
- def find_image_urls(self, soup: BeautifulSoup) -> List[str]:
+    def find_image_urls(self, soup: BeautifulSoup) -> List[str]:
         """
         Finds all image URLs from the product gallery (class="airUhU").
         Extracts full-size images from thumbnail containers (class="UBG7wZ").
@@ -750,7 +750,7 @@ class Shopee:
         return image_urls  # Return list of image URLs
 
 
- def find_video_urls(self, soup: BeautifulSoup) -> List[str]:
+    def find_video_urls(self, soup: BeautifulSoup) -> List[str]:
         """
         Finds all video URLs from the product page.
         Searches entire page for video elements with classes "tpgcVs" and extracts src attribute.
@@ -814,7 +814,7 @@ class Shopee:
         return video_urls  # Return list of video URLs
 
 
- def print_product_info(self, product_data: Dict[str, Any]) -> None:
+    def print_product_info(self, product_data: Dict[str, Any]) -> None:
         """
         Prints the extracted product information in a formatted manner.
         
@@ -836,7 +836,7 @@ class Shopee:
         )  # End of print statement
 
 
- def scrape_product_info(self, html_content: str) -> Optional[Dict[str, Any]]:
+    def scrape_product_info(self, html_content: str) -> Optional[Dict[str, Any]]:
         """
         Scrapes product information from rendered HTML content.
 
@@ -882,7 +882,7 @@ class Shopee:
             return None  # Return None to indicate parsing failed
 
 
- def create_directory(self, full_directory_name, relative_directory_name):
+    def create_directory(self, full_directory_name, relative_directory_name):
         """
         Creates a directory.
 
@@ -905,8 +905,7 @@ class Shopee:
             )  # End of print statement
     
 
-
- def create_output_directory(self, product_name_safe):
+    def create_output_directory(self, product_name_safe):
         """
         Creates the output directory for storing downloaded media files.
         
@@ -921,7 +920,7 @@ class Shopee:
         return output_dir  # Return the created output directory path
 
 
- def collect_assets(self, html_content: str, output_dir: str) -> Dict[str, str]:
+    def collect_assets(self, html_content: str, output_dir: str) -> Dict[str, str]:
         """
         Collects and downloads all assets (images, CSS, JS) from the page.
 
@@ -978,7 +977,7 @@ class Shopee:
         return asset_map  # Return dictionary mapping URLs to local paths
 
 
- def save_snapshot(self, html_content: str, output_dir: str, asset_map: Dict[str, str]) -> Optional[str]:
+    def save_snapshot(self, html_content: str, output_dir: str, asset_map: Dict[str, str]) -> Optional[str]:
         """
         Saves the complete page snapshot with localized asset references.
 
@@ -1012,7 +1011,7 @@ class Shopee:
             return None  # Return None to indicate save operation failed
 
 
- def create_product_description_file(self, product_data: Dict[str, Any], output_dir: str, product_name_safe: str, url: str) -> Optional[str]:
+    def create_product_description_file(self, product_data: Dict[str, Any], output_dir: str, product_name_safe: str, url: str) -> Optional[str]:
         """
         Creates a text file with product description and details.
         
@@ -1066,7 +1065,7 @@ class Shopee:
             return None  # Return None to indicate creation failed
 
 
- def to_sentence_case(self, text: str) -> str:
+    def to_sentence_case(self, text: str) -> str:
         """
         Converts text to sentence case (first letter of each sentence uppercase).
 
@@ -1091,7 +1090,7 @@ class Shopee:
         return "".join(result)  # Join all sentences and delimiters back into a single string
 
 
- def download_single_image(self, img_url: str, output_dir: str, image_count: int) -> Optional[str]:
+    def download_single_image(self, img_url: str, output_dir: str, image_count: int) -> Optional[str]:
         """
         Downloads or copies a single image to the specified output directory.
         Supports HTTP downloads and local file copying for offline mode.
@@ -1177,7 +1176,7 @@ class Shopee:
             return None  # Return None on failure
 
 
- def download_single_video(self, video_url: str, output_dir: str, video_count: int) -> Optional[str]:
+    def download_single_video(self, video_url: str, output_dir: str, video_count: int) -> Optional[str]:
         """
         Downloads or copies a single video to the specified output directory.
         Supports HLS (.m3u8) downloads using ffmpeg, HTTP downloads, and local file copying.
@@ -1329,7 +1328,7 @@ class Shopee:
             return None  # Return None on failure
 
 
- def download_product_images(self, soup: BeautifulSoup, output_dir: str) -> List[str]:
+    def download_product_images(self, soup: BeautifulSoup, output_dir: str) -> List[str]:
         """
         Downloads all product images from the gallery.
         
@@ -1358,7 +1357,7 @@ class Shopee:
         return downloaded_images  # Return list of downloaded image paths
 
 
- def download_product_videos(self, soup: BeautifulSoup, output_dir: str) -> List[str]:
+    def download_product_videos(self, soup: BeautifulSoup, output_dir: str) -> List[str]:
         """
         Downloads all product videos from the gallery.
         
@@ -1387,7 +1386,7 @@ class Shopee:
         return downloaded_videos  # Return list of downloaded video paths
 
 
- def download_media(self) -> List[str]:
+    def download_media(self) -> List[str]:
         """
         Downloads product media and creates snapshot.
         Works for both online (browser) and offline (local HTML) modes.
@@ -1450,10 +1449,9 @@ class Shopee:
             print(f"{BackgroundColors.RED}Error during media download: {e}{Style.RESET_ALL}")  # Alert user about media download error
         
         return downloaded_files  # Return list of all downloaded file paths
-        
+    
 
-
- def scrape(self, verbose: bool = VERBOSE) -> Optional[Dict[str, Any]]:
+    def scrape(self, verbose: bool = VERBOSE) -> Optional[Dict[str, Any]]:
         """
         Main scraping method that orchestrates the entire scraping process.
         Supports both online scraping (via browser) and offline scraping (from local HTML file).
