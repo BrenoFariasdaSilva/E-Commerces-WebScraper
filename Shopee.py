@@ -205,6 +205,31 @@ class Shopee:
             )  # End of verbose output call
 
 
+    def to_sentence_case(self, text: str) -> str:
+        """
+        Converts text to sentence case (first letter of each sentence uppercase).
+
+        :param text: The text to convert
+        :return: Text in sentence case
+        """
+
+        if not text:  # Validate that text is not empty before processing
+            return text  # Return original text if it's empty or None
+
+        sentences = re.split(r"([.!?]\s*)", text)  # Keep the delimiters
+
+        result = []  # Initialize list to hold processed sentences
+        for i, sentence in enumerate(sentences):  # Iterate through each sentence with index
+            if sentence.strip():  # Process only non-empty sentences
+                if i % 2 == 0:  # Even indices are the actual sentence content
+                    sentence = sentence.strip()  # Remove leading/trailing whitespace
+                    if sentence:  # Ensure sentence is not empty after stripping
+                        sentence = sentence[0].upper() + sentence[1:].lower()  # Capitalize first letter and lowercase the rest
+                result.append(sentence)  # Append processed sentence or delimiter to result list
+
+        return "".join(result)  # Join all sentences and delimiters back into a single string
+
+
     def download_single_image(self, img_url: str, output_dir: str, image_count: int) -> Optional[str]:
         """
         Downloads or copies a single image to the specified output directory.
