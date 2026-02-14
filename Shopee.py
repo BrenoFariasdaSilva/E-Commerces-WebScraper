@@ -206,6 +206,60 @@ class Shopee:
             )  # End of verbose output call
 
 
+ def create_product_description_file(self, product_data: Dict[str, Any], output_dir: str, product_name_safe: str, url: str) -> Optional[str]:
+        """
+        Creates a text file with product description and details.
+        
+        :param product_data: Dictionary with product information
+        :param output_dir: Directory to save the file
+        :param product_name_safe: Safe product name for filename
+        :param url: Original product URL
+        :return: Path to the created description file or None if failed
+        """
+        
+        try:  # Attempt to create description file with error handling
+            description_file_path = os.path.join(output_dir, f"{product_name_safe}_description.txt")  # Construct path for description text file
+            
+            current_price = f"{product_data.get('current_price_integer', '0')},{product_data.get('current_price_decimal', '00')}"  # Format current price from dictionary values
+            old_price_int = product_data.get('old_price_integer', 'N/A')  # Get old price integer part or default
+            old_price_dec = product_data.get('old_price_decimal', 'N/A')  # Get old price decimal part or default
+            
+            if old_price_int != 'N/A' and old_price_dec != 'N/A':  # Verify if old price components are available
+                old_price = f"{old_price_int},{old_price_dec}"  # Format old price from components
+            else:  # Handle case when old price is not available
+                old_price = "N/A"  # Use N/A as old price placeholder
+            
+            discount = product_data.get('discount_percentage', 'N/A')  # Get discount percentage or default
+            
+            description_text = product_data.get('description', 'No description available')  # Product description with fallback
+            try:  # Attempt to convert description to sentence case with error handling
+                description_text = self.to_sentence_case(description_text)  # Convert description to sentence case for better readability
+            except Exception:  # Catch any exceptions during sentence case conversion
+                pass  # If conversion fails, use original description text without modification
+
+            content = PRODUCT_DESCRIPTION_TEMPLATE.format(  # Format template with product data
+                product_name=product_data.get('name', 'Unknown Product'),  # Product name with fallback
+                current_price=current_price,  # Formatted current price
+                old_price=old_price,  # Formatted old price or N/A
+                discount=discount,  # Discount percentage or N/A
+                description=description_text,  # Sentence-cased product description
+                url=url  # Original product URL
+            )  # End of format method call
+            
+            with open(description_file_path, "w", encoding="utf-8") as f:  # Open file in write mode with UTF-8 encoding
+                f.write(content)  # Write formatted content to file
+            
+            verbose_output(  # Output success message to user
+                f"{BackgroundColors.GREEN}Description file created: {description_file_path}{Style.RESET_ALL}"
+            )  # End of verbose output call
+            
+            return description_file_path  # Return path to created description file
+            
+        except Exception as e:  # Catch any exceptions during file creation
+            print(f"{BackgroundColors.RED}Failed to create description file: {e}{Style.RESET_ALL}")  # Alert user about file creation failure
+            return None  # Return None to indicate creation failed
+
+
  def to_sentence_case(self, text: str) -> str:
         """
         Converts text to sentence case (first letter of each sentence uppercase).
