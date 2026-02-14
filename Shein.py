@@ -375,6 +375,27 @@ class Shein:
             return None  # Return None to indicate reading failed
 
 
+    def extract_discount_percentage(self, soup=None):
+        """
+        Extracts the discount percentage from the parsed HTML soup.
+
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: Discount percentage string or "N/A" if not found
+        """
+
+        if soup is None:  # Guard against None to avoid attribute access on None
+            return "N/A"  # Default discount when no soup provided
+        for tag, attrs in HTML_SELECTORS["discount"]:  # Iterate through each selector combination from centralized dictionary
+            discount_element = soup.find(tag, attrs if attrs else None)  # Search for element matching current selector
+            if discount_element:  # Verify if matching element was found
+                discount_text = discount_element.get_text(strip=True)  # Extract and clean text content from element
+                match = re.search(r"(\d+%)", discount_text)  # Search for discount percentage pattern
+                if match:  # Verify if discount pattern was found in text
+                    verbose_output(f"{BackgroundColors.GREEN}Discount: {match.group(1)}{Style.RESET_ALL}")  # Log successfully extracted discount percentage
+                    return match.group(1)  # Return the discount percentage string
+        return "N/A"  # Return N/A when discount is not available
+
+
     def extract_product_description(self, soup=None):
         """
         Extracts the product description from the parsed HTML soup.
