@@ -1423,8 +1423,9 @@ class Shopee:
                 self.product_data["name"] = product_name  # Update product data with prefixed name
                 verbose_output(f"{BackgroundColors.YELLOW}Product name prefixed with 'INTERNACIONAL'.{Style.RESET_ALL}")
             
-            product_name_safe = "".join(c if c.isalnum() or c in (" ", "-", "_") else "" for c in product_name).strip()  # Sanitize product name for filesystem use
-            
+            raw_name_for_safe = product_name  # Raw product name before sanitization
+            product_name_safe = re.sub(r'[<>:"/\\|?*]', '_', raw_name_for_safe.title())  # Create a safe filename
+
             output_dir = self.create_output_directory(product_name_safe)  # Create output directory for product
             
             image_files = self.download_product_images(soup, output_dir)  # Download all product images
