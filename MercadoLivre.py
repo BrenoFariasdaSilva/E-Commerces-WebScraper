@@ -1109,6 +1109,7 @@ class MercadoLivre:
 
             raw_name_for_safe = self.product_data.get("name", "Unknown_Product")
             product_name_safe = re.sub(r'[<>:"/\\|?*]', '_', raw_name_for_safe.title())  # Create a safe filename
+            
             output_dir = self.create_output_directory(product_name_safe)  # Create the output directory
             
             soup = self.fetch_product_page(self.session, self.product_url)  # Fetch and parse the product page
