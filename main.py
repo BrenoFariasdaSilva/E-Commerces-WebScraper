@@ -182,6 +182,8 @@ INSTRUÇÕES:
 
 Gere APENAS o texto formatado, sem explicações adicionais."""  # Template for Gemini AI marketing text generation
 
+GEMINI_LAST_KEY_INDEX = 0  # Index to keep track of the last used key in the Gemini prompt template for dynamic replacement
+
 # Functions Definitions:
 
 
@@ -990,48 +992,63 @@ def generate_marketing_text(product_description, description_file, product_data=
     prompt = GEMINI_MARKETING_PROMPT_TEMPLATE.format(product_description=product_description) + internacional_instruction + no_discount_instruction  # Format template with all instructions
     
     last_error = None  # Store the last error for reporting
-    for key_index, api_key in enumerate(api_keys, 1):  # Iterate through API keys
+    
+    global GEMINI_LAST_KEY_INDEX  # Use module-level index state to rotate keys across products
+    total_keys = len(api_keys)  # Number of available API keys
+
+    start_idx = GEMINI_LAST_KEY_INDEX % total_keys if total_keys > 0 else 0
+
+    for offset in range(total_keys):  # Try each key in the list, starting from the last attempted key
+        idx = (start_idx + offset) % total_keys  # 0-based index into api_keys
+        key_index = idx + 1  # 1-based display index for messages
+        api_key = api_keys[idx]  # Select API key for this attempt
         try:  # Try to generate marketing text with current key
             verbose_output(
-                true_string=f"{BackgroundColors.GREEN}Attempting to use Gemini API key {key_index} of {len(api_keys)}...{Style.RESET_ALL}"
+                true_string=f"{BackgroundColors.GREEN}Attempting to use Gemini API key {key_index} of {total_keys}...{Style.RESET_ALL}"
             )  # Output verbose message
-            
+
+            GEMINI_LAST_KEY_INDEX = idx  # Store last attempted key index (0-based)
+
             gemini = Gemini(api_key)  # Create Gemini instance with current key
             formatted_output = gemini.generate_content(prompt)  # Generate formatted marketing text
-            
+
             if formatted_output:  # If generation successful
                 description_dir = os.path.dirname(description_file)  # Get directory of description file
                 formatted_file = os.path.join(description_dir, f"Template.txt")  # Output file path
                 gemini.write_output_to_file(formatted_output, formatted_file)  # Write output to file
-                
+
                 gemini.close()  # Close Gemini client
-                
+
+                GEMINI_LAST_KEY_INDEX = idx  # Persist last successful key index
+
                 return True  # Return success
             else:  # If generation failed but no exception
                 print(f"{BackgroundColors.YELLOW}API key {key_index} returned empty response.{Style.RESET_ALL}")
                 gemini.close()  # Close Gemini client
-                last_error = "Empty response from API"
+                last_error = "Empty response from API"  # Store error message for reporting
                 continue  # Try next key
-                
+
         except Exception as e:  # If an error occurs with current key
+            GEMINI_LAST_KEY_INDEX = idx  # Store last attempted index even on exceptions
+
             error_str = str(e).lower()  # Convert error to lowercase for verify
-            
+
             is_rate_limit = any(keyword in error_str for keyword in [
                 "rate", "quota", "limit", "429", "resource_exhausted", 
                 "too many requests", "quota exceeded"
             ])  # Verify for rate limit indicators
-            
+
             if is_rate_limit:  # If rate limit error detected
                 last_error = e  # Store error
-                
-                if key_index < len(api_keys):  # If more keys available
+
+                if offset < total_keys - 1:  # If there are more keys to try
                     continue  # Try next key
                 else:  # No more keys to try
                     print(f"{BackgroundColors.RED}All API keys exhausted.{Style.RESET_ALL}")
             else:  # Non-rate-limit error
                 print(f"{BackgroundColors.RED}Error with API key {key_index}: {e}{Style.RESET_ALL}")
                 last_error = e  # Store error
-                
+
                 return False  # Return failure
     
     print(f"{BackgroundColors.RED}Failed to generate marketing text after trying all {len(api_keys)} API key(s).{Style.RESET_ALL}")
