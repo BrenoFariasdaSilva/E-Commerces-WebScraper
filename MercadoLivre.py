@@ -1194,6 +1194,13 @@ class MercadoLivre:
             txt_file = self.create_product_description_file(self.product_data, output_dir, product_name, self.url)  # Create description file
             if txt_file:  # If file was created successfully
                 downloaded_files.append(txt_file)  # Add to downloaded files
+
+            if not self.local_html_path:  # Guard snapshot creation for online runs only
+                html_content = str(soup)  # Convert parsed soup back to HTML string for snapshot
+                asset_map = self.collect_assets(html_content, output_dir)  # Build asset replacement map
+                snapshot_path = self.save_snapshot(html_content, output_dir, asset_map)  # Save the page snapshot with localized paths
+                if snapshot_path:  # If snapshot was successfully saved
+                    downloaded_files.append(snapshot_path)  # Add snapshot to downloaded files list
             
             verbose_output(
                 f"{BackgroundColors.GREEN}Media download complete. Total files: {BackgroundColors.CYAN}{len(downloaded_files)}{Style.RESET_ALL}"
