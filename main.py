@@ -542,7 +542,7 @@ def get_next_run_index(base_output_dir, today_str):
     :return: The next incremental run index (integer starting from 1)
     """
     
-    if not os.path.exists(base_output_dir):  # Check if base output directory exists
+    if not os.path.exists(base_output_dir):  # Verify if base output directory exists
         return 1  # Return 1 as first run index if directory doesn't exist yet
     
     max_index = 0  # Initialize maximum index counter to zero
@@ -550,12 +550,12 @@ def get_next_run_index(base_output_dir, today_str):
     
     for item in os.listdir(base_output_dir):  # Iterate through all items in base output directory
         item_path = os.path.join(base_output_dir, item)  # Construct full path to item
-        if os.path.isdir(item_path):  # Check if item is a directory
+        if os.path.isdir(item_path):  # Verify if item is a directory
             match = pattern.match(item)  # Try to match directory name against pattern
             if match:  # If directory name matches the expected format
                 index = int(match.group(1))  # Extract run index from first capture group
                 date_str = match.group(2)  # Extract date string from second capture group
-                if date_str == today_str:  # Check if directory is from today
+                if date_str == today_str:  # Verify if directory is from today
                     max_index = max(max_index, index)  # Update max_index if current index is higher
     
     return max_index + 1  # Return next incremental index (max found + 1)
