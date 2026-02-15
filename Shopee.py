@@ -180,13 +180,14 @@ class Shopee:
     """
 
 
-    def __init__(self, url: str, local_html_path: Optional[str] = None, prefix: str = "") -> None:
+    def __init__(self, url: str, local_html_path: Optional[str] = None, prefix: str = "", output_directory: str = OUTPUT_DIRECTORY) -> None:
         """
         Initializes the Shopee scraper with a product URL and optional local HTML file path.
 
         :param url: The URL of the Shopee product page to scrape
         :param local_html_path: Optional path to a local HTML file for offline scraping
         :param prefix: Optional platform prefix for output directory naming (e.g., "Shopee")
+        :param output_directory: Output directory path for storing scraped data (defaults to OUTPUT_DIRECTORY constant)
         :return: None
         """
 
@@ -196,6 +197,7 @@ class Shopee:
         self.html_content: Optional[str] = None  # Store HTML content for reuse (from browser or local file)
         self.product_data: Dict[str, Any] = {}  # Initialize empty dictionary to store extracted product data
         self.prefix: str = prefix  # Store the platform prefix for directory naming
+        self.output_directory: str = output_directory  # Store the output directory path for this scraping session
         self.playwright: Optional[Any] = None  # Placeholder for Playwright instance
         self.browser: Optional[Any] = None  # Placeholder for browser instance
         self.page: Optional[Any] = None  # Placeholder for page object
@@ -919,7 +921,7 @@ class Shopee:
         """
         
         directory_name = f"{self.prefix} - {product_name_safe}" if self.prefix else product_name_safe  # Construct directory name with platform prefix if available
-        output_dir = os.path.join(OUTPUT_DIRECTORY, directory_name)  # Construct full path for product output directory
+        output_dir = os.path.join(self.output_directory, directory_name)  # Construct full path for product output directory using instance output directory
         self.create_directory(os.path.abspath(output_dir), output_dir.replace(".", ""))  # Create directory with absolute path and cleaned relative name
         
         return output_dir  # Return the created output directory path
