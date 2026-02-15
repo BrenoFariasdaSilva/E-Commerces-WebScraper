@@ -402,8 +402,8 @@ class Shein:
         for tag, attrs in HTML_SELECTORS["product_name"]:  # Iterate through each selector combination from centralized dictionary
             name_element = soup.find(tag, attrs if attrs else None)  # Search for element matching current selector
             if name_element:  # Verify if matching element was found
-                product_name = name_element.get_text(strip=True)  # Extract and clean text content from element (preserve original casing)
-                product_name = product_name.title()  # Convert extracted product name to title case
+                raw_product_name = name_element.get_text(strip=True)  # Extract raw text from the found element
+                product_name = re.sub(r'[<>:"/\\|?*]', '_', raw_product_name.title())  # Create a safe filename by replacing invalid characters and applying title case for better formatting
                 if product_name and product_name != "":  # Validate that extracted name is not empty
                     verbose_output(f"{BackgroundColors.GREEN}Product name: {BackgroundColors.CYAN}{product_name}{Style.RESET_ALL}")  # Log successfully extracted (formatted) product name
                     return product_name  # Return the title-cased product name immediately when found
@@ -1523,10 +1523,7 @@ class Shein:
                 self.product_data["name"] = product_name  # Update product data with prefixed name
                 verbose_output(f"{BackgroundColors.YELLOW}Product name prefixed with 'INTERNACIONAL'.{Style.RESET_ALL}")
             
-            raw_name_for_safe = product_name  # Raw product name before sanitization
-            product_name_safe = re.sub(r'[<>:"/\\|?*]', '_', raw_name_for_safe.title())  # Create a safe filename
-            
-            output_dir = self.create_output_directory(product_name_safe)  # Create output directory for product
+            output_dir = self.create_output_directory(product_name)  # Create output directory for product
             
             image_urls = self.find_image_urls(soup)
             if image_urls:
@@ -1549,7 +1546,7 @@ class Shein:
             if snapshot_path:  # Verify if snapshot was saved successfully
                 downloaded_files.append(snapshot_path)  # Add snapshot path to downloaded files list
             
-            description_file = self.create_product_description_file(self.product_data, output_dir, product_name_safe, self.product_url)  # Create product description text file
+            description_file = self.create_product_description_file(self.product_data, output_dir, product_name, self.product_url)  # Create product description text file
             if description_file:  # Verify if description file was created successfully
                 downloaded_files.append(description_file)  # Add description file path to downloaded files list
             
