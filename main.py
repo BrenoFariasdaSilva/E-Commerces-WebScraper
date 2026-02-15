@@ -378,6 +378,33 @@ def install_ffmpeg_mac():
         )  # Inform the user
 
 
+def ensure_ffmpef_is_installed():
+    """
+    Verifies if FFmpeg is installed and installs it if missing.
+
+    :return: None
+    """
+
+    INSTALL_COMMANDS = {  # Installation commands for different platforms
+        "Windows": install_ffmpeg_windows,  # Windows
+        "Linux": install_ffmpeg_linux,  # Linux
+        "Darwin": install_ffmpeg_mac,  # macOS
+    }
+
+    if is_ffmpeg_installed():  # If FFmpeg is already installed
+        verbose_output(f"{BackgroundColors.GREEN}FFmpeg is installed.{Style.RESET_ALL}")  # Output the verbose message
+    else:  # If FFmpeg is not installed
+        verbose_output(
+            f"{BackgroundColors.RED}FFmpeg is not installed. Installing FFmpeg...{Style.RESET_ALL}"
+        )  # Output the verbose message
+        if platform.system() in INSTALL_COMMANDS:  # If the platform is supported
+            INSTALL_COMMANDS[platform.system()]()  # Call the corresponding installation function
+        else:  # If the platform is not supported
+            print(
+                f"Installation for {platform.system()} is not implemented. Please install FFmpeg manually."
+            )  # Inform the user
+
+
 def create_directory(full_directory_name, relative_directory_name):
     """
     Creates a directory.
@@ -1345,6 +1372,8 @@ def main():
 
     if not ensure_input_file_exists():  # Ensure the input file exists, and if not, create it with instructions
         return  # Exit if unable to ensure input file
+    
+    ensure_ffmpef_is_installed()  # Check if ffmpeg is installed and install it if not
     
     create_directory(
         os.path.abspath(OUTPUT_DIRECTORY), OUTPUT_DIRECTORY.replace(".", "")
