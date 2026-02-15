@@ -88,7 +88,7 @@ class BackgroundColors:  # Colors for the terminal
 
 
 # Execution Constants:
-VERBOSE = False  # Set to True to output verbose messages
+VERBOSE = True  # Set to True to output verbose messages
 
 TEST_URLs = [""]  # Test URLs for scraping
 
@@ -547,7 +547,7 @@ def get_next_run_index(base_output_dir, today_str):
     
     max_index = 0  # Initialize maximum index counter to zero
     pattern = re.compile(r'^(\d+)\. \d{4}-\d{2}-\d{2} - \d{2}:\d{2}:\d{2}$')  # Regex pattern to match directory format: "index. YYYY-MM-DD - HH:MM:SS"
-    
+
     for item in os.listdir(base_output_dir):  # Iterate through all items in base output directory
         item_path = os.path.join(base_output_dir, item)  # Construct full path to item
         if os.path.isdir(item_path):  # Verify if item is a directory
@@ -656,6 +656,11 @@ def resolve_local_html_path(local_html_path):
         return local_html_path  # Return as-is
     
     if verify_filepath_exists(local_html_path):  # If path exists as provided
+        if os.path.isdir(local_html_path):  # Check if it's a directory
+            index_html_path = os.path.join(local_html_path, 'index.html')  # Construct path to index.html inside directory
+            if verify_filepath_exists(index_html_path):  # If index.html exists inside directory
+                verbose_output(f"{BackgroundColors.GREEN}Resolved local HTML path (directory): {BackgroundColors.CYAN}{local_html_path}{BackgroundColors.GREEN} -> {BackgroundColors.CYAN}{index_html_path}{Style.RESET_ALL}")  # Confirm resolution
+                return index_html_path  # Return path to index.html inside directory
         verbose_output(f"{BackgroundColors.GREEN}Resolved local HTML path: {BackgroundColors.CYAN}{local_html_path}{Style.RESET_ALL}")  # Confirm resolution
         return local_html_path  # Return original path
     
@@ -669,6 +674,11 @@ def resolve_local_html_path(local_html_path):
             
             test_path = f"{prefix}{local_html_path}{suffix}"  # Construct test path with prefix and suffix
             if verify_filepath_exists(test_path):  # If test path exists
+                if os.path.isdir(test_path):  # Check if the resolved path is a directory
+                    index_html_path = os.path.join(test_path, 'index.html')  # Construct path to index.html inside directory
+                    if verify_filepath_exists(index_html_path):  # If index.html exists inside directory
+                        verbose_output(f"{BackgroundColors.GREEN}Resolved local HTML path (directory): {BackgroundColors.CYAN}{local_html_path}{BackgroundColors.GREEN} -> {BackgroundColors.CYAN}{index_html_path}{Style.RESET_ALL}")  # Inform about resolution
+                        return index_html_path  # Return path to index.html inside directory
                 verbose_output(  # Output resolution message
                     f"{BackgroundColors.GREEN}Resolved local HTML path: {BackgroundColors.CYAN}{local_html_path}{BackgroundColors.GREEN} -> {BackgroundColors.CYAN}{test_path}{Style.RESET_ALL}"
                 )  # End of verbose output call
@@ -801,6 +811,7 @@ def scrape_product(url, timestamped_output_dir, local_html_path=None):
     
     extracted_dir = None  # Directory where zip is extracted
     zip_path = None  # Path to the zip file for cleanup
+    html_path = local_html_path  # Initialize html_path with local_html_path (will be overridden if zip extraction occurs)
     
     if local_html_path and local_html_path.lower().endswith('.zip'):  # If a local HTML path is provided and it is a zip file, extract it
         zip_path = local_html_path  # Store the zip path for later cleanup
