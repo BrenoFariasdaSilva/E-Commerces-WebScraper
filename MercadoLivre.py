@@ -1115,6 +1115,33 @@ class MercadoLivre:
         return asset_map  # Return whatever mapping we could build
 
 
+    def save_snapshot(self, html_content="", output_dir="", asset_map=None):
+        """
+        Saves a page snapshot (page.html) optionally replacing asset URLs with local paths.
+
+        :param html_content: Raw HTML content to save
+        :param output_dir: Directory where snapshot will be written
+        :param asset_map: Optional mapping of original URLs to local relative paths
+        :return: Path to saved snapshot or None on failure
+        """
+
+        if asset_map is None:  # If no asset map provided
+            asset_map = {}  # Use empty mapping
+
+        try:  # Attempt to write the snapshot file
+            modified_html = html_content  # Start with original HTML content
+            for original_url, local_path in asset_map.items():  # Iterate replacement map
+                modified_html = modified_html.replace(original_url, local_path)  # Replace occurrences
+            snapshot_path = os.path.join(output_dir, "page.html")  # Build snapshot path
+            with open(snapshot_path, "w", encoding="utf-8") as f:  # Open snapshot file for writing
+                f.write(modified_html)  # Write modified HTML to disk
+            verbose_output(f"{BackgroundColors.GREEN}Snapshot saved: {snapshot_path}{Style.RESET_ALL}")  # Verbose report
+            return snapshot_path  # Return saved path
+        except Exception as e:  # If saving fails
+            print(f"{BackgroundColors.RED}Failed to save snapshot: {e}{Style.RESET_ALL}")  # Report error
+            return None  # Indicate failure
+
+
     def download_media(self):
         """
         Downloads product images from the gallery and creates a product description file.
