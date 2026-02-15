@@ -664,11 +664,12 @@ class Shopee:
             description_element = soup.find(tag, attrs if attrs else None)  # type: ignore[arg-type]  # Search for element matching current selector
             if description_element:  # Verify if matching element was found
                 description = description_element.get_text(strip=True)  # Extract and clean text content from element
+                description = self.to_sentence_case(description)  # Convert extracted description to sentence case
                 if description and len(description) > 10:  # Validate that description has substantial content
                     verbose_output(  # Log successfully extracted description with character count
                         f"{BackgroundColors.GREEN}Description found ({len(description)} chars).{Style.RESET_ALL}"
                     )  # End of verbose output call
-                    return description  # Return the product description
+                    return description  # Return the formatted product description
         
         return "No description available"  # Return default message when description is not found
 
