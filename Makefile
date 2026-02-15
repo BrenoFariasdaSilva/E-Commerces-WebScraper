@@ -38,7 +38,7 @@ endif
 # Default target
 all: run
 
-# Make Rules
+# Execute the main script with logging and updated dependency management
 run: dependencies
 	$(ENSURE_LOG_DIR)
 	$(CLEAR_CMD)
