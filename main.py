@@ -1168,9 +1168,9 @@ def generate_marketing_text(product_description, description_file, product_data=
         return False  # Return failure
     
     is_international = product_data.get("is_international", False) if product_data else False  # Verify if product is international
-    internacional_instruction = ""  # Initialize international instruction as empty
+    International_instruction = ""  # Initialize international instruction as empty
     if is_international:  # If the product is international, we need to add a specific instruction to the prompt
-        internacional_instruction = "\n\n**IMPORTANTE**: Este produto é INTERNACIONAL. Você DEVE adicionar '[PRODUTO INTERNACIONAL]: ' antes do nome do produto no início do texto formatado."
+        International_instruction = "\n\n**IMPORTANTE**: Este produto é INTERNACIONAL. Você DEVE adicionar '[PRODUTO INTERNACIONAL]: ' antes do nome do produto no início do texto formatado."
     
     old_price_int = str(product_data.get("old_price_integer", "")).strip() if product_data else ""
     old_price_dec = str(product_data.get("old_price_decimal", "")).strip() if product_data else ""
@@ -1180,7 +1180,7 @@ def generate_marketing_text(product_description, description_file, product_data=
     if (old_price_int in ["N/A", ""] or old_price_dec in ["N/A", ""]) and discount in ["N/A", ""]:
         no_discount_instruction = "\n\n**IMPORTANTE**: Este produto NÃO possui preço antigo ou desconto disponível. Você deve REMOVER as linhas de preço antigo (DE R$...) e desconto (🎟️...) do texto formatado. Mostre APENAS o preço atual."
     
-    prompt = GEMINI_MARKETING_PROMPT_TEMPLATE.format(product_description=product_description) + internacional_instruction + no_discount_instruction  # Format template with all instructions
+    prompt = GEMINI_MARKETING_PROMPT_TEMPLATE.format(product_description=product_description) + International_instruction + no_discount_instruction  # Format template with all instructions
     
     last_error = None  # Store the last error for reporting
     
