@@ -1237,19 +1237,20 @@ def main():
                 clean_duplicate_images(product_directory, timestamped_output_dir)  # Clean up duplicate images in the product directory using timestamped output directory
                 exclude_small_images(product_directory, timestamped_output_dir)  # Exclude images smaller than 2KB using timestamped output directory
             
-            if extracted_dir_to_cleanup and os.path.exists(extracted_dir_to_cleanup):  # If extraction occurred and directory exists
-                try:  # Try to clean up the extracted directory
-                    shutil.rmtree(extracted_dir_to_cleanup)  # Remove the extracted directory
-                    verbose_output(f"{BackgroundColors.GREEN}Cleaned up extracted directory: {BackgroundColors.CYAN}{extracted_dir_to_cleanup}{Style.RESET_ALL}")
-                except Exception as e:  # If cleanup fails
-                    print(f"{BackgroundColors.YELLOW}Warning: Failed to clean up extracted directory: {e}{Style.RESET_ALL}")
-            
-            if zip_path_to_cleanup and os.path.exists(zip_path_to_cleanup):  # If zip file exists
-                try:  # Try to clean up the zip file
-                    os.remove(zip_path_to_cleanup)  # Remove the original zip file
-                    verbose_output(f"{BackgroundColors.GREEN}Cleaned up zip file: {BackgroundColors.CYAN}{zip_path_to_cleanup}{Style.RESET_ALL}")
-                except Exception as e:  # If cleanup fails
-                    print(f"{BackgroundColors.YELLOW}Warning: Failed to clean up zip file: {e}{Style.RESET_ALL}")
+            if DELETE_LOCAL_HTML_FILE:  # If we are configured to delete local HTML files after scraping, attempt to clean up both the extracted directory (if we extracted from a zip) and the original zip file (if applicable)
+                if extracted_dir_to_cleanup and os.path.exists(extracted_dir_to_cleanup):  # If extraction occurred and directory exists
+                    try:  # Try to clean up the extracted directory
+                        shutil.rmtree(extracted_dir_to_cleanup)  # Remove the extracted directory
+                        verbose_output(f"{BackgroundColors.GREEN}Cleaned up extracted directory: {BackgroundColors.CYAN}{extracted_dir_to_cleanup}{Style.RESET_ALL}")
+                    except Exception as e:  # If cleanup fails
+                        print(f"{BackgroundColors.YELLOW}Warning: Failed to clean up extracted directory: {e}{Style.RESET_ALL}")
+
+                if zip_path_to_cleanup and os.path.exists(zip_path_to_cleanup):  # If zip file exists
+                    try:  # Try to clean up the zip file
+                        os.remove(zip_path_to_cleanup)  # Remove the original zip file
+                        verbose_output(f"{BackgroundColors.GREEN}Cleaned up zip file: {BackgroundColors.CYAN}{zip_path_to_cleanup}{Style.RESET_ALL}")
+                    except Exception as e:  # If cleanup fails
+                        print(f"{BackgroundColors.YELLOW}Warning: Failed to clean up zip file: {e}{Style.RESET_ALL}")
             
             if not product_data:  # If scraping failed
                 print(f"{BackgroundColors.RED}Skipping {BackgroundColors.CYAN}{url}{BackgroundColors.RED} due to scraping failure.{Style.RESET_ALL}\n")
