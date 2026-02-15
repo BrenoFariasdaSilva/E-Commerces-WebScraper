@@ -60,6 +60,7 @@ import os  # For running a command in the terminal
 import platform  # For getting the operating system name
 import re # For regular expressions in text processing
 import shutil  # For removing directories
+import subprocess  # For running system commands
 import sys  # For system-specific parameters and functions
 import time  # For adding delays between requests
 import zipfile  # For handling zip files
@@ -281,6 +282,22 @@ def verify_env_variables():
         return False  # Return False if any required environment variable is missing
 
     return True  # Return True if all required environment variables are set
+
+
+def is_ffmpeg_installed():
+    """
+    Checks if FFmpeg is installed by running 'ffmpeg -version'.
+
+    :return: bool - True if FFmpeg is installed, False otherwise.
+    """
+
+    try:  # Try to execute FFmpeg
+        subprocess.run(
+            ["ffmpeg", "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True
+        )  # Run the command
+        return True  # FFmpeg is installed
+    except (subprocess.CalledProcessError, FileNotFoundError):  # If an error occurs
+        return False  # FFmpeg is not installed
 
 
 def create_directory(full_directory_name, relative_directory_name):
