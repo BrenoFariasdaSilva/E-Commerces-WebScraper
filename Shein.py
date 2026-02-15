@@ -403,9 +403,10 @@ class Shein:
             name_element = soup.find(tag, attrs if attrs else None)  # Search for element matching current selector
             if name_element:  # Verify if matching element was found
                 product_name = name_element.get_text(strip=True)  # Extract and clean text content from element (preserve original casing)
+                product_name = product_name.title()  # Convert extracted product name to title case
                 if product_name and product_name != "":  # Validate that extracted name is not empty
-                    verbose_output(f"{BackgroundColors.GREEN}Product name: {BackgroundColors.CYAN}{product_name}{Style.RESET_ALL}")  # Log successfully extracted product name
-                    return product_name  # Return the product name immediately when found
+                    verbose_output(f"{BackgroundColors.GREEN}Product name: {BackgroundColors.CYAN}{product_name}{Style.RESET_ALL}")  # Log successfully extracted (formatted) product name
+                    return product_name  # Return the title-cased product name immediately when found
         verbose_output(f"{BackgroundColors.YELLOW}Product name not found, using default.{Style.RESET_ALL}")  # Warn that product name could not be extracted
         return "Unknown Product"  # Return default placeholder when name extraction fails
 
@@ -629,9 +630,10 @@ class Shein:
             description_element = soup.find(tag, attrs if attrs else None)  # Find element for each selector
             if description_element:  # If an element was found
                 description = description_element.get_text(strip=True)  # Extract and strip text
+                description = self.to_sentence_case(description)  # Convert HTML description to sentence case
                 if description and len(description) > 10:  # If description is sufficiently long
                     verbose_output(f"{BackgroundColors.GREEN}Description found from HTML ({len(description)} chars).{Style.RESET_ALL}")  # Log success
-                    return description  # Return HTML description
+                    return description  # Return formatted HTML description
 
         verbose_output(f"{BackgroundColors.YELLOW}HTML description not found, trying structured specification extraction...{Style.RESET_ALL}")  # Notify about next fallback
 
@@ -733,8 +735,9 @@ class Shein:
             
             if len(specifications) >= 3:  # Require at least 3 pairs to accept
                 description = "\n".join(specifications)  # Join pairs with newline
+                description = self.to_sentence_case(description)  # Convert structured specification description to sentence case
                 verbose_output(f"{BackgroundColors.GREEN}Structured specifications extracted successfully ({len(specifications)} pairs, {len(description)} characters).{Style.RESET_ALL}")  # Log success with counts
-                return description  # Return structured description
+                return description  # Return formatted structured description
             else:
                 verbose_output(f"{BackgroundColors.YELLOW}Found only {len(specifications)} specifications, need at least 3. Continuing to JSON extraction...{Style.RESET_ALL}")  # Not enough pairs
                 
@@ -761,10 +764,10 @@ class Shein:
                         
                         if isinstance(json_data, dict) and "goods_desc" in json_data:  # Check if goods_desc exists in parsed data
                             goods_desc = json_data["goods_desc"]  # Extract goods_desc value
-                            
+                            goods_desc = self.to_sentence_case(goods_desc)  # Convert goods_desc to sentence case
                             if goods_desc and len(goods_desc) > 10:  # Validate description length
                                 verbose_output(f"{BackgroundColors.GREEN}goods_desc extracted successfully ({len(goods_desc)} chars).{Style.RESET_ALL}")  # Log success
-                                return goods_desc  # Return goods_desc content
+                                return goods_desc  # Return formatted goods_desc content
                         
                     except json.JSONDecodeError:  # Handle JSON parsing errors
                         verbose_output(f"{BackgroundColors.YELLOW}Failed to parse JSON in script tag.{Style.RESET_ALL}")  # Log parse failure
