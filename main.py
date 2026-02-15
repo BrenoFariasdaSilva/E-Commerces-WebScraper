@@ -300,6 +300,43 @@ def is_ffmpeg_installed():
         return False  # FFmpeg is not installed
 
 
+def install_ffmpeg_windows():
+    """
+    Installs FFmpeg on Windows using Chocolatey. If Chocolatey is not installed, it installs it first.
+
+    :return: None
+    """
+
+    verbose_output(f"{BackgroundColors.GREEN}Checking for Chocolatey...{Style.RESET_ALL}")  # Output the verbose message
+
+    choco_installed = (
+        subprocess.run(["choco", "--version"], capture_output=True, text=True).returncode == 0
+    )  # Check if Chocolatey is installed
+
+    if not choco_installed:  # If Chocolatey is not installed
+        verbose_output(f"{BackgroundColors.YELLOW}Chocolatey not found. Installing Chocolatey...{Style.RESET_ALL}")
+
+        choco_install_cmd = (
+            "powershell -NoProfile -ExecutionPolicy Bypass -Command "
+            '"Set-ExecutionPolicy Bypass -Scope Process -Force; '
+            "[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; "
+            "iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))\""
+        )
+
+        subprocess.run(choco_install_cmd, shell=True, check=True)  # Install Chocolatey
+
+        verbose_output(
+            f"{BackgroundColors.GREEN}Chocolatey installed successfully. Restart your terminal if needed.{Style.RESET_ALL}"
+        )
+
+    verbose_output(f"{BackgroundColors.GREEN}Installing FFmpeg via Chocolatey...{Style.RESET_ALL}")
+    subprocess.run(["choco", "install", "ffmpeg", "-y"], check=True)  # Install FFmpeg using Chocolatey
+
+    verbose_output(
+        f"{BackgroundColors.GREEN}FFmpeg installed successfully. Please restart your terminal if necessary.{Style.RESET_ALL}"
+    )
+
+
 def create_directory(full_directory_name, relative_directory_name):
     """
     Creates a directory.
