@@ -525,6 +525,36 @@ def detect_platform(url):
     return None  # Return None if platform not recognized
 
 
+def verify_affiliate_url_format(url):
+    """
+    Verify if a URL uses the supported short affiliate redirect format.
+
+    :param url: The product URL to check
+    :return: None
+    """
+
+    platform_id = detect_platform(url)  # Detect platform from the URL
+    platform_modules = {  # Mapping of platform ids to scraper modules
+        "mercadolivre": MercadoLivre,  # MercadoLivre module
+        "shein": Shein,  # Shein module
+        "shopee": Shopee,  # Shopee module
+    }  # End mapping
+
+    module = platform_modules.get(platform_id)  # Retrieve module for detected platform
+    if module is None:  # If platform unsupported, nothing to validate
+        return  # Exit early
+
+    pattern = getattr(module, "AFFILIATE_URL_PATTERN", None)  # Get affiliate regex pattern
+    if not pattern:  # If pattern not defined, nothing to validate
+        return  # Exit early
+
+    try:  # Attempt regex match
+        if not re.search(pattern, url, flags=re.IGNORECASE):  # If URL does not match affiliate pattern
+            print(f"{BackgroundColors.YELLOW}Warning: URL is not in the expected affiliate format for {platform_id}: {BackgroundColors.CYAN}{url}{Style.RESET_ALL}")  # Print warning
+    except re.error:  # If the pattern is invalid
+        print(f"{BackgroundColors.YELLOW}Warning: invalid affiliate regex for {platform_id}.{Style.RESET_ALL}")  # Print invalid-regex warning
+
+
 def resolve_local_html_path(local_html_path):
     """
     Attempts to resolve a local HTML path by trying various common variations.
@@ -1038,6 +1068,8 @@ def main():
         pbar = tqdm(urls_to_process, desc="Processing URLs", unit="url")
         for index, (url, local_html_path) in enumerate(pbar, 1):  # Iterate through all URLs with optional local HTML paths
             pbar.set_description(f"Processing {index}/{total_urls}")
+
+            verify_affiliate_url_format(url)  # Verify affiliate-format URL for supported platforms
 
             if local_html_path:  # If a local HTML file path is provided
                 local_html_path = resolve_local_html_path(local_html_path)  # Resolve path with fallback variations
