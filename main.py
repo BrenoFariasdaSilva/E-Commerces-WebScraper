@@ -1170,9 +1170,10 @@ def main():
         os.path.abspath(OUTPUT_DIRECTORY), OUTPUT_DIRECTORY.replace(".", "")
     )  # Create the base output directory
     
-    timestamped_output_dir = create_timestamped_output_directory(OUTPUT_DIRECTORY)  # Create timestamped subdirectory for this run
-    
-    clean_unknown_product_directories(timestamped_output_dir)  # Clean up any "Unknown Product" directories from current run
+    staging_output_dir = os.path.join(OUTPUT_DIRECTORY, ".staging")  # Staging area for interim outputs
+    create_directory(os.path.abspath(staging_output_dir), "Outputs/.staging")  # Ensure staging exists
+
+    timestamped_output_dir = None  # Will be created lazily on first successful scrape
     
     successful_scrapes = 0  # Counter for successful operations
 
@@ -1206,36 +1207,62 @@ def main():
                 verbose_output(f"{BackgroundColors.GREEN}Using local HTML file: {BackgroundColors.CYAN}{local_html_path}{Style.RESET_ALL}")  # Inform user about offline mode
 
             verbose_output(f"{BackgroundColors.CYAN}Step 1{BackgroundColors.GREEN}: Scraping the product information{Style.RESET_ALL}")  # Step 1: Scrape the product information
-            scrape_result = scrape_product(url, timestamped_output_dir, local_html_path)  # Scrape the product with timestamped output directory and optional local HTML path
-        
-            if not scrape_result or len(scrape_result) != 6:  # If scraping failed or returned invalid result
-                print(f"{BackgroundColors.RED}Skipping {BackgroundColors.CYAN}{url}{BackgroundColors.RED} due to scraping failure.{Style.RESET_ALL}\n")
-                continue  # Move to next URL
-            
-            product_data, description_file, product_directory, html_path_for_assets, zip_path_to_cleanup, extracted_dir_to_cleanup = scrape_result  # Unpack the scrape result
-            
-            if product_directory and isinstance(product_directory, str):  # If product directory is valid
-                clean_duplicate_images(product_directory, timestamped_output_dir)  # Clean up duplicate images in the product directory using timestamped output directory
-                exclude_small_images(product_directory, timestamped_output_dir)  # Exclude images smaller than 2KB using timestamped output directory
-            
-            if DELETE_LOCAL_HTML_FILE:  # If we are configured to delete local HTML files after scraping, attempt to clean up both the extracted directory (if we extracted from a zip) and the original zip file (if applicable)
-                if extracted_dir_to_cleanup and os.path.exists(extracted_dir_to_cleanup):  # If extraction occurred and directory exists
-                    try:  # Try to clean up the extracted directory
-                        shutil.rmtree(extracted_dir_to_cleanup)  # Remove the extracted directory
-                        verbose_output(f"{BackgroundColors.GREEN}Cleaned up extracted directory: {BackgroundColors.CYAN}{extracted_dir_to_cleanup}{Style.RESET_ALL}")
-                    except Exception as e:  # If cleanup fails
-                        print(f"{BackgroundColors.YELLOW}Warning: Failed to clean up extracted directory: {e}{Style.RESET_ALL}")
+            scrape_result = scrape_product(url, staging_output_dir, local_html_path)  # Scrape the product writing into staging
 
-                if zip_path_to_cleanup and os.path.exists(zip_path_to_cleanup):  # If zip file exists
-                    try:  # Try to clean up the zip file
-                        os.remove(zip_path_to_cleanup)  # Remove the original zip file
-                        verbose_output(f"{BackgroundColors.GREEN}Cleaned up zip file: {BackgroundColors.CYAN}{zip_path_to_cleanup}{Style.RESET_ALL}")
-                    except Exception as e:  # If cleanup fails
-                        print(f"{BackgroundColors.YELLOW}Warning: Failed to clean up zip file: {e}{Style.RESET_ALL}")
-            
-            if not product_data:  # If scraping failed
-                print(f"{BackgroundColors.RED}Skipping {BackgroundColors.CYAN}{url}{BackgroundColors.RED} due to scraping failure.{Style.RESET_ALL}\n")
-                continue  # Move to next URL
+            if not scrape_result or len(scrape_result) != 6:  # If scraping failed or returned invalid result
+                print(f"{BackgroundColors.RED}Skipping {BackgroundColors.CYAN}{url}{BackgroundColors.RED} due to scraping failure.{Style.RESET_ALL}\n")  # Notify user about skip
+                try:  # Attempt to clean any partial staging output for this URL
+                    tmp_product_name = None  # Initialize temporary product name variable
+                    if isinstance(scrape_result, tuple) and scrape_result[2]:  # Verify tuple shape and product dir field
+                        tmp_product_name = scrape_result[2]  # Extract product directory name from scrape_result
+                    if tmp_product_name:  # Only proceed if we found a temporary product directory name
+                        tmp_path = os.path.join(staging_output_dir, tmp_product_name)  # Build staging path for that product
+                        if os.path.exists(tmp_path):  # Verify if the staging path exists on disk
+                            shutil.rmtree(tmp_path)  # Remove the partial staging directory to keep staging clean
+                except Exception:  # Catch and ignore any errors during staging cleanup
+                    pass  # Ignore cleanup errors and continue
+                continue  # Move to next URL  # Skip further processing for this URL
+
+            product_data, description_file, product_directory, html_path_for_assets, zip_path_to_cleanup, extracted_dir_to_cleanup = scrape_result  # Unpack the scrape result  # Destructure returned tuple
+
+            if not product_data:  # If scraping failed unexpectedly  # Validate product_data presence
+                print(f"{BackgroundColors.RED}Skipping {BackgroundColors.CYAN}{url}{BackgroundColors.RED} due to scraping failure.{Style.RESET_ALL}\n")  # Inform about unexpected failure
+                continue  # Move to next URL  # Skip processing for this URL
+
+            if timestamped_output_dir is None:  # Lazily create run directory on first success
+                timestamped_output_dir = create_timestamped_output_directory(OUTPUT_DIRECTORY)  # Create timestamped run dir
+                clean_unknown_product_directories(timestamped_output_dir)  # Clean up any "Unknown Product" dirs inside this run  # Remove old placeholders
+
+            try:  # Attempt to move product output from staging to final run dir
+                src_dir = os.path.join(staging_output_dir, product_directory)  # Path to product in staging
+                dest_dir = os.path.join(timestamped_output_dir, product_directory)  # Target path inside final run dir
+                if os.path.exists(dest_dir):  # If destination exists, remove it first to replace  # Ensure replace semantics
+                    shutil.rmtree(dest_dir)  # Remove existing destination to avoid conflicts
+                if os.path.exists(src_dir):  # Only move if staging source exists
+                    shutil.move(src_dir, dest_dir)  # Move staging product to final run
+                product_name_safe = sanitize_filename(product_data.get("name", "Unknown Product"))  # Sanitize product name
+                description_file = os.path.join(dest_dir, f"{product_name_safe}_description.txt")  # Update description file path to final location
+            except Exception as e:  # Handle move errors
+                print(f"{BackgroundColors.YELLOW}Warning: Could not move staging output to final run directory: {e}{Style.RESET_ALL}")  # Warn user but continue
+
+            if product_directory and isinstance(product_directory, str):  # Only run image cleanup for valid product dirs
+                clean_duplicate_images(product_directory, timestamped_output_dir)  # Deduplicate images in final location
+                exclude_small_images(product_directory, timestamped_output_dir)  # Remove extremely small images
+
+            input_source = html_path_for_assets or local_html_path  # Determine original input source to copy
+            copy_original_input_to_output(input_source, product_directory, base_output_dir=timestamped_output_dir)  # Copy original input into final product folder
+
+            if DELETE_LOCAL_HTML_FILE:  # Only perform deletions when configured
+                if extracted_dir_to_cleanup and os.path.exists(extracted_dir_to_cleanup):  # Remove extracted directory if present
+                    try:  # Attempt deletion
+                        shutil.rmtree(extracted_dir_to_cleanup)  # Delete extracted dir
+                    except Exception:  # Ignore failures during deletion
+                        pass  # Continue silently on failure
+                if zip_path_to_cleanup and os.path.exists(zip_path_to_cleanup):  # Remove original zip if present
+                    try:  # Attempt deletion
+                        os.remove(zip_path_to_cleanup)  # Delete zip file
+                    except Exception:  # Ignore failures during deletion
+                        pass  # Continue silently on failure
             
             try:  # Read the product description from the file
                 with open(str(description_file), "r", encoding="utf-8") as f:  # Open the description file with UTF-8 encoding
@@ -1267,6 +1294,13 @@ def main():
                 time.sleep(DELAY_BETWEEN_REQUESTS)
     
     print(f"{BackgroundColors.GREEN}Successfully processed: {BackgroundColors.CYAN}{successful_scrapes}/{total_urls}{BackgroundColors.GREEN} URLs{Style.RESET_ALL}\n")  # Output the number of successful operations
+
+    try:  # Clean up the staging directory if it's empty after processing all URLs
+        if os.path.exists(staging_output_dir) and not os.listdir(staging_output_dir):  # If staging directory exists and is empty
+            shutil.rmtree(staging_output_dir)  # Remove the empty staging directory
+            verbose_output(f"{BackgroundColors.GREEN}Removed empty staging directory: {BackgroundColors.CYAN}{staging_output_dir}{Style.RESET_ALL}")
+    except Exception:  # If an error occurs during cleanup, ignore it
+        pass  # Best effort cleanup, ignore errors
 
     finish_time = datetime.datetime.now()  # Get the finish time of the program
     print(
