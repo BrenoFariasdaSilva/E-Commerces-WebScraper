@@ -285,6 +285,7 @@ class MercadoLivre:
         
         name_element = soup.find(**HTML_SELECTORS["product_name"])  # Find the product name element using centralized selector
         product_name = name_element.get_text(strip=True).title() if name_element else "Unknown Product"  # Extract and capitalize the product name
+        product_name.title()  # Convert to title case for better formatting
         
         verbose_output(
             f"{BackgroundColors.GREEN}Product name: {BackgroundColors.CYAN}{product_name}{Style.RESET_ALL}"
@@ -418,8 +419,9 @@ class MercadoLivre:
         
         description_element = soup.find(**HTML_SELECTORS["description"])  # Find description title element using centralized selector
         description = description_element.get_text(strip=True) if description_element else "No description available"  # Extract description
-        
-        return description  # Return the description
+        description = self.to_sentence_case(description)  # Convert description to sentence case before returning
+
+        return description  # Return the formatted description
 
 
     def print_product_info(self, product_data):
