@@ -1434,11 +1434,12 @@ class Shopee:
             video_files = self.download_product_videos(soup, output_dir)  # Download all product videos
             downloaded_files.extend(video_files)  # Add video files to downloaded list
             
-            asset_map = self.collect_assets(html_content, output_dir)  # Download and collect all page assets
-            
-            snapshot_path = self.save_snapshot(html_content, output_dir, asset_map)  # Save HTML snapshot with localized assets
-            if snapshot_path:  # Verify if snapshot was saved successfully
-                downloaded_files.append(snapshot_path)  # Add snapshot path to downloaded files list
+            if not self.local_html_path:  # Only collect assets and save snapshot when not using a provided local HTML
+                asset_map = self.collect_assets(html_content, output_dir)  # Download and collect all page assets
+                
+                snapshot_path = self.save_snapshot(html_content, output_dir, asset_map)  # Save HTML snapshot with localized assets
+                if snapshot_path:  # Verify if snapshot was saved successfully
+                    downloaded_files.append(snapshot_path)  # Add snapshot path to downloaded files list
             
             description_file = self.create_product_description_file(  # Create product description text file
                 self.product_data, output_dir, product_name, self.product_url  # Pass all required parameters
