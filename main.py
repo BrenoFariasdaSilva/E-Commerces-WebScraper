@@ -1102,7 +1102,7 @@ def main():
             platform_id = detect_platform(url) or ""  # Detect platform for current URL
             platform_name = PLATFORM_PREFIXES.get(platform_id, platform_id if platform_id else "Unknown")  # Human-friendly platform name
             desc = (
-                f"{BackgroundColors.GREEN}Processing {index}/{total_urls}{BackgroundColors.CYAN} - {platform_name}{Style.RESET_ALL}"
+                f"{BackgroundColors.GREEN}Processing {BackgroundColors.CYAN}{index}{BackgroundColors.GREEN}/{BackgroundColors.CYAN}{total_urls}{BackgroundColors.GREEN} - {BackgroundColors.CYAN}{platform_name}{Style.RESET_ALL}"
             )  # Build colored description with platform
             pbar.set_description(desc)  # Update the progress bar description
 
