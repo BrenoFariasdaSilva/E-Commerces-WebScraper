@@ -107,7 +107,6 @@ PLATFORM_PREFIXES = {
 }  # Mapping of platform identifiers to display prefixes for output directories
 
 PLATFORM_PREFIX_SEPARATOR = " - "  # Separator between platform prefix and product name in directory structure
-    
 
 # File Path Constants:
 INPUT_DIRECTORY = "./Inputs/"  # The path to the input directory
