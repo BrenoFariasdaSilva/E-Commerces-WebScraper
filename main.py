@@ -1047,7 +1047,10 @@ def scrape_product(url, timestamped_output_dir, local_html_path=None):
             return None, None, None, None, None, None  # Return None values
         
         product_name = product_data.get("name", "Unknown Product")  # Get product name
-        product_name_safe = sanitize_filename(product_name)  # Sanitize filename
+        if isinstance(product_name, str):  # Ensure we operate only on strings
+            product_name = product_name.replace("\u00A0", " ")  # Replace NBSP with normal space
+            product_name = re.sub(r"\s+", " ", product_name).strip()  # Collapse multiple whitespace to single spaces
+        product_name_safe = sanitize_filename(product_name)  # Sanitize filename (title-case and strip)
         product_directory = f"{platform_prefix}{PLATFORM_PREFIX_SEPARATOR}{product_name_safe}" if platform_prefix else product_name_safe  # Construct directory name with platform prefix
         description_file = f"{timestamped_output_dir}/{product_directory}/{product_name_safe}_description.txt"  # Construct full path to description file using timestamped directory
         
