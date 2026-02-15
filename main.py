@@ -358,6 +358,26 @@ def install_ffmpeg_linux():
         print("Failed to install FFmpeg. Please install it manually using your package manager.")  # Inform the user
 
 
+def install_ffmpeg_mac():
+    """
+    Installs FFmpeg on macOS using Homebrew.
+
+    :return: None
+    """
+
+    verbose_output(
+        f"{BackgroundColors.GREEN}Installing FFmpeg on macOS...{Style.RESET_ALL}"
+    )  # Output the verbose message
+
+    try:  # Try installing FFmpeg
+        subprocess.run(["brew", "install", "ffmpeg"], check=True)  # Run the installation command
+        print("FFmpeg installed successfully.")  # Inform the user
+    except subprocess.CalledProcessError:  # If an error occurs
+        print(
+            "Homebrew not found or installation failed. Please install FFmpeg manually using 'brew install ffmpeg'."
+        )  # Inform the user
+
+
 def create_directory(full_directory_name, relative_directory_name):
     """
     Creates a directory.
