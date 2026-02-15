@@ -447,8 +447,8 @@ def exclude_small_images(product_directory, min_size_bytes=2048):
             if size < min_size_bytes:  # If the image file is smaller than the minimum size
                 os.remove(img_path)  # Remove the image file
                 verbose_output(f"{BackgroundColors.YELLOW}Removed small image (<{min_size_bytes} bytes): {BackgroundColors.CYAN}{img_path}{Style.RESET_ALL}")
-        except Exception as e:  # If an error occurs while checking/removing the image
-            print(f"{BackgroundColors.RED}Error checking/removing image {BackgroundColors.CYAN}{img_path}{BackgroundColors.RED}: {BackgroundColors.YELLOW}{e}{Style.RESET_ALL}")
+        except Exception as e:  # If an error occurs while verify/removing the image
+            print(f"{BackgroundColors.RED}Error verify/removing image {BackgroundColors.CYAN}{img_path}{BackgroundColors.RED}: {BackgroundColors.YELLOW}{e}{Style.RESET_ALL}")
 
 def load_urls_to_process(test_urls, input_file):
     """
@@ -529,7 +529,7 @@ def verify_affiliate_url_format(url):
     """
     Verify if a URL uses the supported short affiliate redirect format.
 
-    :param url: The product URL to check
+    :param url: The product URL to verify
     :return: None
     """
 
@@ -598,7 +598,7 @@ def resolve_local_html_path(local_html_path):
                 verbose_output(f"{BackgroundColors.GREEN}Resolved path variation: {BackgroundColors.CYAN}{test_path}{Style.RESET_ALL}")  # Inform user about resolution
                 return test_path  # Return resolved path
     
-    if local_html_path.lower().endswith('.html'):  # Check if path ends with .html extension
+    if local_html_path.lower().endswith('.html'):  # Verify if path ends with .html extension
         last_slash_idx = local_html_path.rfind('/')  # Find the last slash in the path
         if last_slash_idx != -1:  # If there's a slash, we can extract base path
             base_path = local_html_path[:last_slash_idx]  # Remove /filename.html to get base directory path
@@ -617,7 +617,7 @@ def resolve_local_html_path(local_html_path):
             
             for test_path in base_variations:  # Iterate through base path variations
                 if verify_filepath_exists(test_path):  # If base path variation exists
-                    if os.path.isdir(test_path):  # Check if it's a directory
+                    if os.path.isdir(test_path):  # Verify if it's a directory
                         resolved_html_path = os.path.join(test_path, html_filename)  # Reconstruct full HTML file path
                         verbose_output(f"{BackgroundColors.GREEN}Resolved base directory: {BackgroundColors.CYAN}{test_path}{Style.RESET_ALL}")  # Inform about directory resolution
                         verbose_output(f"{BackgroundColors.GREEN}Using HTML file: {BackgroundColors.CYAN}{resolved_html_path}{Style.RESET_ALL}")  # Inform about HTML file path
@@ -852,7 +852,7 @@ def generate_marketing_text(product_description, description_file, product_data=
         print(f"{BackgroundColors.RED}Error: No Gemini API keys configured in .env file.{Style.RESET_ALL}")
         return False  # Return failure
     
-    is_international = product_data.get("is_international", False) if product_data else False  # Check if product is international
+    is_international = product_data.get("is_international", False) if product_data else False  # Verify if product is international
     internacional_instruction = ""  # Initialize international instruction as empty
     if is_international:  # If the product is international, we need to add a specific instruction to the prompt
         internacional_instruction = "\n\n**IMPORTANTE**: Este produto é INTERNACIONAL. Você DEVE adicionar '[PRODUTO INTERNACIONAL]: ' antes do nome do produto no início do texto formatado."
@@ -892,12 +892,12 @@ def generate_marketing_text(product_description, description_file, product_data=
                 continue  # Try next key
                 
         except Exception as e:  # If an error occurs with current key
-            error_str = str(e).lower()  # Convert error to lowercase for checking
+            error_str = str(e).lower()  # Convert error to lowercase for verify
             
             is_rate_limit = any(keyword in error_str for keyword in [
                 "rate", "quota", "limit", "429", "resource_exhausted", 
                 "too many requests", "quota exceeded"
-            ])  # Check for rate limit indicators
+            ])  # Verify for rate limit indicators
             
             if is_rate_limit:  # If rate limit error detected
                 last_error = e  # Store error
