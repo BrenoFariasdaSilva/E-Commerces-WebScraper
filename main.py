@@ -63,6 +63,7 @@ import shutil  # For removing directories
 import sys  # For system-specific parameters and functions
 import time  # For adding delays between requests
 import zipfile  # For handling zip files
+from tqdm import tqdm  # Progress bar for URL processing
 # from AliExpress import AliExpress  # Import the AliExpress class
 from colorama import Style  # For coloring the terminal
 from dotenv import load_dotenv  # For loading environment variables
@@ -1031,75 +1032,79 @@ def main():
     
     total_urls = len(urls_to_process)  # Total number of URLs to process
 
-    for index, (url, local_html_path) in enumerate(urls_to_process, 1):  # Iterate through all URLs with optional local HTML paths
-        print(f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Processing URL {BackgroundColors.CYAN}{index}{BackgroundColors.GREEN}/{BackgroundColors.CYAN}{total_urls}{BackgroundColors.GREEN}: {BackgroundColors.CYAN}{url}{Style.RESET_ALL}") # Print section header
-        
-        if local_html_path:  # If a local HTML file path is provided
-            local_html_path = resolve_local_html_path(local_html_path)  # Resolve path with fallback variations
-            verbose_output(f"{BackgroundColors.GREEN}Using local HTML file: {BackgroundColors.CYAN}{local_html_path}{Style.RESET_ALL}")  # Inform user about offline mode
-        
-        verbose_output(f"{BackgroundColors.CYAN}Step 1{BackgroundColors.GREEN}: Scraping the product information{Style.RESET_ALL}")  # Step 1: Scrape the product information
-        scrape_result = scrape_product(url, local_html_path)  # Scrape the product with optional local HTML path
-        
-        if not scrape_result or len(scrape_result) != 6:  # If scraping failed or returned invalid result
-            print(f"{BackgroundColors.RED}Skipping {BackgroundColors.CYAN}{url}{BackgroundColors.RED} due to scraping failure.{Style.RESET_ALL}\n")
-            continue  # Move to next URL
-        
-        product_data, description_file, product_directory, html_path_for_assets, zip_path_to_cleanup, extracted_dir_to_cleanup = scrape_result  # Unpack the scrape result
-        
-        if product_directory and isinstance(product_directory, str):  # If product directory is valid
-            clean_duplicate_images(product_directory)  # Clean up duplicate images in the product directory
-            exclude_small_images(product_directory)  # Exclude images smaller than 2KB
-        
-        if extracted_dir_to_cleanup and os.path.exists(extracted_dir_to_cleanup):  # If extraction occurred and directory exists
-            try:  # Try to clean up the extracted directory
-                shutil.rmtree(extracted_dir_to_cleanup)  # Remove the extracted directory
-                verbose_output(f"{BackgroundColors.GREEN}Cleaned up extracted directory: {BackgroundColors.CYAN}{extracted_dir_to_cleanup}{Style.RESET_ALL}")
-            except Exception as e:  # If cleanup fails
-                print(f"{BackgroundColors.YELLOW}Warning: Failed to clean up extracted directory: {e}{Style.RESET_ALL}")
-        
-        if zip_path_to_cleanup and os.path.exists(zip_path_to_cleanup):  # If zip file exists
-            try:  # Try to clean up the zip file
-                os.remove(zip_path_to_cleanup)  # Remove the original zip file
-                verbose_output(f"{BackgroundColors.GREEN}Cleaned up zip file: {BackgroundColors.CYAN}{zip_path_to_cleanup}{Style.RESET_ALL}")
-            except Exception as e:  # If cleanup fails
-                print(f"{BackgroundColors.YELLOW}Warning: Failed to clean up zip file: {e}{Style.RESET_ALL}")
-        
-        if not product_data:  # If scraping failed
-            print(f"{BackgroundColors.RED}Skipping {BackgroundColors.CYAN}{url}{BackgroundColors.RED} due to scraping failure.{Style.RESET_ALL}\n")
-            continue  # Move to next URL
-        
-        try:  # Read the product description from the file
-            with open(str(description_file), "r", encoding="utf-8") as f:  # Open the description file with UTF-8 encoding
-                product_description = f.read()  # Read the product description
-        except Exception as e:  # If reading the file fails
-            print(f"{BackgroundColors.RED}Error reading description file: {e}{Style.RESET_ALL}")
-            continue  # Move to next URL
-        
-        valid, invalid_reasons = validate_product_information(product_data, product_directory, description_file)  # Validate the product information
+    if total_urls == 0:  # If there are no URLs to process, output a message and skip the processing loop
+        print(f"{BackgroundColors.YELLOW}No URLs to process.{Style.RESET_ALL}")
+    else:  # If there are URLs to process, proceed with the processing loop
+        pbar = tqdm(urls_to_process, desc="Processing URLs", unit="url")
+        for index, (url, local_html_path) in enumerate(pbar, 1):  # Iterate through all URLs with optional local HTML paths
+            pbar.set_description(f"Processing {index}/{total_urls}")
 
-        if not valid:  # If the product information is not valid, skip Gemini formatting and output the reasons
-            print(
-                f"{BackgroundColors.RED}Skipping Step 2: Gemini formatting due to invalid product information for URL: {BackgroundColors.CYAN}{url}{BackgroundColors.RED}.{Style.RESET_ALL}"
-            )
-            continue  # Move to next URL
+            if local_html_path:  # If a local HTML file path is provided
+                local_html_path = resolve_local_html_path(local_html_path)  # Resolve path with fallback variations
+                verbose_output(f"{BackgroundColors.GREEN}Using local HTML file: {BackgroundColors.CYAN}{local_html_path}{Style.RESET_ALL}")  # Inform user about offline mode
 
-        if local_html_path:  # If a local HTML path was provided
-            delete_local_html_file(local_html_path)  # Delete the local HTML file after successful scraping and validation
-
-        verbose_output(f"{BackgroundColors.CYAN}Step 2{BackgroundColors.GREEN}: Formatting with Gemini AI{Style.RESET_ALL}")  # Step 2: Format the product description with Gemini AI
+            verbose_output(f"{BackgroundColors.CYAN}Step 1{BackgroundColors.GREEN}: Scraping the product information{Style.RESET_ALL}")  # Step 1: Scrape the product information
+            scrape_result = scrape_product(url, local_html_path)  # Scrape the product with optional local HTML path
         
-        success = generate_marketing_text(product_description, description_file, product_data)  # Generate marketing text with product data
-        
-        if success:  # If both scraping and formatting succeeded
-            description_dir = os.path.dirname(description_file)  # Get directory of description file
-            template_file = os.path.join(description_dir, "Template.txt")  # Path to the generated template file
-            validate_and_fix_output_file(template_file)  # Validate and fix formatting issues in the output file
+            if not scrape_result or len(scrape_result) != 6:  # If scraping failed or returned invalid result
+                print(f"{BackgroundColors.RED}Skipping {BackgroundColors.CYAN}{url}{BackgroundColors.RED} due to scraping failure.{Style.RESET_ALL}\n")
+                continue  # Move to next URL
             
-            successful_scrapes += 1  # Increment successful scrapes counter
-        
-        if index < total_urls:  # Add delay between requests to avoid rate limiting, but not after the last URL
-            time.sleep(DELAY_BETWEEN_REQUESTS)
+            product_data, description_file, product_directory, html_path_for_assets, zip_path_to_cleanup, extracted_dir_to_cleanup = scrape_result  # Unpack the scrape result
+            
+            if product_directory and isinstance(product_directory, str):  # If product directory is valid
+                clean_duplicate_images(product_directory)  # Clean up duplicate images in the product directory
+                exclude_small_images(product_directory)  # Exclude images smaller than 2KB
+            
+            if extracted_dir_to_cleanup and os.path.exists(extracted_dir_to_cleanup):  # If extraction occurred and directory exists
+                try:  # Try to clean up the extracted directory
+                    shutil.rmtree(extracted_dir_to_cleanup)  # Remove the extracted directory
+                    verbose_output(f"{BackgroundColors.GREEN}Cleaned up extracted directory: {BackgroundColors.CYAN}{extracted_dir_to_cleanup}{Style.RESET_ALL}")
+                except Exception as e:  # If cleanup fails
+                    print(f"{BackgroundColors.YELLOW}Warning: Failed to clean up extracted directory: {e}{Style.RESET_ALL}")
+            
+            if zip_path_to_cleanup and os.path.exists(zip_path_to_cleanup):  # If zip file exists
+                try:  # Try to clean up the zip file
+                    os.remove(zip_path_to_cleanup)  # Remove the original zip file
+                    verbose_output(f"{BackgroundColors.GREEN}Cleaned up zip file: {BackgroundColors.CYAN}{zip_path_to_cleanup}{Style.RESET_ALL}")
+                except Exception as e:  # If cleanup fails
+                    print(f"{BackgroundColors.YELLOW}Warning: Failed to clean up zip file: {e}{Style.RESET_ALL}")
+            
+            if not product_data:  # If scraping failed
+                print(f"{BackgroundColors.RED}Skipping {BackgroundColors.CYAN}{url}{BackgroundColors.RED} due to scraping failure.{Style.RESET_ALL}\n")
+                continue  # Move to next URL
+            
+            try:  # Read the product description from the file
+                with open(str(description_file), "r", encoding="utf-8") as f:  # Open the description file with UTF-8 encoding
+                    product_description = f.read()  # Read the product description
+            except Exception as e:  # If reading the file fails
+                print(f"{BackgroundColors.RED}Error reading description file: {e}{Style.RESET_ALL}")
+                continue  # Move to next URL
+            
+            valid, invalid_reasons = validate_product_information(product_data, product_directory, description_file)  # Validate the product information
+
+            if not valid:  # If the product information is not valid, skip Gemini formatting and output the reasons
+                print(
+                    f"{BackgroundColors.RED}Skipping Step 2: Gemini formatting due to invalid product information for URL: {BackgroundColors.CYAN}{url}{BackgroundColors.RED}.{Style.RESET_ALL}"
+                )
+                continue  # Move to next URL
+
+            if local_html_path:  # If a local HTML path was provided
+                delete_local_html_file(local_html_path)  # Delete the local HTML file after successful scraping and validation
+
+            verbose_output(f"{BackgroundColors.CYAN}Step 2{BackgroundColors.GREEN}: Formatting with Gemini AI{Style.RESET_ALL}")  # Step 2: Format the product description with Gemini AI
+            
+            success = generate_marketing_text(product_description, description_file, product_data)  # Generate marketing text with product data
+            
+            if success:  # If both scraping and formatting succeeded
+                description_dir = os.path.dirname(description_file)  # Get directory of description file
+                template_file = os.path.join(description_dir, "Template.txt")  # Path to the generated template file
+                validate_and_fix_output_file(template_file)  # Validate and fix formatting issues in the output file
+                
+                successful_scrapes += 1  # Increment successful scrapes counter
+            
+            if index < total_urls:  # Add delay between requests to avoid rate limiting, but not after the last URL
+                time.sleep(DELAY_BETWEEN_REQUESTS)
     
     print(f"{BackgroundColors.GREEN}Successfully processed: {BackgroundColors.CYAN}{successful_scrapes}/{total_urls}{BackgroundColors.GREEN} URLs{Style.RESET_ALL}\n")  # Output the number of successful operations
 
