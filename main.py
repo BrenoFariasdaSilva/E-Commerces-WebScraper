@@ -524,7 +524,11 @@ def sanitize_filename(filename):
     :return: Sanitized filename string containing only alphanumeric characters, spaces, hyphens, and underscores
     """
     
-    return "".join(c if c.isalnum() or c in (" ", "-", "_") else "" for c in filename).strip()  # Remove invalid characters
+    # Apply title case for consistent formatting and then replace filesystem-invalid characters
+    filename = (filename or "").title()  # Normalize to title case for consistent directory naming
+    filename = re.sub(r'[<>:"/\\|?*]', '_', filename)  # Replace characters invalid for filenames with underscore
+    filename = re.sub(r"\s+", " ", filename).strip()  # Collapse multiple whitespace into single spaces
+    return filename  # Return sanitized filename
 
 
 def detect_platform(url):
