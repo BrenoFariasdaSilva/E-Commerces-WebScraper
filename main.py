@@ -1090,9 +1090,9 @@ def main():
     if total_urls == 0:  # If there are no URLs to process, output a message and skip the processing loop
         print(f"{BackgroundColors.YELLOW}No URLs to process.{Style.RESET_ALL}")
     else:  # If there are URLs to process, proceed with the processing loop
-        pbar = tqdm(urls_to_process, desc="Processing URLs", unit="url")
+        pbar = tqdm(urls_to_process, desc=f"{BackgroundColors.GREEN}Processing URLs{Style.RESET_ALL}", unit="url")
         for index, (url, local_html_path) in enumerate(pbar, 1):  # Iterate through all URLs with optional local HTML paths
-            pbar.set_description(f"Processing {index}/{total_urls}")
+            pbar.set_description(f"{BackgroundColors.GREEN}Processing {index}/{total_urls}{BackgroundColors.CYAN}{Style.RESET_ALL}")  # Update progress bar description with current URL and platform
 
             verify_affiliate_url_format(url)  # Verify affiliate-format URL for supported platforms
 
