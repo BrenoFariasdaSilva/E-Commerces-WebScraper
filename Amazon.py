@@ -214,6 +214,49 @@ class Amazon:
             )  # End of verbose output call
 
 
+    def create_product_description_file(self, product_data: Dict[str, Any], output_dir: str, product_name_safe: str, url: str) -> Optional[str]:
+        """
+        Creates a text file with product description and details.
+        
+        :param product_data: Dictionary with product information
+        :param output_dir: Directory to save the file
+        :param product_name_safe: Safe product name for filename
+        :param url: Original product URL
+        :return: Path to the created description file or None if failed
+        """
+        
+        try:  # Attempt file creation with error handling
+            current_price = product_data.get("current_price", "N/A")  # Get current price or default
+            old_price = product_data.get("old_price", "N/A")  # Get old price or default
+            discount = product_data.get("discount_percentage", "N/A")  # Get discount or default
+            description = product_data.get("description", "No description available")  # Get description or default
+            
+            description_content = PRODUCT_DESCRIPTION_TEMPLATE.format(  # Format template with product data
+                product_name=product_data.get("name", "Unknown Product"),  # Insert product name
+                current_price=current_price if current_price else "N/A",  # Insert current price
+                old_price=old_price if old_price else "N/A",  # Insert old price
+                discount=discount if discount else "N/A",  # Insert discount
+                description=description,  # Insert description
+                url=url  # Insert product URL
+            )  # End of template formatting
+            
+            desc_filename = f"{product_name_safe}.txt"  # Construct description filename
+            desc_path = os.path.join(output_dir, desc_filename)  # Build full file path
+            
+            with open(desc_path, "w", encoding="utf-8") as file:  # Open file for writing with UTF-8 encoding
+                file.write(description_content)  # Write formatted description content
+            
+            verbose_output(  # Output success message
+                f"{BackgroundColors.GREEN}Product description saved to: {BackgroundColors.CYAN}{desc_path}{Style.RESET_ALL}"
+            )  # End of verbose output call
+            
+            return desc_path  # Return path to created file
+            
+        except Exception as e:  # Catch any exceptions during file creation
+            print(f"{BackgroundColors.RED}Failed to create description file: {e}{Style.RESET_ALL}")  # Alert user about creation failure
+            return None  # Return None to indicate creation failed
+
+
     def to_sentence_case(self, text: str) -> str:
         """
         Converts text to sentence case (first letter of each sentence uppercase).
