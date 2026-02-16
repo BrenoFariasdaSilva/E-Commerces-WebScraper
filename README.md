@@ -103,6 +103,8 @@ The scraper extracts detailed product data including names, prices, discount inf
 
 | Platform          | Scraping Method                 | Authentication Required | Status   |
 | ----------------- | ------------------------------- | ----------------------- | -------- |
+| **AliExpress**    | Browser Automation (Playwright) | Yes                     | ✅ Active |
+| **Amazon**        | Browser Automation (Playwright) | Yes                     | ✅ Active |
 | **Mercado Livre** | HTTP Requests                   | No                      | ✅ Active |
 | **Shein**         | Browser Automation (Playwright) | Yes                     | ✅ Active |
 | **Shopee**        | Browser Automation (Playwright) | Yes                     | ✅ Active |
