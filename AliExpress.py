@@ -215,6 +215,44 @@ class AliExpress:  # AliExpress scraper class preserving structure and methods
             )  # End of verbose output call
 
 
+    def wait_full_render(self) -> None:
+        """
+        Waits for the page to be fully rendered with all dynamic content.
+
+        :return: None
+        """
+
+        verbose_output(  # Output status message to user
+            f"{BackgroundColors.GREEN}Waiting for full page render...{Style.RESET_ALL}"
+        )  # End of verbose output call
+
+        if self.page is None:  # Validate that page instance exists before waiting
+            print(f"{BackgroundColors.YELLOW}Warning: Page not initialized, skipping render wait.{Style.RESET_ALL}")  # Warn user that render wait will be skipped
+            return  # Exit method early if page is not initialized
+
+        try:  # Attempt waiting for render with error handling
+            selectors_to_wait = [  # Define list of AliExpress-specific selectors to wait for
+                "h1[data-pl='product-title']",  # AliExpress product title selector
+                "div[class*='price-default']",  # AliExpress price container selector
+                "img"  # Generic image tag selector
+            ]  # End of selectors list
+            
+            for selector in selectors_to_wait:  # Iterate through each selector to ensure visibility
+                try:  # Attempt to wait for selector with nested error handling
+                    self.page.wait_for_selector(selector, timeout=5000, state="visible")  # Wait for selector to become visible
+                except:  # Silently handle timeout if selector not found
+                    pass  # Continue to next selector even if current one fails
+
+            time.sleep(2)  # Additional wait time to ensure all dynamic content is rendered
+            
+            verbose_output(  # Output success message to user
+                f"{BackgroundColors.GREEN}Page fully rendered.{Style.RESET_ALL}"
+            )  # End of verbose output call
+
+        except Exception as e:  # Catch any exceptions during render wait
+            print(f"{BackgroundColors.YELLOW}Warning during render wait: {e}{Style.RESET_ALL}")  # Warn user about render wait issues without failing
+
+
     def get_rendered_html(self) -> Optional[str]:
         """
         Gets the fully rendered HTML content after JavaScript execution.
