@@ -214,6 +214,64 @@ class Amazon:
             )  # End of verbose output call
 
 
+    def launch_browser(self):
+        """
+        Launches an authenticated Chrome browser using existing profile.
+
+        :return: None
+        :raises Exception: If browser launch fails
+        """
+
+        verbose_output(  # Output status message to user
+            f"{BackgroundColors.GREEN}Launching authenticated Chrome browser...{Style.RESET_ALL}"
+        )  # End of verbose output call
+
+        try:  # Attempt to launch browser with error handling
+            self.playwright = sync_playwright().start()  # Start Playwright synchronous context manager
+            playwright_obj = cast(Any, self.playwright)  # Cast Playwright instance to Any for static type checkers
+            
+            launch_options = {  # Initialize browser launch options dictionary
+                "headless": HEADLESS,  # Set headless mode from environment constant
+                "args": [  # Browser command-line arguments list
+                    "--disable-blink-features=AutomationControlled",  # Hide automation detection
+                    "--disable-dev-shm-usage",  # Disable shared memory usage for stability
+                    "--no-sandbox",  # Disable sandbox for compatibility
+                ]  # End of arguments list
+            }  # End of launch_options dictionary
+
+            if CHROME_PROFILE_PATH:  # If Chrome profile path is configured
+                launch_options["args"].append(f"--user-data-dir={CHROME_PROFILE_PATH}")  # Add user profile directory argument
+                verbose_output(  # Output profile path message
+                    f"{BackgroundColors.GREEN}Using Chrome profile: {BackgroundColors.CYAN}{CHROME_PROFILE_PATH}{Style.RESET_ALL}"
+                )  # End of verbose output call
+
+            if CHROME_EXECUTABLE_PATH:  # If Chrome executable path is configured
+                launch_options["executable_path"] = CHROME_EXECUTABLE_PATH  # Set custom executable path
+                verbose_output(  # Output executable path message
+                    f"{BackgroundColors.GREEN}Using Chrome executable: {BackgroundColors.CYAN}{CHROME_EXECUTABLE_PATH}{Style.RESET_ALL}"
+                )  # End of verbose output call
+
+            self.browser = playwright_obj.chromium.launch(**launch_options)  # Launch Chromium using cast object to avoid Optional member warning
+            
+            if self.browser is None:  # Validate browser instance was created
+                raise Exception("Failed to launch browser instance")  # Raise exception if browser is None
+            
+            self.page = self.browser.new_page()  # Create new browser page/tab
+            
+            if self.page is None:  # Validate page instance was created
+                raise Exception("Failed to create new page")  # Raise exception if page is None
+            
+            self.page.set_viewport_size({"width": 1920, "height": 1080})  # Set viewport dimensions to standard Full HD resolution
+            
+            verbose_output(  # Output success message
+                f"{BackgroundColors.GREEN}Browser launched successfully.{Style.RESET_ALL}"
+            )  # End of verbose output call
+
+        except Exception as e:  # Catch any exceptions during browser launch
+            print(f"{BackgroundColors.RED}Failed to launch browser: {e}{Style.RESET_ALL}")  # Alert user about browser launch failure
+            raise  # Re-raise exception for caller to handle
+
+
     def close_browser(self):
         """
         Safely closes the browser and Playwright instances.
