@@ -95,8 +95,60 @@ class BackgroundColors:  # Colors for the terminal
 # Execution Constants:
 VERBOSE = False  # Set to True to output verbose messages
 
-# Telegram Bot Setup:
-TELEGRAM_BOT = None  # Global Telegram bot instance (initialized in setup_telegram_bot)
+# HTML Selectors Dictionary:
+HTML_SELECTORS = {
+    "product_name": [  # List of CSS selectors for product name in priority order
+        ("span", {"id": "productTitle"}),  # Amazon product title span with specific id
+        ("h1", {"id": "title"}),  # Alternative H1 heading for product title
+        ("h1", {}),  # Generic H1 heading as last resort fallback
+    ],
+    "current_price": [  # List of CSS selectors for current price in priority order
+        ("span", {"class": "a-price aok-align-center reinventPricePriceToPayMargin priceToPay"}),  # Amazon current price container
+        ("span", {"class": re.compile(r".*priceToPay.*", re.IGNORECASE)}),  # Generic price to pay pattern fallback
+        ("span", {"class": re.compile(r".*a-price.*", re.IGNORECASE)}),  # Generic price span as last resort fallback
+    ],
+    "old_price": [  # List of CSS selectors for old price in priority order
+        ("span", {"class": "a-price a-text-price"}),  # Amazon old price container with specific class
+        ("span", {"class": re.compile(r".*a-text-price.*", re.IGNORECASE)}),  # Generic original price pattern fallback
+        ("span", {"class": re.compile(r".*list.*price.*", re.IGNORECASE)}),  # Generic list price span as last resort fallback
+    ],
+    "discount": [  # List of CSS selectors for discount percentage in priority order
+        ("span", {"class": "a-size-large a-color-price savingPriceOverride aok-align-center reinventPriceSavingsPercentageMargin savingsPercentage"}),  # Amazon discount container with specific class
+        ("span", {"class": re.compile(r".*savingsPercentage.*", re.IGNORECASE)}),  # Generic discount span fallback
+        ("span", {"class": re.compile(r".*discount.*", re.IGNORECASE)}),  # Sale badge container as last resort fallback
+    ],
+    "description": [  # List of CSS selectors for product description in priority order
+        ("div", {"class": "a-section a-spacing-large bucket"}),  # Amazon description container with specific class
+        ("div", {"id": "feature-bullets"}),  # Feature bullets section fallback
+        ("div", {"class": re.compile(r".*description.*", re.IGNORECASE)}),  # Generic description pattern fallback
+    ],
+    "gallery": {"id": "altImages"},  # CSS selector for product gallery container with images
+    "detail_table": {"id": "productDetails_techSpec_section_1"},  # CSS selector for product details table
+    "detail_section": {"id": "prodDetails"},  # CSS selector for product details section
+    "foreign_seller_badge": "https://m.media-amazon.com/images/G/32/foreignseller/Foreign_Seller_Badge_v2._CB403622375_.png",  # Foreign seller badge image URL
+}  # Dictionary containing all HTML selectors used for scraping product information
+
+# Output Directory Constants:
+OUTPUT_DIRECTORY = "./Outputs/"  # Base directory for storing scraped data and media files
+
+# Browser Constants:
+CHROME_PROFILE_PATH = os.getenv("CHROME_PROFILE_PATH", "")  # Chrome user profile path from environment variable
+CHROME_EXECUTABLE_PATH = os.getenv("CHROME_EXECUTABLE_PATH", "")  # Chrome executable path from environment variable
+HEADLESS = os.getenv("HEADLESS", "False").lower() == "true"  # Run browser in headless mode flag from environment
+PAGE_LOAD_TIMEOUT = 30000  # Maximum time in milliseconds to wait for page load
+NETWORK_IDLE_TIMEOUT = 5000  # Maximum time in milliseconds to wait for network idle state
+SCROLL_PAUSE_TIME = 0.5  # Pause duration in seconds between scroll steps
+SCROLL_STEP = 300  # Number of pixels to scroll per step for lazy loading
+
+# Template Constants:
+PRODUCT_DESCRIPTION_TEMPLATE = """Product Name: {product_name}
+
+Price: From R${current_price} to R${old_price} ({discount})
+
+Description: {description}
+
+🛒 Encontre na Amazon:
+👉 {url}"""  # Template for product description text file with placeholders for formatting
 
 # Logger Setup:
 logger = Logger(f"./Logs/{Path(__file__).stem}.log", clean=True)  # Create a Logger instance
