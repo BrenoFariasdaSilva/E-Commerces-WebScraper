@@ -116,11 +116,13 @@ The application follows a modular, class-based architecture with clear separatio
 ### Core Components
 
 - **main.py**: Orchestration layer that handles URL routing, batch processing, validation, and output management
+- **AliExpress.py**: Browser automation scraper for AliExpress using `Playwright` for JavaScript-rendered pages
+- **Amazon.py**: Browser automation scraper for Amazon Brasil using `Playwright` for JavaScript-rendered pages
+- **Gemini.py**: AI integration module for generating marketing content via Google Gemini API
+- **Logger.py**: Custom logging utility for simultaneous terminal and file output
 - **MercadoLivre.py**: HTTP-based scraper using `requests` and `BeautifulSoup` for static content extraction
 - **Shein.py**: Browser automation scraper using `Playwright` for JavaScript-rendered pages
 - **Shopee.py**: Browser automation scraper using `Playwright` for JavaScript-rendered pages
-- **Gemini.py**: AI integration module for generating marketing content via Google Gemini API
-- **Logger.py**: Custom logging utility for simultaneous terminal and file output
 
 ### Workflow
 
