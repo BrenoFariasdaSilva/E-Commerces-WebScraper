@@ -214,6 +214,41 @@ class Amazon:
             )  # End of verbose output call
 
 
+    def extract_current_price(self, soup: BeautifulSoup) -> Optional[str]:
+        """
+        Extracts the current price from the parsed HTML soup.
+        
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: Formatted price string (e.g., "R$1.889,00") or None if not found
+        """
+        
+        for tag, attrs in HTML_SELECTORS["current_price"]:  # Iterate through prioritized selectors
+            price_container = soup.find(tag, attrs)  # Search for price container element
+            if price_container:  # Check if container was found
+                try:  # Attempt to extract price components
+                    symbol = price_container.find("span", {"class": "a-price-symbol"})  # Find currency symbol
+                    whole = price_container.find("span", {"class": "a-price-whole"})  # Find whole number part
+                    fraction = price_container.find("span", {"class": "a-price-fraction"})  # Find fractional part
+                    
+                    if symbol and whole:  # Check if required components exist
+                        symbol_text = symbol.get_text(strip=True)  # Extract symbol text
+                        whole_text = whole.get_text(strip=True)  # Extract whole number text
+                        fraction_text = fraction.get_text(strip=True) if fraction else "00"  # Extract fraction or default to 00
+                        
+                        price = f"{symbol_text}{whole_text},{fraction_text}"  # Format complete price string
+                        verbose_output(  # Output found price
+                            f"{BackgroundColors.GREEN}Current price found: {BackgroundColors.CYAN}{price}{Style.RESET_ALL}"
+                        )  # End of verbose output call
+                        return price  # Return formatted price string
+                except Exception as e:  # Catch exceptions during component extraction
+                    continue  # Try next selector on error
+        
+        verbose_output(  # Output warning message
+            f"{BackgroundColors.YELLOW}Current price not found.{Style.RESET_ALL}"
+        )  # End of verbose output call
+        return None  # Return None when price is not available
+
+
     def extract_old_price(self, soup: BeautifulSoup) -> Optional[str]:
         """
         Extracts the old price from the parsed HTML soup.
