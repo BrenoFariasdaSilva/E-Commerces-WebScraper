@@ -382,29 +382,40 @@ The browser will launch with your authenticated profile and scrape products auto
 
 ## Output Structure
 
-Each scraped product generates the following structure:
+Each run creates a timestamped run directory under `Outputs/` and places all product directories for that run inside it. The timestamped run folder is created by `main.py` using the format `<index>. YYYY-MM-DD - HHhMMmSSs` (for example `1. 2026-02-15 - 16h26m31s`). Inside the run folder each product gets its own directory named with the platform prefix and sanitized product name. A typical output tree for one run looks like:
 
 ```
 Outputs/
-└── {Platform} - {Product Name}/
-    ├── {Product Name}_description.txt          # Product details in template format
-    ├── {Product Name}_Template.txt             # AI-generated marketing content (optional)
-    ├── image_1.webp                            # High-resolution product images
-    ├── image_2.webp
-    ├── ...
-    └── page.html                               # Complete page snapshot (Shopee/Shein only)
+└── 1. 2026-02-15 - 16h26m31s/                # Timestamped run folder (created by create_timestamped_output_directory)
+  ├── Amazon - Product Name/                 # Product directory (created by each scraper)
+  │   ├── Product Name.txt                    # Product description file created by scraper (product_name_safe + .txt)
+  │   ├── Product Name_Template.txt           # AI-generated marketing content (optional, created when Gemini is enabled)
+  │   ├── image_1.webp                         # Downloaded product images (image_N.ext)
+  │   ├── image_2.webp
+  │   ├── video_1.mp4                          # Downloaded product videos (video_N.ext) if any
+  │   ├── index.html                           # Localized page snapshot (saved as index.html)
+  │   ├── assets/                              # Localized assets referenced by the snapshot (images, css, js)
+  │   │   ├── asset_1.jpg
+  │   │   └── ...
+  │   └── original_input/                      # Optional: copy of the original input file/archive when available
+  ├── Shopee - Other Product/
+  │   └── ...
+  └── Logs/                                    # Per-run or aggregated logs may be placed alongside product folders
 ```
 
-**Example**:
-```
-Outputs/
-└── Shopee - Wireless Gaming Mouse/
-    ├── Wireless Gaming Mouse_description.txt
-    ├── Wireless Gaming Mouse_Template.txt
-    ├── image_1.webp
-    ├── image_2.webp
-    └── page.html
-```
+Notes:
+
+- **Timestamped Run Folder**: `main.py` creates a timestamped folder under `Outputs/` for every execution; product folders for that run are created inside it. The folder name begins with an incremental index for the day, followed by the date and time (e.g., `1. 2026-02-15 - 16h26m31s`).
+- **Product Directory Name**: Product directory names use the platform prefix (from `PLATFORM_PREFIXES`) plus the sanitized product name (created by `sanitize_filename`) separated by ` - `.
+- **Product Directory Name**: Product directory names use the platform prefix (from `PLATFORM_PREFIXES`) plus the sanitized product name separated by ` - `.
+  All product directory names are generated via a single shared helper function `product_utils.normalize_product_dir_name(...)` which performs the existing sanitization rules and then enforces a strict, deterministic 80-character limit (truncation via slicing) applied AFTER sanitization. All scrapers and `main.py` use this helper for both directory creation and lookup to guarantee consistency.
+- **Description File**: The scraper writes a description file named exactly `{product_name_safe}.txt` (not necessarily with `_description` suffix) containing the text generated from the product data and the `PRODUCT_DESCRIPTION_TEMPLATE`.
+- **AI Template File**: When Gemini is enabled the marketing text is saved as `{product_name_safe}_Template.txt` inside the same product directory.
+- **Snapshot & Assets**: The full page snapshot is saved as `index.html` and external assets are localized under an `assets/` subfolder; scrapers may reference `index.html` or `page.html` internally, but the current implementation saves snapshots as `index.html` inside the product folder.
+- **Original Input Copy**: If the input was a local HTML file, directory or zip archive, `main.py` may copy the original input into the product directory (under `original_input/`) for traceability.
+- **Logs**: The `Logs/` directory at repository root contains global logs; per-run logs may also be present inside the timestamped run folder depending on runtime configuration.
+
+This layout matches the directory creation and naming performed by `main.py` and the per-scraper `create_output_directory` and media/snapshot routines.
 
 ### Description File Format
 
