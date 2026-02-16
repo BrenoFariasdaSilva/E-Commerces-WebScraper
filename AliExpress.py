@@ -215,6 +215,40 @@ class AliExpress:  # AliExpress scraper class preserving structure and methods
             )  # End of verbose output call
 
 
+    def save_snapshot(self, html_content: str, output_dir: str, asset_map: Dict[str, str]) -> Optional[str]:
+        """
+        Saves the complete page snapshot with localized asset references.
+
+        :param html_content: Rendered HTML string
+        :param output_dir: Directory to save the snapshot
+        :param asset_map: Dictionary mapping original URLs to local paths
+        :return: Path to saved HTML file or None if failed
+        """
+
+        verbose_output(  # Output status message to user
+            f"{BackgroundColors.GREEN}Saving page snapshot...{Style.RESET_ALL}"
+        )  # End of verbose output call
+
+        try:  # Attempt to save snapshot with error handling
+            modified_html = html_content  # Create copy of HTML content for modification
+            for original_url, local_path in asset_map.items():  # Iterate through each URL to local path mapping
+                modified_html = modified_html.replace(original_url, local_path)  # Replace original URL with local path in HTML
+            
+            snapshot_path = os.path.join(output_dir, "page.html")  # Construct path for snapshot HTML file
+            with open(snapshot_path, "w", encoding="utf-8") as f:  # Open file in write mode with UTF-8 encoding
+                f.write(modified_html)  # Write modified HTML content to file
+            
+            verbose_output(  # Output success message to user
+                f"{BackgroundColors.GREEN}Snapshot saved: {snapshot_path}{Style.RESET_ALL}"
+            )  # End of verbose output call
+            
+            return snapshot_path  # Return path to saved snapshot file
+            
+        except Exception as e:  # Catch any exceptions during snapshot saving
+            print(f"{BackgroundColors.RED}Failed to save snapshot: {e}{Style.RESET_ALL}")  # Alert user about snapshot saving failure
+            return None  # Return None to indicate save operation failed
+
+
     def create_product_description_file(self, product_data: Dict[str, Any], output_dir: str, product_name_safe: str, url: str) -> Optional[str]:
         """
         Creates a text file with product description and details.
