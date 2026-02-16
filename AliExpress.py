@@ -215,6 +215,76 @@ class AliExpress:  # AliExpress scraper class preserving structure and methods
             )  # End of verbose output call
 
 
+    def find_image_urls(self, soup: BeautifulSoup) -> List[str]:
+        """
+        Finds all image URLs from the product gallery (class="airUhU").
+        Extracts full-size images from thumbnail containers (class="UBG7wZ").
+        Removes resize parameters (@resize_w82_nl, @resize_w164_nl) to get original images.
+        
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: List of image URLs
+        """
+        
+        image_urls: List[str] = []  # Initialize empty list to store image URLs
+        seen_urls: set = set()  # Track URLs to avoid duplicates
+        
+        verbose_output(  # Log image extraction attempt
+            f"{BackgroundColors.GREEN}Extracting image URLs from gallery...{Style.RESET_ALL}"
+        )  # End of verbose output call
+        
+        try:  # Attempt to find images with error handling
+            gallery = soup.find("div", HTML_SELECTORS.get("gallery"))  # type: ignore[arg-type]  # Find AliExpress gallery container
+            if gallery and isinstance(gallery, Tag):  # Verify gallery container was found
+                imgs = gallery.find_all("img")  # Find all image tags inside gallery
+                verbose_output(  # Log number of images found in gallery
+                    f"{BackgroundColors.GREEN}Gallery images found: {BackgroundColors.CYAN}{len(imgs)}{BackgroundColors.GREEN}{Style.RESET_ALL}"
+                )  # End of verbose output call
+                for img in imgs:  # Iterate through each image tag
+                    if not isinstance(img, Tag):  # Ensure element is a BeautifulSoup Tag
+                        continue  # Skip non-Tag elements
+                    src = img.get("src") or img.get("data-src") or img.get("data-original")  # Get possible source attributes
+                    if not src or not isinstance(src, str):  # Skip if src missing or invalid
+                        continue  # Continue to next image
+                    # Prefer higher resolution images by replacing common size fragments  # try to upgrade to larger image
+                    src_high = re.sub(r"_\d{2,4}x\d{2,4}(q\d+)?(\.jpg|\.png|\.avif)?", "_960x960q75.jpg", src)  # Attempt to create high-res URL
+                    final_url = src_high if src_high else src  # Choose final URL
+                    if final_url.startswith("//"):  # Fix protocol-relative URLs
+                        final_url = "https:" + final_url  # Prepend https scheme
+                    if final_url not in seen_urls and "placeholder" not in final_url.lower():  # Avoid duplicates and placeholders
+                        image_urls.append(final_url)  # Add to image list
+                        seen_urls.add(final_url)  # Track seen URL
+                        verbose_output(  # Log found image URL
+                            f"{BackgroundColors.GREEN}Found image: {BackgroundColors.CYAN}{final_url[:100]}{Style.RESET_ALL}"
+                        )  # End of verbose output call
+
+            # Search for user review images in reviews section if available  # also collect review images
+            review_container = soup.find("div", HTML_SELECTORS.get("review_images_container"))  # type: ignore[arg-type]  # Find review images container
+            if review_container and isinstance(review_container, Tag):  # Verify review container exists
+                review_imgs = review_container.find_all("img")  # Find images inside reviews
+                for img in review_imgs:  # Iterate review images
+                    if not isinstance(img, Tag):  # Ensure Tag
+                        continue  # Skip non-Tag
+                    src = img.get("src") or img.get("data-src")  # Get source
+                    if src and isinstance(src, str) and src.endswith(('.jpg_.avif', '.png_.avif', '.jpg', '.png')):  # Heuristic for review images
+                        if src.startswith("//"):  # Fix protocol-relative
+                            src = "https:" + src  # Prepend https
+                        if src not in seen_urls:  # Avoid duplicates
+                            image_urls.append(src)  # Add review image
+                            seen_urls.add(src)  # Track seen
+                            verbose_output(  # Log review image found
+                                f"{BackgroundColors.GREEN}Found review image: {BackgroundColors.CYAN}{src[:100]}{Style.RESET_ALL}"
+                            )  # End of verbose output call
+
+        except Exception as e:  # Catch any exceptions during image extraction
+            print(f"{BackgroundColors.RED}Error finding images: {e}{Style.RESET_ALL}")  # Alert user about error
+
+        verbose_output(  # Log total number of images found
+            f"{BackgroundColors.GREEN}Found {BackgroundColors.CYAN}{len(image_urls)}{BackgroundColors.GREEN} images.{Style.RESET_ALL}"
+        )  # End of verbose output call
+
+        return image_urls  # Return list of image URLs
+
+
     def find_video_urls(self, soup: BeautifulSoup) -> List[str]:
         """
         Finds all video URLs from the product page.
