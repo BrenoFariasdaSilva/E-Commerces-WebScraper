@@ -215,6 +215,33 @@ class AliExpress:  # AliExpress scraper class preserving structure and methods
             )  # End of verbose output call
 
 
+    def extract_old_price(self, soup: BeautifulSoup) -> Tuple[str, str]:
+        """
+        Extracts the old price from the parsed HTML soup.
+        
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: Tuple of (integer_part, decimal_part) for old price
+        """
+        
+        for tag, attrs in HTML_SELECTORS["old_price"]:  # Iterate through each selector combination from centralized dictionary
+            price_element = soup.find(tag, attrs if attrs else None)  # type: ignore[arg-type]  # Search for element matching current selector
+            if price_element:  # Verify if matching element was found
+                price_text = price_element.get_text(strip=True)  # Extract and clean text content from element
+                match = re.search(r"(\d+[\.\d]*)[,.](\d{2})", price_text)  # Search for price pattern with integer and decimal parts
+                if match:  # Verify if price pattern was found in text
+                    integer_part = re.sub(r"[^0-9]", "", match.group(1))  # Extract integer part and remove non-digits
+                    decimal_part = match.group(2)  # Extract decimal part of price
+                    verbose_output(  # Log successfully extracted old price
+                        f"{BackgroundColors.GREEN}Old price: R${integer_part},{decimal_part}{Style.RESET_ALL}"
+                    )  # End of verbose output call
+                    return integer_part, decimal_part  # Return price components as tuple
+        
+        verbose_output(  # Warn that old price could not be extracted
+            f"{BackgroundColors.YELLOW}Old price not found.{Style.RESET_ALL}"
+        )  # End of verbose output call
+        return "N/A", "N/A"  # Return N/A when old price is not available
+
+
     def extract_discount_percentage(self, soup: BeautifulSoup) -> str:
         """
         Extracts the discount percentage from the parsed HTML soup.
