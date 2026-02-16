@@ -214,6 +214,59 @@ class Amazon:
             )  # End of verbose output call
 
 
+    def collect_assets(self, html_content: str, output_dir: str) -> Dict[str, str]:
+        """
+        Collects and downloads all assets (images, CSS, JS) from the page.
+
+        :param html_content: Rendered HTML string
+        :param output_dir: Directory to save assets
+        :return: Dictionary mapping original URLs to local paths
+        """
+
+        verbose_output(  # Output status message
+            f"{BackgroundColors.GREEN}Collecting page assets...{Style.RESET_ALL}"
+        )  # End of verbose output call
+
+        if self.page is None:  # Validate page instance exists
+            return {}  # Return empty dictionary if page not initialized
+
+        assets_dir = os.path.join(output_dir, "assets")  # Construct path for assets subdirectory
+        self.create_directory(assets_dir, "assets")  # Create assets subdirectory
+
+        asset_map: Dict[str, str] = {}  # Maps original URL to local path  # Initialize empty dictionary to map original URLs to local paths
+        soup = BeautifulSoup(html_content, "html.parser")  # Parse HTML content into BeautifulSoup object
+
+        img_tags = soup.find_all("img", src=True)  # Find all image tags with src attribute
+        for idx, img in enumerate(img_tags, 1):  # Iterate with counter starting at 1
+            try:  # Attempt asset download with error handling
+                img_url = cast(str, img.get("src", ""))  # Get image source URL as str
+                if img_url.startswith("//"):  # Check if protocol-relative URL
+                    img_url = "https:" + img_url  # Add HTTPS protocol
+                elif img_url.startswith("/"):  # Check if absolute path
+                    img_url = urljoin(self.product_url, img_url)  # Build complete URL from base
+
+                if not img_url.startswith("http"):  # Skip non-HTTP URLs
+                    continue  # Skip to next image
+
+                parsed = urlparse(img_url)  # Parse URL to extract components
+                ext = os.path.splitext(parsed.path)[1] or ".jpg"  # Get extension or default to jpg
+                local_filename = f"asset_{idx}{ext}"  # Generate unique filename
+                local_path = os.path.join(assets_dir, local_filename)  # Build full local path
+
+                asset_map[img_url] = f"assets/{local_filename}"  # Map original URL to relative path
+
+            except Exception as e:  # Catch exceptions during asset processing
+                verbose_output(  # Output error message
+                    f"{BackgroundColors.YELLOW}Failed to process asset {idx}: {e}{Style.RESET_ALL}"
+                )  # End of verbose output call
+
+        verbose_output(  # Output success message with count
+            f"{BackgroundColors.GREEN}Collected {len(asset_map)} assets.{Style.RESET_ALL}"
+        )  # End of verbose output call
+        
+        return asset_map  # Return dictionary mapping URLs to local paths
+
+
     def save_snapshot(self, html_content: str, output_dir: str, asset_map: Dict[str, str]) -> Optional[str]:
         """
         Saves the complete page snapshot with localized asset references.
