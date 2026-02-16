@@ -74,6 +74,7 @@ from Logger import Logger  # For logging output to both terminal and file
 from MercadoLivre import MercadoLivre  # Import the MercadoLivre class
 from pathlib import Path  # For handling file paths
 from PIL import Image  # For image processing
+from product_utils import normalize_product_dir_name  # Centralized product dir name normalization
 from Shein import Shein  # Import the Shein class
 from Shopee import Shopee  # Import the Shopee class
 
@@ -654,11 +655,7 @@ def sanitize_filename(filename):
     :return: Sanitized filename string containing only alphanumeric characters, spaces, hyphens, and underscores
     """
     
-    # Apply title case for consistent formatting and then replace filesystem-invalid characters
-    filename = (filename or "").title()  # Normalize to title case for consistent directory naming
-    filename = re.sub(r'[<>:"/\\|?*]', '_', filename)  # Replace characters invalid for filenames with underscore
-    filename = re.sub(r"\s+", " ", filename).strip()  # Collapse multiple whitespace into single spaces
-    return filename  # Return sanitized filename
+    return normalize_product_dir_name(filename, replace_with="_", title_case=True)  # Use the centralized normalization function to sanitize the filename
 
 
 def get_next_run_index(base_output_dir, today_str):
