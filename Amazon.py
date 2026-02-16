@@ -214,6 +214,38 @@ class Amazon:
             )  # End of verbose output call
 
 
+    def save_snapshot(self, html_content: str, output_dir: str, asset_map: Dict[str, str]) -> Optional[str]:
+        """
+        Saves the complete page snapshot with localized asset references.
+
+        :param html_content: Rendered HTML string
+        :param output_dir: Directory to save the snapshot
+        :param asset_map: Dictionary mapping original URLs to local paths
+        :return: Path to saved HTML file or None if failed
+        """
+
+        verbose_output(  # Output status message
+            f"{BackgroundColors.GREEN}Saving page snapshot...{Style.RESET_ALL}"
+        )  # End of verbose output call
+
+        try:  # Attempt snapshot save with error handling
+            for original_url, local_path in asset_map.items():  # Iterate through asset mappings
+                html_content = html_content.replace(original_url, local_path)  # Replace original URL with local path
+            
+            snapshot_path = os.path.join(output_dir, "index.html")  # Build snapshot file path
+            with open(snapshot_path, "w", encoding="utf-8") as file:  # Open file for writing with UTF-8 encoding
+                file.write(html_content)  # Write modified HTML content
+            
+            verbose_output(  # Output success message
+                f"{BackgroundColors.GREEN}Snapshot saved to: {BackgroundColors.CYAN}{snapshot_path}{Style.RESET_ALL}"
+            )  # End of verbose output call
+            return snapshot_path  # Return path to saved snapshot
+            
+        except Exception as e:  # Catch any exceptions during save
+            print(f"{BackgroundColors.RED}Failed to save snapshot: {e}{Style.RESET_ALL}")  # Alert user about save failure
+            return None  # Return None to indicate save failed
+
+
     def create_product_description_file(self, product_data: Dict[str, Any], output_dir: str, product_name_safe: str, url: str) -> Optional[str]:
         """
         Creates a text file with product description and details.
