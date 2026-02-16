@@ -214,6 +214,28 @@ class Amazon:
             )  # End of verbose output call
 
 
+    def print_product_info(self, product_data: Dict[str, Any]) -> None:
+        """
+        Prints the extracted product information in a formatted manner.
+        
+        :param product_data: Dictionary containing the scraped product data
+        :return: None
+        """
+        
+        if not product_data:  # Check if product data exists
+            print(f"{BackgroundColors.YELLOW}No product data to display.{Style.RESET_ALL}")  # Warn user no data available
+            return  # Exit method early
+        
+        verbose_output(  # Output formatted product information
+            f"{BackgroundColors.GREEN}Product information extracted successfully:{BackgroundColors.GREEN}\n"
+            f"  {BackgroundColors.CYAN}Name:{BackgroundColors.GREEN} {product_data.get('name', 'N/A')}\n"
+            f"  {BackgroundColors.CYAN}Current Price:{BackgroundColors.GREEN} {product_data.get('current_price', 'N/A')}\n"
+            f"  {BackgroundColors.CYAN}Old Price:{BackgroundColors.GREEN} {product_data.get('old_price', 'N/A')}\n"
+            f"  {BackgroundColors.CYAN}Discount:{BackgroundColors.GREEN} {product_data.get('discount_percentage', 'N/A')}\n"
+            f"  {BackgroundColors.CYAN}Description:{BackgroundColors.GREEN} {product_data.get('description', 'N/A')[:100]}...{Style.RESET_ALL}"
+        )  # End of verbose_output call
+
+
     def scrape_product_info(self, html_content: str) -> Optional[Dict[str, Any]]:
         """
         Scrapes product information from rendered HTML content.
