@@ -34,6 +34,9 @@ Notes:
 """
 
 
+import re  # Used for regex-based sanitization of product names for directory naming
+
+
 # Execution Constants:
 VERBOSE = False  # Set to True to output verbose messages
 
@@ -55,3 +58,38 @@ def verbose_output(true_string="", false_string=""):
     elif false_string != "":  # If a false_string was provided
         print(false_string)  # Output the false statement string
 
+
+def normalize_product_dir_name(raw_name: str, replace_with: str = "_", title_case: bool = True) -> str:
+    """
+    Normalize and sanitize a product name for use as a directory name.
+
+    - Preserves existing sanitization behaviour used across scrapers by allowing
+      control over whether to title-case and what to replace invalid filesystem
+      characters with.
+    - Enforces a strict 80-character limit AFTER sanitization (deterministic
+      truncation via slicing).
+
+    :param raw_name: Raw product name string (may contain NBSP, extra spaces, invalid chars)
+    :param replace_with: Character to replace invalid filesystem characters with
+                         (use empty string to remove them, like Amazon did)
+    :param title_case: Whether to apply title-casing (some scrapers use title case)
+    :return: Sanitized, truncated product-name-safe string
+    """
+
+    if raw_name is None:  # Handle None input gracefully by treating it as an empty string
+        raw_name = ""  # This ensures the function always returns a string, even if the input is None
+
+    name = raw_name.replace("\u00A0", " ")  # Normalize NBSP (non-breaking space) to regular space
+    name = re.sub(r"\s+", " ", name).strip()  # Collapse multiple spaces and trim leading/trailing whitespace
+
+    if title_case:  # Apply title-casing if enabled (some scrapers use title case, so this is optional)
+        name = name.title()  # Convert to title case (first letter of each word capitalized, rest lowercase)
+
+    name = re.sub(r'[<>:"/\\|?*]', replace_with, name)  # Replace invalid filesystem characters with the specified replacement (default is "_", but can be set to "" to remove them)
+
+    name = re.sub(r"\s+", " ", name).strip()  # Collapse multiple spaces again after replacement and trim again, in case replacement introduced extra spaces
+
+    if len(name) > 80:  # Enforce a strict 80-character limit on the final directory name after all sanitization steps (deterministic truncation via slicing)
+        name = name[:80]  # Truncate to the first 80 characters if it exceeds the limit
+
+    return name  # Return the fully normalized, sanitized, and truncated product name suitable for use as a directory name
