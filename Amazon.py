@@ -46,6 +46,7 @@ Assumptions & Notes:
     - <Note on output structure or reusability.>
 """
 
+
 import atexit  # For playing a sound when the program finishes
 import datetime  # For getting the current date and time
 import os  # For running a command in the terminal
@@ -92,6 +93,7 @@ SOUND_FILE = "./.assets/Sounds/NotificationSound.wav"  # The path to the sound f
 RUN_FUNCTIONS = {
     "Play Sound": True,  # Set to True to play a sound when the program finishes
 }
+
 
 # Functions Definitions:
 
@@ -140,30 +142,6 @@ def verify_dot_env_file():
         return False  # Return False
 
     return True  # Return True if the .env file exists
-
-
-def setup_telegram_bot():
-    """
-    Sets up the Telegram bot for progress messages.
-
-    :return: None
-    """
-    
-    verbose_output(
-        f"{BackgroundColors.GREEN}Setting up Telegram bot for messages...{Style.RESET_ALL}"
-    )  # Output the verbose message
-
-    verify_dot_env_file()  # Verify if the .env file exists
-
-    global TELEGRAM_BOT  # Declare the module-global telegram_bot variable
-
-    try:  # Try to initialize the Telegram bot
-        TELEGRAM_BOT = TelegramBot()  # Initialize Telegram bot for progress messages
-        telegram_module.TELEGRAM_DEVICE_INFO = f"{telegram_module.get_local_ip()} - {platform.system()}"
-        telegram_module.RUNNING_CODE = os.path.basename(__file__)
-    except Exception as e:
-        print(f"{BackgroundColors.RED}Failed to initialize Telegram bot: {e}{Style.RESET_ALL}")
-        TELEGRAM_BOT = None  # Set to None if initialization fails
 
 
 def to_seconds(obj):
