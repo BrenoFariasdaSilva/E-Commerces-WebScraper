@@ -215,6 +215,92 @@ class AliExpress:  # AliExpress scraper class preserving structure and methods
             )  # End of verbose output call
 
 
+    def download_single_image(self, img_url: str, output_dir: str, image_count: int) -> Optional[str]:
+        """
+        Downloads or copies a single image to the specified output directory.
+        Supports HTTP downloads and local file copying for offline mode.
+        
+        :param img_url: URL of the image to download (HTTP URL or local path)
+        :param output_dir: Directory to save the image
+        :param image_count: Counter for generating unique filenames
+        :return: Path to downloaded image file or None if download failed
+        """
+        
+        try:  # Attempt to download or copy the image with error handling
+            if self.local_html_path and (img_url.startswith("./") or img_url.startswith("../") or img_url.startswith("/file/") or not img_url.startswith(("http://", "https://"))):
+                html_dir = os.path.dirname(os.path.abspath(self.local_html_path))  # Get directory of local HTML file
+                
+                if img_url.startswith("/file/"):  # Shopee local file format
+                    img_url = "." + img_url  # Convert to relative path
+                
+                local_img_path = os.path.normpath(os.path.join(html_dir, img_url))  # Resolve local image path
+                
+                if not os.path.exists(local_img_path):  # Check if local image file exists
+                    verbose_output(  # Log warning about missing file
+                        f"{BackgroundColors.YELLOW}Local image file not found: {local_img_path}{Style.RESET_ALL}"
+                    )  # End of verbose output call
+                    return None  # Return None if file not found
+                
+                ext = os.path.splitext(local_img_path)[1]  # Get file extension
+                if not ext or ext not in [".jpg", ".jpeg", ".png", ".webp", ".gif"]:  # If extension is missing or not common image format
+                    ext = ".jpg"  # Default to jpg
+                
+                filename = f"image_{image_count:03d}{ext}"  # Generate filename with index and extension
+                filepath = os.path.join(output_dir, filename)  # Create full path for image file
+                
+                shutil.copy2(local_img_path, filepath)  # Copy local image to output directory
+                
+                verbose_output(  # Log successful copy
+                    f"{BackgroundColors.GREEN}Copied image: {BackgroundColors.CYAN}{filename}{Style.RESET_ALL}"
+                )  # End of verbose output call
+                
+                return filepath  # Return file path
+                
+            else:  # HTTP download mode
+                if not img_url.startswith(("http://", "https://")):
+                    img_url = "https:" + img_url if img_url.startswith("//") else "https://down-br.img.susercontent.com" + img_url
+                
+                if self.page:  # If browser is available
+                    response = self.page.goto(img_url, timeout=10000)  # Navigate to image URL
+                    if response and response.ok:  # Verify response is successful
+                        parsed_url = urlparse(img_url)  # Parse URL
+                        ext = os.path.splitext(parsed_url.path)[1] or ".jpg"  # Get extension or default
+                        filename = f"image_{image_count:03d}{ext}"  # Generate filename
+                        filepath = os.path.join(output_dir, filename)  # Create full path
+                        
+                        with open(filepath, "wb") as f:  # Open file in binary write mode
+                            f.write(response.body())  # Write response body to file
+                        
+                        verbose_output(  # Log successful download
+                            f"{BackgroundColors.GREEN}Downloaded image: {BackgroundColors.CYAN}{filename}{Style.RESET_ALL}"
+                        )  # End of verbose output call
+                        
+                        return filepath  # Return file path
+                else:  # Browser not available, use requests (for offline mode edge cases)
+                    import requests  # Import requests for fallback
+                    response = requests.get(img_url, timeout=10)  # Download image
+                    if response.status_code == 200:  # Verify success
+                        parsed_url = urlparse(img_url)  # Parse URL
+                        ext = os.path.splitext(parsed_url.path)[1] or ".jpg"  # Get extension
+                        filename = f"image_{image_count:03d}{ext}"  # Generate filename
+                        filepath = os.path.join(output_dir, filename)  # Create full path
+                        
+                        with open(filepath, "wb") as f:  # Open file in binary write mode
+                            f.write(response.content)  # Write content to file
+                        
+                        verbose_output(  # Log successful download
+                            f"{BackgroundColors.GREEN}Downloaded image: {BackgroundColors.CYAN}{filename}{Style.RESET_ALL}"
+                        )  # End of verbose output call
+                        
+                        return filepath  # Return file path
+        
+        except Exception as e:  # Catch any exceptions during download
+            verbose_output(  # Log error
+                f"{BackgroundColors.RED}Error downloading/copying image: {e}{Style.RESET_ALL}"
+            )  # End of verbose output call
+            return None  # Return None on failure
+
+
     def download_single_video(self, video_url: str, output_dir: str, video_count: int) -> Optional[str]:
         """
         Downloads or copies a single video to the specified output directory.
