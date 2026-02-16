@@ -1,47 +1,34 @@
 """
-================================================================================
-<PROJECT OR SCRIPT TITLE>
-================================================================================
-Author      : Breno Farias da Silva
-Created     : <YYYY-MM-DD>
-Description :
-    <Provide a concise and complete overview of what this script does.>
-    <Mention its purpose, scope, and relevance to the larger project.>
+product_utils.py — Product directory name normalization utilities
 
-    Key features include:
-        - <Feature 1 — e.g., automatic data loading and preprocessing>
-        - <Feature 2 — e.g., model training and evaluation>
-        - <Feature 3 — e.g., visualization or report generation>
-        - <Feature 4 — e.g., logging or notification system>
-        - <Feature 5 — e.g., integration with other modules or datasets>
+Author      : Breno Farias da Silva
+Created     : 2026-02-16
+Description :
+    Small utility module that provides a single source-of-truth for producing
+    filesystem-safe product directory names across the scrapers and
+    orchestration code. The main export is `normalize_product_dir_name`, which
+    performs the following steps in order:
+
+    - Normalizes non-breaking spaces to regular spaces and collapses
+    consecutive whitespace.
+    - Optionally applies title-casing.
+    - Replaces filesystem-invalid characters (e.g. < > : " / \ | ? *) with
+    a configurable replacement string (defaults to underscore).
+    - Enforces deterministic truncation to 80 characters after all
+    sanitization steps to avoid platform-specific truncation/lookup
+    mismatches.
 
 Usage:
-    1. <Explain any configuration steps before running, such as editing variables or paths.>
-    2. <Describe how to execute the script — typically via Makefile or Python.>
-            $ make <target>   or   $ python <script_name>.py
-    3. <List what outputs are expected or where results are saved.>
+    from product_utils import normalize_product_dir_name
+    safe_name = normalize_product_dir_name(raw_name, replace_with="_", title_case=True)
 
-Outputs:
-    - <Output file or directory 1 — e.g., results.csv>
-    - <Output file or directory 2 — e.g., Feature_Analysis/plots/>
-    - <Output file or directory 3 — e.g., logs/output.txt>
-
-TODOs:
-    - <Add a task or improvement — e.g., implement CLI argument parsing.>
-    - <Add another improvement — e.g., extend support to Parquet files.>
-    - <Add optimization — e.g., parallelize evaluation loop.>
-    - <Add robustness — e.g., error handling or data validation.>
+Returns:
+    A sanitized string suitable for use as a directory name.
 
 Dependencies:
-    - Python >= <version>
-    - <Library 1 — e.g., pandas>
-    - <Library 2 — e.g., numpy>
-    - <Library 3 — e.g., scikit-learn>
-    - <Library 4 — e.g., matplotlib, seaborn, tqdm, colorama>
+    - Python standard library: `re`
 
-Assumptions & Notes:
-    - <List any key assumptions — e.g., last column is the target variable.>
-    - <Mention data format — e.g., CSV files only.>
-    - <Mention platform or OS-specific notes — e.g., sound disabled on Windows.>
-    - <Note on output structure or reusability.>
+Notes:
+    - Truncation intentionally happens after sanitization to keep names
+      deterministic and consistent between creation and lookup.
 """
