@@ -62,17 +62,23 @@ Assumptions & Notes:
     - Creates output directories automatically if they don't exist
 """
 
-
-import atexit  # For playing a sound when the program finishes
-import datetime  # For getting the current date and time
-import os  # For running a command in the terminal
-import platform  # For getting the operating system name
-import sys  # For system-specific parameters and functions
-import telegram_bot as telegram_module  # For setting Telegram prefix and device info
-from colorama import Style  # For coloring the terminal
-from Logger import Logger  # For logging output to both terminal and file
-from pathlib import Path  # For handling file paths
-from telegram_bot import TelegramBot, send_telegram_message  # For sending progress messages to Telegram
+import atexit  # Register functions to execute at program termination
+import datetime  # Handle date and time operations
+import os  # Interact with operating system functionalities
+import platform  # Access underlying platform information
+import re  # Perform regular expression operations
+import shutil  # For copying files (local HTML mode)
+import subprocess  # For running external commands (ffmpeg)
+import sys  # Access system-specific parameters and functions
+import time  # Provide time-related functions for delays
+from bs4 import BeautifulSoup, Tag  # Parse and navigate HTML documents
+from colorama import Style  # Colorize terminal text output
+from Logger import Logger  # Custom logging functionality for output redirection
+from pathlib import Path  # Handle filesystem paths in object-oriented way
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError  # Browser automation framework with timeout handling
+from product_utils import normalize_product_dir_name  # Centralized product dir name normalization
+from typing import Optional, Dict, Any, List, Tuple, cast  # Type hinting support for better code clarity
+from urllib.parse import urljoin, urlparse  # Parse and manipulate URLs for asset collection
 
 
 # Macros:
