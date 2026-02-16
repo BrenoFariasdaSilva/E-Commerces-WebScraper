@@ -169,8 +169,22 @@ RUN_FUNCTIONS = {
     "Play Sound": True,  # Set to True to play a sound when the program finishes
 }
 
+# Classes Definitions:
 
-# Functions Definitions:
+
+class AliExpress:  # AliExpress scraper class preserving structure and methods
+    """
+    A web scraper class for extracting product information from AliExpress using
+    authenticated browser sessions.
+    
+    This class handles the extraction of product details including name, prices,
+    discounts, descriptions, specifications, gallery images, and media from
+    AliExpress product pages using Playwright for full page rendering and
+    authenticated access.
+    """
+
+
+# Functions Definitions
 
 
 def verbose_output(true_string="", false_string=""):
