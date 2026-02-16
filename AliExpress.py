@@ -215,6 +215,78 @@ class AliExpress:  # AliExpress scraper class preserving structure and methods
             )  # End of verbose output call
 
 
+    def find_video_urls(self, soup: BeautifulSoup) -> List[str]:
+        """
+        Finds all video URLs from the product page.
+        Searches entire page for video elements with classes "tpgcVs" and extracts src attribute.
+        Videos can be inside or outside the gallery container (class="airUhU").
+        
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: List of video URLs
+        """
+        
+        video_urls: List[str] = []  # Initialize empty list to store video URLs
+        seen_urls: set = set()  # Track URLs to avoid duplicates
+        
+        verbose_output(  # Log video extraction attempt
+            f"{BackgroundColors.GREEN}Extracting video URLs from page...{Style.RESET_ALL}"
+        )  # End of verbose output call
+        
+        try:  # Attempt to find videos with error handling
+            # Search for video tags anywhere on the page  # AliExpress may include videos in gallery or reviews
+            video_tags = soup.find_all("video")  # Find all video tags
+            verbose_output(  # Log number of raw video tags found
+                f"{BackgroundColors.GREEN}Found {BackgroundColors.CYAN}{len(video_tags)}{BackgroundColors.GREEN} video elements.{Style.RESET_ALL}"
+            )  # End of verbose output call
+            for video in video_tags:  # Iterate through each video tag
+                if not isinstance(video, Tag):  # Ensure element is a BeautifulSoup Tag
+                    continue  # Skip non-Tag elements
+                video_url = video.get("src") or video.get("data-src")  # Try common attributes
+                if video_url and isinstance(video_url, str) and (video_url.endswith('.mp4') or video_url.endswith('.webm') or 'm3u8' in video_url):  # Check for common video formats
+                    if video_url not in seen_urls:  # Avoid duplicates
+                        video_urls.append(video_url)  # Add video URL
+                        seen_urls.add(video_url)  # Mark seen
+                        verbose_output(  # Log found video URL
+                            f"{BackgroundColors.GREEN}Found video: {BackgroundColors.CYAN}{video_url[:100]}{Style.RESET_ALL}"
+                        )  # End of verbose output call
+                # Also consider <source> tags inside <video>
+                source_tags = video.find_all("source")  # Find source tags inside video
+                for source in source_tags:  # Iterate source tags
+                    if not isinstance(source, Tag):  # Ensure Tag
+                        continue  # Skip non-Tag
+                    src = source.get("src") or source.get("data-src")  # Get src
+                    if src and isinstance(src, str) and (src.endswith('.mp4') or src.endswith('.webm') or 'm3u8' in src):  # Check format
+                        if src not in seen_urls:  # Avoid duplicates
+                            video_urls.append(src)  # Add to list
+                            seen_urls.add(src)  # Track seen
+                            verbose_output(  # Log found video source URL
+                                f"{BackgroundColors.GREEN}Found video (source): {BackgroundColors.CYAN}{src[:100]}{Style.RESET_ALL}"
+                            )  # End of verbose output call
+
+            # Also search for direct links to video files in the page (heuristic)  # catch videos embedded via JS
+            for ext in ('.mp4', '.webm', '.m3u8'):  # Check common extensions
+                for tag in soup.find_all(string=re.compile(re.escape(ext))):  # Find strings containing extension
+                    try:  # Attempt to extract URL-like text
+                        text = str(tag)  # Convert to string
+                        m = re.search(r"https?://[\w\-./%?=,&]+\"?", text)  # Attempt to find full URL pattern
+                        if m:  # If match found
+                            url = m.group(0).strip('"')  # Clean up
+                            if url not in seen_urls:  # Avoid duplicates
+                                video_urls.append(url)  # Add URL
+                                seen_urls.add(url)  # Track seen
+                    except Exception:  # Ignore extraction errors silently
+                        pass  # Continue loop on error
+
+        except Exception as e:  # Catch any exceptions during video extraction
+            print(f"{BackgroundColors.RED}Error finding videos: {e}{Style.RESET_ALL}")  # Alert user about error
+
+        verbose_output(  # Log total number of videos found
+            f"{BackgroundColors.GREEN}Found {BackgroundColors.CYAN}{len(video_urls)}{BackgroundColors.GREEN} videos.{Style.RESET_ALL}"
+        )  # End of verbose output call
+
+        return video_urls  # Return list of video URLs
+
+
     def print_product_info(self, product_data: Dict[str, Any]) -> None:
         """
         Prints the extracted product information in a formatted manner.
