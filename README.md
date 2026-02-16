@@ -286,6 +286,8 @@ The scraper will reuse your authenticated session without requiring credentials 
 
 The `Inputs/urls.txt` file supports two formats per line:
 
+You may specify entries in the `Inputs/urls.txt` file either as only the URL, or as a pair: the URL followed by a local HTML path or a zip path.
+
 **Online Scraping (URL only)**:
 ```
 https://mercadolivre.com.br/product-url
