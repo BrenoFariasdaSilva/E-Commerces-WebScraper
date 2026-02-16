@@ -72,8 +72,62 @@ class BackgroundColors:  # Colors for the terminal
 # Execution Constants:
 VERBOSE = False  # Set to True to output verbose messages
 
-# Telegram Bot Setup:
-TELEGRAM_BOT = None  # Global Telegram bot instance (initialized in setup_telegram_bot)
+# Affiliate URL detection pattern (short shopee redirect links)  # keep generic pattern for now
+AFFILIATE_URL_PATTERN = r"https?://s\.shopee\.com(?:\.br)?/[A-Za-z0-9]+"  # Keep existing affiliate pattern as fallback
+
+# HTML Selectors Dictionary:
+HTML_SELECTORS = {
+    "product_name": [  # List of CSS selectors for product name in priority order
+        ("h1", {"data-pl": "product-title"}),  # AliExpress product name using data-pl attribute
+        ("h1", {}),  # Generic H1 heading as fallback
+        ("div", {"class": re.compile(r".*product.*title.*", re.IGNORECASE)}),  # Generic product title fallback
+    ],
+    "current_price": [  # List of CSS selectors for current price in priority order
+        ("div", {"class": "price-default--currentWrap--A_MNgCG"}),  # AliExpress current price wrapper class
+        ("span", {"class": "price-default--current--F8OlYIo"}),  # AliExpress current price inner span class
+        ("span", {"class": re.compile(r".*price.*", re.IGNORECASE)}),  # Generic price span fallback
+    ],
+    "old_price": [  # List of CSS selectors for old price in priority order
+        ("span", {"class": "price-default--original--CWcHOit"}),  # AliExpress old price span class
+        ("div", {"class": re.compile(r".*price.*original.*", re.IGNORECASE)}),  # Generic original price pattern fallback
+        ("span", {"class": re.compile(r".*old.*price.*", re.IGNORECASE)}),  # Generic old price span fallback
+    ],
+    "discount": [],  # AliExpress does not provide explicit discount element, compute from prices instead
+    "description": [  # List of CSS selectors for product description in priority order
+        ("div", {"id": "product-description"}),  # AliExpress main product description container by id
+        ("div", {"class": re.compile(r".*description.*", re.IGNORECASE)}),  # Generic description fallback
+    ],
+    "gallery": {"class": "slider--wrap--dfLgmYD"},  # CSS selector for AliExpress product gallery container
+    "detail_label": {"class": "specification--title--SfH3sA8"},  # CSS selector for specification titles used for extraction
+    "specs_container": {"class": "specification--list--GZuXzRX"},  # CSS selector for specifications table container
+    "specs_row": {"class": "specification--line--IXeRJI7"},  # CSS selector for each specification row
+    "specs_title": {"class": "specification--title--SfH3sA8"},  # CSS selector for specification title cell
+    "specs_value": {"class": "specification--desc--Dxx6W0W"},  # CSS selector for specification value cell
+    "review_images_container": {"class": "filter--bottom--12yws12"},  # CSS selector for review images container
+    "shipping_options": {"class": "vat-installment--item--Fgco36c"},  # CSS selector for shipping/tax notice
+}  # Dictionary containing all HTML selectors used for scraping product information
+
+# Output Directory Constants:
+OUTPUT_DIRECTORY = "./Outputs/"  # Base directory for storing scraped data and media files
+
+# Browser Constants:
+CHROME_PROFILE_PATH = os.getenv("CHROME_PROFILE_PATH", "")  # Chrome user profile path from environment variable
+CHROME_EXECUTABLE_PATH = os.getenv("CHROME_EXECUTABLE_PATH", "")  # Chrome executable path from environment variable
+HEADLESS = os.getenv("HEADLESS", "False").lower() == "true"  # Run browser in headless mode flag from environment
+PAGE_LOAD_TIMEOUT = 30000  # Maximum time in milliseconds to wait for page load
+NETWORK_IDLE_TIMEOUT = 5000  # Maximum time in milliseconds to wait for network idle state
+SCROLL_PAUSE_TIME = 0.5  # Pause duration in seconds between scroll steps
+SCROLL_STEP = 300  # Number of pixels to scroll per step for lazy loading
+
+# Template Constants:
+PRODUCT_DESCRIPTION_TEMPLATE = """Product Name: {product_name}
+
+Price: From R${current_price} to R${old_price} ({discount})
+
+Description: {description}
+
+🛒 Encontre no AliExpress:
+👉 {url}"""  # Template for product description text file with placeholders for formatting
 
 # Logger Setup:
 logger = Logger(f"./Logs/{Path(__file__).stem}.log", clean=True)  # Create a Logger instance
@@ -92,6 +146,7 @@ SOUND_FILE = "./.assets/Sounds/NotificationSound.wav"  # The path to the sound f
 RUN_FUNCTIONS = {
     "Play Sound": True,  # Set to True to play a sound when the program finishes
 }
+
 
 # Functions Definitions:
 
