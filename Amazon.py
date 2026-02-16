@@ -214,6 +214,30 @@ class Amazon:
             )  # End of verbose output call
 
 
+    def extract_product_name(self, soup: BeautifulSoup) -> str:
+        """
+        Extracts the product name from the parsed HTML soup.
+        
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: Product name string or "Unknown Product" if not found
+        """
+        
+        for tag, attrs in HTML_SELECTORS["product_name"]:  # Iterate through prioritized selectors
+            element = soup.find(tag, attrs)  # Search for element matching selector
+            if element:  # Check if element was found
+                product_name = element.get_text(strip=True)  # Extract and strip whitespace from text
+                product_name = re.sub(r"\s+", " ", product_name)  # Normalize multiple spaces to single space
+                verbose_output(  # Output found product name
+                    f"{BackgroundColors.GREEN}Product name found: {BackgroundColors.CYAN}{product_name}{Style.RESET_ALL}"
+                )  # End of verbose output call
+                return product_name  # Return extracted product name
+        
+        verbose_output(  # Output warning message
+            f"{BackgroundColors.YELLOW}Product name not found, using default.{Style.RESET_ALL}"
+        )  # End of verbose output call
+        return "Unknown Product"  # Return default placeholder when name extraction fails
+
+
     def detect_international(self, soup: BeautifulSoup) -> bool:
         """
         Detects if the product is from an international seller by checking for the foreign seller badge.
