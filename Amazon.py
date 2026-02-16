@@ -214,6 +214,38 @@ class Amazon:
             )  # End of verbose output call
 
 
+    def extract_product_description(self, soup: BeautifulSoup) -> str:
+        """
+        Extracts the product description from the parsed HTML soup.
+        
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: Product description string or "No description available" if not found
+        """
+        
+        for tag, attrs in HTML_SELECTORS["description"]:  # Iterate through prioritized selectors
+            desc_container = soup.find(tag, attrs)  # Search for description container
+            if desc_container:  # Check if container was found
+                description_parts = []  # Initialize list for description parts
+                
+                for element in desc_container.find_all(["p", "li", "span", "div"]):  # Find all text-containing elements
+                    text = element.get_text(strip=True)  # Extract text with stripped whitespace
+                    if text and len(text) > 10:  # Filter out very short or empty text
+                        description_parts.append(text)  # Add text to parts list
+                
+                if description_parts:  # Check if any parts were collected
+                    description = " ".join(description_parts)  # Join all parts with spaces
+                    description = re.sub(r"\s+", " ", description)  # Normalize multiple spaces
+                    verbose_output(  # Output found description preview
+                        f"{BackgroundColors.GREEN}Description found: {BackgroundColors.CYAN}{description[:100]}...{Style.RESET_ALL}"
+                    )  # End of verbose output call
+                    return description  # Return complete description
+        
+        verbose_output(  # Output not found message
+            f"{BackgroundColors.YELLOW}Description not found.{Style.RESET_ALL}"
+        )  # End of verbose output call
+        return "No description available"  # Return default message when description is not found
+
+
     def extract_product_details(self, soup: BeautifulSoup) -> Dict[str, str]:
         """
         Extracts the product details table from the parsed HTML soup.
