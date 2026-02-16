@@ -169,6 +169,20 @@ RUN_FUNCTIONS = {
 }
 
 
+# Classes Definitions:
+
+
+class Amazon:
+    """
+    A web scraper class for extracting product information from Amazon Brasil using
+    authenticated browser sessions.
+    
+    This class handles the extraction of product details including name, prices,
+    discounts, descriptions, and media files from Amazon product pages using
+    Playwright for full page rendering and authenticated access.
+    """
+
+
 # Functions Definitions:
 
 
