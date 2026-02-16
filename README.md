@@ -61,6 +61,7 @@ A production-ready web scraper for extracting product information from multiple 
     - [How Authentication Works](#how-authentication-works)
     - [Setup Steps](#setup-steps)
   - [Output Structure](#output-structure)
+  - [Product Directory Naming Rule](#product-directory-naming-rule)
     - [Description File Format](#description-file-format)
   - [AI-Powered Marketing Content](#ai-powered-marketing-content)
   - [Dependencies](#dependencies)
@@ -416,6 +417,25 @@ Notes:
 - **Logs**: The `Logs/` directory at repository root contains global logs; per-run logs may also be present inside the timestamped run folder depending on runtime configuration.
 
 This layout matches the directory creation and naming performed by `main.py` and the per-scraper `create_output_directory` and media/snapshot routines.
+
+## Product Directory Naming Rule
+
+Problem
+- Very long product names were previously used directly to create product directories. Some operating systems truncate long filesystem names, which caused directory lookup and move operations to fail when code used the original (non-truncated) name.
+
+Solution
+- A single, centralized helper function `product_utils.normalize_product_dir_name(raw_name, replace_with, title_case)` is now the authoritative way to produce product-directory-safe names. The helper:
+  - Preserves the existing sanitization behavior (NBSP normalization, whitespace collapse, title-casing where used, and replacement/removal of filesystem-invalid characters).
+  - Enforces a strict maximum length of 80 characters AFTER sanitization using deterministic slicing (no hashing, no randomness).
+  - Returns the final directory-safe string.
+
+Usage and requirements for developers
+- ALWAYS use `product_utils.normalize_product_dir_name(...)` when creating, searching, or referencing product directories in code. This applies to:
+  - `AliExpress.py`, `Amazon.py`, `MercadoLivre.py`, `Shein.py`, `Shopee.py`, and `main.py`.
+- The 80-character truncation is applied after sanitization; developers must not re-implement truncation or bypass the helper. Bypassing the helper will break directory-name consistency and may cause runtime failures (missing directories, failed moves, or lookup mismatches).
+
+Deterministic behavior
+- Truncation uses simple slicing of the sanitized string to 80 characters. Directory names and lookups are therefore reproducible and stable across runs and platforms.
 
 ### Description File Format
 
