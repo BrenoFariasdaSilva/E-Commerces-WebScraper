@@ -184,6 +184,37 @@ class AliExpress:  # AliExpress scraper class preserving structure and methods
     """
 
 
+    def __init__(self, url: str, local_html_path: Optional[str] = None, prefix: str = "", output_directory: str = OUTPUT_DIRECTORY) -> None:
+        """
+        Initializes the Shopee scraper with a product URL and optional local HTML file path.
+
+        :param url: The URL of the Shopee product page to scrape
+        :param local_html_path: Optional path to a local HTML file for offline scraping
+        :param prefix: Optional platform prefix for output directory naming (e.g., "Shopee")
+        :param output_directory: Output directory path for storing scraped data (defaults to OUTPUT_DIRECTORY constant)
+        :return: None
+        """
+
+        self.url: str = url  # Store the initial product URL for reference
+        self.product_url: str = url  # Maintain separate copy of product URL for Shopee direct usage
+        self.local_html_path: Optional[str] = local_html_path  # Store path to local HTML file for offline scraping
+        self.html_content: Optional[str] = None  # Store HTML content for reuse (from browser or local file)
+        self.product_data: Dict[str, Any] = {}  # Initialize empty dictionary to store extracted product data
+        self.prefix: str = prefix  # Store the platform prefix for directory naming
+        self.output_directory: str = output_directory  # Store the output directory path for this scraping session
+        self.playwright: Optional[Any] = None  # Placeholder for Playwright instance
+        self.browser: Optional[Any] = None  # Placeholder for browser instance
+        self.page: Optional[Any] = None  # Placeholder for page object
+
+        verbose_output(  # Output initialization message to user
+            f"{BackgroundColors.GREEN}AliExpress scraper initialized with URL: {BackgroundColors.CYAN}{url}{Style.RESET_ALL}"
+        )  # End of verbose output call
+        if local_html_path:  # If local HTML file path is provided
+            verbose_output(  # Output offline mode message
+                f"{BackgroundColors.GREEN}Offline mode enabled. Will read from: {BackgroundColors.CYAN}{local_html_path}{Style.RESET_ALL}"
+            )  # End of verbose output call
+
+
 # Functions Definitions
 
 
