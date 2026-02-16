@@ -214,6 +214,39 @@ class Amazon:
             )  # End of verbose output call
 
 
+    def read_local_html(self) -> Optional[str]:
+        """
+        Reads HTML content from a local file for offline scraping.
+
+        :return: HTML content string or None if failed
+        """
+
+        verbose_output(  # Output status message to user
+            f"{BackgroundColors.GREEN}Reading local HTML file: {BackgroundColors.CYAN}{self.local_html_path}{Style.RESET_ALL}"
+        )  # End of verbose output call
+
+        try:  # Attempt to read file with error handling
+            if not self.local_html_path:  # Check if local HTML path is provided
+                print(f"{BackgroundColors.RED}Local HTML path not provided.{Style.RESET_ALL}")  # Alert user path is missing
+                return None  # Return None if path is not set
+            
+            if not os.path.exists(self.local_html_path):  # Check if file exists at path
+                print(f"{BackgroundColors.RED}Local HTML file not found at: {self.local_html_path}{Style.RESET_ALL}")  # Alert user file not found
+                return None  # Return None if file doesn't exist
+            
+            with open(self.local_html_path, "r", encoding="utf-8") as file:  # Open file for reading with UTF-8 encoding
+                html_content = file.read()  # Read entire file content into string
+            
+            verbose_output(  # Output success message with content length
+                f"{BackgroundColors.GREEN}Local HTML loaded successfully ({len(html_content)} characters).{Style.RESET_ALL}"
+            )  # End of verbose output call
+            return html_content  # Return the HTML content string
+            
+        except Exception as e:  # Catch any exceptions during file reading
+            print(f"{BackgroundColors.RED}Failed to read local HTML: {e}{Style.RESET_ALL}")  # Alert user about read failure
+            return None  # Return None to indicate read failed
+
+
     def extract_product_name(self, soup: BeautifulSoup) -> str:
         """
         Extracts the product name from the parsed HTML soup.
