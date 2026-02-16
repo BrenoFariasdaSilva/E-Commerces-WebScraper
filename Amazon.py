@@ -214,6 +214,62 @@ class Amazon:
             )  # End of verbose output call
 
 
+    def find_video_urls(self, soup: BeautifulSoup) -> List[str]:
+        """
+        Finds all video URLs from the product page.
+        Searches for video elements and extracts src attributes.
+        
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: List of video URLs
+        """
+        
+        video_urls: List[str] = []  # Initialize empty list to store video URLs
+        seen_urls: set = set()  # Track URLs to avoid duplicates
+        
+        verbose_output(  # Output status message
+            f"{BackgroundColors.GREEN}Extracting video URLs from page...{Style.RESET_ALL}"
+        )  # End of verbose output call
+        
+        try:  # Attempt video extraction with error handling
+            videos = soup.find_all("video")  # Find all video tags
+            from typing import cast
+            from urllib.parse import urljoin
+
+            for video in videos:  # Iterate through each video
+                video_url = None  # Initialize URL variable
+
+                if video.has_attr("src"):  # Check if video has src attribute
+                    video_url = cast(str, video.get("src", ""))  # Get src attribute value as str
+
+                source_tags = video.find_all("source")  # Find all source tags within video
+                for source in source_tags:  # Iterate through sources
+                    if source.has_attr("src"):  # Check if source has src
+                        video_url = cast(str, source.get("src", ""))  # Get source URL as str
+                        break  # Use first valid source
+                
+                if video_url:  # Check if URL was found
+                    if video_url.startswith("//"):  # Check if protocol-relative URL
+                        video_url = "https:" + video_url  # Add HTTPS protocol
+                    elif video_url.startswith("/"):  # Check if absolute path
+                        video_url = "https://www.amazon.com.br" + video_url  # Build complete URL
+                    
+                    if video_url not in seen_urls:  # Check if URL is not duplicate
+                        video_urls.append(video_url)  # Add URL to list
+                        seen_urls.add(video_url)  # Mark URL as seen
+                        verbose_output(  # Output found video
+                            f"{BackgroundColors.CYAN}Video found: {video_url}{Style.RESET_ALL}"
+                        )  # End of verbose output call
+        
+        except Exception as e:  # Catch any exceptions during video extraction
+            print(f"{BackgroundColors.YELLOW}Warning during video extraction: {e}{Style.RESET_ALL}")  # Warn user about extraction issues
+        
+        verbose_output(  # Output total count
+            f"{BackgroundColors.GREEN}Found {BackgroundColors.CYAN}{len(video_urls)}{BackgroundColors.GREEN} videos.{Style.RESET_ALL}"
+        )  # End of verbose output call
+        
+        return video_urls  # Return list of video URLs
+
+
     def print_product_info(self, product_data: Dict[str, Any]) -> None:
         """
         Prints the extracted product information in a formatted manner.
