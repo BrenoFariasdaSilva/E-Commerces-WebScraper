@@ -215,6 +215,31 @@ class AliExpress:  # AliExpress scraper class preserving structure and methods
             )  # End of verbose output call
 
 
+    def extract_product_name(self, soup: BeautifulSoup) -> str:
+        """
+        Extracts the product name from the parsed HTML soup.
+        
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: Product name string or "Unknown Product" if not found
+        """
+        
+        for tag, attrs in HTML_SELECTORS["product_name"]:  # Iterate through each selector combination from centralized dictionary
+            name_element = soup.find(tag, attrs if attrs else None)  # type: ignore[arg-type]  # Search for element matching current selector
+            if name_element:  # Verify if matching element was found
+                    raw_product_name = name_element.get_text(separator=" ", strip=True)  # Extract raw text, preserve single spaces between parts
+                    product_name = normalize_product_dir_name(raw_product_name, replace_with="_", title_case=True)  # Normalize name for directory usage
+                    if product_name and product_name != "":  # Validate that extracted name is not empty
+                        verbose_output(  # Log successfully extracted product name
+                            f"{BackgroundColors.GREEN}Product name: {BackgroundColors.CYAN}{product_name}{Style.RESET_ALL}"
+                        )  # End of verbose output call
+                        return product_name  # Return the sanitized product name immediately when found
+        
+        verbose_output(  # Warn that product name could not be extracted
+            f"{BackgroundColors.YELLOW}Product name not found, using default.{Style.RESET_ALL}"
+        )  # End of verbose output call
+        return "Unknown Product"  # Return default placeholder when name extraction fails
+
+
     def detect_international(self, soup: BeautifulSoup) -> bool:
         """
         Detects if the product is international by checking for the international import declaration text.
