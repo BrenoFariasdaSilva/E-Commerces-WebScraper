@@ -215,6 +215,35 @@ class AliExpress:  # AliExpress scraper class preserving structure and methods
             )  # End of verbose output call
 
 
+    def extract_product_description(self, soup: BeautifulSoup) -> str:
+        """
+        Extracts the product description from the parsed HTML soup.
+        
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: Product description string or "No description available" if not found
+        """
+        
+        for tag, attrs in HTML_SELECTORS["description"]:  # Iterate through each selector combination from centralized dictionary
+            description_element = soup.find(tag, attrs if attrs else None)  # type: ignore[arg-type]  # Search for element matching current selector
+            if description_element and isinstance(description_element, Tag):  # Verify if matching element was found and is a Tag
+                # Extract textual content while preserving some line breaks for readability  # preserve line breaks
+                texts = []  # Collect pieces of text
+                for child in description_element.find_all(["p", "span", "h1", "h2", "h3", "li", "div"]):  # Iterate child tags
+                    if isinstance(child, Tag):  # Ensure child is Tag
+                        piece = child.get_text(separator=" ", strip=True)  # Extract piece text
+                        if piece:  # If piece has content
+                            texts.append(piece)  # Append piece to texts list
+                description = "\n".join(texts).strip()  # Join pieces with newline separators
+                description = self.to_sentence_case(description)  # Convert extracted description to sentence case
+                if description and len(description) > 10:  # Validate that description has substantial content
+                    verbose_output(  # Log successfully extracted description with character count
+                        f"{BackgroundColors.GREEN}Description found ({len(description)} chars).{Style.RESET_ALL}"
+                    )  # End of verbose output call
+                    return description  # Return the formatted product description
+
+        return "No description available"  # Return default message when description is not found
+
+
     def extract_specifications(self, soup: BeautifulSoup) -> Dict[str, str]:  # Extract specifications table into dict
         """
         Extracts the product specification table into a dictionary when present.
