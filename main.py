@@ -65,7 +65,8 @@ import sys  # For system-specific parameters and functions
 import time  # For adding delays between requests
 import zipfile  # For handling zip files
 from tqdm import tqdm  # Progress bar for URL processing
-# from AliExpress import AliExpress  # Import the AliExpress class
+from AliExpress import AliExpress  # Import the AliExpress class
+from Amazon import Amazon  # Import the Amazon class
 from colorama import Style  # For coloring the terminal
 from dotenv import load_dotenv  # For loading environment variables
 from Gemini import Gemini  # Import the Gemini class
@@ -95,13 +96,15 @@ TEST_URLs = [""]  # Test URLs for scraping
 
 PLATFORMS_MAP = {
     "AliExpress": "aliexpress",
+    "Amazon": "amazon",
     "MercadoLivre": "mercadolivre",
     "Shein": "shein",
     "Shopee": "shopee",
-}  # Mapping of platform names to identifiers
+}
 
 PLATFORM_PREFIXES = {
     "aliexpress": "AliExpress",
+    "amazon": "Amazon",
     "mercadolivre": "MercadoLivre",
     "shein": "Shein",
     "shopee": "Shopee",
@@ -1026,7 +1029,8 @@ def scrape_product(url, timestamped_output_dir, local_html_path=None):
             return None, None, None, None, None, None  # Return None values if extraction failed
     
     scraper_classes = {  # Mapping of platform identifiers to scraper classes
-        # "aliexpress": AliExpress,
+        "aliexpress": AliExpress,
+        "amazon": Amazon,
         "mercadolivre": MercadoLivre,
         "shein": Shein,
         "shopee": Shopee,
