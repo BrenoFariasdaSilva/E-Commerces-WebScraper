@@ -215,6 +215,21 @@ class AliExpress:  # AliExpress scraper class preserving structure and methods
             )  # End of verbose output call
 
 
+    def create_output_directory(self, product_name_safe):
+        """
+        Creates the output directory for storing downloaded media files.
+        
+        :param product_name_safe: Safe product name for directory naming
+        :return: Path to the created output directory
+        """
+        
+        directory_name = f"{self.prefix} - {product_name_safe}" if self.prefix else product_name_safe  # Construct directory name with platform prefix if available
+        output_dir = os.path.join(self.output_directory, directory_name)  # Construct full path for product output directory using instance output directory
+        self.create_directory(os.path.abspath(output_dir), output_dir.replace(".", ""))  # Create directory with absolute path and cleaned relative name
+        
+        return output_dir  # Return the created output directory path
+
+
     def collect_assets(self, html_content: str, output_dir: str) -> Dict[str, str]:
         """
         Collects and downloads all assets (images, CSS, JS) from the page.
