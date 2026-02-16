@@ -511,7 +511,10 @@ For a complete list, see [requirements.txt](requirements.txt).
 ```
 E-Commerces-WebScraper/
 ├── main.py                              # Main orchestration script
+├── AliExpress.py                        # AliExpress scraper class
+├── Amazon.py                            # Amazon Brasil scraper class
 ├── MercadoLivre.py                      # Mercado Livre scraper class
+├── product_utils.py                     # Product name sanitization and directory utilities
 ├── Shein.py                             # Shein scraper class
 ├── Shopee.py                            # Shopee scraper class
 ├── Gemini.py                            # AI integration module
@@ -521,8 +524,6 @@ E-Commerces-WebScraper/
 ├── .env                                 # Environment configuration (not tracked)
 ├── .env.example                         # Environment template
 ├── README.md                            # This file
-├── AUTHENTICATED_SCRAPING_SETUP.md      # Detailed authentication guide
-├── IMPLEMENTATION_SUMMARY.md            # Technical implementation details
 ├── CONTRIBUTING.md                      # Contribution guidelines
 ├── LICENSE                              # Apache 2.0 license
 ├── Inputs/                              # Input files directory
