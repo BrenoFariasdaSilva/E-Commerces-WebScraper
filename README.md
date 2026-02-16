@@ -545,9 +545,11 @@ The scraper automatically detects platforms by analyzing URL patterns:
 
 ```python
 PLATFORMS_MAP = {
-    "MercadoLivre": "mercadolivre",
-    "Shein": "shein",
-    "Shopee": "shopee",
+  "AliExpress": "aliexpress",
+  "Amazon": "amazon",
+  "MercadoLivre": "mercadolivre",
+  "Shein": "shein",
+  "Shopee": "shopee",
 }
 ```
 
