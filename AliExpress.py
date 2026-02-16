@@ -215,6 +215,29 @@ class AliExpress:  # AliExpress scraper class preserving structure and methods
             )  # End of verbose output call
 
 
+    def create_directory(self, full_directory_name, relative_directory_name):
+        """
+        Creates a directory.
+
+        :param full_directory_name: Name of the directory to be created.
+        :param relative_directory_name: Relative name of the directory to be created that will be shown in the terminal.
+        :return: None
+        """
+
+        verbose_output(  # Output status message to user if verbose enabled
+            true_string=f"{BackgroundColors.GREEN}Creating the {BackgroundColors.CYAN}{relative_directory_name}{BackgroundColors.GREEN} directory...{Style.RESET_ALL}"
+        )  # End of verbose output call
+
+        if os.path.isdir(full_directory_name):  # Verify if directory already exists
+            return  # Exit early if directory exists to avoid redundant creation
+        try:  # Attempt directory creation with error handling
+            os.makedirs(full_directory_name)  # Create directory including all intermediate directories
+        except OSError:  # Catch OS-level errors during directory creation
+            print(  # Alert user about directory creation failure
+                f"{BackgroundColors.GREEN}The creation of the {BackgroundColors.CYAN}{relative_directory_name}{BackgroundColors.GREEN} directory failed.{Style.RESET_ALL}"
+            )  # End of print statement
+
+
     def create_output_directory(self, product_name_safe):
         """
         Creates the output directory for storing downloaded media files.
