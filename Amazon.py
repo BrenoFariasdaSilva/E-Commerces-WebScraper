@@ -214,6 +214,34 @@ class Amazon:
             )  # End of verbose output call
 
 
+    def extract_old_price(self, soup: BeautifulSoup) -> Optional[str]:
+        """
+        Extracts the old price from the parsed HTML soup.
+        
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: Formatted price string or None if not found
+        """
+        
+        for tag, attrs in HTML_SELECTORS["old_price"]:  # Iterate through prioritized selectors
+            price_container = soup.find(tag, attrs)  # Search for old price container element
+            if price_container:  # Check if container was found
+                try:  # Attempt to extract price components
+                    price_text = price_container.get_text(strip=True)  # Extract all text from container
+                    
+                    if price_text:  # Check if text exists
+                        verbose_output(  # Output found old price
+                            f"{BackgroundColors.GREEN}Old price found: {BackgroundColors.CYAN}{price_text}{Style.RESET_ALL}"
+                        )  # End of verbose output call
+                        return price_text  # Return extracted price text
+                except Exception as e:  # Catch exceptions during extraction
+                    continue  # Try next selector on error
+        
+        verbose_output(  # Output not found message
+            f"{BackgroundColors.YELLOW}Old price not found.{Style.RESET_ALL}"
+        )  # End of verbose output call
+        return None  # Return None when old price is not available
+
+
     def extract_discount_percentage(self, soup: BeautifulSoup) -> Optional[str]:
         """
         Extracts the discount percentage from the parsed HTML soup.
