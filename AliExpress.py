@@ -215,6 +215,28 @@ class AliExpress:  # AliExpress scraper class preserving structure and methods
             )  # End of verbose output call
 
 
+    def print_product_info(self, product_data: Dict[str, Any]) -> None:
+        """
+        Prints the extracted product information in a formatted manner.
+        
+        :param product_data: Dictionary containing the scraped product data
+        :return: None
+        """
+        
+        if not product_data:  # Verify if product data dictionary is empty or None
+            print(f"{BackgroundColors.RED}No product data to display.{Style.RESET_ALL}")  # Alert user that no data is available
+            return  # Exit method early when no data to print
+        
+        verbose_output(  # Display formatted product information to user (verbose)
+            f"{BackgroundColors.GREEN}Product information extracted successfully:{BackgroundColors.GREEN}\n"
+            f"  {BackgroundColors.CYAN}Name:{BackgroundColors.GREEN} {product_data.get('name', 'N/A')}\n"
+            f"  {BackgroundColors.CYAN}Old Price:{BackgroundColors.GREEN} R${product_data.get('old_price_integer', 'N/A')},{product_data.get('old_price_decimal', 'N/A') if product_data.get('old_price_integer', 'N/A') != 'N/A' else 'N/A'}\n"
+            f"  {BackgroundColors.CYAN}Current Price:{BackgroundColors.GREEN} R${product_data.get('current_price_integer', 'N/A')},{product_data.get('current_price_decimal', 'N/A')}\n"
+            f"  {BackgroundColors.CYAN}Discount:{BackgroundColors.GREEN} {product_data.get('discount_percentage', 'N/A')}\n"
+            f"  {BackgroundColors.CYAN}Description:{BackgroundColors.GREEN} {product_data.get('description', 'N/A')[:100]}...{Style.RESET_ALL}"
+        )  # End of verbose_output call
+
+
     def scrape_product_info(self, html_content: str) -> Optional[Dict[str, Any]]:
         """
         Scrapes product information from rendered HTML content.
