@@ -214,6 +214,30 @@ class Amazon:
             )  # End of verbose output call
 
 
+    def extract_discount_percentage(self, soup: BeautifulSoup) -> Optional[str]:
+        """
+        Extracts the discount percentage from the parsed HTML soup.
+        
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: Discount percentage string (e.g., "15%") or None if not found
+        """
+        
+        for tag, attrs in HTML_SELECTORS["discount"]:  # Iterate through prioritized selectors
+            discount_element = soup.find(tag, attrs)  # Search for discount element
+            if discount_element:  # Check if element was found
+                discount_text = discount_element.get_text(strip=True)  # Extract and strip whitespace
+                discount_text = discount_text.replace("-", "").strip()  # Remove minus sign and extra spaces
+                verbose_output(  # Output found discount
+                    f"{BackgroundColors.GREEN}Discount found: {BackgroundColors.CYAN}{discount_text}{Style.RESET_ALL}"
+                )  # End of verbose output call
+                return discount_text  # Return cleaned discount text
+        
+        verbose_output(  # Output not found message
+            f"{BackgroundColors.YELLOW}Discount percentage not found.{Style.RESET_ALL}"
+        )  # End of verbose output call
+        return None  # Return None when discount is not available
+
+
     def extract_product_description(self, soup: BeautifulSoup) -> str:
         """
         Extracts the product description from the parsed HTML soup.
