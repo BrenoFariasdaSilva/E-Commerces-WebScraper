@@ -214,6 +214,27 @@ class Amazon:
             )  # End of verbose output call
 
 
+    def create_directory(self, full_directory_name, relative_directory_name):
+        """
+        Creates a directory.
+
+        :param full_directory_name: Name of the directory to be created.
+        :param relative_directory_name: Relative name of the directory to be created that will be shown in the terminal.
+        :return: None
+        """
+
+        verbose_output(  # Output directory creation message
+            true_string=f"{BackgroundColors.GREEN}Creating the {BackgroundColors.CYAN}{relative_directory_name}{BackgroundColors.GREEN} directory...{Style.RESET_ALL}"
+        )  # End of verbose output call
+
+        if os.path.isdir(full_directory_name):  # Check if directory already exists
+            return  # Exit early if directory exists
+        try:  # Attempt directory creation
+            os.makedirs(full_directory_name)  # Create directory with all parent directories
+        except OSError:  # Catch OS errors during creation
+            print(f"{BackgroundColors.RED}Failed to create directory: {full_directory_name}{Style.RESET_ALL}")  # Alert user about creation failure
+
+
     def create_output_directory(self, product_name_safe):
         """
         Creates the output directory for storing downloaded media files.
