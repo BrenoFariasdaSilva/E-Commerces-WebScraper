@@ -214,6 +214,114 @@ class Amazon:
             )  # End of verbose output call
 
 
+    def download_single_video(self, video_url: str, output_dir: str, video_count: int) -> Optional[str]:
+        """
+        Downloads or copies a single video to the specified output directory.
+        Supports HLS (.m3u8) downloads using ffmpeg, HTTP downloads, and local file copying.
+        
+        :param video_url: URL of the video to download (HLS .m3u8, HTTP URL, or local path)
+        :param output_dir: Directory to save the video
+        :param video_count: Counter for generating unique filenames
+        :return: Path to downloaded video file or None if download failed
+        """
+        
+        video_path = None  # Initialize video path variable
+        is_hls = video_url.endswith(".m3u8")  # Check if video URL is HLS stream
+        
+        try:  # Attempt video download with error handling
+            if video_url.startswith("file://") or (not video_url.startswith("http") and os.path.exists(video_url)):  # Check if local file
+                local_video_path = video_url.replace("file://", "")  # Remove file protocol
+                
+                if not os.path.exists(local_video_path):  # Verify file exists
+                    verbose_output(  # Output not found message
+                        f"{BackgroundColors.YELLOW}Local video not found: {local_video_path}{Style.RESET_ALL}"
+                    )  # End of verbose output call
+                    return None  # Return None if file doesn't exist
+                
+                file_ext = os.path.splitext(local_video_path)[1] or ".mp4"  # Get file extension or default
+                video_filename = f"video_{video_count}{file_ext}"  # Generate unique filename
+                video_path = os.path.join(output_dir, video_filename)  # Build full destination path
+                
+                shutil.copy2(local_video_path, video_path)  # Copy file preserving metadata
+                
+                verbose_output(  # Output success message
+                    f"{BackgroundColors.GREEN}Video copied: {BackgroundColors.CYAN}{video_filename}{Style.RESET_ALL}"
+                )  # End of verbose output call
+                
+                return video_path  # Return path to copied video
+            
+            elif is_hls:  # Handle HLS stream download
+                if shutil.which("ffmpeg") is None:  # Check if ffmpeg is available
+                    print(f"{BackgroundColors.YELLOW}ffmpeg not found. Cannot download HLS video.{Style.RESET_ALL}")  # Warn user ffmpeg missing
+                    return None  # Return None if ffmpeg unavailable
+                
+                video_filename = f"video_{video_count}.mp4"  # Generate MP4 filename
+                video_path = os.path.join(output_dir, video_filename)  # Build full destination path
+                
+                ffmpeg_command = [  # Build ffmpeg command list
+                    "ffmpeg",  # FFmpeg executable
+                    "-i", video_url,  # Input HLS URL
+                    "-c", "copy",  # Copy streams without re-encoding
+                    "-bsf:a", "aac_adtstoasc",  # Convert AAC format
+                    "-y",  # Overwrite output file
+                    video_path  # Output file path
+                ]  # End of command list
+                
+                verbose_output(  # Output download start message
+                    f"{BackgroundColors.GREEN}Downloading HLS video with ffmpeg...{Style.RESET_ALL}"
+                )  # End of verbose output call
+                
+                result = subprocess.run(  # Execute ffmpeg command
+                    ffmpeg_command,  # Command to run
+                    stdout=subprocess.PIPE,  # Capture stdout
+                    stderr=subprocess.PIPE,  # Capture stderr
+                    timeout=300  # 5 minute timeout
+                )  # End of subprocess call
+                
+                if result.returncode != 0:  # Check if command failed
+                    print(f"{BackgroundColors.RED}ffmpeg failed: {result.stderr.decode()}{Style.RESET_ALL}")  # Output error message
+                    return None  # Return None on failure
+                
+                verbose_output(  # Output success message
+                    f"{BackgroundColors.GREEN}HLS video downloaded: {BackgroundColors.CYAN}{video_filename}{Style.RESET_ALL}"
+                )  # End of verbose output call
+                
+                return video_path  # Return path to downloaded video
+            
+            else:  # Handle regular HTTP video download
+                import requests  # Import requests library for HTTP
+                
+                response = requests.get(video_url, timeout=60, stream=True)  # Send GET request with timeout
+                response.raise_for_status()  # Raise exception for bad status codes
+                
+                content_type = response.headers.get("content-type", "")  # Get content type header
+                
+                file_ext = ".mp4"  # Default extension
+                if "mp4" in content_type:  # Check for MP4
+                    file_ext = ".mp4"  # Set MP4 extension
+                elif "webm" in content_type:  # Check for WebM
+                    file_ext = ".webm"  # Set WebM extension
+                elif "quicktime" in content_type or "mov" in content_type:  # Check for QuickTime
+                    file_ext = ".mov"  # Set MOV extension
+                
+                video_filename = f"video_{video_count}{file_ext}"  # Generate unique filename
+                video_path = os.path.join(output_dir, video_filename)  # Build full destination path
+                
+                with open(video_path, "wb") as file:  # Open file for binary writing
+                    for chunk in response.iter_content(chunk_size=8192):  # Stream content in chunks
+                        file.write(chunk)  # Write chunk to file
+                
+                verbose_output(  # Output success message
+                    f"{BackgroundColors.GREEN}Video downloaded: {BackgroundColors.CYAN}{video_filename}{Style.RESET_ALL}"
+                )  # End of verbose output call
+                
+                return video_path  # Return path to downloaded video
+        
+        except Exception as e:  # Catch any exceptions during download
+            print(f"{BackgroundColors.YELLOW}Failed to download video {video_count}: {e}{Style.RESET_ALL}")  # Warn user about download failure
+            return None  # Return None to indicate download failed
+
+
     def download_product_images(self, soup: BeautifulSoup, output_dir: str) -> List[str]:
         """
         Downloads all product images from the gallery.
