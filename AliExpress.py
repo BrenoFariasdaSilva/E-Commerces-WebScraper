@@ -215,6 +215,37 @@ class AliExpress:  # AliExpress scraper class preserving structure and methods
             )  # End of verbose output call
 
 
+    def extract_specifications(self, soup: BeautifulSoup) -> Dict[str, str]:  # Extract specifications table into dict
+        """
+        Extracts the product specification table into a dictionary when present.
+
+        :param soup: BeautifulSoup object containing the parsed HTML
+        :return: Dictionary of specification key->value pairs or empty dict
+        """
+
+        specs: Dict[str, str] = {}  # Initialize empty dict for specifications
+        try:  # Attempt to locate specifications container with error handling
+            container = soup.find("div", HTML_SELECTORS.get("specs_container"))  # type: ignore[arg-type]  # Find specs container
+            if container and isinstance(container, Tag):  # Verify container exists and is a Tag
+                rows = container.find_all("div", HTML_SELECTORS.get("specs_row"))  # type: ignore[arg-type]  # Find specification rows
+                for row in rows:  # Iterate through each specification row
+                    if not isinstance(row, Tag):  # Ensure row is a Tag
+                        continue  # Skip non-Tag nodes
+                    title_el = row.find("div", HTML_SELECTORS.get("specs_title"))  # type: ignore[arg-type]  # Find title element
+                    value_el = row.find("div", HTML_SELECTORS.get("specs_value"))  # type: ignore[arg-type]  # Find value element
+                    if title_el and value_el and isinstance(title_el, Tag) and isinstance(value_el, Tag):  # Validate elements
+                        key = title_el.get_text(strip=True)  # Extract key text
+                        val = value_el.get_text(strip=True)  # Extract value text
+                        if key:  # Only add non-empty keys
+                            specs[key] = val  # Store spec pair in dict
+        except Exception as e:  # Catch any exceptions during spec extraction
+            verbose_output(  # Log warning about specs extraction failure
+                f"{BackgroundColors.YELLOW}Warning extracting specifications: {e}{Style.RESET_ALL}"
+            )  # End of verbose output call
+
+        return specs  # Return specification dictionary (possibly empty)
+
+
     def find_image_urls(self, soup: BeautifulSoup) -> List[str]:
         """
         Finds all image URLs from the product gallery (class="airUhU").
