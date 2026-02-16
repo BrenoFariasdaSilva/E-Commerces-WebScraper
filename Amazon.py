@@ -214,6 +214,25 @@ class Amazon:
             )  # End of verbose output call
 
 
+    def prefix_international_name(self, product_name: str) -> str:
+        """
+        Adds "International - " prefix to product name if not already present.
+        
+        :param product_name: Original product name
+        :return: Product name with International prefix
+        """
+        
+        if not product_name.upper().startswith("INTERNATIONAL"):  # Check if name already has international prefix
+            verbose_output(  # Output prefix addition message
+                f"{BackgroundColors.CYAN}Adding International prefix to product name.{Style.RESET_ALL}"
+            )  # End of verbose output call
+            product_name = f"International - {product_name}"  # Add International prefix
+            product_name = re.sub(r"\s+", " ", product_name)  # Normalize spaces after prefix addition
+            product_name = product_name.strip()  # Remove leading/trailing whitespace
+
+        return product_name  # Return modified and normalized product name
+
+
     def extract_current_price(self, soup: BeautifulSoup) -> Optional[str]:
         """
         Extracts the current price from the parsed HTML soup.
