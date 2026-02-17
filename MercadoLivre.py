@@ -289,7 +289,7 @@ class MercadoLivre:
         name_element = soup.find(**HTML_SELECTORS["product_name"])  # Find the product name element using centralized selector
         if name_element:  # Verify if matching element was found
             raw_product_name = name_element.get_text(separator=" ", strip=True)  # Extract raw text, preserve single spaces between parts
-            product_name = normalize_product_dir_name(raw_product_name, replace_with="_", title_case=True)  # Normalize name for directory usage
+            product_name = normalize_product_dir_name(raw_name=raw_product_name)  # Normalize name for directory usage
 
             verbose_output(
                 f"{BackgroundColors.GREEN}Product name: {BackgroundColors.CYAN}{product_name}{Style.RESET_ALL}"
