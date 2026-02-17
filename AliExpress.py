@@ -24,9 +24,9 @@ Description :
 		- Organized output in product-specific directories
 
 Usage:
-	1. Import the Shopee class in your main script.
+	1. Import the AliExpress class in your main script.
 	2. Create an instance with a product URL:
-		scraper = Shopee("https://shopee.com.br/product-url")
+		scraper = AliExpress("https://AliExpress.com.br/product-url")
 	3. Call the scrape method to extract product information:
 		product_data = scraper.scrape()
 	4. Media files are saved in ./Outputs/{Product Name}/ directory.
@@ -94,8 +94,8 @@ class BackgroundColors:  # Colors for the terminal
 # Execution Constants:
 VERBOSE = False  # Set to True to output verbose messages
 
-# Affiliate URL detection pattern (short shopee redirect links)  # keep generic pattern for now
-AFFILIATE_URL_PATTERN = r"https?://s\.shopee\.com(?:\.br)?/[A-Za-z0-9]+"  # Keep existing affiliate pattern as fallback
+# Affiliate URL detection pattern (short AliExpress redirect links)  # keep generic pattern for now
+AFFILIATE_URL_PATTERN = r"https?://s\.AliExpress\.com(?:\.br)?/[A-Za-z0-9]+"  # Keep existing affiliate pattern as fallback
 
 # HTML Selectors Dictionary:
 HTML_SELECTORS = {
@@ -186,17 +186,17 @@ class AliExpress:  # AliExpress scraper class preserving structure and methods
 
     def __init__(self, url: str, local_html_path: Optional[str] = None, prefix: str = "", output_directory: str = OUTPUT_DIRECTORY) -> None:
         """
-        Initializes the Shopee scraper with a product URL and optional local HTML file path.
+        Initializes the AliExpress scraper with a product URL and optional local HTML file path.
 
-        :param url: The URL of the Shopee product page to scrape
+        :param url: The URL of the AliExpress product page to scrape
         :param local_html_path: Optional path to a local HTML file for offline scraping
-        :param prefix: Optional platform prefix for output directory naming (e.g., "Shopee")
+        :param prefix: Optional platform prefix for output directory naming (e.g., "AliExpress")
         :param output_directory: Output directory path for storing scraped data (defaults to OUTPUT_DIRECTORY constant)
         :return: None
         """
 
         self.url: str = url  # Store the initial product URL for reference
-        self.product_url: str = url  # Maintain separate copy of product URL for Shopee direct usage
+        self.product_url: str = url  # Maintain separate copy of product URL for AliExpress direct usage
         self.local_html_path: Optional[str] = local_html_path  # Store path to local HTML file for offline scraping
         self.html_content: Optional[str] = None  # Store HTML content for reuse (from browser or local file)
         self.product_data: Dict[str, Any] = {}  # Initialize empty dictionary to store extracted product data
@@ -1160,7 +1160,7 @@ class AliExpress:  # AliExpress scraper class preserving structure and methods
             if self.local_html_path and (img_url.startswith("./") or img_url.startswith("../") or img_url.startswith("/file/") or not img_url.startswith(("http://", "https://"))):
                 html_dir = os.path.dirname(os.path.abspath(self.local_html_path))  # Get directory of local HTML file
                 
-                if img_url.startswith("/file/"):  # Shopee local file format
+                if img_url.startswith("/file/"):  # AliExpress local file format
                     img_url = "." + img_url  # Convert to relative path
                 
                 local_img_path = os.path.normpath(os.path.join(html_dir, img_url))  # Resolve local image path
