@@ -589,39 +589,35 @@ class Amazon:
         return "0", "00"  # Return default zero price when extraction fails
 
 
-    def extract_old_price(self, soup: BeautifulSoup) -> Optional[str]:
+    def extract_old_price(self, soup: BeautifulSoup) -> Tuple[str, str]:
         """
         Extracts the old price from the parsed HTML soup.
         
         :param soup: BeautifulSoup object containing the parsed HTML
-        :return: Formatted price string or None if not found
+        :return: Tuple of (integer_part, decimal_part) for old price
         """
         
         for tag, attrs in HTML_SELECTORS["old_price"]:  # Iterate through prioritized selectors
             price_container = soup.find(tag, attrs)  # Search for old price container element
             if price_container:  # Check if container was found
                 try:  # Attempt to extract price components
-                    raw_text = price_container.get_text(" ", strip=True)  # Extract all text, preserve spaces between parts
-                    price_text = re.sub(r"\s+", " ", raw_text).strip()  # Normalize whitespace to single spaces and trim
-
-                    match = re.search(r"(R\$\s?\d{1,3}(?:[\.\d]{0,}|(?:\.\d{3})*)(?:,\d{2})?)", price_text)  # Regex to match Brazilian currency format
-                    if match:  # If regex match is found, use the first match group as the cleaned price
-                        cleaned = match.group(1)  # Extract the matched price string
-                    else:  # If no match is found, fallback to taking the first part of the text as a last resort
-                        cleaned = price_text.split()[0] if price_text else price_text  # Take the first word as fallback if price text exists, otherwise use the raw text
-
-                    if cleaned:  # Check if cleaned price is not empty
-                        verbose_output(  # Output found old price (cleaned)
-                            f"{BackgroundColors.GREEN}Old price found: {BackgroundColors.CYAN}{cleaned}{Style.RESET_ALL}"
+                    price_text = price_container.get_text(strip=True)  # Extract all text from container
+                    # Match Brazilian price format: digits with optional thousands separators and required decimal
+                    match = re.search(r"(\d+(?:[\.,]\d{3})*)[,\.]?(\d{2})", price_text)
+                    if match:  # If price pattern found
+                        integer_part = match.group(1).replace('.', '').replace(',', '')  # Remove thousands separators
+                        decimal_part = match.group(2)  # Extract decimal part
+                        verbose_output(  # Output found old price
+                            f"{BackgroundColors.GREEN}Old price found: {BackgroundColors.CYAN}R${integer_part},{decimal_part}{Style.RESET_ALL}"
                         )
-                        return cleaned  # Return the cleaned old price string
+                        return integer_part, decimal_part  # Return price components as tuple
                 except Exception as e:  # Catch exceptions during extraction
                     continue  # Try next selector on error
         
         verbose_output(  # Output not found message
             f"{BackgroundColors.YELLOW}Old price not found.{Style.RESET_ALL}"
         )  # End of verbose output call
-        return None  # Return None when old price is not available
+        return "N/A", "N/A"  # Return N/A when old price is not available
 
 
     def extract_discount_percentage(self, soup: BeautifulSoup) -> Optional[str]:
@@ -897,12 +893,13 @@ class Amazon:
                 product_name = self.prefix_international_name(product_name)  # Add international prefix
             
             cur_int, cur_dec = self.extract_current_price(soup)  # Extract current price parts
-            old_price = self.extract_old_price(soup)  # Extract old price
+            old_int, old_dec = self.extract_old_price(soup)  # Extract old price parts
             discount = self.extract_discount_percentage(soup)  # Extract discount percentage
             description = self.extract_product_description(soup)  # Extract product description
             product_details = self.extract_product_details(soup)  # Extract product details table
             
             current_price = f"R${cur_int},{cur_dec}"  # Build current price display string
+            old_price = f"R${old_int},{old_dec}" if old_int != "N/A" else "N/A"  # Build old price display string
             
             product_data = {  # Build product data dictionary
                 "name": product_name,  # Store product name
@@ -910,12 +907,14 @@ class Amazon:
                 "old_price": old_price,  # Store formatted old price
                 "current_price_integer": cur_int,  # Store current price integer part
                 "current_price_decimal": cur_dec,  # Store current price decimal part
+                "old_price_integer": old_int,  # Store old price integer part
+                "old_price_decimal": old_dec,  # Store old price decimal part
                 "discount_percentage": discount,  # Store discount percentage
                 "description": description,  # Store description
                 "product_details": product_details,  # Store details table
                 "is_international": is_international,  # Store international flag
             }  # End of dictionary construction
-            
+
             self.print_product_info(product_data)  # Print extracted information
             return product_data  # Return complete product data
             
