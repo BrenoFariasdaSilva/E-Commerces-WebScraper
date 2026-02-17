@@ -655,7 +655,7 @@ def sanitize_filename(filename):
     :return: Sanitized filename string containing only alphanumeric characters, spaces, hyphens, and underscores
     """
     
-    return normalize_product_dir_name(filename, replace_with="_", title_case=True)  # Use the centralized normalization function to sanitize the filename
+    return normalize_product_dir_name(raw_name=filename)  # Use the centralized normalization function to sanitize the filename
 
 
 def get_next_run_index(base_output_dir, today_str):
