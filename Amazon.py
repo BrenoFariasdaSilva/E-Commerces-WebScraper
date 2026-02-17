@@ -1375,8 +1375,7 @@ class Amazon:
                 return downloaded_files  # Return empty list
             
             product_name = self.product_data.get("name", "Unknown Product")  # Get product name or default
-            # Use shared helper to sanitize and enforce 80-character limit.
-            product_name_safe = normalize_product_dir_name(product_name, replace_with="", title_case=False)  # Normalize name for directory usage
+            product_name_safe = normalize_product_dir_name(raw_name=product_name)  # Normalize name for directory usage
             
             output_dir = self.create_output_directory(product_name_safe)  # Create product output directory
             
