@@ -727,69 +727,84 @@ def detect_platform(url):
     return None  # Return None if platform not recognized
 
 
-def verify_affiliate_url_format(url):
+def verify_affiliate_url_format(url: str) -> bool:
     """
     Verify if a URL uses the supported short affiliate redirect format.
 
     :param url: The product URL to verify
     :return: True if URL is acceptable or matches affiliate pattern, False if it fails regex validation
     """
-
-    platform_id = detect_platform(url)  # Detect platform from the URL
-
-    if platform_id is None:  # If platform detection failed, nothing to validate
-        return True  # Consider as acceptable (no affiliate check required)
     
-    platform_modules = {  # Mapping of platform ids to scraper modules
-        "aliexpress": AliExpress,  # AliExpress module
-        "amazon": Amazon,  # Amazon module
-        "mercadolivre": MercadoLivre,  # MercadoLivre module
-        "shein": Shein,  # Shein module
-        "shopee": Shopee,  # Shopee module
-    }  # End mapping
+    platform_id = detect_platform(url)  # Detect the platform identifier from the URL
+    if platform_id is None:  # If platform not recognized, skip affiliate validation
+        return True  # Accept as no affiliate-format validation required
 
-    module = platform_modules.get(platform_id)  # Retrieve module for detected platform
-    if module is None:  # If platform unsupported, nothing to validate
-        return True  # Consider as acceptable
+    platform_modules = {  # Map platform ids to the imported class objects for lookup
+        "aliexpress": AliExpress,  # AliExpress handler class reference
+        "amazon": Amazon,  # Amazon handler class reference
+        "mercadolivre": MercadoLivre,  # MercadoLivre handler class reference
+        "shein": Shein,  # Shein handler class reference (class, not module)
+        "shopee": Shopee,  # Shopee handler class reference
+    }  # End of mapping
 
-    pattern = getattr(module, "AFFILIATE_URL_PATTERN", None)  # Get affiliate regex pattern
-    if not pattern:  # If pattern not defined, nothing to validate
-        return True  # Consider as acceptable
+    module_or_class = platform_modules.get(platform_id)  # Get the configured module/class for the detected platform
+    if module_or_class is None:  # If platform not supported in the mapping
+        return True  # Accept as there's nothing to validate for unknown platform
 
-    try:  # Attempt regex match
-        matched = re.search(pattern, url, flags=re.IGNORECASE) is not None  # Boolean whether pattern matched
-        if not matched:  # If URL does not match affiliate pattern
-            msg = f"{BackgroundColors.YELLOW}Warning: URL is not in the expected affiliate format for {platform_id}: {BackgroundColors.CYAN}{url}{Style.RESET_ALL}"  # Warning message to display
-            try:  # Try writing directly to the original stdout to ensure visibility
-                original_stdout = getattr(sys, "__stdout__", None)  # Get the original stdout stream
-                if original_stdout is not None and hasattr(original_stdout, "write"):  # Verify original stdout is available and has write method
-                    try:  # Try to write the message directly to the original stdout
-                        original_stdout.write(msg + "\n")  # Write message to original stdout
-                        if hasattr(original_stdout, "flush"):  # If original stdout has a flush method, flush it to ensure the message is displayed immediately
-                            original_stdout.flush()  # Flush immediately if available
-                    except Exception:  # If writing to original stdout fails for any reason, fallback to print
-                        print(msg)  # Fallback to print if writing to original stdout fails
-                else:  # Fallback to regular print if original stdout not available
-                    print(msg)  # Print to current stdout
-            except Exception:  # If direct attribute access fails for any reason
-                print(msg)  # Fallback to print
-        return matched  # Return boolean indicating match
-    except re.error:  # If the pattern is invalid
-        msg = f"{BackgroundColors.YELLOW}Warning: invalid affiliate regex for {platform_id}.{Style.RESET_ALL}"  # Invalid-regex warning message
-        try:  # Try writing directly to the original stdout to ensure visibility
-            original_stdout = getattr(sys, "__stdout__", None)  # Get the original stdout stream
-            if original_stdout is not None and hasattr(original_stdout, "write"):  # Verify original stdout is available and has write method
-                try:  # Try to write the message directly to the original stdout
-                    original_stdout.write(msg + "\n")  # Write message to original stdout
-                    if hasattr(original_stdout, "flush"):  # If original stdout has a flush method, flush it to ensure the message is displayed immediately
-                        original_stdout.flush()  # Flush immediately if available
-                except Exception:  # If writing to original stdout fails for any reason, fallback to print
-                    print(msg)  # Fallback to print if writing to original stdout fails
-            else:  # Fallback to regular print if original stdout not available
-                print(msg)  # Print to current stdout
-        except Exception:  # If direct attribute access fails for any reason
-            print(msg)  # Fallback to print
-        return False  # Return False to indicate validation failure due to bad regex
+    pattern = getattr(module_or_class, "AFFILIATE_URL_PATTERN", None)  # Try to read AFFILIATE_URL_PATTERN from the class first
+    if not pattern:  # If attribute not found on the class, attempt to retrieve it from the originating module object
+        try:  # Try to locate the module object for the class to obtain module-level constants
+            module_name = getattr(module_or_class, "__module__", None)  # Module name where the class is defined
+            if isinstance(module_name, str):  # Ensure module_name is a valid string before using it as dict key
+                    module_obj = sys.modules.get(module_name)  # Obtain the actual module object from sys.modules
+                    if module_obj is not None:  # If module object was found in sys.modules
+                        pattern = getattr(module_obj, "AFFILIATE_URL_PATTERN", None)  # Read AFFILIATE_URL_PATTERN from the module object
+        except Exception:  # On any exception while resolving module, fallback to no pattern
+            pattern = None  # Ensure pattern remains None on failure
+
+    if not pattern:  # If after lookup no pattern is available to validate against
+        return True  # Accept as there's no affiliate pattern to enforce for this platform
+
+    full_pattern = rf"^(?:{pattern})(?:\?.*)?$"  # Build a full-match regex allowing optional querystring parameters
+
+    matched = False  # Initialize matched to avoid possibly unbound variable error
+
+    try:  # Attempt to compile and run a full-match using re.fullmatch for strict validation
+        matched = re.fullmatch(full_pattern, url) is not None  # Boolean result of full-match validation
+    except re.error:  # If the affiliate regex itself is invalid, inform the user and fail validation
+        msg = f"{BackgroundColors.YELLOW}Warning: invalid affiliate regex for {platform_id}.{Style.RESET_ALL}"  # Construct invalid-regex warning
+        try:  # Try to write the warning directly to the original stdout stream for visibility
+            original_stdout = getattr(sys, "__stdout__", None)  # Get the original stdout if available
+            if original_stdout is not None and hasattr(original_stdout, "write"):  # If original stdout supports write
+                    try:  # Try to write and flush to original stdout
+                        original_stdout.write(msg + "\n")  # Write message
+                        if hasattr(original_stdout, "flush"):  # If flush exists on original stdout
+                            original_stdout.flush()  # Flush to ensure immediate display
+                    except Exception:  # If write/flush fails, fallback to print
+                        print(msg)  # Print fallback
+            else:  # If original stdout not available, fallback to print
+                    print(msg)  # Print fallback
+        except Exception:  # Catch-all fallback if attribute access fails
+            print(msg)  # Print fallback
+        return False  # Invalid regex should fail validation safely
+
+    if not matched:  # If the URL does not strictly match the affiliate pattern
+        clear_msg = f"{BackgroundColors.CLEAR_TERMINAL}{BackgroundColors.YELLOW}Warning: URL is not in the expected affiliate format for {platform_id}: {BackgroundColors.CYAN}{url}{Style.RESET_ALL}"  # Clear terminal and show warning message
+        try:  # Try to write the clear warning to the original stdout for visibility above logger redirection
+            original_stdout = getattr(sys, "__stdout__", None)  # Fetch the original stdout if present
+            if original_stdout is not None and hasattr(original_stdout, "write"):  # If original stdout supports write
+                    try:  # Attempt to write and flush the message
+                        original_stdout.write(clear_msg + "\n")  # Write the clear message to original stdout
+                        if hasattr(original_stdout, "flush"):  # If flush exists on original stdout
+                            original_stdout.flush()  # Flush to ensure immediate output
+                    except Exception:  # If write/flush fails, fallback to print
+                        print(clear_msg)  # Print fallback
+            else:  # If original stdout not accessible, fallback to print
+                    print(clear_msg)  # Print fallback
+        except Exception:  # Catch-all in case attribute access raises
+            print(clear_msg)  # Print fallback
+
+    return matched  # Return True only when the URL strictly matches the affiliate format
 
 
 def resolve_local_html_path(local_html_path):
