@@ -1277,6 +1277,35 @@ class Shein:
             return None  # Return None to indicate creation failed
 
 
+    def clean_description(self, text):
+        """
+        Cleans and preprocesses the product description by removing markdown formatting
+        and excessive empty lines.
+        
+        :param text: The raw description text
+        :return: Cleaned description text
+        """
+        
+        if not text:  # If text is empty
+            return text  # Return as is
+        
+        text = re.sub(r"\*\*(.*?)\*\*", r"\1", text)  # Remove markdown bold formatting
+        
+        text = re.sub(r"\n{3,}", "\n\n", text)  # Replace 3 or more newlines with 2 newlines
+        
+        lines = text.split("\n")  # Split into lines
+        cleaned_lines = []  # List to store cleaned lines
+        for line in lines:  # Iterate through lines
+            cleaned_line = line.strip()  # Strip leading/trailing whitespace
+            if cleaned_line or (cleaned_lines and cleaned_lines[-1]):  # Keep single empty lines between paragraphs
+                cleaned_lines.append(cleaned_line)  # Add cleaned line
+        
+        text = "\n".join(cleaned_lines)  # Join cleaned lines
+        text = re.sub(r"\n{3,}", "\n\n", text)  # Ensure no more than 2 consecutive newlines
+        
+        return text.strip()  # Return cleaned text
+    
+    
     def to_sentence_case(self, text=""):
         """
         Converts text to sentence case (first letter of each sentence uppercase).
