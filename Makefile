@@ -55,7 +55,7 @@ update_and_run: dependencies
 $(VENV):
 	@echo "Creating virtual environment..."
 	$(PYTHON_CMD) -m venv $(VENV)
-	$(PIP) install --upgrade pip
+	$(PYTHON) -m pip install --upgrade pip
 
 dependencies: $(VENV)
 	@echo "Installing/Updating Python dependencies..."
