@@ -17,10 +17,10 @@ A production-ready web scraper for extracting product information from multiple 
 <div align="center">
 
 ![GitHub Code Size in Bytes](https://img.shields.io/github/languages/code-size/BrenoFariasdaSilva/E-Commerces-WebScraper)
-![GitHub Commits](https://img.shields.io/github/commit-activity/t/BrenoFariasDaSilva/E-Commerces-WebScraper/main)
+![GitHub Commits](https://img.shields.io/github/commit-activity/t/BrenoFariasdaSilva/E-Commerces-WebScraper/main)
 ![GitHub Last Commit](https://img.shields.io/github/last-commit/BrenoFariasdaSilva/E-Commerces-WebScraper)
-![GitHub Forks](https://img.shields.io/github/forks/BrenoFariasDaSilva/E-Commerces-WebScraper)
-![GitHub Language Count](https://img.shields.io/github/languages/count/BrenoFariasDaSilva/E-Commerces-WebScraper)
+![GitHub Forks](https://img.shields.io/github/forks/BrenoFariasdaSilva/E-Commerces-WebScraper)
+![GitHub Language Count](https://img.shields.io/github/languages/count/BrenoFariasdaSilva/E-Commerces-WebScraper)
 ![GitHub License](https://img.shields.io/github/license/BrenoFariasdaSilva/E-Commerces-WebScraper)
 ![GitHub Stars](https://img.shields.io/github/stars/BrenoFariasdaSilva/E-Commerces-WebScraper)
 ![GitHub Contributors](https://img.shields.io/github/contributors/BrenoFariasdaSilva/E-Commerces-WebScraper)
@@ -168,7 +168,7 @@ Content Extraction
 1. **Clone the Repository**
 
    ```bash
-   git clone https://github.com/BrenoFariasDaSilva/E-Commerces-WebScraper.git
+   git clone https://github.com/BrenoFariasdaSilva/E-Commerces-WebScraper.git
    cd E-Commerces-WebScraper
    ```
 
