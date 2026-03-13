@@ -41,6 +41,7 @@ import atexit  # For playing a sound when the program finishes
 import datetime  # For getting the current date and time
 import os  # For running a command in the terminal
 import platform  # For getting the operating system name
+import shutil  # For copying files and creating backups
 import sys  # For system-specific parameters and functions
 from colorama import Style  # For coloring the terminal
 from Logger import Logger  # For logging output to both terminal and file
@@ -355,6 +356,14 @@ def main():
         return  # Exit when any URL fails validation
 
     new_lines = generate_numbered_lines(urls, input_dir)  # Generate numbered ZIP assignments and warnings
+
+    backup_path = input_dir / "urls-backup.txt"  # Build path for the backup file next to urls.txt
+
+    try:  # Attempt to create a backup of the original urls file before modifying it
+        shutil.copy2(urls_path, backup_path)  # Copy the original urls file to the backup path preserving metadata
+    except Exception as e:  # Catch any exceptions raised during the backup copy operation
+        print(f"{BackgroundColors.RED}Error creating backup {BackgroundColors.CYAN}{backup_path}{BackgroundColors.RED}: {e}{Style.RESET_ALL}")  # Report backup creation failure and details
+        return  # Abort execution to avoid modifying urls.txt without a safe backup
 
     if not write_updated_urls_file(urls_path, new_lines) :  # Write the updated urls file back to disk
         return  # Exit when writing the updated file failed
