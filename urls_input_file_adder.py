@@ -1,6 +1,6 @@
 """
 ================================================================================
-URLs Input File Adder (Affiliate URLs -> Numbered ZIPs)
+URLs Input File Adder (Affiliate URLs -> Numbered ZIPs) - urls_input_file_adder.py
 ================================================================================
 Author      : Breno Farias da Silva
 Created     : 2026-03-13
