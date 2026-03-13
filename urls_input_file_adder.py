@@ -102,6 +102,42 @@ def verbose_output(true_string="", false_string=""):
         print(false_string)  # Output the false statement string
 
 
+def load_urls_from_file(urls_path: Path, encoding: str) -> Optional[list]:
+    """
+    Load and clean URL lines from the urls file.
+
+    :param urls_path: Path to the urls file.
+    :param encoding: File encoding to use when reading.
+    :return: List of cleaned URL strings or None on error.
+    """
+
+    try:  # Try to read the urls file
+        with open(urls_path, "r", encoding=encoding) as fh:  # Open urls file for reading
+            raw_lines = [ln.strip() for ln in fh.readlines() if ln.strip()]  # Read lines and strip whitespace
+    except Exception as e:  # If reading fails
+        print(f"{BackgroundColors.RED}Error reading {BackgroundColors.CYAN}{urls_path}{BackgroundColors.RED}: {e}{Style.RESET_ALL}")  # Print read error
+        return None  # Return None to indicate failure
+
+    return raw_lines  # Return cleaned URL list
+
+
+def validate_affiliate_urls(urls: list, tag: str) -> bool:
+    """
+    Validate each URL using project's affiliate URL validator.
+
+    :param urls: List of URL strings to validate.
+    :param tag: Arbitrary tag parameter to satisfy signature requirements.
+    :return: True when all URLs validate, False otherwise.
+    """
+
+    for url in urls:  # Iterate through URLs to validate formats
+        if not verify_affiliate_url_format(url):  # Verify each URL using imported validator
+            print(f"{BackgroundColors.YELLOW}WARNING: Invalid affiliate URL detected: {BackgroundColors.CYAN}{url}{Style.RESET_ALL}")  # Print invalid URL warning
+            return False  # Return False to indicate validation failure
+
+    return True  # Return True when all URLs validate
+
+
 def generate_numbered_lines(urls: list, input_dir: Path) -> list:
     """
     Generate two-digit ZIP assignments for each URL and report ZIP availability warnings.
