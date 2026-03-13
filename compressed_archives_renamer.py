@@ -109,6 +109,25 @@ def verbose_output(true_string="", false_string=""):
         print(false_string)  # Output the false statement string
 
 
+def finalize_renames(temporary_mappings: list) -> None:
+    """
+    Rename temporary files to final sequential numeric names.
+
+    :param temporary_mappings: List of (original, temporary) Path tuples produced earlier.
+    :return: None
+    """
+
+    for index, (original_file, temporary_file) in enumerate(temporary_mappings, start=1):  # Iterate over temporary mappings to assign final names
+        final_file = temporary_file.with_name(f"{index:02d}{original_file.suffix}")  # Build final sequential file name with original extension
+
+        if final_file.exists():  # Verify if final file already exists unexpectedly
+            raise FileExistsError(f"Target file already exists and cannot be overwritten: {final_file}")  # Raise overwrite protection error
+
+        verbose_output(f"{BackgroundColors.GREEN}Renaming {BackgroundColors.CYAN}{original_file.name}{BackgroundColors.GREEN} -> {BackgroundColors.CYAN}{final_file.name}{Style.RESET_ALL}")  # Output rename operation message
+
+        temporary_file.rename(final_file)  # Rename temporary file to final file name
+
+
 def to_seconds(obj):
     """
     Converts various time-like objects to seconds.
