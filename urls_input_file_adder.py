@@ -372,7 +372,9 @@ def main():
     if urls is None:  # Verify that URLs loaded successfully
         return  # Exit when loading URLs failed
 
-    if not validate_affiliate_urls(urls, "validator") :  # Validate all affiliate URLs using project validator
+    urls_only = [ln.split()[0] for ln in urls]  # Extract only the URL portion from each line, discarding any trailing ZIP filenames
+
+    if not validate_affiliate_urls(urls_only, "validator") :  # Validate all affiliate URLs using project validator
         return  # Exit when any URL fails validation
 
     new_lines = generate_numbered_lines(urls, input_dir)  # Generate numbered ZIP assignments and warnings
