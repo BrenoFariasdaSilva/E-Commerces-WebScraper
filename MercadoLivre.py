@@ -85,7 +85,7 @@ class BackgroundColors:  # Colors for the terminal
 VERBOSE = False  # Set to True to output verbose messages
 
 # Affiliate URL detection pattern (short affiliate redirect links)
-AFFILIATE_URL_PATTERN = r"https?://(?:www\.)?mercadolivre\.(?:com(?:\.br)?)/sec/[A-Za-z0-9]+"
+AFFILIATE_URL_PATTERN = r"https?://(?:www\.)?meli\.la/[A-Za-z0-9]+"
 
 # HTML Selectors Dictionary:
 HTML_SELECTORS = {
