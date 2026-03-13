@@ -73,6 +73,7 @@ from Gemini import Gemini  # Import the Gemini class
 from Logger import Logger  # For logging output to both terminal and file
 from MercadoLivre import MercadoLivre  # Import the MercadoLivre class
 from pathlib import Path  # For handling file paths
+from urllib.parse import urlparse  # For parsing URL hostnames
 from PIL import Image  # For image processing
 from product_utils import normalize_product_dir_name  # Centralized product dir name normalization
 from Shein import Shein  # Import the Shein class
@@ -715,15 +716,29 @@ def detect_platform(url):
     """
     
     url_lower = url.lower()  # Convert URL to lowercase for case-insensitive matching
-    
-    for platform_name, platform_id in PLATFORMS_MAP.items():  # Iterate through supported platforms
-        if platform_id in url_lower:  # Verify if platform identifier is in URL
+
+    try:  # Try to parse the URL to obtain hostname for shortened-domain detection
+        parsed = urlparse(url)  # Parse the URL into components to extract hostname and path
+        hostname = (parsed.hostname or "").lower()  # Extract hostname and normalize to lowercase for comparisons
+    except Exception:  # On any parsing error, degrade gracefully to empty hostname
+        hostname = ""  # Use empty hostname when parsing fails to avoid exceptions
+
+    if hostname.endswith("amzn.to"):  # Map amzn.to shortened domain explicitly to amazon platform id
+        verbose_output(f"{BackgroundColors.GREEN}Detected platform: {BackgroundColors.CYAN}Amazon{Style.RESET_ALL}")  # Output verbose message for shortened Amazon domain detection
+        return "amazon"  # Return the canonical platform id for Amazon when shortened domain matched
+
+    if hostname.endswith("meli.la"):  # Map meli.la shortened domain explicitly to mercadolivre platform id
+        verbose_output(f"{BackgroundColors.GREEN}Detected platform: {BackgroundColors.CYAN}MercadoLivre{Style.RESET_ALL}")  # Output verbose message for shortened MercadoLivre domain detection
+        return "mercadolivre"  # Return the canonical platform id for MercadoLivre when shortened domain matched
+
+    for platform_name, platform_id in PLATFORMS_MAP.items():  # Iterate through supported platforms to preserve existing substring detection logic
+        if platform_id in url_lower:  # Verify if platform identifier substring exists in the URL (original behavior)
             verbose_output(
                 f"{BackgroundColors.GREEN}Detected platform: {BackgroundColors.CYAN}{platform_name}{Style.RESET_ALL}"
-            )
-            return platform_id  # Return the platform identifier
-    
-    print(f"{BackgroundColors.YELLOW}Warning: Could not detect platform from URL: {url}{Style.RESET_ALL}")
+            )  # Output verbose message when platform detected by substring
+            return platform_id  # Return the platform identifier when detected by substring
+
+    print(f"{BackgroundColors.YELLOW}Warning: Could not detect platform from URL: {url}{Style.RESET_ALL}")  # Warn when platform cannot be detected from the URL
     return None  # Return None if platform not recognized
 
 
