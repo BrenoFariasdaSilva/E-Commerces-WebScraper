@@ -189,6 +189,26 @@ def generate_numbered_lines(urls: list, input_dir: Path) -> list:
     return new_lines  # Return the updated lines
 
 
+def create_backup(input_dir: Path, urls_path: Path) -> bool:
+    """
+    Create a backup copy of the urls file.
+
+    :param input_dir: Path to the input directory.
+    :param urls_path: Path to the urls file to back up.
+    :return: True if backup was created successfully, False otherwise.
+    """
+
+    backup_path = input_dir / "urls-backup.txt"  # Build path for the backup file next to urls.txt
+
+    try:  # Attempt to create a backup of the original urls file before modifying it
+        shutil.copy2(urls_path, backup_path)  # Copy the original urls file to the backup path preserving metadata
+    except Exception as e:  # Catch any exceptions raised during the backup copy operation
+        print(f"{BackgroundColors.RED}Error creating backup {BackgroundColors.CYAN}{backup_path}{BackgroundColors.RED}: {e}{Style.RESET_ALL}")  # Report backup creation failure and details
+        return False  # Return False to indicate backup failure
+
+    return True  # Return True to indicate backup success
+
+
 def write_updated_urls_file(urls_path: Path, new_lines: list) -> bool:
     """
     Write the updated URL lines back to the urls file.
@@ -357,12 +377,7 @@ def main():
 
     new_lines = generate_numbered_lines(urls, input_dir)  # Generate numbered ZIP assignments and warnings
 
-    backup_path = input_dir / "urls-backup.txt"  # Build path for the backup file next to urls.txt
-
-    try:  # Attempt to create a backup of the original urls file before modifying it
-        shutil.copy2(urls_path, backup_path)  # Copy the original urls file to the backup path preserving metadata
-    except Exception as e:  # Catch any exceptions raised during the backup copy operation
-        print(f"{BackgroundColors.RED}Error creating backup {BackgroundColors.CYAN}{backup_path}{BackgroundColors.RED}: {e}{Style.RESET_ALL}")  # Report backup creation failure and details
+    if not create_backup(input_dir, urls_path):  # Attempt to create backup and abort if it fails
         return  # Abort execution to avoid modifying urls.txt without a safe backup
 
     if not write_updated_urls_file(urls_path, new_lines) :  # Write the updated urls file back to disk
