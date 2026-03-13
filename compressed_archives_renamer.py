@@ -109,6 +109,22 @@ def verbose_output(true_string="", false_string=""):
         print(false_string)  # Output the false statement string
 
 
+def get_creation_timestamp(file_path):
+    """
+    Gets the most reliable creation timestamp for a file.
+
+    :param file_path: Path object of the target file.
+    :return: Creation timestamp as float seconds.
+    """
+
+    stats = file_path.stat()  # Get filesystem metadata for the file
+
+    if hasattr(stats, "st_birthtime"):  # Verify if true birth time is available on the platform
+        return float(stats.st_birthtime)  # Return true creation time when available
+
+    return float(stats.st_ctime)  # Return ctime fallback when birth time is unavailable
+
+
 def assign_temporary_names(archive_files_sorted: list[Path], temporary_mappings: list) -> None:
     """
     Assign temporary unique names to sorted archive files.
