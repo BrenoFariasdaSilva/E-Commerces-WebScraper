@@ -229,12 +229,30 @@ def main():
     """
 
     print(
-        f"{BackgroundColors.CLEAR_TERMINAL}{BackgroundColors.BOLD}{BackgroundColors.GREEN}Welcome to the {BackgroundColors.CYAN}Main Template Python{BackgroundColors.GREEN} program!{Style.RESET_ALL}",
+        f"{BackgroundColors.CLEAR_TERMINAL}{BackgroundColors.BOLD}{BackgroundColors.GREEN}Welcome to the {BackgroundColors.CYAN}URLs Input File Adder{BackgroundColors.GREEN} program!{Style.RESET_ALL}",
         end="\n\n",
     )  # Output the welcome message
     start_time = datetime.datetime.now()  # Get the start time of the program
     
-    # Implement logic here
+    input_dir, urls_path = resolve_input_paths(INPUT_DIRECTORY, URLS_FILENAME)  # Resolve input directory and urls path
+
+    if urls_path is None:  # Verify result from path resolution
+        return  # Exit when path resolution failed
+
+    urls = load_urls_from_file(urls_path, "utf-8")  # Load URLs from the file with UTF-8 encoding
+
+    if urls is None:  # Verify that URLs loaded successfully
+        return  # Exit when loading URLs failed
+
+    if not validate_affiliate_urls(urls, "validator") :  # Validate all affiliate URLs using project validator
+        return  # Exit when any URL fails validation
+
+    new_lines = generate_numbered_lines(urls, input_dir)  # Generate numbered ZIP assignments and warnings
+
+    if not write_updated_urls_file(urls_path, new_lines) :  # Write the updated urls file back to disk
+        return  # Exit when writing the updated file failed
+
+    print(f"{BackgroundColors.GREEN}Updated {BackgroundColors.CYAN}{urls_path}{BackgroundColors.GREEN} with {BackgroundColors.CYAN}{len(new_lines)}{BackgroundColors.GREEN} entries.{Style.RESET_ALL}")  # Print success message
 
     finish_time = datetime.datetime.now()  # Get the finish time of the program
     print(
