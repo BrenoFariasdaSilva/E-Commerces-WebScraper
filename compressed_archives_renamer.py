@@ -236,12 +236,30 @@ def main():
     """
 
     print(
-        f"{BackgroundColors.CLEAR_TERMINAL}{BackgroundColors.BOLD}{BackgroundColors.GREEN}Welcome to the {BackgroundColors.CYAN}Main Template Python{BackgroundColors.GREEN} program!{Style.RESET_ALL}",
+        f"{BackgroundColors.CLEAR_TERMINAL}{BackgroundColors.BOLD}{BackgroundColors.GREEN}Welcome to the {BackgroundColors.CYAN}Compressed Archives Renamer Python{BackgroundColors.GREEN} program!{Style.RESET_ALL}",
         end="\n\n",
     )  # Output the welcome message
     start_time = datetime.datetime.now()  # Get the start time of the program
     
-    # Implement logic here
+    archive_files = list_supported_archives(INPUT_DIRECTORY)  # Get supported archive files from the input directory
+
+    verbose_output(f"{BackgroundColors.GREEN}Detected {BackgroundColors.CYAN}{len(archive_files)}{BackgroundColors.GREEN} compressed files.{Style.RESET_ALL}")  # Output detected archive count
+    
+    if len(archive_files) == 0:  # If no archive files were found
+        print(f"{BackgroundColors.GREEN}No supported compressed files found in {BackgroundColors.CYAN}{INPUT_DIRECTORY}{BackgroundColors.GREEN}.{Style.RESET_ALL}")  # Output no files found message
+        return
+
+    verbose_output(f"{BackgroundColors.GREEN}Sorting files by creation time...{Style.RESET_ALL}")  # Output sorting operation message
+
+    archive_files_sorted = sorted(archive_files, key=lambda file: (get_creation_timestamp(file), file.name.lower()))  # Sort files from oldest to newest
+
+    temporary_mappings = []  # Store source and temporary path mappings
+
+    assign_temporary_names(archive_files_sorted, temporary_mappings)  # Assign temporary names to all sorted archive files
+
+    finalize_renames(temporary_mappings)  # Rename temporary files to final sequential numeric names
+
+    verbose_output(f"{BackgroundColors.GREEN}Renaming complete.{Style.RESET_ALL}")  # Output completion message
 
     finish_time = datetime.datetime.now()  # Get the finish time of the program
     print(
