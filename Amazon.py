@@ -96,11 +96,7 @@ class BackgroundColors:  # Colors for the terminal
 VERBOSE = False  # Set to True to output verbose messages
 
 # Affiliate URL detection pattern (short AliExpress redirect links)  # keep generic pattern for now
-AFFILIATE_URL_PATTERN = (
-    r"https?://("
-    r"amzn\.to/[A-Za-z0-9]+"
-    r")"
-)  # Keep existing affiliate pattern as fallback
+AFFILIATE_URL_PATTERN = r"https?://(?:www\.)?amzn\.to/[A-Za-z0-9]+/?"  # Affiliate URL detection pattern for amzn.to short links
 
 # HTML Selectors Dictionary:
 HTML_SELECTORS = {
