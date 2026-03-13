@@ -102,6 +102,26 @@ def verbose_output(true_string="", false_string=""):
         print(false_string)  # Output the false statement string
 
 
+def resolve_input_paths(input_directory: str, urls_filename: str) -> tuple:
+    """
+    Resolve input directory and urls file path.
+
+    :param input_directory: Path to the input directory.
+    :param urls_filename: Name of the urls file.
+    :return: Tuple of (input_dir Path, urls_path Path or None).
+    """
+
+    input_dir = Path(input_directory)  # Create Path for the input directory
+
+    urls_path = input_dir / urls_filename  # Build path to the urls file
+
+    if not urls_path.exists() or not urls_path.is_file():  # Verify that urls.txt exists
+        print(f"{BackgroundColors.RED}Error: {BackgroundColors.CYAN}{urls_path}{BackgroundColors.RED} not found or is not a file.{Style.RESET_ALL}")  # Print missing file error
+        return input_dir, None  # Return with None to signal missing file
+
+    return input_dir, urls_path  # Return resolved paths
+
+
 def load_urls_from_file(urls_path: Path, encoding: str) -> Optional[list]:
     """
     Load and clean URL lines from the urls file.
