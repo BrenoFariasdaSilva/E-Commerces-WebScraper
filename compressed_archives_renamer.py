@@ -11,7 +11,7 @@ Description :
 
     Key features include:
         - Detects only .zip, .7z, and .rar files in ./Inputs/.
-        - Collects file creation timestamps with cross-platform-safe fallback.
+        - Collects file modification timestamps with cross-platform-safe fallback.
         - Sorts archives from oldest to newest before renaming.
         - Preserves original archive extensions in final filenames.
         - Uses a two-phase temporary rename workflow to avoid overwrite risks.
@@ -40,8 +40,8 @@ Dependencies:
 
 Assumptions & Notes:
     - Only files with .zip, .7z, and .rar extensions are processed.
-    - File creation time uses st_birthtime when available, else st_ctime.
-    - On Windows, st_ctime usually represents true creation time.
+    - File modification time is obtained from `st_mtime` (modification timestamp).
+    - On Windows, `st_mtime` is used consistently for modification time.
     - Renaming runs in-place inside ./Inputs/ using a conflict-safe two-phase flow.
 """
 
@@ -127,18 +127,15 @@ def list_supported_archives(input_directory):
 
 def get_creation_timestamp(file_path):
     """
-    Gets the most reliable creation timestamp for a file.
+    Gets the most reliable modification timestamp for a file.
 
     :param file_path: Path object of the target file.
-    :return: Creation timestamp as float seconds.
+    :return: Modification timestamp as float seconds.
     """
 
     stats = file_path.stat()  # Get filesystem metadata for the file
 
-    if hasattr(stats, "st_birthtime"):  # Verify if true birth time is available on the platform
-        return float(stats.st_birthtime)  # Return true creation time when available
-
-    return float(stats.st_ctime)  # Return ctime fallback when birth time is unavailable
+    return float(stats.st_mtime)  # Return the file modification time (mtime) as seconds
 
 
 def assign_temporary_names(archive_files_sorted: list[Path], temporary_mappings: list) -> None:
@@ -322,7 +319,7 @@ def main():
         print(f"{BackgroundColors.GREEN}No supported compressed files found in {BackgroundColors.CYAN}{INPUT_DIRECTORY}{BackgroundColors.GREEN}.{Style.RESET_ALL}")  # Output no files found message
         return
 
-    verbose_output(f"{BackgroundColors.GREEN}Sorting files by creation time...{Style.RESET_ALL}")  # Output sorting operation message
+    verbose_output(f"{BackgroundColors.GREEN}Sorting files by modification time...{Style.RESET_ALL}")  # Output sorting operation message
 
     archive_files_sorted = sorted(archive_files, key=lambda file: (get_creation_timestamp(file), file.name.lower()))  # Sort files from oldest to newest
 
