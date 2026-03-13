@@ -62,6 +62,8 @@ class BackgroundColors:  # Colors for the terminal
 
 # Execution Constants:
 VERBOSE = False  # Set to True to output verbose messages
+INPUT_DIRECTORY = "./Inputs/"  # Directory containing URLs and ZIP files
+URLS_FILENAME = "urls.txt"  # Name of the input URLs file
 
 # Logger Setup:
 logger = Logger(f"./Logs/{Path(__file__).stem}.log", clean=True)  # Create a Logger instance
@@ -80,6 +82,7 @@ SOUND_FILE = "./.assets/Sounds/NotificationSound.wav"  # The path to the sound f
 RUN_FUNCTIONS = {
     "Play Sound": True,  # Set to True to play a sound when the program finishes
 }
+
 
 # Functions Definitions:
 
