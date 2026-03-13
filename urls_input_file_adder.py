@@ -102,6 +102,27 @@ def verbose_output(true_string="", false_string=""):
         print(false_string)  # Output the false statement string
 
 
+def write_updated_urls_file(urls_path: Path, new_lines: list) -> bool:
+    """
+    Write the updated URL lines back to the urls file.
+
+    :param urls_path: Path to the urls file to overwrite.
+    :param new_lines: List of updated lines to write.
+    :return: True on success, False on failure.
+    """
+
+    try:  # Try to overwrite the urls file with updated content
+        with open(urls_path, "w", encoding="utf-8") as fh:  # Open urls file for writing
+            fh.write("\n".join(new_lines) + ("\n" if new_lines else ""))  # Write updated lines back to file
+    except Exception as e:  # If writing fails
+        print(f"{BackgroundColors.RED}Error writing updated urls file {BackgroundColors.CYAN}{urls_path}{BackgroundColors.RED}: {e}{Style.RESET_ALL}")  # Print write error
+        return False  # Return False to indicate failure
+
+    print(f"{BackgroundColors.GREEN}Updated {BackgroundColors.CYAN}{urls_path}{BackgroundColors.GREEN} with {BackgroundColors.CYAN}{len(new_lines)}{BackgroundColors.GREEN} entries.{Style.RESET_ALL}")  # Print success message
+
+    return True  # Return True to indicate success
+
+
 def verify_filepath_exists(filepath):
     """
     Verify if a file or folder exists at the specified path.
