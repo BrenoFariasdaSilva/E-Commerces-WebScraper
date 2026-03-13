@@ -1231,7 +1231,7 @@ def remove_url_line_from_input_file(url, local_html_path=None):
         return False  # Indicate nothing removed
 
 
-def generate_marketing_text(product_description, description_file, product_data=None):
+def generate_marketing_text(product_description, description_file, product_data=None, product_url=None):
     """
     Generates marketing text from product description using Gemini AI.
     Supports multiple API keys with automatic failover on rate limit errors.
@@ -1239,6 +1239,7 @@ def generate_marketing_text(product_description, description_file, product_data=
     :param product_description: The raw product description text
     :param description_file: Path to the description file (used to determine output directory)
     :param product_data: Optional dictionary containing product information (e.g., is_international)
+    :param product_url: Optional product URL used to apply platform-specific prompt rules
     :return: True if successful, False otherwise
     """
     
@@ -1261,8 +1262,12 @@ def generate_marketing_text(product_description, description_file, product_data=
     no_discount_instruction = ""
     if (old_price_int in ["N/A", ""] or old_price_dec in ["N/A", ""]) and discount in ["N/A", ""]:
         no_discount_instruction = "\n\n**IMPORTANTE**: Este produto NÃO possui preço antigo ou desconto disponível. Você deve REMOVER as linhas de preço antigo (DE R$...) e desconto (🎟️...) do texto formatado. Mostre APENAS o preço atual."
+
+    amazon_24h_instruction = ""  # Initialize Amazon-specific warning instruction
+    if product_url and detect_platform(product_url) == "amazon":  # Verify if the current product belongs to Amazon
+        amazon_24h_instruction = "\n\n**IMPORTANTE**: Para produtos da Amazon, ADICIONE IMEDIATAMENTE ANTES DA LINHA DO LINK (👉 ...) a seguinte mensagem EM NEGRITO E EM MAIUSCULAS: *ATENCAO: LINK VALIDO POR 24 HORAS. APOS 24 HORAS, SO PERMANECE VALIDO SE O PRODUTO FOR ADICIONADO AO CARRINHO DENTRO DESSE PRAZO.*"
     
-    prompt = GEMINI_MARKETING_PROMPT_TEMPLATE.format(product_description=product_description) + International_instruction + no_discount_instruction  # Format template with all instructions
+    prompt = GEMINI_MARKETING_PROMPT_TEMPLATE.format(product_description=product_description) + International_instruction + no_discount_instruction + amazon_24h_instruction  # Format template with all instructions
     
     last_error = None  # Store the last error for reporting
     
@@ -1582,7 +1587,7 @@ def main():
 
             verbose_output(f"{BackgroundColors.CYAN}Step 2{BackgroundColors.GREEN}: Formatting with Gemini AI{Style.RESET_ALL}")  # Step 2: Format the product description with Gemini AI
             
-            success = generate_marketing_text(product_description, description_file, product_data)  # Generate marketing text with product data
+            success = generate_marketing_text(product_description, description_file, product_data, url)  # Generate marketing text with product data and URL context
             
             if success:  # If both scraping and formatting succeeded
                 description_dir = os.path.dirname(description_file)  # Get directory of description file
