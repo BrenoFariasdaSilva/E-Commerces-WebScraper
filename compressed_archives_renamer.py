@@ -109,6 +109,22 @@ def verbose_output(true_string="", false_string=""):
         print(false_string)  # Output the false statement string
 
 
+def list_supported_archives(input_directory):
+    """
+    Lists archive files in the input directory that match supported extensions.
+
+    :param input_directory: Directory containing files to process.
+    :return: List of Path objects for supported archive files.
+    """
+
+    directory_path = Path(input_directory)  # Create Path instance for input directory
+
+    if not directory_path.exists() or not directory_path.is_dir():  # Verify if input directory is valid
+        return []  # Return empty list when input directory is invalid
+
+    return [file for file in directory_path.iterdir() if file.is_file() and file.suffix.lower() in SUPPORTED_EXTENSIONS]  # Return only supported archive files
+
+
 def get_creation_timestamp(file_path):
     """
     Gets the most reliable creation timestamp for a file.
