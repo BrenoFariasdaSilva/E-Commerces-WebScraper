@@ -311,6 +311,8 @@ def main():
     )  # Output the welcome message
     start_time = datetime.datetime.now()  # Get the start time of the program
     
+    print(f"{BackgroundColors.GREEN}Scanning {BackgroundColors.CYAN}{INPUT_DIRECTORY}{BackgroundColors.GREEN} for compressed files...{Style.RESET_ALL}")  # Output scanning message 
+    
     archive_files = list_supported_archives(INPUT_DIRECTORY)  # Get supported archive files from the input directory
 
     verbose_output(f"{BackgroundColors.GREEN}Detected {BackgroundColors.CYAN}{len(archive_files)}{BackgroundColors.GREEN} compressed files.{Style.RESET_ALL}")  # Output detected archive count
@@ -329,8 +331,8 @@ def main():
 
     finalize_renames(temporary_mappings)  # Rename temporary files to final sequential numeric names
 
-    verbose_output(f"{BackgroundColors.GREEN}Renaming complete.{Style.RESET_ALL}")  # Output completion message
-
+    verbose_output(f"{BackgroundColors.GREEN}Renaming of the compressed files in {BackgroundColors.CYAN}{INPUT_DIRECTORY}{BackgroundColors.GREEN} completed successfully.{Style.RESET_ALL}")  # Output completion message
+    
     finish_time = datetime.datetime.now()  # Get the finish time of the program
     print(
         f"{BackgroundColors.GREEN}Start time: {BackgroundColors.CYAN}{start_time.strftime('%d/%m/%Y - %H:%M:%S')}\n{BackgroundColors.GREEN}Finish time: {BackgroundColors.CYAN}{finish_time.strftime('%d/%m/%Y - %H:%M:%S')}\n{BackgroundColors.GREEN}Execution time: {BackgroundColors.CYAN}{calculate_execution_time(start_time, finish_time)}{Style.RESET_ALL}"
