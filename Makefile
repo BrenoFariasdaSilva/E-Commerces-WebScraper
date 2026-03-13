@@ -36,7 +36,9 @@ RUN_AND_LOG = if [ -z "$(DETACH)" ]; then $(PYTHON) $(1); else LOG_FILE=$(LOG_DI
 endif
 
 # Default target
-all: main
+all: run
+
+run: compressed_archives_renamer urls_input_file_adder main
 
 # Execute the main script with logging and updated dependency management
 main: dependencies
@@ -81,4 +83,4 @@ clean:
 	find . -type f -name '*.pyc' -delete || del /S /Q *.pyc 2>nul
 	find . -type d -name '__pycache__' -delete || rmdir /S /Q __pycache__ 2>nul
 
-.PHONY: all main compressed_archives_renamer urls_input_file_adder update_and_run clean dependencies generate_requirements
+.PHONY: all run main compressed_archives_renamer urls_input_file_adder update_and_run clean dependencies generate_requirements
