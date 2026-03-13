@@ -1,50 +1,50 @@
 """
 ================================================================================
-<PROJECT OR SCRIPT TITLE>
+Compressed Archives Renamer by Creation Date - compressed_archives_renamer.py
 ================================================================================
 Author      : Breno Farias da Silva
-Created     : <YYYY-MM-DD>
+Created     : 2026-03-13
 Description :
-    <Provide a concise and complete overview of what this script does.>
-    <Mention its purpose, scope, and relevance to the larger project.>
+    Reads compressed archive files from the Inputs directory and renames them
+    in chronological creation order using sequential numeric filenames.
+    This script standardizes archive naming for downstream processing.
 
     Key features include:
-        - <Feature 1 — e.g., automatic data loading and preprocessing>
-        - <Feature 2 — e.g., model training and evaluation>
-        - <Feature 3 — e.g., visualization or report generation>
-        - <Feature 4 — e.g., logging or notification system>
-        - <Feature 5 — e.g., integration with other modules or datasets>
+        - Detects only .zip, .7z, and .rar files in ./Inputs/.
+        - Collects file creation timestamps with cross-platform-safe fallback.
+        - Sorts archives from oldest to newest before renaming.
+        - Preserves original archive extensions in final filenames.
+        - Uses a two-phase temporary rename workflow to avoid overwrite risks.
 
 Usage:
-    1. <Explain any configuration steps before running, such as editing variables or paths.>
-    2. <Describe how to execute the script — typically via Makefile or Python.>
-            $ make <target>   or   $ python <script_name>.py
-    3. <List what outputs are expected or where results are saved.>
+    1. Place archive files in ./Inputs/.
+    2. Execute the script.
+        $ python compressed_archives_renamer.py
+    3. Verify renamed archive files in ./Inputs/ with numeric names.
 
 Outputs:
-    - <Output file or directory 1 — e.g., results.csv>
-    - <Output file or directory 2 — e.g., Feature_Analysis/plots/>
-    - <Output file or directory 3 — e.g., logs/output.txt>
+    - Renamed archives in ./Inputs/ (01.ext, 02.ext, ..., NN.ext).
+    - Execution logs in ./Logs/compressed_archives_renamer.log.
 
 TODOs:
-    - <Add a task or improvement — e.g., implement CLI argument parsing.>
-    - <Add another improvement — e.g., extend support to Parquet files.>
-    - <Add optimization — e.g., parallelize evaluation loop.>
-    - <Add robustness — e.g., error handling or data validation.>
+    - Add dry-run mode to preview rename operations.
+    - Add configurable input directory via CLI arguments.
+    - Add rollback strategy for interrupted rename sessions.
+    - Add optional JSON operation report generation.
 
 Dependencies:
-    - Python >= <version>
-    - <Library 1 — e.g., pandas>
-    - <Library 2 — e.g., numpy>
-    - <Library 3 — e.g., scikit-learn>
-    - <Library 4 — e.g., matplotlib, seaborn, tqdm, colorama>
+    - Python >= 3.9
+    - colorama
+    - telegram_bot module
+    - Logger module
 
 Assumptions & Notes:
-    - <List any key assumptions — e.g., last column is the target variable.>
-    - <Mention data format — e.g., CSV files only.>
-    - <Mention platform or OS-specific notes — e.g., sound disabled on Windows.>
-    - <Note on output structure or reusability.>
+    - Only files with .zip, .7z, and .rar extensions are processed.
+    - File creation time uses st_birthtime when available, else st_ctime.
+    - On Windows, st_ctime usually represents true creation time.
+    - Renaming runs in-place inside ./Inputs/ using a conflict-safe two-phase flow.
 """
+
 
 import atexit  # For playing a sound when the program finishes
 import datetime  # For getting the current date and time
