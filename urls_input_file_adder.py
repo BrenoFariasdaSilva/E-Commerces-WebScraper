@@ -409,8 +409,6 @@ def main():
     if not write_updated_urls_file(urls_path, new_lines) :  # Write the updated urls file back to disk
         return  # Exit when writing the updated file failed
 
-    print(f"{BackgroundColors.GREEN}Updated {BackgroundColors.CYAN}{urls_path}{BackgroundColors.GREEN} with {BackgroundColors.CYAN}{len(new_lines)}{BackgroundColors.GREEN} entries.{Style.RESET_ALL}")  # Print success message
-
     finish_time = datetime.datetime.now()  # Get the finish time of the program
     print(
         f"{BackgroundColors.GREEN}Start time: {BackgroundColors.CYAN}{start_time.strftime('%d/%m/%Y - %H:%M:%S')}\n{BackgroundColors.GREEN}Finish time: {BackgroundColors.CYAN}{finish_time.strftime('%d/%m/%Y - %H:%M:%S')}\n{BackgroundColors.GREEN}Execution time: {BackgroundColors.CYAN}{calculate_execution_time(start_time, finish_time)}{Style.RESET_ALL}"
