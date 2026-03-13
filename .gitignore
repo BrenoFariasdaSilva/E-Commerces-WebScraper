@@ -7,6 +7,7 @@ main-template.py
 class_block_functions_committer.py
 standalone_comments_cleaner.py
 function_renamer.py
+functions_committer.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
