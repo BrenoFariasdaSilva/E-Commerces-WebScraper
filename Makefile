@@ -44,6 +44,11 @@ run: dependencies
 	$(CLEAR_CMD)
 	$(call RUN_AND_LOG, ./main.py)
 
+compressed_archives_renamer: dependencies
+	$(ENSURE_LOG_DIR)
+	$(CLEAR_CMD)
+	$(call RUN_AND_LOG, ./compressed_archives_renamer.py)
+
 # Update repository and run
 update_and_run: dependencies
 	@echo "Updating repository: reset to HEAD and pulling latest changes..."
@@ -71,4 +76,4 @@ clean:
 	find . -type f -name '*.pyc' -delete || del /S /Q *.pyc 2>nul
 	find . -type d -name '__pycache__' -delete || rmdir /S /Q __pycache__ 2>nul
 
-.PHONY: all run update_and_run clean dependencies generate_requirements
+.PHONY: all run compressed_archives_renamer update_and_run clean dependencies generate_requirements
