@@ -395,14 +395,16 @@ def main():
 
     if urls is None:  # Verify that URLs loaded successfully
         return  # Exit when loading URLs failed
+    
+    sanitized_lines = sanitize_urls_lines(urls)  # Sanitize the loaded URL lines by removing trailing ZIP filenames and whitespace
 
-    if not create_backup(input_dir, urls_path, urls):  # Create a backup from the sanitized lines and abort on failure
+    if not create_backup(input_dir, urls_path, sanitized_lines):  # Create a backup from the sanitized lines and abort on failure
         return  # Abort execution if backup creation fails to avoid data loss
 
-    if not validate_affiliate_urls(urls, "validator") :  # Validate all affiliate URLs using project validator
+    if not validate_affiliate_urls(sanitized_lines, "validator") :  # Validate all affiliate URLs using project validator
         return  # Exit when any URL fails validation
 
-    new_lines = generate_numbered_lines(urls, input_dir)  # Generate numbered ZIP assignments and warnings using sanitized URLs
+    new_lines = generate_numbered_lines(sanitized_lines, input_dir)  # Generate numbered ZIP assignments and warnings using sanitized URLs
 
     if not write_updated_urls_file(urls_path, new_lines) :  # Write the updated urls file back to disk
         return  # Exit when writing the updated file failed
