@@ -142,6 +142,50 @@ def load_urls_from_file(urls_path: Path, encoding: str) -> Optional[list]:
     return raw_lines  # Return cleaned URL list
 
 
+def sanitize_urls_lines(urls: list) -> list:
+    """
+    Remove trailing ZIP filenames and whitespace from each line.
+
+    :param urls: List of raw lines from the urls file.
+    :param: None
+    :return: List of cleaned URL strings.
+    """
+
+    sanitized = []  # Initialize list to hold sanitized URL strings
+
+    for ln in urls:  # Iterate through each raw line
+        if not ln:  # Skip empty lines defensively
+            continue  # Continue to next iteration when line is empty
+
+        parts = ln.split()  # Split line by whitespace to separate URL from ZIP if present
+        url_only = parts[0]  # Take the first token as the URL portion
+        sanitized.append(url_only)  # Append the cleaned URL to the sanitized list
+
+    return sanitized  # Return the list of sanitized URL strings
+
+
+def create_backup(input_dir: Path, urls_path: Path, sanitized_lines: list) -> bool:
+    """
+    Create a backup file containing sanitized URL lines.
+
+    :param input_dir: Path to the input directory.
+    :param urls_path: Path to the urls file to back up (original path retained for metadata).
+    :param sanitized_lines: List of cleaned URL strings to write into the backup file.
+    :return: True if backup was created successfully, False otherwise.
+    """
+
+    backup_path = input_dir / "urls-backup.txt"  # Build path for the backup file next to urls.txt
+
+    try:  # Attempt to write sanitized lines to the backup file before modifying the original file
+        with open(backup_path, "w", encoding="utf-8") as fh:  # Open the backup file for writing with UTF-8 encoding
+            fh.write("\n".join(sanitized_lines) + ("\n" if sanitized_lines else ""))  # Write sanitized lines preserving final newline when present
+    except Exception as e:  # Catch any exceptions raised during the backup write operation
+        print(f"{BackgroundColors.RED}Error creating backup {BackgroundColors.CYAN}{backup_path}{BackgroundColors.RED}: {e}{Style.RESET_ALL}")  # Report backup creation failure and details
+        return False  # Return False to indicate backup failure
+
+    return True  # Return True to indicate backup success
+
+
 def validate_affiliate_urls(urls: list, tag: str) -> bool:
     """
     Validate each URL using project's affiliate URL validator.
@@ -187,26 +231,6 @@ def generate_numbered_lines(urls: list, input_dir: Path) -> list:
         new_lines.append(f"{url} {zip_name}")  # Append the transformed line to the new content
 
     return new_lines  # Return the updated lines
-
-
-def create_backup(input_dir: Path, urls_path: Path) -> bool:
-    """
-    Create a backup copy of the urls file.
-
-    :param input_dir: Path to the input directory.
-    :param urls_path: Path to the urls file to back up.
-    :return: True if backup was created successfully, False otherwise.
-    """
-
-    backup_path = input_dir / "urls-backup.txt"  # Build path for the backup file next to urls.txt
-
-    try:  # Attempt to create a backup of the original urls file before modifying it
-        shutil.copy2(urls_path, backup_path)  # Copy the original urls file to the backup path preserving metadata
-    except Exception as e:  # Catch any exceptions raised during the backup copy operation
-        print(f"{BackgroundColors.RED}Error creating backup {BackgroundColors.CYAN}{backup_path}{BackgroundColors.RED}: {e}{Style.RESET_ALL}")  # Report backup creation failure and details
-        return False  # Return False to indicate backup failure
-
-    return True  # Return True to indicate backup success
 
 
 def write_updated_urls_file(urls_path: Path, new_lines: list) -> bool:
@@ -372,15 +396,13 @@ def main():
     if urls is None:  # Verify that URLs loaded successfully
         return  # Exit when loading URLs failed
 
-    urls_only = [ln.split()[0] for ln in urls]  # Extract only the URL portion from each line, discarding any trailing ZIP filenames
+    if not create_backup(input_dir, urls_path, urls):  # Create a backup from the sanitized lines and abort on failure
+        return  # Abort execution if backup creation fails to avoid data loss
 
-    if not validate_affiliate_urls(urls_only, "validator") :  # Validate all affiliate URLs using project validator
+    if not validate_affiliate_urls(urls, "validator") :  # Validate all affiliate URLs using project validator
         return  # Exit when any URL fails validation
 
-    new_lines = generate_numbered_lines(urls, input_dir)  # Generate numbered ZIP assignments and warnings
-
-    if not create_backup(input_dir, urls_path):  # Attempt to create backup and abort if it fails
-        return  # Abort execution to avoid modifying urls.txt without a safe backup
+    new_lines = generate_numbered_lines(urls, input_dir)  # Generate numbered ZIP assignments and warnings using sanitized URLs
 
     if not write_updated_urls_file(urls_path, new_lines) :  # Write the updated urls file back to disk
         return  # Exit when writing the updated file failed
