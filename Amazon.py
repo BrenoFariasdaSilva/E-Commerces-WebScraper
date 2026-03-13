@@ -100,7 +100,7 @@ AFFILIATE_URL_PATTERN = (
     r"https?://("
     r"(?:www\.)?amazon\.[a-z.]+/.*[?&]tag=[A-Za-z0-9\-]+"
     r"|"
-    r"amzn\.to/[A-Za-z0-9]+"
+    r"amzn\.to/[A-Za-z0-9_-]+"
     r")"
 )  # Keep existing affiliate pattern as fallback
 
