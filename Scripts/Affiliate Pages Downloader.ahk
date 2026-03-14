@@ -105,10 +105,10 @@ Loop, %TabCount% {
     closeMethod := lastMethod
 
     automationReport .= "Tab " currentTab ":`n"
-    automationReport .= "  Extension Click: " extensionMethod "`n"
-    automationReport .= "  Download Click: " downloadMethod "`n"
-    automationReport .= "  Completion Detection: " confirmationMethod "`n"
-    automationReport .= "  Close Extension Tab: " closeMethod "`n`n"
+    automationReport .= "  Extension Click (using " extensionImg "): " extensionMethod "`n"
+    automationReport .= "  Download Click (using " downloadImg "): " downloadMethod "`n"
+    automationReport .= "  Completion Detection (using " confirmationImg "): " confirmationMethod "`n"
+    automationReport .= "  Close Extension Tab (using " closeDownloadTabImg "): " closeMethod "`n`n"
 
     if (A_Index < TabCount) {
         Gosub, CloseCurrentTab
