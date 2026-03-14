@@ -1,6 +1,6 @@
 """
 ================================================================================
-AliExpress Web Scraper
+AliExpress Web Scraper - AliExpress.py
 ================================================================================
 Author      : Breno Farias da Silva
 Created     : 2026-02-11
