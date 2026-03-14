@@ -1421,6 +1421,262 @@ def play_sound():
         )
 
 
+def build_expected_index_url_map(urls_to_process: list) -> Dict[int, str]:
+    """
+    Builds expected index-to-URL mapping from processing input.
+
+    :param urls_to_process: List of tuples containing URL and optional local HTML path.
+    :return: Dictionary mapping 1-based index to URL.
+    """
+
+    expected_map = {}  # Store expected 1-based index mapped to URL
+
+    for index, item in enumerate(urls_to_process, 1):  # Iterate through input tuples preserving deterministic order
+        url = item[0] if isinstance(item, tuple) and len(item) > 0 else str(item)  # Resolve URL field from tuple-safe structure
+        expected_map[index] = url  # Persist URL for this expected row index
+
+    return expected_map  # Return expected index-to-URL mapping
+
+
+def list_product_directories_from_run(timestamped_output_dir: Optional[str]) -> List[str]:
+    """
+    Lists product directory names from the final run directory.
+
+    :param timestamped_output_dir: Absolute path to the run output directory.
+    :return: List containing product directory names only.
+    """
+
+    if not timestamped_output_dir or not os.path.isdir(timestamped_output_dir):  # Verify if final run directory is available
+        return []  # Return empty list when run directory is missing
+
+    directory_names = []  # Initialize list of product directory names
+
+    for item in os.listdir(timestamped_output_dir):  # Iterate through all entries in final run directory
+        full_path = os.path.join(timestamped_output_dir, item)  # Build absolute path for the current entry
+        if os.path.isdir(full_path):  # Verify if entry is a directory
+            directory_names.append(item)  # Collect directory name for downstream parsing
+
+    return directory_names  # Return collected product directory names
+
+
+def extract_product_index_from_directory_name(directory_name: str) -> Optional[int]:
+    """
+    Extracts numeric product index from a directory name prefix.
+
+    :param directory_name: Directory name in format '<index>. <product name>'.
+    :return: Parsed index integer or None when format does not match.
+    """
+
+    match = re.match(r"^(\d+)\.\s+.+$", directory_name)  # Match expected indexed directory naming pattern
+    if not match:  # Verify if name matched indexed pattern
+        return None  # Return None when index prefix is unavailable
+
+    try:  # Attempt integer conversion for captured index value
+        return int(match.group(1))  # Return parsed integer index from prefix capture
+    except Exception:  # Handle unexpected conversion errors safely
+        return None  # Return None when conversion fails
+
+
+def extract_product_name_from_directory_name(directory_name: str) -> Optional[str]:
+    """
+    Extracts product name portion from an indexed directory name.
+
+    :param directory_name: Directory name in format '<index>. <product name>'.
+    :return: Product name string without index prefix or None when format does not match.
+    """
+
+    match = re.match(r"^\d+\.\s+(.+)$", directory_name)  # Match and capture product name portion after index prefix
+    if not match:  # Verify if name matched expected format
+        return None  # Return None when product name cannot be extracted
+
+    product_name = match.group(1).strip()  # Normalize extracted product name by trimming whitespace
+    return product_name if product_name else None  # Return normalized product name when non-empty
+
+
+def build_indexed_product_records(directory_names: List[str]) -> List[Tuple[int, str, str]]:
+    """
+    Builds indexed product records from directory names.
+
+    :param directory_names: List of directory names from the final run output.
+    :return: List of tuples containing (index, product_name, full_directory_name).
+    """
+
+    records = []  # Store parsed product directory records
+
+    for directory_name in directory_names:  # Iterate over each directory name for parsing
+        product_index = extract_product_index_from_directory_name(directory_name)  # Parse numeric prefix index from directory name
+        product_name = extract_product_name_from_directory_name(directory_name)  # Parse product name portion from directory name
+
+        if product_index is None or product_name is None:  # Verify if directory can be represented as an indexed product record
+            continue  # Skip non-matching entries to keep verification deterministic
+
+        records.append((product_index, product_name, directory_name))  # Append normalized record tuple for downstream validation
+
+    return records  # Return parsed product records list
+
+
+def build_existing_indexes_set(indexed_records: List[Tuple[int, str, str]]) -> Set[int]:
+    """
+    Builds a set of existing product indexes.
+
+    :param indexed_records: Parsed indexed product records.
+    :return: Set containing existing index values found in output directories.
+    """
+
+    existing_indexes = set()  # Initialize set for unique index values
+
+    for product_index, _, _ in indexed_records:  # Iterate through records to collect indexes only
+        existing_indexes.add(product_index)  # Add index value to unique set
+
+    return existing_indexes  # Return set of existing indexes
+
+
+def identify_missing_indexes(expected_indexes: Set[int], existing_indexes: Set[int]) -> List[int]:
+    """
+    Identifies missing indexes by set difference.
+
+    :param expected_indexes: Set of expected indexes from input URLs.
+    :param existing_indexes: Set of indexes found in output directories.
+    :return: Sorted list of missing index values.
+    """
+
+    missing = sorted(expected_indexes - existing_indexes)  # Compute and sort missing indexes deterministically
+    return missing  # Return sorted missing index list
+
+
+def print_missing_product_warnings(missing_indexes: List[int], expected_index_url_map: Dict[int, str]) -> None:
+    """
+    Prints warnings for each missing product index with source URL.
+
+    :param missing_indexes: Sorted list of missing indexes.
+    :param expected_index_url_map: Dictionary mapping expected index to source URL.
+    :return: None.
+    """
+
+    for product_index in missing_indexes:  # Iterate through each missing index for warning output
+        product_url = expected_index_url_map.get(product_index, "URL_NOT_FOUND")  # Resolve URL mapped to missing index
+        print(f"{BackgroundColors.CYAN}{product_index}{BackgroundColors.GREEN} - {BackgroundColors.CYAN}{product_url}{BackgroundColors.YELLOW}{Style.RESET_ALL}")  # Emit required missing-index warning format
+
+
+def group_records_by_product_name(indexed_records: List[Tuple[int, str, str]]) -> Dict[str, List[Tuple[int, str]]]:
+    """
+    Groups indexed records by product name.
+
+    :param indexed_records: Parsed indexed product records.
+    :return: Dictionary mapping product name to list of (index, full_directory_name).
+    """
+
+    grouped_records = {}  # Initialize grouped records dictionary
+
+    for product_index, product_name, directory_name in indexed_records:  # Iterate through records for grouping by name
+        grouped_records.setdefault(product_name, []).append((product_index, directory_name))  # Append index and directory for this product name
+
+    return grouped_records  # Return grouped dictionary by product name
+
+
+def identify_duplicate_product_names(grouped_records: Dict[str, List[Tuple[int, str]]]) -> Dict[str, List[Tuple[int, str]]]:
+    """
+    Identifies product names that appear more than once.
+
+    :param grouped_records: Dictionary mapping product name to indexed directory entries.
+    :return: Dictionary containing only duplicated product names and their entries.
+    """
+
+    duplicates = {}  # Initialize duplicates dictionary
+
+    for product_name, entries in grouped_records.items():  # Iterate grouped records to identify duplicate names
+        if len(entries) > 1:  # Verify if current product name appears more than once
+            duplicates[product_name] = entries  # Persist duplicate entry list for this product name
+
+    return duplicates  # Return only duplicate name groups
+
+
+def print_duplicate_product_warnings(product_name: str, directory_name_to_remove: str) -> None:
+    """
+    Prints warnings for duplicate product name cleanup.
+
+    :param product_name: Duplicate product name portion without index prefix.
+    :param directory_name_to_remove: Full directory name selected for removal.
+    :return: None.
+    """
+
+    print(f"{BackgroundColors.YELLOW}[WARNING] Duplicate product name detected: {product_name}{Style.RESET_ALL}")  # Emit duplicate-name detection warning
+    print(f"{BackgroundColors.YELLOW}[WARNING] Removing duplicate directory with highest index: {directory_name_to_remove}{Style.RESET_ALL}")  # Emit duplicate-directory removal warning
+
+
+def remove_duplicate_directories_with_highest_index(timestamped_output_dir: Optional[str], duplicate_records: Dict[str, List[Tuple[int, str]]]) -> List[str]:
+    """
+    Removes duplicate product directories preserving the lowest index entry.
+
+    :param timestamped_output_dir: Absolute path to the final run output directory.
+    :param duplicate_records: Dictionary containing duplicated product names and indexed entries.
+    :return: List containing removed directory names.
+    """
+
+    removed_directory_names = []  # Track removed directories for optional downstream usage
+
+    if not timestamped_output_dir or not os.path.isdir(timestamped_output_dir):  # Verify if final run directory exists before removal operations
+        return removed_directory_names  # Return empty removal list when directory is unavailable
+
+    for product_name, entries in duplicate_records.items():  # Iterate each duplicate product name group
+        sorted_entries = sorted(entries, key=lambda item: item[0])  # Sort by ascending index to preserve the lowest index entry
+        entries_to_remove = sorted_entries[1:]  # Select all higher-index duplicate entries for removal
+
+        for _, directory_name_to_remove in entries_to_remove:  # Iterate through duplicate directories selected for deletion
+            print_duplicate_product_warnings(product_name, directory_name_to_remove)  # Emit warnings before deletion operation
+            full_path_to_remove = os.path.join(timestamped_output_dir, directory_name_to_remove)  # Build absolute path to duplicate directory
+
+            if os.path.isdir(full_path_to_remove):  # Verify if duplicate directory still exists before deletion
+                try:  # Attempt to remove duplicate directory from disk
+                    shutil.rmtree(full_path_to_remove)  # Delete directory tree for duplicate highest index entry
+                    removed_directory_names.append(directory_name_to_remove)  # Track removed directory name
+                except Exception as e:  # Handle filesystem deletion errors safely
+                    print(f"{BackgroundColors.RED}Error removing duplicate directory {BackgroundColors.CYAN}{directory_name_to_remove}{BackgroundColors.RED}: {BackgroundColors.YELLOW}{e}{Style.RESET_ALL}")  # Report duplicate deletion failure
+
+    return removed_directory_names  # Return removed directory names list
+
+
+def print_output_count_mismatch_warning(expected_total: int, existing_total: int) -> None:
+    """
+    Prints warning when output directory count differs from expected URL count.
+
+    :param expected_total: Total number of expected URLs.
+    :param existing_total: Total number of detected product directories.
+    :return: None.
+    """
+
+    if expected_total == existing_total:  # Verify if counts match before warning output
+        return  # Return immediately when there is no mismatch
+
+    print(f"{BackgroundColors.YELLOW}[WARNING] Output directory count mismatch: expected {BackgroundColors.CYAN}{expected_total}{BackgroundColors.YELLOW}, found {BackgroundColors.CYAN}{existing_total}{Style.RESET_ALL}")  # Emit count mismatch warning
+
+
+def run_final_output_integrity_verification(timestamped_output_dir: Optional[str], urls_to_process: list) -> None:
+    """
+    Runs final output directory integrity verification pipeline.
+
+    :param timestamped_output_dir: Absolute path to the final run output directory.
+    :param urls_to_process: List of tuples containing URL and optional local HTML path.
+    :return: None.
+    """
+
+    expected_index_url_map = build_expected_index_url_map(urls_to_process)  # Build deterministic expected index-to-URL mapping from original input order
+    expected_indexes = set(expected_index_url_map.keys())  # Build expected index set from mapping keys
+
+    directory_names = list_product_directories_from_run(timestamped_output_dir)  # Collect current directory names from final run output path
+    indexed_records = build_indexed_product_records(directory_names)  # Parse indexed records for validation and duplicate detection
+    existing_indexes = build_existing_indexes_set(indexed_records)  # Build existing index set from parsed records
+
+    print_output_count_mismatch_warning(len(expected_index_url_map), len(indexed_records))  # Emit warning when expected and existing counts diverge
+
+    missing_indexes = identify_missing_indexes(expected_indexes, existing_indexes)  # Determine missing expected indexes from current output
+    print_missing_product_warnings(missing_indexes, expected_index_url_map)  # Emit one warning line per missing index using required format
+
+    grouped_records = group_records_by_product_name(indexed_records)  # Group indexed records by product name only
+    duplicate_records = identify_duplicate_product_names(grouped_records)  # Filter grouped records to duplicate product names only
+    remove_duplicate_directories_with_highest_index(timestamped_output_dir, duplicate_records)  # Remove higher-index directories for duplicate product names
+
+
 def main():
     """
     Main function.
@@ -1685,6 +1941,8 @@ def main():
             
             if index < total_urls and not local_html_path:  # Add delay only for online requests (skip for local HTML inputs)
                 time.sleep(DELAY_BETWEEN_REQUESTS)  # Sleep to avoid rate limiting between online requests
+
+    run_final_output_integrity_verification(timestamped_output_dir, urls_to_process)  # Run final reliability verification after all URL processing has completed
     
     print(f"{BackgroundColors.GREEN}Successfully processed: {BackgroundColors.CYAN}{successful_scrapes}/{total_urls}{BackgroundColors.GREEN} URLs{Style.RESET_ALL}\n")  # Output the number of successful operations
 
