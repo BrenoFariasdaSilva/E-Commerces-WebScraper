@@ -563,6 +563,59 @@ class Shopee:
             return False  # Default to domestic on error
 
 
+    def is_video_url(self) -> bool:
+        """
+        Quick check based on the original URL to detect Shopee short/video links
+        (for example `br.shp.ee` / `shp.ee` short links) which typically point
+        to short-form video pages instead of product pages.
+
+        Returns True when the URL looks like a Shopee short/video link.
+        """
+        try:
+            parsed = urlparse(self.url)
+            host = (parsed.netloc or "").lower()
+            path = (parsed.path or "").lower()
+
+            # Short link hostnames (shp.ee) are used for short/video pages
+            if host.endswith("shp.ee"):
+                return True
+
+            # Common video path patterns
+            if "/video" in path or path.startswith("/v/") or path.startswith("/watch"):
+                return True
+        except Exception:
+            pass
+        return False
+
+
+    def is_video_page_from_html(self, html_content: Optional[str]) -> bool:
+        """
+        Fallback detection using rendered/local HTML: if the page contains
+        video elements and no detectable product name, treat it as a video
+        page and skip scraping.
+        """
+        if not html_content:
+            return False
+        try:
+            soup = BeautifulSoup(html_content, "html.parser")
+            # If there are video tags or elements with 'video' class present
+            has_video = bool(soup.find("video") or soup.find(class_=re.compile(r".*video.*", re.IGNORECASE)))
+
+            # Try to extract a product name; if none found and there is video, it's likely a video page
+            name_found = None
+            for tag, attrs in HTML_SELECTORS["product_name"]:
+                el = soup.find(tag, attrs if attrs else None)  # type: ignore[arg-type]
+                if el and el.get_text(strip=True):
+                    name_found = el.get_text(strip=True)
+                    break
+
+            if has_video and not name_found:
+                return True
+        except Exception:
+            return False
+        return False
+
+
     def prefix_international_name(self, product_name: str) -> str:
         """
         Adds "International - " prefix to product name if not already present.
@@ -858,6 +911,11 @@ class Shopee:
         verbose_output(  # Output status message to user
             f"{BackgroundColors.GREEN}Parsing product information...{Style.RESET_ALL}"
         )  # End of verbose output call
+
+        # If the rendered/local HTML looks like a short/video page, skip scraping
+        if self.is_video_page_from_html(html_content):
+            print(f"{BackgroundColors.RED}This Shopee page appears to be a short/video page, not a product page. Skipping.{Style.RESET_ALL}")
+            return None
 
         try:  # Attempt to parse product information with error handling
             soup = BeautifulSoup(html_content, "html.parser")  # Parse HTML content into BeautifulSoup object
@@ -1512,6 +1570,11 @@ class Shopee:
         verbose_output(  # Display scraping start message (verbose)
             f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Starting {BackgroundColors.CYAN}Shopee{BackgroundColors.GREEN} Scraping process...{Style.RESET_ALL}"
         )  # End of verbose_output call
+
+        # Quick guard: if the original URL looks like a Shopee short/video link, skip immediately
+        if self.is_video_url():
+            print(f"{BackgroundColors.RED}This Shopee URL appears to be a short/video link, not a product page. Skipping.{Style.RESET_ALL}")
+            return None
         
         try:  # Attempt scraping process with error handling
             if self.local_html_path:  # If local HTML file path is provided
