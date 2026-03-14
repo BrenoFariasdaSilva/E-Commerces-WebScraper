@@ -129,6 +129,129 @@ def verbose_output(true_string="", false_string=""):
         print(false_string)  # Output the false statement string
 
 
+def close_extension_download_tab(close_download_tab_img: Path) -> str:
+    """
+    Closes extension download tab using image or coordinates.
+
+    :param close_download_tab_img: Path to close tab image.
+    :return: Method name used for the click.
+    """
+
+    box = locate_image(close_download_tab_img)  # Locate close tab image on screen.
+
+    if box is not None:  # Verify image was found.
+        cx, cy = pyautogui.center(box)  # Compute center point from box.
+        pyautogui.click(cx, cy)  # Click image center point.
+        time.sleep(0.5)  # Wait briefly after image click.
+        return "ImageSearch"  # Return image search method label.
+
+    pyautogui.click(CLOSE_DOWNLOAD_TAB_X, CLOSE_DOWNLOAD_TAB_Y)  # Click fallback close tab coordinates.
+    time.sleep(0.5)  # Wait briefly after fallback click.
+    return "Coordinates"  # Return coordinates method label.
+
+
+def click_go_to_product_button(mercado_livre_img: Path) -> str:
+    """
+    Clicks MercadoLivre go-to-product button when available.
+
+    :param mercado_livre_img: Path to MercadoLivre go-to-product image.
+    :return: Action status string.
+    """
+
+    box = locate_image(mercado_livre_img)  # Locate MercadoLivre image on screen.
+
+    if box is not None:  # Verify image was found.
+        cx, cy = pyautogui.center(box)  # Compute center point from box.
+        pyautogui.click(cx, cy)  # Click image center point.
+        time.sleep(5)  # Wait for page transition.
+        return "MercadoLivre Go To Product"  # Return action performed status.
+
+    return "Not Found / Skipped"  # Return skipped status.
+
+
+def close_current_tab() -> None:
+    """
+    Closes the current browser tab.
+
+    :return: None
+    """
+
+    pyautogui.hotkey("ctrl", "w")  # Trigger close-tab hotkey.
+    time.sleep(1)  # Wait after closing the tab.
+
+
+def add_method(methods: Dict[str, List[int]], method: str, tab_index: int) -> None:
+    """
+    Adds a method usage entry to report dictionary.
+
+    :param methods: Dictionary mapping methods to tab indices.
+    :param method: Method label to append.
+    :param tab_index: Tab index associated with method usage.
+    :return: None
+    """
+
+    methods.setdefault(method, []).append(tab_index)  # Append tab index to grouped method list.
+
+
+def join_array(values: List[int]) -> str:
+    """
+    Joins integer list into comma-separated string.
+
+    :param values: Integer list to be joined.
+    :return: Comma-separated string.
+    """
+
+    return ", ".join(str(v) for v in values)  # Join integers into comma-separated text.
+
+
+def format_execution_time(total_seconds: int) -> str:
+    """
+    Formats total seconds into detailed time text.
+
+    :param total_seconds: Total elapsed seconds.
+    :return: Formatted time string.
+    """
+
+    h = total_seconds // 3600  # Compute hour component.
+    m = (total_seconds % 3600) // 60  # Compute minute component.
+    s = total_seconds % 60  # Compute second component.
+    return f"{h:02d}:{m:02d}:{s:02d} ({h}h {m}m {s}s)"  # Return formatted execution time.
+
+
+def build_report(ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]]) -> str:
+    """
+    Builds grouped execution report text.
+
+    :param ext_methods: Grouped extension click methods.
+    :param download_methods: Grouped download click methods.
+    :param completion_methods: Grouped completion detection methods.
+    :param close_methods: Grouped close tab methods.
+    :return: Consolidated report string.
+    """
+
+    lines: List[str] = []  # Initialize report line buffer.
+
+    for method, tabs in ext_methods.items():  # Iterate extension method groups.
+        lines.append(f"Extension Click - {method}: {join_array(tabs)}")  # Append extension report line.
+
+    lines.append("")  # Append visual separator line.
+
+    for method, tabs in download_methods.items():  # Iterate download method groups.
+        lines.append(f"Download Click - {method}: {join_array(tabs)}")  # Append download report line.
+
+    lines.append("")  # Append visual separator line.
+
+    for method, tabs in completion_methods.items():  # Iterate completion method groups.
+        lines.append(f"Completion Detection - {method}: {join_array(tabs)}")  # Append completion report line.
+
+    lines.append("")  # Append visual separator line.
+
+    for method, tabs in close_methods.items():  # Iterate close tab method groups.
+        lines.append(f"Close Extension Tab - {method}: {join_array(tabs)}")  # Append close tab report line.
+
+    return "\n".join(lines).strip()  # Return report text.
+
+
 def maybe_show_messagebox(title: str, message: str) -> None:
     """
     Displays messagebox when tkinter is available.
