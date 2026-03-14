@@ -6,7 +6,7 @@ SendMode Input
 CoordMode, Mouse, Screen
 CoordMode, Pixel, Screen
 
-TabCount := 10  ; Total number of tabs to process starting from the currently active tab.
+TabCount := 3  ; Total number of tabs to process starting from the currently active tab.
 
 ; Fallback coordinates
 ExtensionX := 1752
@@ -16,12 +16,8 @@ DownloadButtonY := 64
 
 ; Resolve asset paths relative to this script
 scriptDir := A_ScriptDir
-extensionImg := scriptDir . "\..\ .assets\Browser\Extension.png"
-downloadImg := scriptDir . "\..\ .assets\Browser\DownloadButton.png"
-
-; Normalize accidental space
-extensionImg := StrReplace(extensionImg, "\.. ", "\..")
-downloadImg := StrReplace(downloadImg, "\.. ", "\..")
+extensionImg := scriptDir . "\..\.assets\Browser\Extension.png"
+downloadImg := scriptDir . "\..\.assets\Browser\DownloadButton.png"
 
 running := false
 isProcessing := false
@@ -75,23 +71,30 @@ StartAutomation:
             Click, %ExtensionX%, %ExtensionY%
         }
 
-        waitMs := 2000
-        Gosub, WaitWithStop
-        if (!running)
-            break
-
-        ; ---- Click download button (ImageSearch with fallback) ----
+        ; ---- Wait up to 3 seconds while searching for download button ----
         found := false
-        ImageSearch, Px, Py, 0, 0, A_ScreenWidth, A_ScreenHeight, %downloadImg%
-        if (ErrorLevel = 0) {
-            Click, %Px%, %Py%
-            found := true
+        startTime := A_TickCount
+
+        while ((A_TickCount - startTime) < 3000) {
+            if (!running)
+                break
+
+            ImageSearch, Px, Py, 0, 0, A_ScreenWidth, A_ScreenHeight, %downloadImg%
+            if (ErrorLevel = 0) {
+                Click, %Px%, %Py%
+                found := true
+                break
+            }
+
+            Sleep, 200
         }
 
+        ; Fallback if image not found
         if (!found) {
             Click, %DownloadButtonX%, %DownloadButtonY%
         }
 
+        ; Wait for download process
         waitMs := 180000
         Gosub, WaitWithStop
         if (!running)
