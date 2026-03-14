@@ -870,8 +870,6 @@ class Amazon:
                     )  # End of verbose output call
 
             videos = soup.find_all("video")  # Find all video tags
-            from typing import cast
-            from urllib.parse import urljoin
 
             for video in videos:  # Iterate through each video
                 video_url = None  # Initialize URL variable
