@@ -39,32 +39,38 @@ if (running) {
     if (TabCount = 0) {
 
         ; Attempt to read number of URLs from Inputs/urls.txt
-        TabCount := 0
+        ; Count URLs in the file (urlCount) and convert to tab switches (urls - 1)
+        urlCount := 0
         if FileExist(urlsFile) {
             Loop, Read, %urlsFile%
             {
                 line := Trim(A_LoopReadLine)
                 if (line != "")
-                    TabCount++
+                    urlCount++
             }
         }
 
-        ; If file empty or missing, ask the user
-        if (TabCount = 0) {
-            InputBox, userTabCount, Automation Setup, Enter the number of tabs to process:, , 300, 140
-            
+        if (urlCount > 0) {
+            TabCount := urlCount - 1
+        } else {
+            ; If file empty or missing, ask the user for number of URLs
+            InputBox, userUrlCount, Automation Setup, Enter the number of URLs to process:, , 300, 140
+
             if (ErrorLevel) {
                 running := false
                 return
             }
 
-            if (userTabCount = "" || userTabCount <= 0) {
+            if (userUrlCount = "" || userUrlCount <= 0) {
                 MsgBox, 48, Invalid Value, Please enter a valid number greater than 0.
                 running := false
                 return
             }
 
-            TabCount := userTabCount
+            if (userUrlCount > 0)
+                TabCount := userUrlCount - 1
+            else
+                TabCount := 0
         }
     }
 
