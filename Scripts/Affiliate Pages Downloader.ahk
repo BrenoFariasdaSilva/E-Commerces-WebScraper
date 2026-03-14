@@ -29,6 +29,7 @@ running := false
 isProcessing := false
 waitMs := 0
 automationReport := ""
+targetChromeID := ""
 
 F4::
 running := !running
@@ -91,7 +92,7 @@ Gosub, ActivateChrome
 Loop, %TabCount% {
 
     ; Verify Chrome window is still running
-    if !WinExist("ahk_exe chrome.exe") {
+    if !WinExist("ahk_id " targetChromeID) {
         MsgBox, 48, Automation Stopped, Chrome is not running. Process terminated at tab %A_Index%.
         break
     }
@@ -153,10 +154,38 @@ if (completed) {
 return
 
 
+; --- Updated ActivateChrome to handle multiple windows ---
 ActivateChrome:
-WinActivate, ahk_exe chrome.exe
-WinWaitActive, ahk_exe chrome.exe
-WinMaximize, ahk_exe chrome.exe
+SetTitleMatchMode, 2  ; Partial title match allowed
+WinGet, chromeList, List, ahk_exe chrome.exe
+
+if (chromeList = 0) {
+    MsgBox, 48, Error, No Chrome windows found. Automation cannot start.
+    running := false
+    return
+}
+
+; Show list of Chrome windows for selection
+windowsText := ""
+Loop, %chromeList%
+{
+    thisID := chromeList%A_Index%
+    WinGetTitle, thisTitle, ahk_id %thisID%
+    windowsText .= A_Index ": " thisTitle "`n"
+}
+
+InputBox, selectedIndex, Select Chrome Window, Multiple Chrome windows detected.`nSelect the window index to use:`n`n%windowsText%, , 400, 300
+
+if (ErrorLevel || selectedIndex < 1 || selectedIndex > chromeList) {
+    MsgBox, 48, Error, Invalid selection. Automation stopped.
+    running := false
+    return
+}
+
+targetChromeID := chromeList%selectedIndex%
+WinActivate, ahk_id %targetChromeID%
+WinWaitActive, ahk_id %targetChromeID%
+WinMaximize, ahk_id %targetChromeID%
 Sleep, 1000
 return
 
