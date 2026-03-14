@@ -22,6 +22,7 @@ extensionImg := scriptDir . "\..\.assets\Browser\Extension.png"
 downloadImg := scriptDir . "\..\.assets\Browser\DownloadButton.png"
 confirmationImg := scriptDir . "\..\.assets\Browser\ConfirmationFileDownloaded.png"
 closeDownloadTabImg := scriptDir . "\..\.assets\Browser\CloseDownloadTab.png"
+mercadoLivreGoToImg := scriptDir . "\..\.assets\Browser\MercadoLivre-GoToProduct.png"
 
 running := false
 isProcessing := false
@@ -97,16 +98,22 @@ Loop, %TabCount% {
     if (!running)
         break
 
+    ; Click "Go To Product" button for MercadoLivre, if present
+    Gosub, ClickGoToProductButton
+
+    ; Click extension icon
     Gosub, ClickExtensionIcon
     if (!running)
         break
     extensionMethod := lastMethod
 
+    ; Click download button
     Gosub, ClickDownloadButton
     if (!running)
         break
     downloadMethod := lastMethod
 
+    ; Wait for download confirmation
     Gosub, WaitForDownloadConfirmation
     if (!running)
         break
@@ -156,6 +163,19 @@ waitMs := 5000
 Gosub, WaitWithStop
 return
 
+; --- New function for MercadoLivre ---
+ClickGoToProductButton:
+found := false
+ImageSearch, Px, Py, 0, 0, A_ScreenWidth, A_ScreenHeight, %mercadoLivreGoToImg%
+if (ErrorLevel = 0) {
+    Click, %Px%, %Py%
+    Sleep, 500
+    lastMethod := "MercadoLivre Go To Product"
+    found := true
+} else {
+    lastMethod := "Not Found / Skipped"
+}
+return
 
 ClickExtensionIcon:
 found := false
