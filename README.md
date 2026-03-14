@@ -71,6 +71,7 @@ A production-ready web scraper for extracting product information from multiple 
     - [Path Resolution](#path-resolution-1)
     - [Image Processing](#image-processing)
     - [Browser Automation](#browser-automation)
+    - [Cross-Platform Affiliate UI Automation](#cross-platform-affiliate-ui-automation)
   - [Troubleshooting](#troubleshooting)
   - [Performance Considerations](#performance-considerations)
   - [Ethical Considerations](#ethical-considerations)
