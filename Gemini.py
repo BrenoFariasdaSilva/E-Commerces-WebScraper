@@ -52,6 +52,7 @@ import google.genai as genai  # Import the Google AI Python SDK
 import os  # For running a command in the terminal
 import platform  # For getting the operating system name
 import sys  # For system-specific parameters and functions
+import time  # For retry delay handling
 from colorama import Style  # For coloring the terminal
 from dotenv import load_dotenv  # For loading .env files
 from Logger import Logger  # For logging output to both terminal and file
@@ -71,6 +72,30 @@ class BackgroundColors:  # Colors for the terminal
 
 # Execution Constants:
 VERBOSE = False  # Set to True to output verbose messages
+MAX_RETRIES = 5  # Maximum number of retry rounds for retryable Gemini API failures
+RETRY_BASE_DELAY_SECONDS = 15  # Base delay in seconds used for exponential backoff
+RETRYABLE_API_ERROR_KEYWORDS = (
+    "503",
+    "429",
+    "unavailable",
+    "temporary",
+    "temporarily",
+    "service unavailable",
+    "high demand",
+    "rate",
+    "quota",
+    "limit",
+    "resource_exhausted",
+    "too many requests",
+    "timeout",
+    "timed out",
+    "connection",
+    "deadline exceeded",
+    "internal",
+    "server error",
+    "bad gateway",
+    "gateway timeout",
+)  # Keywords used to classify transient Gemini API failures for retry
 
 # File Path Constants:
 INPUT_DIRECTORY = "./Inputs/"  # The path to the input directory
@@ -218,6 +243,46 @@ class Gemini:
         return content  # Return the content of the file
 
 
+    def is_retryable_api_error(self, error):
+        """
+        Determines whether an API error should be retried.
+
+        :param error: The exception raised during an API request.
+        :return: True if the error appears temporary/retryable, False otherwise.
+        """
+
+        error_text = str(error).lower()  # Convert exception message to lowercase for keyword matching
+        return any(keyword in error_text for keyword in RETRYABLE_API_ERROR_KEYWORDS)  # Return True when any retryable keyword is present
+
+
+    def execute_with_retry(self, request_callable, operation_name="gemini_request"):
+        """
+        Executes a Gemini API callable with exponential backoff retry on temporary failures.
+
+        :param request_callable: Callable that performs the API request and returns a response.
+        :param operation_name: Label used in logs to identify the API operation.
+        :return: The API response object if successful.
+        """
+
+        retry_count = 0  # Initialize retry counter for transient failures
+
+        while True:  # Continue attempts until success or retry limit reached
+            try:  # Attempt API call and return immediately when successful
+                return request_callable()  # Execute the provided Gemini API request callable
+            except Exception as e:  # Capture request exceptions for retry decision
+                if not self.is_retryable_api_error(e):  # Stop retry flow for non-transient exceptions
+                    raise  # Re-raise non-retryable error so caller can handle it
+
+                if retry_count >= MAX_RETRIES:  # Stop retry flow when maximum retry budget is exhausted
+                    print(f"{BackgroundColors.YELLOW}[WARNING] Gemini API temporary failure persisted after {MAX_RETRIES} retries during {operation_name}.{Style.RESET_ALL}")  # Log terminal warning when retries are exhausted
+                    raise  # Re-raise the final transient exception after retry exhaustion
+
+                retry_count += 1  # Increment retry counter for this transient failure
+                wait_seconds = RETRY_BASE_DELAY_SECONDS * (2 ** (retry_count - 1))  # Compute exponential backoff delay for current retry
+                print(f"{BackgroundColors.YELLOW}[WARNING] Gemini API temporary failure. Retrying in {wait_seconds} seconds (attempt {retry_count}/{MAX_RETRIES}).{Style.RESET_ALL}")  # Log retry schedule with attempt index
+                time.sleep(wait_seconds)  # Wait before retrying the same request
+
+
     def start_chat_session(self):
         """
         Start a chat session with the model.
@@ -246,7 +311,7 @@ class Gemini:
             self.start_chat_session()  # Start the chat session
         
         assert self.chat is not None  # Ensure chat is initialized
-        response = self.chat.send_message(message)  # Send the message
+        response = self.execute_with_retry(lambda: self.chat.send_message(message), operation_name="send_message")  # Send message with retry for transient API failures
         return response.text  # Return the output text
 
 
@@ -261,11 +326,14 @@ class Gemini:
         
         verbose_output(true_string=f"{BackgroundColors.GREEN}Generating content...{Style.RESET_ALL}")
         
-        response = self.client.models.generate_content(
-            model=self.model,
-            contents=prompt,
-            config=config
-        )  # Generate content
+        response = self.execute_with_retry(
+            lambda: self.client.models.generate_content(
+                model=self.model,
+                contents=prompt,
+                config=config
+            ),
+            operation_name="generate_content",
+        )  # Generate content with retry for transient API failures
         return response.text  # Return the generated text
 
 
