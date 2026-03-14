@@ -74,12 +74,7 @@ if (running) {
         }
     }
 
-        ; Normalize TabCount to represent number of tab switches (URLs - 1)
-        if (TabCount > 0) {
-            TabCount := TabCount - 1
-            if (TabCount < 0)
-                TabCount := 0
-        }
+        ; TabCount represents the number of URLs (no automatic -1 normalization)
 
     SetTimer, StartAutomation, -10
 }
