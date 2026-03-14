@@ -1327,12 +1327,16 @@ def generate_marketing_text(product_description, description_file, product_data=
             error_str = str(e).lower()  # Convert error to lowercase for verify
 
             is_rate_limit = any(keyword in error_str for keyword in [
-                "rate", "quota", "limit", "429", "resource_exhausted", 
-                "too many requests", "quota exceeded"
-            ])  # Verify for rate limit indicators
+                "rate", "quota", "limit", "429", "resource_exhausted",
+                "too many requests", "quota exceeded", "503", "unavailable",
+                "temporary", "temporarily", "service unavailable", "high demand",
+                "timeout", "timed out", "connection", "deadline exceeded",
+                "internal", "server error", "bad gateway", "gateway timeout"
+            ])  # Verify for temporary API failure indicators
 
             if is_rate_limit:  # If rate limit error detected
                 last_error = e  # Store error
+                print(f"{BackgroundColors.YELLOW}[WARNING] Temporary Gemini API failure with key {key_index}: {e}{Style.RESET_ALL}")  # Log temporary API failure before key failover
 
                 if offset < total_keys - 1:  # If there are more keys to try
                     continue  # Try next key
