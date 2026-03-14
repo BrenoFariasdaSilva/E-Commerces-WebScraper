@@ -149,6 +149,7 @@ RUN_FUNCTIONS = {
 
 # Delay Constants:
 DELAY_BETWEEN_REQUESTS = 5  # Seconds to wait between processing URLs to avoid rate limiting
+OUTPUT_DIRECTORY_RETRY_ATTEMPTS = 1  # Number of retries when the final product output directory is missing
 
 # Gemini AI Constants:
 GEMINI_MARKETING_PROMPT_TEMPLATE = """Você é um especialista em marketing de e-commerce. Sua tarefa é transformar as informações do produto abaixo em um texto de marketing persuasivo, chamativo, direto e formatado.
@@ -1491,143 +1492,194 @@ def main():
             )  # Build colored description with platform
             pbar.set_description(desc)  # Update the progress bar description
 
+            original_local_html_path = local_html_path  # Preserve original local path token from input file for deterministic retries and input clearing
+            resolved_local_html_path = local_html_path  # Keep resolved local path value reused by retry attempts
+            url_processed_successfully = False  # Track whether this URL finished with verified output directory and successful formatting
+
             verify_affiliate_url_format(url)  # Verify affiliate-format URL for supported platforms
 
-            if local_html_path:  # If a local HTML file path is provided
-                local_html_path = resolve_local_html_path(local_html_path)  # Resolve path with fallback variations
-                verbose_output(f"{BackgroundColors.GREEN}Using local HTML file: {BackgroundColors.CYAN}{local_html_path}{Style.RESET_ALL}")  # Inform user about offline mode
+            for retry_attempt in range(OUTPUT_DIRECTORY_RETRY_ATTEMPTS + 1):  # Retry URL processing only when output directory is not generated
+                local_html_path = resolved_local_html_path  # Reuse resolved local path by default for deterministic retries
 
-            verbose_output(f"{BackgroundColors.CYAN}Step 1{BackgroundColors.GREEN}: Scraping the product information{Style.RESET_ALL}")  # Step 1: Scrape the product information
-            scrape_result = scrape_product(url, staging_output_dir, local_html_path)  # Scrape the product writing into staging
+                if retry_attempt == 0 and local_html_path:  # Resolve local path only once in the first attempt
+                    local_html_path = resolve_local_html_path(local_html_path)  # Resolve path with fallback variations
+                    resolved_local_html_path = local_html_path  # Persist resolved path for retry attempts
+                    verbose_output(f"{BackgroundColors.GREEN}Using local HTML file: {BackgroundColors.CYAN}{local_html_path}{Style.RESET_ALL}")  # Inform user about offline mode
 
-            if not scrape_result or len(scrape_result) != 6:  # If scraping failed or returned invalid result
-                print(f"{BackgroundColors.RED}Skipping {BackgroundColors.CYAN}{url}{BackgroundColors.RED} due to scraping failure.{Style.RESET_ALL}\n")  # Notify user about skip
-                try:  # Attempt to clean any partial staging output for this URL
-                    tmp_product_name = None  # Initialize temporary product name variable
-                    if isinstance(scrape_result, tuple) and scrape_result[2]:  # Verify tuple shape and product dir field
-                        tmp_product_name = scrape_result[2]  # Extract product directory name from scrape_result
-                    if tmp_product_name:  # Only proceed if we found a temporary product directory name
-                        tmp_path = os.path.join(staging_output_dir, tmp_product_name)  # Build staging path for that product
-                        if os.path.exists(tmp_path):  # Verify if the staging path exists on disk
-                            shutil.rmtree(tmp_path)  # Remove the partial staging directory to keep staging clean
-                except Exception:  # Catch and ignore any errors during staging cleanup
-                    pass  # Ignore cleanup errors and continue
-                continue  # Move to next URL  # Skip further processing for this URL
+                verbose_output(f"{BackgroundColors.CYAN}Step 1{BackgroundColors.GREEN}: Scraping the product information{Style.RESET_ALL}")  # Step 1: Scrape the product information
+                scrape_result = scrape_product(url, staging_output_dir, local_html_path)  # Scrape the product writing into staging
 
-            product_data, description_file, product_directory, html_path_for_assets, zip_path_to_cleanup, extracted_dir_to_cleanup = scrape_result  # Unpack the scrape result  # Destructure returned tuple
+                if not scrape_result or len(scrape_result) != 6:  # If scraping failed or returned invalid result
+                    print(f"{BackgroundColors.RED}Skipping {BackgroundColors.CYAN}{url}{BackgroundColors.RED} due to scraping failure.{Style.RESET_ALL}\n")  # Notify user about skip
+                    try:  # Attempt to clean any partial staging output for this URL
+                        tmp_product_name = None  # Initialize temporary product name variable
+                        if isinstance(scrape_result, tuple) and scrape_result[2]:  # Verify tuple shape and product dir field
+                            tmp_product_name = scrape_result[2]  # Extract product directory name from scrape_result
+                        if tmp_product_name:  # Only proceed if we found a temporary product directory name
+                            tmp_path = os.path.join(staging_output_dir, tmp_product_name)  # Build staging path for that product
+                            if os.path.exists(tmp_path):  # Verify if the staging path exists on disk
+                                shutil.rmtree(tmp_path)  # Remove the partial staging directory to keep staging clean
+                    except Exception:  # Catch and ignore any errors during staging cleanup
+                        pass  # Ignore cleanup errors and continue
 
-            if not product_data:  # If scraping failed unexpectedly  # Validate product_data presence
-                print(f"{BackgroundColors.RED}Skipping {BackgroundColors.CYAN}{url}{BackgroundColors.RED} due to scraping failure.{Style.RESET_ALL}\n")  # Inform about unexpected failure
-                continue  # Move to next URL  # Skip processing for this URL
+                    if retry_attempt < OUTPUT_DIRECTORY_RETRY_ATTEMPTS:  # Verify if another retry attempt is still allowed
+                        print(f"{BackgroundColors.YELLOW}[WARNING] Output directory missing after processing URL index {index}. Retrying processing.{Style.RESET_ALL}")  # Warn and retry same URL position
+                        continue  # Retry processing the same URL immediately
 
-            if timestamped_output_dir is None:  # Lazily create run directory on first success
-                timestamped_output_dir = create_timestamped_output_directory(OUTPUT_DIRECTORY)  # Create timestamped run dir
-                clean_unknown_product_directories(timestamped_output_dir)  # Clean up any "Unknown Product" dirs inside this run  # Remove old placeholders
+                    print(f"{BackgroundColors.YELLOW}[WARNING] Failed to generate output directory after retry for URL index {index}.{Style.RESET_ALL}")  # Report definitive failure after retry exhaustion
+                    break  # Stop retry loop and keep URL as unsuccessful
 
-            try:  # Attempt to move product output from staging to final run dir
-                src_dir = os.path.join(staging_output_dir, product_directory)  # Path to product in staging
-                dest_dir = os.path.join(timestamped_output_dir, product_directory)  # Target path inside final run dir
-                if os.path.exists(dest_dir):  # If destination exists, remove it first to replace  # Ensure replace semantics
-                    shutil.rmtree(dest_dir)  # Remove existing destination to avoid conflicts
-                if os.path.exists(src_dir):  # Only move if staging source exists
-                    shutil.move(src_dir, dest_dir)  # Move staging product to final run
-                product_name_safe = sanitize_filename(product_data.get("name", "Unknown Product"))  # Sanitize product name
-                description_file = os.path.join(dest_dir, f"{product_name_safe}_description.txt")  # Update description file path to final location
-            except Exception as e:  # Handle move errors
-                print(f"{BackgroundColors.YELLOW}Warning: Could not move staging output to final run directory: {e}{Style.RESET_ALL}")  # Warn user but continue
+                product_data, description_file, product_directory, html_path_for_assets, zip_path_to_cleanup, extracted_dir_to_cleanup = scrape_result  # Unpack the scrape result  # Destructure returned tuple
 
-            if product_directory and isinstance(product_directory, str):  # Only run image cleanup for valid product dirs
-                clean_duplicate_images(product_directory, timestamped_output_dir)  # Deduplicate images in final location
-                exclude_small_images(product_directory, timestamped_output_dir)  # Remove extremely small images
+                if not product_data:  # If scraping failed unexpectedly  # Validate product_data presence
+                    print(f"{BackgroundColors.RED}Skipping {BackgroundColors.CYAN}{url}{BackgroundColors.RED} due to scraping failure.{Style.RESET_ALL}\n")  # Inform about unexpected failure
 
-            input_source = html_path_for_assets or local_html_path  # Determine original input source to copy
-            copy_original_input_to_output(input_source, product_directory, base_output_dir=timestamped_output_dir)  # Copy original input into final product folder
+                    if retry_attempt < OUTPUT_DIRECTORY_RETRY_ATTEMPTS:  # Verify if another retry attempt is still allowed
+                        print(f"{BackgroundColors.YELLOW}[WARNING] Output directory missing after processing URL index {index}. Retrying processing.{Style.RESET_ALL}")  # Warn and retry same URL position
+                        continue  # Retry processing the same URL immediately
 
-            if DELETE_LOCAL_HTML_FILE:  # Only perform deletions when configured
-                if extracted_dir_to_cleanup and os.path.exists(extracted_dir_to_cleanup):  # Remove extracted directory if present
-                    try:  # Attempt deletion
-                        shutil.rmtree(extracted_dir_to_cleanup)  # Delete extracted dir
-                    except Exception:  # Ignore failures during deletion
-                        pass  # Continue silently on failure
-                if zip_path_to_cleanup and os.path.exists(zip_path_to_cleanup):  # Remove original zip if present
-                    try:  # Attempt deletion
-                        os.remove(zip_path_to_cleanup)  # Delete zip file
-                    except Exception:  # Ignore failures during deletion
-                        pass  # Continue silently on failure
-            
-            try:  # Read the product description from the file
-                with open(str(description_file), "r", encoding="utf-8") as f:  # Open the description file with UTF-8 encoding
-                    product_description = f.read()  # Read the product description
-            except Exception as e:  # If reading the file fails
-                print(f"{BackgroundColors.RED}Error reading description file: {e}{Style.RESET_ALL}")
-                continue  # Move to next URL
-            
-            valid, invalid_reasons = validate_product_information(product_data, product_directory, description_file)  # Validate the product information
+                    print(f"{BackgroundColors.YELLOW}[WARNING] Failed to generate output directory after retry for URL index {index}.{Style.RESET_ALL}")  # Report definitive failure after retry exhaustion
+                    break  # Stop retry loop and keep URL as unsuccessful
 
-            if not valid:  # If the product information is not valid, skip Gemini formatting and output the reasons
-                print(
-                    f"{BackgroundColors.RED}Skipping Step 2: Gemini formatting due to invalid product information for URL: {BackgroundColors.CYAN}{url}{BackgroundColors.RED}.{Style.RESET_ALL}"
-                )
-                continue  # Move to next URL
+                if timestamped_output_dir is None:  # Lazily create run directory on first success
+                    timestamped_output_dir = create_timestamped_output_directory(OUTPUT_DIRECTORY)  # Create timestamped run dir
+                    clean_unknown_product_directories(timestamped_output_dir)  # Clean up any "Unknown Product" dirs inside this run  # Remove old placeholders
 
-            verbose_output(f"{BackgroundColors.CYAN}Step 2{BackgroundColors.GREEN}: Formatting with Gemini AI{Style.RESET_ALL}")  # Step 2: Format the product description with Gemini AI
-            
-            success = False  # Initialize Gemini formatting success flag for this URL.
-            exhausted_key_indices = set()  # Track exhausted key indices during the current rotation cycle.
-            exhausted_cycles = 0  # Track how many full exhausted cycles happened for this URL.
-            total_keys = len(api_keys)  # Compute total available keys for this URL attempt.
+                indexed_product_directory = f"{index}. {product_directory}"  # Prefix final directory with source row index from urls.txt
 
-            global GEMINI_LAST_KEY_INDEX  # Reuse module-level key index to preserve deterministic rotation across URLs.
-            current_idx = GEMINI_LAST_KEY_INDEX % total_keys if total_keys > 0 else 0  # Start from last successful key index.
+                try:  # Attempt to move product output from staging to final run dir
+                    src_dir = os.path.join(staging_output_dir, product_directory)  # Path to product in staging
+                    dest_dir = os.path.join(timestamped_output_dir, indexed_product_directory)  # Target path inside final run dir with row index prefix
+                    if os.path.exists(dest_dir):  # If destination exists, remove it first to replace  # Ensure replace semantics
+                        shutil.rmtree(dest_dir)  # Remove existing destination to avoid conflicts
+                    if os.path.exists(src_dir):  # Only move if staging source exists
+                        shutil.move(src_dir, dest_dir)  # Move staging product to final run
+                    product_name_safe = sanitize_filename(product_data.get("name", "Unknown Product"))  # Sanitize product name
+                    description_file = os.path.join(dest_dir, f"{product_name_safe}_description.txt")  # Update description file path to final location
+                    product_directory = indexed_product_directory  # Use indexed final directory name for downstream steps
+                except Exception as e:  # Handle move errors
+                    print(f"{BackgroundColors.YELLOW}Warning: Could not move staging output to final run directory: {e}{Style.RESET_ALL}")  # Warn user but continue
 
-            while True:  # Keep retrying same product request until success or maximum exhausted cycles reached.
-                key_index = current_idx + 1  # Convert zero-based key index to one-based display index.
-                api_key = api_keys[current_idx]  # Select API key for this iteration.
+                final_product_directory_path = os.path.join(timestamped_output_dir, product_directory) if timestamped_output_dir and product_directory else None  # Build absolute path to expected final directory
+                if not final_product_directory_path or not os.path.isdir(final_product_directory_path):  # Verify final directory exists before continuing pipeline
+                    if retry_attempt < OUTPUT_DIRECTORY_RETRY_ATTEMPTS:  # Verify if another retry attempt is still allowed
+                        print(f"{BackgroundColors.YELLOW}[WARNING] Output directory missing after processing URL index {index}. Retrying processing.{Style.RESET_ALL}")  # Warn and retry same URL position
+                        continue  # Retry processing the same URL immediately
 
-                try:  # Try processing the same product with current key.
-                    success = generate_marketing_text(  # Execute single-key Gemini generation attempt.
-                        product_description,  # Reuse same product description for deterministic retry behavior.
-                        description_file,  # Reuse same description file destination for deterministic retry behavior.
-                        product_data,  # Reuse same product data context across retries.
-                        url,  # Reuse same product URL across retries.
-                        api_key=api_key,  # Pass current key only and let main handle rotations.
-                        key_index=key_index,  # Pass one-based key index for logging and exception metadata.
-                        total_keys=total_keys,  # Pass total key count for contextual logging.
-                    )  # End single-key generation call.
+                    print(f"{BackgroundColors.YELLOW}[WARNING] Failed to generate output directory after retry for URL index {index}.{Style.RESET_ALL}")  # Report definitive failure after retry exhaustion
+                    break  # Stop retry loop and keep URL as unsuccessful
 
-                    if success:  # Verify whether generation succeeded for this key.
-                        GEMINI_LAST_KEY_INDEX = current_idx  # Persist last successful key for next URL.
-                        break  # Exit retry loop and continue URL pipeline.
+                if product_directory and isinstance(product_directory, str):  # Only run image cleanup for valid product dirs
+                    clean_duplicate_images(product_directory, timestamped_output_dir)  # Deduplicate images in final location
+                    exclude_small_images(product_directory, timestamped_output_dir)  # Remove extremely small images
 
-                    current_idx = (current_idx + 1) % total_keys  # Rotate to next key on non-quota failure to maximize resilience.
-                    if current_idx == 0:  # Verify if a full key round has been completed.
-                        break  # Stop loop after one full non-quota rotation and keep failure result.
-                except QuotaExceededError as quota_error:  # Handle controlled quota exhaustion signal.
-                    exhausted_key_index = quota_error.key_index if quota_error.key_index else key_index  # Resolve exhausted key index from exception metadata.
-                    exhausted_key_indices.add(exhausted_key_index)  # Mark current key as exhausted for this cycle.
-                    current_idx = (current_idx + 1) % total_keys  # Rotate to next key for same URL and same prompt.
+                input_source = html_path_for_assets or local_html_path  # Determine original input source to copy
+                copy_original_input_to_output(input_source, product_directory, base_output_dir=timestamped_output_dir)  # Copy original input into final product folder
 
-                    if len(exhausted_key_indices) >= total_keys:  # Verify if all keys are exhausted in current cycle.
-                        exhausted_cycles += 1  # Increment all-keys-exhausted cycle counter.
-                        if exhausted_cycles > GEMINI_MAX_ALL_KEYS_EXHAUSTED_CYCLES:  # Verify if maximum cycle retries reached.
-                            print(f"{BackgroundColors.RED}All API keys remained exhausted after {GEMINI_MAX_ALL_KEYS_EXHAUSTED_CYCLES} cycle(s) for URL: {BackgroundColors.CYAN}{url}{Style.RESET_ALL}")  # Report final exhaustion failure for current URL.
-                            break  # Stop retrying this URL after configured exhausted cycles.
-                        print(f"{BackgroundColors.YELLOW}[WARNING] All API keys exhausted. Waiting {GEMINI_ALL_KEYS_EXHAUSTED_WAIT_SECONDS}s before retrying the same URL.{Style.RESET_ALL}")  # Report cooldown before restarting key rotation.
-                        time.sleep(GEMINI_ALL_KEYS_EXHAUSTED_WAIT_SECONDS)  # Wait before restarting rotation to allow quota reset windows.
-                        exhausted_key_indices.clear()  # Reset exhausted key tracking for next cycle.
-                        current_idx = 0  # Restart rotation from first key after cooldown.
-
-                    continue  # Continue retry loop for same URL.
-            
-            if success:  # If both scraping and formatting succeeded
-                description_dir = os.path.dirname(description_file)  # Get directory of description file
-                template_file = os.path.join(description_dir, "Template.txt")  # Path to the generated template file
-                validate_and_fix_output_file(template_file)  # Validate and fix formatting issues in the output file
+                if DELETE_LOCAL_HTML_FILE:  # Only perform deletions when configured
+                    if extracted_dir_to_cleanup and os.path.exists(extracted_dir_to_cleanup):  # Remove extracted directory if present
+                        try:  # Attempt deletion
+                            shutil.rmtree(extracted_dir_to_cleanup)  # Delete extracted dir
+                        except Exception:  # Ignore failures during deletion
+                            pass  # Continue silently on failure
+                    if zip_path_to_cleanup and os.path.exists(zip_path_to_cleanup):  # Remove original zip if present
+                        try:  # Attempt deletion
+                            os.remove(zip_path_to_cleanup)  # Delete zip file
+                        except Exception:  # Ignore failures during deletion
+                            pass  # Continue silently on failure
                 
-                successful_scrapes += 1  # Increment successful scrapes counter
-                if CLEAR_INPUT_FILE:  # Only clear input lines when configured
-                    removed = remove_url_line_from_input_file(url, local_html_path)  # Attempt to remove the successful URL line from INPUT_FILE
-                    verbose_output(f"{BackgroundColors.GREEN}Removed input line: {BackgroundColors.CYAN}{url}{BackgroundColors.GREEN} -> {removed}{Style.RESET_ALL}")  # Verbose result of removal
+                try:  # Read the product description from the file
+                    with open(str(description_file), "r", encoding="utf-8") as f:  # Open the description file with UTF-8 encoding
+                        product_description = f.read()  # Read the product description
+                except Exception as e:  # If reading the file fails
+                    print(f"{BackgroundColors.RED}Error reading description file: {e}{Style.RESET_ALL}")
+
+                    if retry_attempt < OUTPUT_DIRECTORY_RETRY_ATTEMPTS:  # Verify if another retry attempt is still allowed
+                        print(f"{BackgroundColors.YELLOW}[WARNING] Output directory missing after processing URL index {index}. Retrying processing.{Style.RESET_ALL}")  # Warn and retry same URL position
+                        continue  # Retry processing the same URL immediately
+
+                    print(f"{BackgroundColors.YELLOW}[WARNING] Failed to generate output directory after retry for URL index {index}.{Style.RESET_ALL}")  # Report definitive failure after retry exhaustion
+                    break  # Stop retry loop and keep URL as unsuccessful
+                
+                valid, invalid_reasons = validate_product_information(product_data, product_directory, description_file)  # Validate the product information
+
+                if not valid:  # If the product information is not valid, skip Gemini formatting and output the reasons
+                    print(
+                        f"{BackgroundColors.RED}Skipping Step 2: Gemini formatting due to invalid product information for URL: {BackgroundColors.CYAN}{url}{BackgroundColors.RED}.{Style.RESET_ALL}"
+                    )
+                    break  # Stop retry loop because data is invalid and retrying directory creation is not meaningful
+
+                verbose_output(f"{BackgroundColors.CYAN}Step 2{BackgroundColors.GREEN}: Formatting with Gemini AI{Style.RESET_ALL}")  # Step 2: Format the product description with Gemini AI
+                
+                success = False  # Initialize Gemini formatting success flag for this URL.
+                exhausted_key_indices = set()  # Track exhausted key indices during the current rotation cycle.
+                exhausted_cycles = 0  # Track how many full exhausted cycles happened for this URL.
+                total_keys = len(api_keys)  # Compute total available keys for this URL attempt.
+
+                global GEMINI_LAST_KEY_INDEX  # Reuse module-level key index to preserve deterministic rotation across URLs.
+                current_idx = GEMINI_LAST_KEY_INDEX % total_keys if total_keys > 0 else 0  # Start from last successful key index.
+
+                while True:  # Keep retrying same product request until success or maximum exhausted cycles reached.
+                    key_index = current_idx + 1  # Convert zero-based key index to one-based display index.
+                    api_key = api_keys[current_idx]  # Select API key for this iteration.
+
+                    try:  # Try processing the same product with current key.
+                        success = generate_marketing_text(  # Execute single-key Gemini generation attempt.
+                            product_description,  # Reuse same product description for deterministic retry behavior.
+                            description_file,  # Reuse same description file destination for deterministic retry behavior.
+                            product_data,  # Reuse same product data context across retries.
+                            url,  # Reuse same product URL across retries.
+                            api_key=api_key,  # Pass current key only and let main handle rotations.
+                            key_index=key_index,  # Pass one-based key index for logging and exception metadata.
+                            total_keys=total_keys,  # Pass total key count for contextual logging.
+                        )  # End single-key generation call.
+
+                        if success:  # Verify whether generation succeeded for this key.
+                            GEMINI_LAST_KEY_INDEX = current_idx  # Persist last successful key for next URL.
+                            break  # Exit retry loop and continue URL pipeline.
+
+                        current_idx = (current_idx + 1) % total_keys  # Rotate to next key on non-quota failure to maximize resilience.
+                        if current_idx == 0:  # Verify if a full key round has been completed.
+                            break  # Stop loop after one full non-quota rotation and keep failure result.
+                    except QuotaExceededError as quota_error:  # Handle controlled quota exhaustion signal.
+                        exhausted_key_index = quota_error.key_index if quota_error.key_index else key_index  # Resolve exhausted key index from exception metadata.
+                        exhausted_key_indices.add(exhausted_key_index)  # Mark current key as exhausted for this cycle.
+                        current_idx = (current_idx + 1) % total_keys  # Rotate to next key for same URL and same prompt.
+
+                        if len(exhausted_key_indices) >= total_keys:  # Verify if all keys are exhausted in current cycle.
+                            exhausted_cycles += 1  # Increment all-keys-exhausted cycle counter.
+                            if exhausted_cycles > GEMINI_MAX_ALL_KEYS_EXHAUSTED_CYCLES:  # Verify if maximum cycle retries reached.
+                                print(f"{BackgroundColors.RED}All API keys remained exhausted after {GEMINI_MAX_ALL_KEYS_EXHAUSTED_CYCLES} cycle(s) for URL: {BackgroundColors.CYAN}{url}{Style.RESET_ALL}")  # Report final exhaustion failure for current URL.
+                                break  # Stop retrying this URL after configured exhausted cycles.
+                            print(f"{BackgroundColors.YELLOW}[WARNING] All API keys exhausted. Waiting {GEMINI_ALL_KEYS_EXHAUSTED_WAIT_SECONDS}s before retrying the same URL.{Style.RESET_ALL}")  # Report cooldown before restarting key rotation.
+                            time.sleep(GEMINI_ALL_KEYS_EXHAUSTED_WAIT_SECONDS)  # Wait before restarting rotation to allow quota reset windows.
+                            exhausted_key_indices.clear()  # Reset exhausted key tracking for next cycle.
+                            current_idx = 0  # Restart rotation from first key after cooldown.
+
+                        continue  # Continue retry loop for same URL.
+                
+                if success and os.path.isdir(final_product_directory_path):  # Count URL as successful only when formatting succeeded and final directory exists
+                    description_dir = os.path.dirname(description_file)  # Get directory of description file
+                    template_file = os.path.join(description_dir, "Template.txt")  # Path to the generated template file
+                    validate_and_fix_output_file(template_file)  # Validate and fix formatting issues in the output file
+                    
+                    successful_scrapes += 1  # Increment successful scrapes counter
+                    url_processed_successfully = True  # Mark URL as successfully processed for this index
+                    if CLEAR_INPUT_FILE:  # Only clear input lines when configured
+                        removed = remove_url_line_from_input_file(url, original_local_html_path)  # Attempt to remove the successful URL line from INPUT_FILE
+                        verbose_output(f"{BackgroundColors.GREEN}Removed input line: {BackgroundColors.CYAN}{url}{BackgroundColors.GREEN} -> {removed}{Style.RESET_ALL}")  # Verbose result of removal
+                elif success and not os.path.isdir(final_product_directory_path):  # Guard against impossible success-without-directory scenarios
+                    if retry_attempt < OUTPUT_DIRECTORY_RETRY_ATTEMPTS:  # Verify if another retry attempt is still allowed
+                        print(f"{BackgroundColors.YELLOW}[WARNING] Output directory missing after processing URL index {index}. Retrying processing.{Style.RESET_ALL}")  # Warn and retry same URL position
+                        continue  # Retry processing the same URL immediately
+
+                    print(f"{BackgroundColors.YELLOW}[WARNING] Failed to generate output directory after retry for URL index {index}.{Style.RESET_ALL}")  # Report definitive failure after retry exhaustion
+
+                if url_processed_successfully:  # Exit retry loop immediately after successful and verified processing
+                    break  # Stop retry loop for current URL
+
+            if not url_processed_successfully:  # Ensure failures are explicit when URL did not complete with verified directory
+                print(f"{BackgroundColors.YELLOW}[WARNING] URL index {index} finished without a verified output directory and was not counted as success.{Style.RESET_ALL}")  # Emit final warning for this URL
             
             if index < total_urls and not local_html_path:  # Add delay only for online requests (skip for local HTML inputs)
                 time.sleep(DELAY_BETWEEN_REQUESTS)  # Sleep to avoid rate limiting between online requests
