@@ -105,10 +105,10 @@ Loop, %TabCount% {
     closeMethod := lastMethod
 
     automationReport .= "Tab " currentTab ":`n"
-    automationReport .= "  Extension Click (using " extensionImg "): " extensionMethod "`n"
-    automationReport .= "  Download Click (using " downloadImg "): " downloadMethod "`n"
-    automationReport .= "  Completion Detection (using " confirmationImg "): " confirmationMethod "`n"
-    automationReport .= "  Close Extension Tab (using " closeDownloadTabImg "): " closeMethod "`n`n"
+    automationReport .= "  Extension Click: " extensionMethod "`n"
+    automationReport .= "  Download Click: " downloadMethod "`n"
+    automationReport .= "  Completion Detection: " confirmationMethod "`n"
+    automationReport .= "  Close Extension Tab: " closeMethod "`n`n"
 
     if (A_Index < TabCount) {
         Gosub, CloseCurrentTab
@@ -197,14 +197,14 @@ Loop {
     ImageSearch, Px, Py, 0, 0, A_ScreenWidth, A_ScreenHeight, %confirmationImg%
 
     if (ErrorLevel = 0) {
-        lastMethod := "Confirmation Image Detected"
+        lastMethod := "Image Detected"
         return
     }
 
     verificationCount++
 
     if (verificationCount >= maxVerifications) {
-        lastMethod := "Timeout (180s assumed complete)"
+        lastMethod := "Timeout"
         return
     }
 
