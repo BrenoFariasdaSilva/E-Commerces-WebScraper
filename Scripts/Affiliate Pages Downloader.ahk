@@ -30,6 +30,7 @@ isProcessing := false
 waitMs := 0
 automationReport := ""
 targetChromeID := ""
+Urls := [] ; Holds URLs read from Inputs/urls.txt
 
 F4::
 running := !running
@@ -38,39 +39,23 @@ if (running) {
 
     if (TabCount = 0) {
 
-        ; Attempt to read number of URLs from Inputs/urls.txt
-        ; Count URLs in the file (urlCount) and convert to tab switches (urls - 1)
-        urlCount := 0
+        ; Read URLs from Inputs/urls.txt into the Urls object
+        Urls := []
         if FileExist(urlsFile) {
             Loop, Read, %urlsFile%
             {
                 line := Trim(A_LoopReadLine)
                 if (line != "")
-                    urlCount++
+                    Urls.Push(line)
             }
         }
 
-        if (urlCount > 0) {
-            TabCount := urlCount
-        } else {
-            ; If file empty or missing, ask the user for number of URLs
-            InputBox, userUrlCount, Automation Setup, Enter the number of URLs to process:, , 300, 140
-
-            if (ErrorLevel) {
-                running := false
-                return
-            }
-
-            if (userUrlCount = "" || userUrlCount <= 0) {
-                MsgBox, 48, Invalid Value, Please enter a valid number greater than 0.
-                running := false
-                return
-            }
-
-            if (userUrlCount > 0) {
-                TabCount := userUrlCount
-            } else
-                TabCount := 0
+        ; If no URLs found, stop and inform the user
+        TabCount := Urls.Length()
+        if (TabCount = 0) {
+            MsgBox, 48, Error, The file %urlsFile% is empty or contains no valid URLs.`nAutomation cannot start.
+            running := false
+            return
         }
     }
 
@@ -95,17 +80,41 @@ if (isProcessing)
 isProcessing := true
 automationReport := ""
 
+processedCount := 0
+
 Gosub, ActivateChrome
 
-Loop, %TabCount% {
+; Iterate through the loaded URLs and open each in a new tab before processing
+for index, url in Urls {
+
+    ; Open new tab and navigate to the URL via keyboard shortcuts
+    if (!running)
+        break
+
+    ClipSaved := ClipboardAll
+    Clipboard := url
+    Sleep, 100
+
+    Send, ^t
+    Sleep, 200
+    Send, ^l
+    Sleep, 80
+    Send, ^v
+    Sleep, 100
+    Send, {Enter}
+    Sleep, 5000 ; wait for page to load
+
+    Clipboard := ClipSaved
 
     ; Verify Chrome window is still running
     if !WinExist("ahk_id " targetChromeID) {
-        MsgBox, 48, Automation Stopped, Chrome is not running. Process terminated at tab %A_Index%.
+        MsgBox, 48, Automation Stopped, Chrome is not running. Process terminated at URL index %index%.
         break
     }
 
-    currentTab := A_Index
+    currentTab := index
+
+    ; (automation steps continue...)
 
     ; Click "Go To Product" button for MercadoLivre, if present
     Gosub, ClickGoToProductButton
@@ -140,18 +149,21 @@ Loop, %TabCount% {
     automationReport .= "  Completion Detection: " confirmationMethod "`n"
     automationReport .= "  Close Extension Tab: " closeMethod "`n`n"
 
-    if (A_Index < TabCount) {
+    ; Close the current tab (product page) if there are more URLs to process
+    if (index < TabCount) {
         Gosub, CloseCurrentTab
         if (!running)
             break
     }
+
+    processedCount++
 }
 
-completed := running
 running := false
 isProcessing := false
 
-if (completed) {
+; Only show report when all URLs were processed
+if (processedCount = TabCount) {
     MsgBox, 64, Automation Finished, Automation process completed.`n`n%automationReport%
 }
 
