@@ -8,7 +8,7 @@ CoordMode, Pixel, Screen
 
 TabCount := 0  ; If 0, will read from Inputs/urls.txt or prompt user
 
-; Fallback coordinates
+; Fallback coordinates (relative to Chrome window)
 ExtensionX := 1752
 ExtensionY := 705
 DownloadButtonX := 1590
@@ -30,6 +30,7 @@ isProcessing := false
 waitMs := 0
 automationReport := ""
 targetChromeID := ""
+useFallback := true  ; will disable if window is on secondary monitor
 
 F4::
 running := !running
@@ -160,7 +161,7 @@ if (completed) {
 return
 
 
-; --- Updated ActivateChrome to handle multiple windows ---
+; --- Updated ActivateChrome to handle multiple windows and monitor detection ---
 ActivateChrome:
 SetTitleMatchMode, 2  ; Partial title match allowed
 WinGet, chromeList, List, ahk_exe chrome.exe
@@ -193,6 +194,17 @@ WinActivate, ahk_id %targetChromeID%
 WinWaitActive, ahk_id %targetChromeID%
 WinMaximize, ahk_id %targetChromeID%
 Sleep, 1000
+
+; --- detect if window is on primary monitor ---
+WinGetPos, winX, winY, winWidth, winHeight, ahk_id %targetChromeID%
+SysGet, monLeft, Monitor, 1, Left
+SysGet, monTop, Monitor, 1, Top
+
+; If window top-left is not inside primary monitor, disable fallback coords
+useFallback := (winX >= monLeft && winX < monLeft + A_ScreenWidth && winY >= monTop && winY < monTop + A_ScreenHeight)
+
+; Set window-relative clicks
+CoordMode, Mouse, Window
 return
 
 
@@ -210,7 +222,7 @@ if (ErrorLevel = 0) {
     Click, %Px%, %Py%
     lastMethod := "MercadoLivre Go To Product"
     found := true
-    Sleep, 5000  ; <-- Wait 5s for page to load before proceeding
+    Sleep, 5000  ; Wait 5s for page to load before proceeding
 } else {
     lastMethod := "Not Found / Skipped"
 }
@@ -223,11 +235,12 @@ ImageSearch, Px, Py, 0, 0, A_ScreenWidth, A_ScreenHeight, %extensionImg%
 if (ErrorLevel = 0) {
     Click, %Px%, %Py%
     lastMethod := "ImageSearch"
-    return
+} else if (useFallback) {
+    Click, %ExtensionX%, %ExtensionY%
+    lastMethod := "Fallback Coordinates"
+} else {
+    lastMethod := "Skipped (secondary monitor)"
 }
-
-Click, %ExtensionX%, %ExtensionY%
-lastMethod := "Fallback Coordinates"
 return
 
 
@@ -252,8 +265,12 @@ while ((A_TickCount - startTime) < 3000) {
     Sleep, 200
 }
 
-Click, %DownloadButtonX%, %DownloadButtonY%
-lastMethod := "Fallback Coordinates"
+if (useFallback) {
+    Click, %DownloadButtonX%, %DownloadButtonY%
+    lastMethod := "Fallback Coordinates"
+} else {
+    lastMethod := "Skipped (secondary monitor)"
+}
 return
 
 
@@ -299,8 +316,12 @@ if (ErrorLevel = 0) {
 }
 
 if (!found) {
-    Click, %CloseDownloadTabX%, %CloseDownloadTabY%
-    lastMethod := "Fallback Coordinates"
+    if (useFallback) {
+        Click, %CloseDownloadTabX%, %CloseDownloadTabY%
+        lastMethod := "Fallback Coordinates"
+    } else {
+        lastMethod := "Skipped (secondary monitor)"
+    }
 }
 
 Sleep, 500
