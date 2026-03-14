@@ -406,22 +406,22 @@ def build_report(ext_methods: Dict[str, List[int]], download_methods: Dict[str, 
     lines: List[str] = []  # Initialize report line buffer.
 
     for method, tabs in ext_methods.items():  # Iterate extension method groups.
-        lines.append(f"Extension Click - {method}: {join_array(tabs)}")  # Append extension report line.
+        lines.append(f"{BackgroundColors.GREEN}Extension Click - {BackgroundColors.CYAN}{method}{BackgroundColors.GREEN}: {BackgroundColors.CYAN}{join_array(tabs)}{Style.RESET_ALL}")  # Append extension report line.
 
     lines.append("")  # Append visual separator line.
 
     for method, tabs in download_methods.items():  # Iterate download method groups.
-        lines.append(f"Download Click - {method}: {join_array(tabs)}")  # Append download report line.
+        lines.append(f"{BackgroundColors.GREEN}Download Click - {BackgroundColors.CYAN}{method}{BackgroundColors.GREEN}: {BackgroundColors.CYAN}{join_array(tabs)}{Style.RESET_ALL}")  # Append download report line.
 
     lines.append("")  # Append visual separator line.
 
     for method, tabs in completion_methods.items():  # Iterate completion method groups.
-        lines.append(f"Completion Detection - {method}: {join_array(tabs)}")  # Append completion report line.
+        lines.append(f"{BackgroundColors.GREEN}Completion Detection - {BackgroundColors.CYAN}{method}{BackgroundColors.GREEN}: {BackgroundColors.CYAN}{join_array(tabs)}{Style.RESET_ALL}")  # Append completion report line.
 
     lines.append("")  # Append visual separator line.
 
     for method, tabs in close_methods.items():  # Iterate close tab method groups.
-        lines.append(f"Close Extension Tab - {method}: {join_array(tabs)}")  # Append close tab report line.
+        lines.append(f"{BackgroundColors.GREEN}Close Extension Tab - {BackgroundColors.CYAN}{method}{BackgroundColors.GREEN}: {BackgroundColors.CYAN}{join_array(tabs)}{Style.RESET_ALL}")  # Append close tab report line.
 
     return "\n".join(lines).strip()  # Return report text.
 
@@ -531,10 +531,10 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path) -> int:
         elapsed_sec = round(time.time() - start_tick)  # Compute elapsed seconds.
         formatted = format_execution_time(elapsed_sec)  # Format elapsed time string.
         report = build_report(ext_methods, download_methods, completion_methods, close_methods)  # Build consolidated report text.
-        final_report = f"Execution Time: {formatted}\n\n{report}"  # Compose final report output.
+        final_report = f"{BackgroundColors.GREEN}Execution Time: {BackgroundColors.CYAN}{formatted}{BackgroundColors.GREEN}\n\n{report}{Style.RESET_ALL}"  # Compose final report output.
 
-        print(f"\n{BackgroundColors.BOLD}{BackgroundColors.GREEN}Automation Finished{Style.RESET_ALL}\n")  # Print automation completion message.
-        print(f"{BackgroundColors.CYAN}{final_report}{Style.RESET_ALL}")  # Print final report details.
+        print(f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Automation Finished{Style.RESET_ALL}\n")  # Print automation completion message.
+        print(f"{final_report}")  # Print final report details.
         maybe_show_messagebox("Automation Finished", final_report)  # Display optional messagebox report.
 
     return 0  # Return success exit code.
@@ -666,7 +666,7 @@ def main():
     :return: None
     """
 
-    print(f"{BackgroundColors.CLEAR_TERMINAL}{BackgroundColors.BOLD}{BackgroundColors.GREEN}Welcome to the {BackgroundColors.CYAN}Affiliate Pages Downloader Automation{BackgroundColors.GREEN} program!{Style.RESET_ALL}", end="\n\n")  # Print welcome banner.
+    print(f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Welcome to the {BackgroundColors.CYAN}Affiliate Pages Downloader Automation{BackgroundColors.GREEN} program!{Style.RESET_ALL}", end="\n")  # Print welcome banner.
     start_time = datetime.datetime.now()  # Capture program start timestamp.
 
     repo_root = Path(__file__).resolve().parent.parent  # Resolve repository root path.
