@@ -804,7 +804,7 @@ def verify_affiliate_url_format(url: str) -> bool:
         return False  # Invalid regex should fail validation safely
 
     if not matched:  # If the URL does not strictly match the affiliate pattern
-        clear_msg = f"{BackgroundColors.CLEAR_TERMINAL}{BackgroundColors.YELLOW}Warning: URL is not in the expected affiliate format for {platform_id}: {BackgroundColors.CYAN}{url}{Style.RESET_ALL}"  # Clear terminal and show warning message
+        clear_msg = f"{BackgroundColors.YELLOW}Warning: URL is not in the expected affiliate format for {platform_id}: {BackgroundColors.CYAN}{url}{Style.RESET_ALL}"  # Clear terminal and show warning message
         try:  # Try to write the clear warning to the original stdout for visibility above logger redirection
             original_stdout = getattr(sys, "__stdout__", None)  # Fetch the original stdout if present
             if original_stdout is not None and hasattr(original_stdout, "write"):  # If original stdout supports write
@@ -1467,7 +1467,7 @@ def main():
     """
 
     print(
-        f"{BackgroundColors.CLEAR_TERMINAL}{BackgroundColors.BOLD}{BackgroundColors.GREEN}Welcome to the {BackgroundColors.CYAN}E-Commerces WebScraper{BackgroundColors.GREEN} program!{Style.RESET_ALL}",
+        f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Welcome to the {BackgroundColors.CYAN}E-Commerces WebScraper{BackgroundColors.GREEN} program!{Style.RESET_ALL}",
         end="\n",
     )  # Output the welcome message
     start_time = datetime.datetime.now()  # Get the start time of the program
