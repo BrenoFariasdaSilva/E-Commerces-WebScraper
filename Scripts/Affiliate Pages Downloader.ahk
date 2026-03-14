@@ -25,122 +25,161 @@ isProcessing := false
 waitMs := 0
 
 F4::
-    running := !running
-    if (running) {
-        SetTimer, StartAutomation, -10
-    } else {
-        SetTimer, StartAutomation, Off
-    }
+running := !running
+if (running) {
+    SetTimer, StartAutomation, -10
+} else {
+    SetTimer, StartAutomation, Off
+}
 return
 
+
 StartAutomation:
+if (!running)
+    return
+
+if (isProcessing)
+    return
+
+isProcessing := true
+
+Gosub, ActivateChrome
+
+Loop, %TabCount% {
+
+    if (!running)
+        break
+
+    Gosub, RefreshCurrentTab
+    if (!running)
+        break
+
+    Gosub, ClickExtensionIcon
+    if (!running)
+        break
+
+    Gosub, ClickDownloadButton
+    if (!running)
+        break
+
+    Gosub, WaitForDownloadConfirmation
+    if (!running)
+        break
+
+    if (A_Index < TabCount) {
+        Gosub, SwitchToNextTab
+        if (!running)
+            break
+    }
+}
+
+running := false
+isProcessing := false
+return
+
+
+ActivateChrome:
+WinActivate, ahk_exe chrome.exe
+WinWaitActive, ahk_exe chrome.exe
+WinMaximize, ahk_exe chrome.exe
+Sleep, 1000
+return
+
+
+RefreshCurrentTab:
+Send, ^r
+waitMs := 5000
+Gosub, WaitWithStop
+return
+
+
+ClickExtensionIcon:
+found := false
+
+ImageSearch, Px, Py, 0, 0, A_ScreenWidth, A_ScreenHeight, %extensionImg%
+if (ErrorLevel = 0) {
+    Click, %Px%, %Py%
+    found := true
+}
+
+if (!found) {
+    Click, %ExtensionX%, %ExtensionY%
+}
+return
+
+
+ClickDownloadButton:
+
+found := false
+startTime := A_TickCount
+
+while ((A_TickCount - startTime) < 3000) {
+
     if (!running)
         return
 
-    if (isProcessing)
-        return
+    ImageSearch, Px, Py, 0, 0, A_ScreenWidth, A_ScreenHeight, %downloadImg%
 
-    isProcessing := true
-
-    ; Activate Chrome
-    WinActivate, ahk_exe chrome.exe
-    WinWaitActive, ahk_exe chrome.exe
-    WinMaximize, ahk_exe chrome.exe
-    Sleep, 1000
-
-    Loop, %TabCount% {
-
-        if (!running)
-            break
-
-        ; Refresh tab
-        Send, ^r
-        waitMs := 5000
-        Gosub, WaitWithStop
-        if (!running)
-            break
-
-        ; ---- Click extension icon (ImageSearch with fallback) ----
-        found := false
-        ImageSearch, Px, Py, 0, 0, A_ScreenWidth, A_ScreenHeight, %extensionImg%
-        if (ErrorLevel = 0) {
-            Click, %Px%, %Py%
-            found := true
-        }
-
-        if (!found) {
-            Click, %ExtensionX%, %ExtensionY%
-        }
-
-        ; ---- Wait up to 3 seconds while searching for download button ----
-        found := false
-        startTime := A_TickCount
-
-        while ((A_TickCount - startTime) < 3000) {
-            if (!running)
-                break
-
-            ImageSearch, Px, Py, 0, 0, A_ScreenWidth, A_ScreenHeight, %downloadImg%
-            if (ErrorLevel = 0) {
-                Click, %Px%, %Py%
-                found := true
-                break
-            }
-
-            Sleep, 200
-        }
-
-        ; Fallback if image not found
-        if (!found) {
-            Click, %DownloadButtonX%, %DownloadButtonY%
-        }
-
-        ; ---- Wait for confirmation of downloaded file ----
-        verificationCount := 0
-        maxVerifications := 36
-
-        Loop {
-            if (!running)
-                break
-
-            ImageSearch, Px, Py, 0, 0, A_ScreenWidth, A_ScreenHeight, %confirmationImg%
-            if (ErrorLevel = 0) {
-                break
-            }
-
-            verificationCount++
-
-            if (verificationCount >= maxVerifications) {
-                break
-            }
-
-            waitMs := 5000
-            Gosub, WaitWithStop
-        }
-
-        if (!running)
-            break
-
-        ; Switch tab
-        if (A_Index < TabCount) {
-            Send, ^{Tab}
-            waitMs := 1000
-            Gosub, WaitWithStop
-            if (!running)
-                break
-        }
+    if (ErrorLevel = 0) {
+        Click, %Px%, %Py%
+        found := true
+        break
     }
 
-    running := false
-    isProcessing := false
+    Sleep, 200
+}
+
+if (!found) {
+    Click, %DownloadButtonX%, %DownloadButtonY%
+}
+
 return
 
+
+WaitForDownloadConfirmation:
+
+verificationCount := 0
+maxVerifications := 36
+
+Loop {
+
+    if (!running)
+        return
+
+    ImageSearch, Px, Py, 0, 0, A_ScreenWidth, A_ScreenHeight, %confirmationImg%
+
+    if (ErrorLevel = 0)
+        break
+
+    verificationCount++
+
+    if (verificationCount >= maxVerifications)
+        break
+
+    waitMs := 5000
+    Gosub, WaitWithStop
+}
+
+return
+
+
+SwitchToNextTab:
+Send, ^{Tab}
+waitMs := 1000
+Gosub, WaitWithStop
+return
+
+
 WaitWithStop:
-    elapsedMs := 0
-    while (elapsedMs < waitMs) {
-        if (!running)
-            return
-        Sleep, 100
-        elapsedMs += 100
-    }
+elapsedMs := 0
+
+while (elapsedMs < waitMs) {
+
+    if (!running)
+        return
+
+    Sleep, 100
+    elapsedMs += 100
+}
+
 return
