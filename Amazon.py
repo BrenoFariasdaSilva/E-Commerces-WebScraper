@@ -1697,7 +1697,7 @@ def main():
     """
 
     print(  # Clear terminal and display welcome message
-        f"{BackgroundColors.CLEAR_TERMINAL}{BackgroundColors.BOLD}{BackgroundColors.GREEN}Welcome to the {BackgroundColors.CYAN}Amazon Scraper{BackgroundColors.GREEN} program!{Style.RESET_ALL}",
+        f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Welcome to the {BackgroundColors.CYAN}Amazon Scraper{BackgroundColors.GREEN} program!{Style.RESET_ALL}",
         end="\n",  # End with newline
     )  # End of print statement
     start_time = datetime.datetime.now()  # Record program start time
