@@ -129,6 +129,70 @@ def verbose_output(true_string="", false_string=""):
         print(false_string)  # Output the false statement string
 
 
+def click_image_or_coords(image_path: Path, x: int, y: int) -> str:
+    """
+    Clicks image center or fallback coordinates.
+
+    :param image_path: Path to the primary image target.
+    :param x: Fallback X coordinate.
+    :param y: Fallback Y coordinate.
+    :return: Method name used for the click.
+    """
+
+    box = locate_image(image_path)  # Locate image on screen.
+
+    if box is not None:  # Verify image was found.
+        cx, cy = pyautogui.center(box)  # Compute center point from box.
+        pyautogui.click(cx, cy)  # Click image center point.
+        return "ImageSearch"  # Return image search method label.
+
+    pyautogui.click(x, y)  # Click fallback coordinates.
+    return "Coordinates"  # Return coordinates method label.
+
+
+def click_download_button(download_img: Path) -> str:
+    """
+    Clicks the download button with retry fallback.
+
+    :param download_img: Path to the download button image.
+    :return: Method name used for the click.
+    """
+
+    start = time.time()  # Store start timestamp for retry window.
+
+    while time.time() - start < 3.0:  # Repeat until timeout window expires.
+        box = locate_image(download_img)  # Locate download image on screen.
+
+        if box is not None:  # Verify image was found.
+            cx, cy = pyautogui.center(box)  # Compute center point from box.
+            pyautogui.click(cx, cy)  # Click image center point.
+            return "ImageSearch"  # Return image search method label.
+
+        time.sleep(0.2)  # Wait before retrying image search.
+
+    pyautogui.click(DOWNLOAD_BUTTON_X, DOWNLOAD_BUTTON_Y)  # Click fallback download coordinates.
+    return "Coordinates"  # Return coordinates method label.
+
+
+def wait_for_download_confirmation(confirmation_img: Path) -> str:
+    """
+    Waits for download confirmation image.
+
+    :param confirmation_img: Path to the confirmation image.
+    :return: Detection status string.
+    """
+
+    max_verifications = 60  # Set maximum number of verification iterations.
+
+    for _ in range(max_verifications):  # Iterate polling attempts.
+        if locate_image(confirmation_img) is not None:  # Verify confirmation image detection.
+            return "Image Detected"  # Return image detected status.
+
+        time.sleep(5)  # Wait before the next polling attempt.
+
+    return "Timeout"  # Return timeout status after all iterations.
+
+
 def close_extension_download_tab(close_download_tab_img: Path) -> str:
     """
     Closes extension download tab using image or coordinates.
