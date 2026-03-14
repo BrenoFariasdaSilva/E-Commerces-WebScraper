@@ -311,7 +311,8 @@ class Gemini:
             self.start_chat_session()  # Start the chat session
         
         assert self.chat is not None  # Ensure chat is initialized
-        response = self.execute_with_retry(lambda: self.chat.send_message(message), operation_name="send_message")  # Send message with retry for transient API failures
+        chat_session = self.chat  # Store non-null chat session reference for type-safe lambda usage
+        response = self.execute_with_retry(lambda: chat_session.send_message(message), operation_name="send_message")  # Send message with retry for transient API failures
         return response.text  # Return the output text
 
 
