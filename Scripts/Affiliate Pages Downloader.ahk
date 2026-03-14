@@ -6,7 +6,7 @@ SendMode Input
 CoordMode, Mouse, Screen
 CoordMode, Pixel, Screen
 
-TabCount := 3
+TabCount := 0  ; If 0, user will be prompted for the number of tabs
 
 ; Fallback coordinates
 ExtensionX := 1752
@@ -30,20 +30,24 @@ running := !running
 
 if (running) {
 
-    InputBox, userTabCount, Automation Setup, Enter the number of tabs to process:, , 300, 140
+    if (TabCount = 0) {
 
-    if (ErrorLevel) {
-        running := false
-        return
+        InputBox, userTabCount, Automation Setup, Enter the number of tabs to process:, , 300, 140
+
+        if (ErrorLevel) {
+            running := false
+            return
+        }
+
+        if (userTabCount = "" || userTabCount <= 0) {
+            MsgBox, 48, Invalid Value, Please enter a valid number greater than 0.
+            running := false
+            return
+        }
+
+        TabCount := userTabCount
     }
 
-    if (userTabCount = "" || userTabCount <= 0) {
-        MsgBox, 48, Invalid Value, Please enter a valid number greater than 0.
-        running := false
-        return
-    }
-
-    TabCount := userTabCount
     SetTimer, StartAutomation, -10
 }
 else {
