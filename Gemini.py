@@ -279,7 +279,7 @@ class Gemini:
 
                 retry_count += 1  # Increment retry counter for this transient failure
                 wait_seconds = RETRY_BASE_DELAY_SECONDS * (2 ** (retry_count - 1))  # Compute exponential backoff delay for current retry
-                print(f"{BackgroundColors.YELLOW}[WARNING] Gemini API temporary failure. Retrying in {wait_seconds} seconds (attempt {retry_count}/{MAX_RETRIES}).{Style.RESET_ALL}")  # Log retry schedule with attempt index
+                verbose_output(true_string=f"{BackgroundColors.YELLOW}[WARNING] Gemini API temporary failure. Retrying in {wait_seconds} seconds (attempt {retry_count}/{MAX_RETRIES}).{Style.RESET_ALL}")  # Log retry schedule with attempt index
                 time.sleep(wait_seconds)  # Wait before retrying the same request
 
 
