@@ -36,12 +36,16 @@ if (running) {
 
     if (TabCount = 0) {
 
-        ; Attempt to read number of URLs from Inputs\urls.txt
-        urlsFile := scriptDir . "\Inputs\urls.txt"
+        ; Attempt to read number of URLs from Inputs/urls.txt
+        urlsFile := scriptDir . "/Inputs/urls.txt"
         TabCount := 0
         if FileExist(urlsFile) {
             Loop, Read, %urlsFile%
-                TabCount++
+            {
+                line := Trim(A_LoopReadLine)
+                if (line != "")
+                    TabCount++
+            }
         }
 
         ; If file empty or missing, ask the user
