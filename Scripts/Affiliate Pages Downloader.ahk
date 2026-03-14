@@ -107,7 +107,7 @@ for index, url in Urls {
     Send, ^v
     Sleep, 100
     Send, {Enter}
-    Sleep, 5000 ; wait for page to load
+    Sleep, 7000 ; wait for page to load
 
     Clipboard := ClipSaved
 
