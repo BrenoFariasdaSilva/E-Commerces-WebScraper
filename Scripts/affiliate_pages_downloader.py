@@ -463,7 +463,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path) -> int:
         tab_count = len(urls)  # Use full URL list length when tab count is not positive.
 
     if tab_count <= 0:  # Verify there are URLs to process.
-        print(f"Error: The file {urls_file} is empty or contains no valid URLs.")  # Print empty URLs error.
+        print(f"{BackgroundColors.RED}Error: The file {BackgroundColors.CYAN}{urls_file}{BackgroundColors.RED} is empty or contains no valid URLs.{Style.RESET_ALL}")  # Print empty URLs error.
         return 1  # Return error exit code.
 
     urls = urls[:tab_count]  # Limit URL list to requested tab count.
@@ -474,8 +474,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path) -> int:
     close_download_tab_img = assets_dir / "CloseDownloadTab.png"  # Define close download tab image path.
     mercado_livre_img = assets_dir / "MercadoLivre-GoToProduct.png"  # Define MercadoLivre go-to-product image path.
 
-    print("Focus the target Chrome window now, then press Enter to start...")  # Print user prompt for window focus.
-    input()  # Wait for user confirmation input.
+    print(f"{BackgroundColors.GREEN}Starting automation immediately and activating Chrome window.{Style.RESET_ALL}")  # Print immediate start message.
 
     if not activate_chrome_window():  # Verify Chrome activation before sending hotkeys.
         return 1  # Return failure exit code when activation fails.
@@ -534,8 +533,8 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path) -> int:
         report = build_report(ext_methods, download_methods, completion_methods, close_methods)  # Build consolidated report text.
         final_report = f"Execution Time: {formatted}\n\n{report}"  # Compose final report output.
 
-        print("\nAutomation Finished\n")  # Print automation completion message.
-        print(final_report)  # Print final report details.
+        print(f"\n{BackgroundColors.BOLD}{BackgroundColors.GREEN}Automation Finished{Style.RESET_ALL}\n")  # Print automation completion message.
+        print(f"{BackgroundColors.CYAN}{final_report}{Style.RESET_ALL}")  # Print final report details.
         maybe_show_messagebox("Automation Finished", final_report)  # Display optional messagebox report.
 
     return 0  # Return success exit code.
