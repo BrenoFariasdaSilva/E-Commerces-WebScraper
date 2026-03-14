@@ -751,32 +751,39 @@ class Amazon:
         verbose_output(f"{BackgroundColors.GREEN}Extracting image URLs from gallery...{Style.RESET_ALL}")  # Output status message
         
         try:  # Attempt image extraction with error handling
-            image_block = None  # Initialize image_block as None
+            image_blocks: List[Tag] = []  # Initialize image_blocks list
 
-            # Iterate all div tags with id="imageBlock" to find the one with data-csa-c-content-id indicating mediaBlock-primaryView
             for div in soup.find_all("div", id="imageBlock"):  # Find all divs with id=imageBlock
                 if div.has_attr("data-csa-c-content-id") and "mediaBlock-primaryView" in div["data-csa-c-content-id"]:  # Verify correct imageBlock by content ID
-                    image_block = div  # Assign correct div as image_block
-                    break  # Stop after finding first valid imageBlock
+                    image_blocks.append(cast(Tag, div))  # Add valid imageBlock to list
 
-            if not image_block:  # Verify if valid image_block was found
+            if not image_blocks:  # Verify if no validated imageBlock was found
+                fallback_block = soup.find("div", id="imageBlock")  # Try fallback imageBlock lookup
+                if fallback_block:  # Verify if fallback imageBlock exists
+                    image_blocks.append(cast(Tag, fallback_block))  # Add fallback imageBlock to list
+
+            if not image_blocks:  # Verify if valid image_block was found
                 verbose_output(f"{BackgroundColors.YELLOW}Gallery container not found.{Style.RESET_ALL}")  # Output warning if gallery not found
                 return image_urls  # Return empty list if no valid imageBlock
 
             candidate_urls: List[str] = []  # Initialize candidate URL collection
 
-            # Iterate all img tags inside the identified image_block
-            for img in image_block.find_all("img"):  # Iterate img tags
-                img_src = cast(str, img.get("src", "")) if img.has_attr("src") else ""  # Get src attribute if present
-                data_src = cast(str, img.get("data-src", "")) if img.has_attr("data-src") else ""  # Get data-src attribute if present
-                data_old_hires = cast(str, img.get("data-old-hires", "")) if img.has_attr("data-old-hires") else ""  # Get data-old-hires attribute if present
+            for image_block in image_blocks:  # Iterate through all matching image blocks
+                for img in image_block.find_all("img"):  # Iterate img tags
+                    img_alt = cast(str, img.get("alt", "")) if img.has_attr("alt") else ""  # Get alt attribute if present
+                    img_src = cast(str, img.get("src", "")) if img.has_attr("src") else ""  # Get src attribute if present
+                    data_src = cast(str, img.get("data-src", "")) if img.has_attr("data-src") else ""  # Get data-src attribute if present
+                    data_old_hires = cast(str, img.get("data-old-hires", "")) if img.has_attr("data-old-hires") else ""  # Get data-old-hires attribute if present
 
-                if img_src:  # Verify src value is available
-                    candidate_urls.append(img_src)  # Add src URL to candidates
-                if data_src:  # Verify data-src value is available
-                    candidate_urls.append(data_src)  # Add data-src URL to candidates
-                if data_old_hires:  # Verify high-res URL is available
-                    candidate_urls.append(data_old_hires)  # Add high-res URL to candidates
+                    if self.local_html_path and "Product Image" not in img_alt:  # Verify offline mode and keep only product images
+                        continue  # Skip non-product thumbnails in offline mode
+
+                    if img_src:  # Verify src value is available
+                        candidate_urls.append(img_src)  # Add src URL to candidates
+                    if data_src and not self.local_html_path:  # Verify data-src value is available and online mode
+                        candidate_urls.append(data_src)  # Add data-src URL to candidates
+                    if data_old_hires and not self.local_html_path:  # Verify high-res URL is available and online mode
+                        candidate_urls.append(data_old_hires)  # Add high-res URL to candidates
 
             for img_url in candidate_urls:  # Iterate through extracted candidate URLs
                 if not img_url:  # Verify URL is non-empty
