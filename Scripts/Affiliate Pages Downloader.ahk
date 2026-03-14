@@ -46,7 +46,7 @@ if (running) {
         ; If file empty or missing, ask the user
         if (TabCount = 0) {
             InputBox, userTabCount, Automation Setup, Enter the number of tabs to process:, , 300, 140
-
+            
             if (ErrorLevel) {
                 running := false
                 return
@@ -85,8 +85,11 @@ Gosub, ActivateChrome
 
 Loop, %TabCount% {
 
-    if (!running)
+    ; Verify Chrome window is still running
+    if !WinExist("ahk_exe chrome.exe") {
+        MsgBox, 48, Automation Stopped, Chrome is not running. Process terminated at tab %A_Index%.
         break
+    }
 
     currentTab := A_Index
 
