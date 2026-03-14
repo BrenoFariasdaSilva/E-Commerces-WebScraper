@@ -1,5 +1,5 @@
 """
-product_utils.py — Product directory name normalization utilities
+Product Directory Name Normalization Utility - product_utils.py
 
 Author      : Breno Farias da Silva
 Created     : 2026-02-16
