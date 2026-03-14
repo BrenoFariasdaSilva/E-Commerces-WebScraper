@@ -18,6 +18,7 @@ DownloadButtonY := 64
 scriptDir := A_ScriptDir
 extensionImg := scriptDir . "\..\.assets\Browser\Extension.png"
 downloadImg := scriptDir . "\..\.assets\Browser\DownloadButton.png"
+confirmationImg := scriptDir . "\..\.assets\Browser\ConfirmationFileDownloaded.png"
 
 running := false
 isProcessing := false
@@ -94,9 +95,29 @@ StartAutomation:
             Click, %DownloadButtonX%, %DownloadButtonY%
         }
 
-        ; Wait for download process
-        waitMs := 180000
-        Gosub, WaitWithStop
+        ; ---- Wait for confirmation of downloaded file ----
+        verificationCount := 0
+        maxVerifications := 36
+
+        Loop {
+            if (!running)
+                break
+
+            ImageSearch, Px, Py, 0, 0, A_ScreenWidth, A_ScreenHeight, %confirmationImg%
+            if (ErrorLevel = 0) {
+                break
+            }
+
+            verificationCount++
+
+            if (verificationCount >= maxVerifications) {
+                break
+            }
+
+            waitMs := 5000
+            Gosub, WaitWithStop
+        }
+
         if (!running)
             break
 
