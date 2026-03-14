@@ -62,9 +62,13 @@ import pyautogui  # Automate keyboard and mouse interactions.
 import sys  # Access process-level runtime controls.
 import time  # Manage sleep and elapsed time operations.
 from colorama import Style  # Reset ANSI style output.
-from Logger import Logger  # Redirect output to terminal and file logger.
 from pathlib import Path  # Build and resolve filesystem paths.
 from typing import Any, Dict, List  # Provide typing annotations for containers and dynamic objects.
+
+PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)  # Project root directory
+if PROJECT_ROOT not in sys.path:  # Ensure project root is in sys.path
+    sys.path.insert(0, PROJECT_ROOT)  # Insert at the beginning
+from Logger import Logger  # For logging output to both terminal and file
 
 
 # Macros:
