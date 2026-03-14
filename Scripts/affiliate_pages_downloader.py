@@ -52,14 +52,19 @@ Assumptions & Notes:
     - Image assets stored in `.assets/Browser/`
 """
 
-import atexit  # For playing a sound when the program finishes
-import datetime  # For getting the current date and time
-import os  # For running a command in the terminal
-import platform  # For getting the operating system name
-import sys  # For system-specific parameters and functions
-from colorama import Style  # For coloring the terminal
-from Logger import Logger  # For logging output to both terminal and file
-from pathlib import Path  # For handling file paths
+
+import argparse  # Parse command-line arguments.
+import atexit  # Register post-execution callback functions.
+import datetime  # Capture execution timestamps.
+import os  # Execute operating-system commands.
+import platform  # Identify active operating system.
+import pyautogui  # Automate keyboard and mouse interactions.
+import sys  # Access process-level runtime controls.
+import time  # Manage sleep and elapsed time operations.
+from colorama import Style  # Reset ANSI style output.
+from Logger import Logger  # Redirect output to terminal and file logger.
+from pathlib import Path  # Build and resolve filesystem paths.
+from typing import Any, Dict, List  # Provide typing annotations for containers and dynamic objects.
 
 
 # Macros:
