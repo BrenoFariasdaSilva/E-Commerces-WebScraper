@@ -7,8 +7,8 @@ CoordMode, Mouse, Window  ; Use window-relative mouse coordinates.
 TabCount := 10  ; Total number of tabs to process starting from the currently active tab.
 ExtensionX := 1752  ; X coordinate of the browser extension icon.
 ExtensionY := 705  ; Y coordinate of the browser extension icon.
-DownloadButtonX := 0  ; X coordinate of the Start download button in the extension panel.
-DownloadButtonY := 0  ; Y coordinate of the Start download button in the extension panel.
+DownloadButtonX := 1590  ; X coordinate of the Start download button in the extension panel.
+DownloadButtonY := 64  ; Y coordinate of the Start download button in the extension panel.
 
 running := false  ; Tracks whether automation is currently enabled.
 isProcessing := false  ; Prevents concurrent automation runs.
