@@ -1,4 +1,4 @@
-; AutoHotkey script: Processes a fixed number of already-open browser tabs with deterministic UI actions.
+; AutoHotkey script: Processes a user-defined number of already-open browser tabs with deterministic UI actions.
 ; Uses ImageSearch first and falls back to predefined coordinates if detection fails.
 
 #NoEnv
@@ -27,10 +27,29 @@ automationReport := ""
 
 F4::
 running := !running
-if (running)
+
+if (running) {
+
+    InputBox, userTabCount, Automation Setup, Enter the number of tabs to process:, , 300, 140
+
+    if (ErrorLevel) {
+        running := false
+        return
+    }
+
+    if (userTabCount = "" || userTabCount <= 0) {
+        MsgBox, 48, Invalid Value, Please enter a valid number greater than 0.
+        running := false
+        return
+    }
+
+    TabCount := userTabCount
     SetTimer, StartAutomation, -10
-else
+}
+else {
     SetTimer, StartAutomation, Off
+}
+
 return
 
 
