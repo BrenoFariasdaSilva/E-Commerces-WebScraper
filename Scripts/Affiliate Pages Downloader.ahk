@@ -86,6 +86,10 @@ isProcessing := true
 automationReport := ""
 
 processedCount := 0
+Gosub, ActivateChrome
+
+; Record start time (milliseconds)
+startTick := A_TickCount
 
 Gosub, ActivateChrome
 
@@ -169,7 +173,10 @@ isProcessing := false
 
 ; Only show report when all URLs were processed
 if (processedCount = TabCount) {
-    MsgBox, 64, Automation Finished, Automation process completed.`n`n%automationReport%
+    elapsedSec := Round((A_TickCount - startTick) / 1000)
+    formatted := format_execution_time(elapsedSec)
+    finalReport := "Execution Time: " . formatted . "`n`n" . automationReport
+    MsgBox, 64, Automation Finished, %finalReport%
 }
 
 return
