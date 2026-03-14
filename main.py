@@ -1600,8 +1600,7 @@ def print_duplicate_product_warnings(product_name: str, directory_name_to_remove
     :return: None.
     """
 
-    print(f"{BackgroundColors.YELLOW}[WARNING] Duplicate product name detected: {product_name}{Style.RESET_ALL}")  # Emit duplicate-name detection warning
-    print(f"{BackgroundColors.YELLOW}[WARNING] Removing duplicate directory with highest index: {directory_name_to_remove}{Style.RESET_ALL}")  # Emit duplicate-directory removal warning
+    print(f"{BackgroundColors.YELLOW}[WARNING] Duplicate product name detected: {product_name}{Style.RESET_ALL}\n{BackgroundColors.YELLOW}[WARNING] Removing duplicate directory with highest index: {directory_name_to_remove}{Style.RESET_ALL}")  # Emit duplicate-name detection and removal warnings in single call
 
 
 def remove_duplicate_directories_with_highest_index(timestamped_output_dir: Optional[str], duplicate_records: Dict[str, List[Tuple[int, str]]]) -> List[str]:
