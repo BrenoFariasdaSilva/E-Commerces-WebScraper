@@ -851,6 +851,12 @@ class Amazon:
                         video_url = "https:" + video_url  # Add HTTPS protocol
                     elif video_url.startswith("/"):  # Check if absolute path
                         video_url = "https://www.amazon.com.br" + video_url  # Build complete URL
+
+                    if video_url.startswith(("blob:", "data:")):  # Skip browser-local sources that cannot be fetched outside the page context
+                        verbose_output(
+                            f"{BackgroundColors.YELLOW}Skipping unsupported video source: {video_url}{Style.RESET_ALL}"
+                        )  # End of verbose output call
+                        continue  # Continue to next video source
                     
                     if video_url not in seen_urls:  # Check if URL is not duplicate
                         video_urls.append(video_url)  # Add URL to list
