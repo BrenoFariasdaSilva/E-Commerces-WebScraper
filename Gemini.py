@@ -1,50 +1,57 @@
 """
 ================================================================================
-<PROJECT OR SCRIPT TITLE>
+Gemini API Helper / Main Template
 ================================================================================
 Author      : Breno Farias da Silva
-Created     : <YYYY-MM-DD>
+Created     : 2026-03-13
 Description :
-    <Provide a concise and complete overview of what this script does.>
-    <Mention its purpose, scope, and relevance to the larger project.>
+    Lightweight wrapper for interacting with Google's Gemini (google.genai) SDK.
+    This script provides a small CLI-style runner used by the larger
+    E-Commerces-WebScraper project to send text to a Gemini model and store
+    the response to disk. It also implements robust retry/backoff logic for
+    transient API failures, basic file I/O utilities, logging integration,
+    and an optional end-of-run sound notification (disabled on Windows).
 
-    Key features include:
-        - <Feature 1 — e.g., automatic data loading and preprocessing>
-        - <Feature 2 — e.g., model training and evaluation>
-        - <Feature 3 — e.g., visualization or report generation>
-        - <Feature 4 — e.g., logging or notification system>
-        - <Feature 5 — e.g., integration with other modules or datasets>
+    Primary behaviors implemented in the file:
+        - Load environment variables from a .env file and read GEMINI_API_KEY.
+        - Read prompt/input text from `./Inputs/input.txt`.
+        - Interact with `google.genai` using a `Gemini` helper class.
+        - Retry transient API errors with exponential backoff (configurable).
+        - Write model output to `./Outputs/output.txt` and log to `./Logs/Gemini.log`.
+        - Optionally play a notification sound on non-Windows platforms.
 
 Usage:
-    1. <Explain any configuration steps before running, such as editing variables or paths.>
-    2. <Describe how to execute the script — typically via Makefile or Python.>
-            $ make <target>   or   $ python <script_name>.py
-    3. <List what outputs are expected or where results are saved.>
+    1. Create a `.env` file at the repository root containing:
+        GEMINI_API_KEY=<your_api_key_here>
+    2. Place the input text to analyze in `./Inputs/input.txt`.
+    3. Run the script directly:
+        python Gemini.py
+       (Or call `main()` from another module.)
 
 Outputs:
-    - <Output file or directory 1 — e.g., results.csv>
-    - <Output file or directory 2 — e.g., Feature_Analysis/plots/>
-    - <Output file or directory 3 — e.g., logs/output.txt>
+    - `./Outputs/output.txt` : the model's textual response.
+    - `./Logs/Gemini.log`    : logger output (created by the local `Logger` module).
 
 TODOs:
-    - <Add a task or improvement — e.g., implement CLI argument parsing.>
-    - <Add another improvement — e.g., extend support to Parquet files.>
-    - <Add optimization — e.g., parallelize evaluation loop.>
-    - <Add robustness — e.g., error handling or data validation.>
+    - Add CLI argument parsing for input/output paths and model/config overrides.
+    - Add unit tests for time utilities and retry behavior.
+    - Improve error reporting (structured JSON logs / alerting) on fatal errors.
+    - Create directory-creation helpers to ensure `Inputs/`, `Outputs/`, `Logs/` exist.
 
 Dependencies:
-    - Python >= <version>
-    - <Library 1 — e.g., pandas>
-    - <Library 2 — e.g., numpy>
-    - <Library 3 — e.g., scikit-learn>
-    - <Library 4 — e.g., matplotlib, seaborn, tqdm, colorama>
+    - Python >= 3.8
+    - google-genai (imported as `google.genai`)
+    - python-dotenv
+    - colorama
+    - a local `Logger` module provided in this repository
 
 Assumptions & Notes:
-    - <List any key assumptions — e.g., last column is the target variable.>
-    - <Mention data format — e.g., CSV files only.>
-    - <Mention platform or OS-specific notes — e.g., sound disabled on Windows.>
-    - <Note on output structure or reusability.>
+    - Expects a `.env` file at `./.env` containing the `GEMINI_API_KEY` variable.
+    - On Windows the script will not attempt to play an audio notification.
+    - The script is intentionally minimal and designed to be imported or run
+      as a standalone helper within the larger scraping project.
 """
+
 
 import atexit  # For playing a sound when the program finishes
 import datetime  # For getting the current date and time
