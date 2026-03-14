@@ -50,6 +50,7 @@ import atexit  # For playing a sound when the program finishes
 import datetime  # For getting the current date and time
 import os  # For running a command in the terminal
 import platform  # For getting the operating system name
+import re  # For matching duplicate archive naming patterns
 import sys  # For system-specific parameters and functions
 from colorama import Style  # For coloring the terminal
 from Logger import Logger  # For logging output to both terminal and file
@@ -136,6 +137,74 @@ def get_creation_timestamp(file_path):
     stats = file_path.stat()  # Get filesystem metadata for the file
 
     return float(stats.st_mtime)  # Return the file modification time (mtime) as seconds
+
+
+def remove_duplicate_archives(input_directory: str) -> None:
+    """
+    Detects and removes duplicate archive copies before renaming starts.
+
+    :param input_directory: Directory containing archive files to sanitize.
+    :return: None.
+    """
+
+    directory_path = Path(input_directory)  # Build the Path object for the target input directory
+
+    if not directory_path.exists() or not directory_path.is_dir():  # Verify if the input path exists and is a valid directory
+        return  # Exit early when the input directory is not available
+
+    archive_files = list_supported_archives(input_directory)  # Load all supported archive files from the input directory
+
+    if len(archive_files) == 0:  # Verify if there are archive files available for duplicate removal
+        return  # Exit early when there are no archive files to process
+
+    duplicate_suffix_pattern = re.compile(r"(?:\s*\(\d+\)|\s*-\s*Copy(?:\s*\(\d+\))?|\s+Copy(?:\s*\(\d+\))?)$", re.IGNORECASE)  # Build a regex to match common duplicate suffix variants
+
+    original_archives_by_key: dict[tuple[str, str], Path] = {}  # Store original archives indexed by normalized stem and extension
+    duplicate_archives_by_key: dict[tuple[str, str], list[Path]] = {}  # Store duplicate archives indexed by normalized stem and extension
+
+    for archive_file in archive_files:  # Iterate through each archive file to classify original and duplicate variants
+        original_stem = archive_file.stem  # Capture the current filename stem without extension
+        normalized_stem = original_stem  # Initialize the normalized stem with the current filename stem
+        has_duplicate_pattern = False  # Initialize duplicate pattern flag for the current archive file
+
+        while True:  # Repeatedly remove duplicate suffix blocks until no further change occurs
+            updated_stem = duplicate_suffix_pattern.sub("", normalized_stem).strip()  # Remove one trailing duplicate suffix block from the normalized stem
+
+            if updated_stem == normalized_stem:  # Verify if no more duplicate suffix block remains in the normalized stem
+                break  # Exit the normalization loop when the stem remains unchanged
+
+            normalized_stem = updated_stem  # Update the normalized stem with the cleaned stem value
+            has_duplicate_pattern = True  # Mark this archive as a duplicate-pattern variant
+
+        archive_key = (normalized_stem.lower(), archive_file.suffix.lower())  # Build a deterministic grouping key using normalized stem and extension
+
+        if has_duplicate_pattern:  # Verify if the current archive filename contains duplicate suffix patterns
+            duplicate_archives_by_key.setdefault(archive_key, []).append(archive_file)  # Store the archive as duplicate under its grouping key
+        else:  # Handle archive files that do not contain duplicate suffix patterns
+            if archive_key not in original_archives_by_key:  # Verify if an original archive is not already registered for this grouping key
+                original_archives_by_key[archive_key] = archive_file  # Register the clean archive as the original file for this grouping key
+
+    for archive_key, duplicate_files in duplicate_archives_by_key.items():  # Iterate through each duplicate group to remove duplicate files safely
+        if len(duplicate_files) == 0:  # Verify if the duplicate group has files available for processing
+            continue  # Skip groups with no duplicate files
+
+        original_file = original_archives_by_key.get(archive_key)  # Retrieve the clean original archive associated with this duplicate group
+
+        if original_file is None:  # Verify if no clean original archive is available for this duplicate group
+            continue  # Skip deletion when a clean original archive is not found
+
+        print(f"{BackgroundColors.YELLOW} Duplicate archive detected for base file: {BackgroundColors.CYAN}{original_file.name}{Style.RESET_ALL}")  # Log duplicate detection for the preserved original archive with color
+
+        for duplicate_file in duplicate_files:  # Iterate through each duplicate archive file mapped to the current original archive
+            if not duplicate_file.exists():  # Verify if the duplicate archive file still exists before deletion
+                continue  # Skip deletion when the duplicate file path no longer exists
+
+            print(f"{BackgroundColors.YELLOW} Removing duplicate archive: {BackgroundColors.CYAN}{duplicate_file.name}{Style.RESET_ALL}")  # Log duplicate archive deletion before removing the file with color
+
+            try:  # Start protected duplicate archive deletion block
+                duplicate_file.unlink()  # Delete the duplicate archive file from disk
+            except Exception as exception_error:  # Capture deletion failures without breaking the remaining workflow
+                print(f"{BackgroundColors.RED} Failed to remove duplicate archive: {BackgroundColors.CYAN}{duplicate_file.name}{BackgroundColors.RED} | Error: {exception_error}{Style.RESET_ALL}")  # Log deletion failure details for troubleshooting with color
 
 
 def assign_temporary_names(archive_files_sorted: list[Path], temporary_mappings: list) -> None:
@@ -312,6 +381,8 @@ def main():
     start_time = datetime.datetime.now()  # Get the start time of the program
     
     print(f"{BackgroundColors.GREEN}Scanning {BackgroundColors.CYAN}{INPUT_DIRECTORY}{BackgroundColors.GREEN} for compressed files...{Style.RESET_ALL}")  # Output scanning message 
+    
+    remove_duplicate_archives(INPUT_DIRECTORY)  # Remove duplicate archive copies before collecting files for sequential renaming
     
     archive_files = list_supported_archives(INPUT_DIRECTORY)  # Get supported archive files from the input directory
 
