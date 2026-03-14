@@ -53,6 +53,7 @@ Assumptions & Notes:
     - Outputs are reusable for further analysis
 """
 
+
 import atexit  # For playing a sound when the program finishes
 import datetime  # For getting the current date and time
 import hashlib  # For hashing image data
@@ -64,7 +65,6 @@ import subprocess  # For running system commands
 import sys  # For system-specific parameters and functions
 import time  # For adding delays between requests
 import zipfile  # For handling zip files
-from tqdm import tqdm  # Progress bar for URL processing
 from AliExpress import AliExpress  # Import the AliExpress class
 from Amazon import Amazon  # Import the Amazon class
 from colorama import Style  # For coloring the terminal
@@ -73,11 +73,13 @@ from Gemini import Gemini, QuotaExceededError  # Import the Gemini class and quo
 from Logger import Logger  # For logging output to both terminal and file
 from MercadoLivre import MercadoLivre  # Import the MercadoLivre class
 from pathlib import Path  # For handling file paths
-from urllib.parse import urlparse  # For parsing URL hostnames
 from PIL import Image  # For image processing
 from product_utils import normalize_product_dir_name  # Centralized product dir name normalization
 from Shein import Shein  # Import the Shein class
 from Shopee import Shopee  # Import the Shopee class
+from tqdm import tqdm  # Progress bar for URL processing
+from typing import Dict, List, Optional, Set, Tuple  # For type-annotated containers used by final verification functions
+from urllib.parse import urlparse  # For parsing URL hostnames
 
 
 # Macros:
