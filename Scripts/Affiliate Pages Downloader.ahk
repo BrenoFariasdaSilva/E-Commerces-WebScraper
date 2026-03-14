@@ -184,24 +184,30 @@ if (chromeList = 0) {
     return
 }
 
-; Show list of Chrome windows for selection
-windowsText := ""
-Loop, %chromeList%
-{
-    thisID := chromeList%A_Index%
-    WinGetTitle, thisTitle, ahk_id %thisID%
-    windowsText .= A_Index ": " thisTitle "`n"
+if (chromeList = 1) {
+    ; Only one Chrome window — use it directly without prompting
+    targetChromeID := chromeList1
+} else {
+    ; Multiple windows — ask the user to select which one to use
+    windowsText := ""
+    Loop, %chromeList%
+    {
+        thisID := chromeList%A_Index%
+        WinGetTitle, thisTitle, ahk_id %thisID%
+        windowsText .= A_Index ": " thisTitle "`n"
+    }
+
+    InputBox, selectedIndex, Select Chrome Window, Multiple Chrome windows detected.`nSelect the window index to use:`n`n%windowsText%, , 400, 300
+
+    if (ErrorLevel || selectedIndex < 1 || selectedIndex > chromeList) {
+        MsgBox, 48, Error, Invalid selection. Automation stopped.
+        running := false
+        return
+    }
+
+    targetChromeID := chromeList%selectedIndex%
 }
 
-InputBox, selectedIndex, Select Chrome Window, Multiple Chrome windows detected.`nSelect the window index to use:`n`n%windowsText%, , 400, 300
-
-if (ErrorLevel || selectedIndex < 1 || selectedIndex > chromeList) {
-    MsgBox, 48, Error, Invalid selection. Automation stopped.
-    running := false
-    return
-}
-
-targetChromeID := chromeList%selectedIndex%
 WinActivate, ahk_id %targetChromeID%
 WinWaitActive, ahk_id %targetChromeID%
 WinMaximize, ahk_id %targetChromeID%
