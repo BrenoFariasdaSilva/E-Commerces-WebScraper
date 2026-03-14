@@ -61,6 +61,11 @@ urls_input_file_adder: dependencies
 	$(CLEAR_CMD)
 	$(call RUN_AND_LOG, ./urls_input_file_adder.py)
 
+affiliate_pages_downloader: dependencies
+	$(ENSURE_LOG_DIR)
+	$(CLEAR_CMD)
+	$(call RUN_AND_LOG, ./Scripts/affiliate_pages_downloader.py)
+
 # Update repository and run
 update_and_run: dependencies
 	@echo "Updating repository: reset to HEAD and pulling latest changes..."
@@ -88,4 +93,4 @@ clean:
 	find . -type f -name '*.pyc' -delete || del /S /Q *.pyc 2>nul
 	find . -type d -name '__pycache__' -delete || rmdir /S /Q __pycache__ 2>nul
 
-.PHONY: all run main compressed_archives_renamer urls_input_file_adder update_and_run clean dependencies generate_requirements
+.PHONY: all run main compressed_archives_renamer urls_input_file_adder affiliate_pages_downloader update_and_run clean dependencies generate_requirements
