@@ -150,7 +150,7 @@ for index, url in Urls {
     Gosub, CloseExtensionDownloadTab
     if (!running)
         break
-    closeMethod := lastMethod
+     closeMethod := lastMethod
 
     automationReport .= "Tab " currentTab ":`n"
     automationReport .= "  Extension Click: " extensionMethod "`n"
@@ -355,3 +355,32 @@ while (elapsedMs < waitMs) {
 }
 
 return
+
+
+joinArray(arr) {
+    s := ""
+    for index, val in arr
+        s .= (s ? ", " : "") . val
+    return s
+}
+
+
+format_execution_time(sec) {
+    h := Floor(sec / 3600)
+    m := Floor((sec - h*3600) / 60)
+    s := sec - h*3600 - m*60
+
+    if (m < 10)
+        mStr := "0" . m
+    else
+        mStr := m
+
+    if (s < 10)
+        sStr := "0" . s
+    else
+        sStr := s
+
+    if (h > 0)
+        return h . ":" . mStr . ":" . sStr
+    return mStr . ":" . sStr
+}
