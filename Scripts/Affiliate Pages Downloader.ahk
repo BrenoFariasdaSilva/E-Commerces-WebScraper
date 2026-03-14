@@ -175,12 +175,10 @@ for index, url in Urls {
         closeMethods[closeMethod] := []
     closeMethods[closeMethod].Push(currentTab)
 
-    ; Close the current tab (product page) if there are more URLs to process
-    if (index < TabCount) {
-        Gosub, CloseCurrentTab
-        if (!running)
-            break
-    }
+    ; Close the current tab (product page) — include the last tab as well
+    Gosub, CloseCurrentTab
+    if (!running)
+        break
 
     processedCount++
 }
