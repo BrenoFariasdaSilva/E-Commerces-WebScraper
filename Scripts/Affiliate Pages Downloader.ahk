@@ -19,6 +19,7 @@ scriptDir := A_ScriptDir
 extensionImg := scriptDir . "\..\.assets\Browser\Extension.png"
 downloadImg := scriptDir . "\..\.assets\Browser\DownloadButton.png"
 confirmationImg := scriptDir . "\..\.assets\Browser\ConfirmationFileDownloaded.png"
+closeDownloadTabImg := scriptDir . "\..\.assets\Browser\CloseDownloadTab.png"
 
 running := false
 isProcessing := false
@@ -95,10 +96,17 @@ Loop, %TabCount% {
         break
     confirmationMethod := lastMethod
 
+    ; CRITICAL FIX
+    Gosub, CloseExtensionDownloadTab
+    if (!running)
+        break
+    closeMethod := lastMethod
+
     automationReport .= "Tab " currentTab ":`n"
     automationReport .= "  Extension Click: " extensionMethod "`n"
     automationReport .= "  Download Click: " downloadMethod "`n"
-    automationReport .= "  Completion Detection: " confirmationMethod "`n`n"
+    automationReport .= "  Completion Detection: " confirmationMethod "`n"
+    automationReport .= "  Close Extension Tab: " closeMethod "`n`n"
 
     if (A_Index < TabCount) {
         Gosub, CloseCurrentTab
@@ -139,14 +147,12 @@ found := false
 ImageSearch, Px, Py, 0, 0, A_ScreenWidth, A_ScreenHeight, %extensionImg%
 if (ErrorLevel = 0) {
     Click, %Px%, %Py%
-    found := true
     lastMethod := "ImageSearch"
+    return
 }
 
-if (!found) {
-    Click, %ExtensionX%, %ExtensionY%
-    lastMethod := "Fallback Coordinates"
-}
+Click, %ExtensionX%, %ExtensionY%
+lastMethod := "Fallback Coordinates"
 return
 
 
@@ -164,19 +170,15 @@ while ((A_TickCount - startTime) < 3000) {
 
     if (ErrorLevel = 0) {
         Click, %Px%, %Py%
-        found := true
         lastMethod := "ImageSearch"
-        break
+        return
     }
 
     Sleep, 200
 }
 
-if (!found) {
-    Click, %DownloadButtonX%, %DownloadButtonY%
-    lastMethod := "Fallback Coordinates"
-}
-
+Click, %DownloadButtonX%, %DownloadButtonY%
+lastMethod := "Fallback Coordinates"
 return
 
 
@@ -194,20 +196,37 @@ Loop {
 
     if (ErrorLevel = 0) {
         lastMethod := "Confirmation Image Detected"
-        break
+        return
     }
 
     verificationCount++
 
     if (verificationCount >= maxVerifications) {
         lastMethod := "Timeout (180s assumed complete)"
-        break
+        return
     }
 
     waitMs := 5000
     Gosub, WaitWithStop
 }
 
+return
+
+
+CloseExtensionDownloadTab:
+
+ImageSearch, Px, Py, 0, 0, A_ScreenWidth, A_ScreenHeight, %closeDownloadTabImg%
+
+if (ErrorLevel = 0) {
+    Click, %Px%, %Py%
+    lastMethod := "ImageSearch"
+}
+else {
+    Send, {Esc}
+    lastMethod := "Fallback ESC key"
+}
+
+Sleep, 500
 return
 
 
