@@ -738,8 +738,7 @@ class Amazon:
 
     def find_image_urls(self, soup: BeautifulSoup) -> List[str]:
         """
-        Finds all image URLs from the product gallery.
-        Extracts full-size images from the gallery container.
+        Finds all image URLs from the product gallery, prioritizing the correct imageBlock container.
         
         :param soup: BeautifulSoup object containing the parsed HTML
         :return: List of image URLs
@@ -748,83 +747,67 @@ class Amazon:
         image_urls: List[str] = []  # Initialize empty list to store image URLs
         seen_urls: set = set()  # Track URLs to avoid duplicates
         
-        verbose_output(  # Output status message
-            f"{BackgroundColors.GREEN}Extracting image URLs from gallery...{Style.RESET_ALL}"
-        )  # End of verbose output call
+        verbose_output(f"{BackgroundColors.GREEN}Extracting image URLs from gallery...{Style.RESET_ALL}")  # Output status message
         
         try:  # Attempt image extraction with error handling
-            image_block = soup.find("div", HTML_SELECTORS["image_block"])  # Find main image block container
-            gallery = soup.find("div", HTML_SELECTORS["gallery"])  # Find gallery container
+            image_block = None  # Initialize image_block as None
 
-            if not image_block and not gallery:  # Verify if image containers were found
-                verbose_output(  # Output warning message
-                    f"{BackgroundColors.YELLOW}Gallery container not found.{Style.RESET_ALL}"
-                )  # End of verbose output call
-                return image_urls  # Return empty list if gallery containers were not found
+            # Iterate all div tags with id="imageBlock" to find the one with data-csa-c-content-id indicating mediaBlock-primaryView
+            for div in soup.find_all("div", id="imageBlock"):  # Find all divs with id=imageBlock
+                if div.has_attr("data-csa-c-content-id") and "mediaBlock-primaryView" in div["data-csa-c-content-id"]:  # Verify correct imageBlock by content ID
+                    image_block = div  # Assign correct div as image_block
+                    break  # Stop after finding first valid imageBlock
 
-            candidate_urls: List[str] = []  # Initialize candidate URL collection.
+            if not image_block:  # Verify if valid image_block was found
+                verbose_output(f"{BackgroundColors.YELLOW}Gallery container not found.{Style.RESET_ALL}")  # Output warning if gallery not found
+                return image_urls  # Return empty list if no valid imageBlock
 
-            if image_block:  # Prioritize extraction from #imageBlock.
-                for img in image_block.find_all("img"):  # Iterate all img tags inside #imageBlock.
-                    img_src = cast(str, img.get("src", "")) if img.has_attr("src") else ""  # Get src attribute when available.
-                    data_src = cast(str, img.get("data-src", "")) if img.has_attr("data-src") else ""  # Get data-src attribute when available.
-                    data_old_hires = cast(str, img.get("data-old-hires", "")) if img.has_attr("data-old-hires") else ""  # Get data-old-hires attribute when available.
+            candidate_urls: List[str] = []  # Initialize candidate URL collection
 
-                    if img_src:  # Verify src value is available.
-                        candidate_urls.append(img_src)  # Add src candidate from image block.
-                    if data_src:  # Verify data-src value is available.
-                        candidate_urls.append(data_src)  # Add data-src candidate from image block.
-                    if data_old_hires:  # Verify high-res value is available.
-                        candidate_urls.append(data_old_hires)  # Add high-res candidate from image block.
+            # Iterate all img tags inside the identified image_block
+            for img in image_block.find_all("img"):  # Iterate img tags
+                img_src = cast(str, img.get("src", "")) if img.has_attr("src") else ""  # Get src attribute if present
+                data_src = cast(str, img.get("data-src", "")) if img.has_attr("data-src") else ""  # Get data-src attribute if present
+                data_old_hires = cast(str, img.get("data-old-hires", "")) if img.has_attr("data-old-hires") else ""  # Get data-old-hires attribute if present
 
-            if not candidate_urls and gallery:  # Fallback to #altImages when #imageBlock list is empty.
-                for img in gallery.find_all("img"):  # Iterate all img tags in gallery container.
-                    img_src = cast(str, img.get("src", "")) if img.has_attr("src") else ""  # Get src attribute when available.
-                    data_src = cast(str, img.get("data-src", "")) if img.has_attr("data-src") else ""  # Get data-src attribute when available.
-                    data_old_hires = cast(str, img.get("data-old-hires", "")) if img.has_attr("data-old-hires") else ""  # Get data-old-hires attribute when available.
+                if img_src:  # Verify src value is available
+                    candidate_urls.append(img_src)  # Add src URL to candidates
+                if data_src:  # Verify data-src value is available
+                    candidate_urls.append(data_src)  # Add data-src URL to candidates
+                if data_old_hires:  # Verify high-res URL is available
+                    candidate_urls.append(data_old_hires)  # Add high-res URL to candidates
 
-                    if img_src:  # Verify src value is available.
-                        candidate_urls.append(img_src)  # Add src candidate from gallery.
-                    if data_src:  # Verify data-src value is available.
-                        candidate_urls.append(data_src)  # Add data-src candidate from gallery.
-                    if data_old_hires:  # Verify high-res value is available.
-                        candidate_urls.append(data_old_hires)  # Add high-res candidate from gallery.
+            for img_url in candidate_urls:  # Iterate through extracted candidate URLs
+                if not img_url:  # Verify URL is non-empty
+                    continue  # Skip empty URL
 
-            for img_url in candidate_urls:  # Iterate through extracted candidate URLs.
-                if not img_url:  # Verify URL candidate is non-empty.
-                    continue  # Skip empty URL candidates.
+                img_url = img_url.strip()  # Normalize URL spacing
 
-                img_url = img_url.strip()  # Normalize URL spacing.
+                if img_url.startswith("data:"):  # Verify inline base64 image
+                    continue  # Skip inline data URLs
 
-                if img_url.startswith("data:"):  # Skip inline base64 image payloads.
-                    continue  # Skip inline data URLs.
+                if img_url.startswith("//"):  # Verify protocol-relative URL
+                    img_url = "https:" + img_url  # Prepend HTTPS protocol
+                elif img_url.startswith("/"):  # Verify absolute web path
+                    img_url = "https://www.amazon.com.br" + img_url  # Build full URL
+                elif img_url.startswith("./") or (not img_url.startswith("http") and not os.path.isabs(img_url)):  # Verify relative path
+                    if self.local_html_path:  # Verify if running on local HTML
+                        img_url = os.path.abspath(os.path.join(os.path.dirname(self.local_html_path), img_url))  # Resolve local path
+                    else:  # Live web scraping
+                        img_url = urljoin(self.product_url, img_url)  # Resolve relative web URL
 
-                if img_url.startswith("//"):  # Check if protocol-relative URL.
-                    img_url = "https:" + img_url  # Add HTTPS protocol.
-                elif img_url.startswith("/"):  # Check if absolute web path.
-                    img_url = "https://www.amazon.com.br" + img_url  # Build complete URL.
-                elif img_url.startswith("./") or (not img_url.startswith("http") and not os.path.isabs(img_url)):  # Verify if URL is a relative local or page path.
-                    if self.local_html_path:  # Verify if scraper is running in local HTML mode.
-                        img_url = os.path.abspath(os.path.join(os.path.dirname(self.local_html_path), img_url))  # Resolve the image path relative to the local HTML file.
-                    else:  # Handle relative web paths during live scraping.
-                        img_url = urljoin(self.product_url, img_url)  # Resolve the image URL relative to the product page URL.
+                if img_url in seen_urls:  # Verify duplicate URL
+                    continue  # Skip duplicate URL
 
-                if img_url in seen_urls:  # Verify candidate is not duplicated.
-                    continue  # Skip duplicate URLs.
-
-                if img_url.startswith("http") or os.path.exists(img_url):  # Verify if image URL is remotely accessible or available locally.
-                    image_urls.append(img_url)  # Add URL to list.
-                    seen_urls.add(img_url)  # Mark URL as seen.
-                    verbose_output(  # Output found image.
-                        f"{BackgroundColors.CYAN}Image found: {img_url}{Style.RESET_ALL}"
-                    )  # End of verbose output call.
+                if img_url.startswith("http") or os.path.exists(img_url):  # Verify accessibility
+                    image_urls.append(img_url)  # Add URL to list
+                    seen_urls.add(img_url)  # Mark URL as seen
+                    verbose_output(f"{BackgroundColors.CYAN}Image found: {img_url}{Style.RESET_ALL}")  # Output found image
         
-        except Exception as e:  # Catch any exceptions during image extraction
-            print(f"{BackgroundColors.YELLOW}Warning during image extraction: {e}{Style.RESET_ALL}")  # Warn user about extraction issues
+        except Exception as e:  # Catch exceptions during extraction
+            print(f"{BackgroundColors.YELLOW}Warning during image extraction: {e}{Style.RESET_ALL}")  # Warn user about exception
         
-        verbose_output(  # Output total count
-            f"{BackgroundColors.GREEN}Found {BackgroundColors.CYAN}{len(image_urls)}{BackgroundColors.GREEN} images.{Style.RESET_ALL}"
-        )  # End of verbose output call
+        verbose_output(f"{BackgroundColors.GREEN}Found {BackgroundColors.CYAN}{len(image_urls)}{BackgroundColors.GREEN} images.{Style.RESET_ALL}")  # Output total images found
         
         return image_urls  # Return list of image URLs
 
