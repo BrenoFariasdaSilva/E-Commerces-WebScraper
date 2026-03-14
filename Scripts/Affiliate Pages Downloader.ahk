@@ -85,6 +85,12 @@ if (isProcessing)
 isProcessing := true
 automationReport := ""
 
+; Objects to collect tab indices per detection method
+extMethods := {}
+downloadMethods := {}
+completionMethods := {}
+closeMethods := {}
+
 processedCount := 0
 Gosub, ActivateChrome
 
@@ -150,13 +156,24 @@ for index, url in Urls {
     Gosub, CloseExtensionDownloadTab
     if (!running)
         break
-     closeMethod := lastMethod
+    closeMethod := lastMethod
 
-    automationReport .= "Tab " currentTab ":`n"
-    automationReport .= "  Extension Click: " extensionMethod "`n"
-    automationReport .= "  Download Click: " downloadMethod "`n"
-    automationReport .= "  Completion Detection: " confirmationMethod "`n"
-    automationReport .= "  Close Extension Tab: " closeMethod "`n`n"
+    ; Record methods grouped by their detected method (collect tab indices)
+    if (!extMethods.HasKey(extensionMethod))
+        extMethods[extensionMethod] := []
+    extMethods[extensionMethod].Push(currentTab)
+
+    if (!downloadMethods.HasKey(downloadMethod))
+        downloadMethods[downloadMethod] := []
+    downloadMethods[downloadMethod].Push(currentTab)
+
+    if (!completionMethods.HasKey(confirmationMethod))
+        completionMethods[confirmationMethod] := []
+    completionMethods[confirmationMethod].Push(currentTab)
+
+    if (!closeMethods.HasKey(closeMethod))
+        closeMethods[closeMethod] := []
+    closeMethods[closeMethod].Push(currentTab)
 
     ; Close the current tab (product page) if there are more URLs to process
     if (index < TabCount) {
@@ -175,6 +192,24 @@ isProcessing := false
 if (processedCount = TabCount) {
     elapsedSec := Round((A_TickCount - startTick) / 1000)
     formatted := format_execution_time(elapsedSec)
+    ; Build condensed report grouped by method
+    automationReport := ""
+
+    for method, tabs in extMethods
+        automationReport .= "Extension Click - " . method . ": " . joinArray(tabs) . "`n"
+
+    automationReport .= "`n"
+    for method, tabs in downloadMethods
+        automationReport .= "Download Click - " . method . ": " . joinArray(tabs) . "`n"
+
+    automationReport .= "`n"
+    for method, tabs in completionMethods
+        automationReport .= "Completion Detection - " . method . ": " . joinArray(tabs) . "`n"
+
+    automationReport .= "`n"
+    for method, tabs in closeMethods
+        automationReport .= "Close Extension Tab - " . method . ": " . joinArray(tabs) . "`n"
+
     finalReport := "Execution Time: " . formatted . "`n`n" . automationReport
     MsgBox, 64, Automation Finished, %finalReport%
 }
