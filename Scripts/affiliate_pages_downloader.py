@@ -129,6 +129,27 @@ def verbose_output(true_string="", false_string=""):
         print(false_string)  # Output the false statement string
 
 
+def maybe_show_messagebox(title: str, message: str) -> None:
+    """
+    Displays messagebox when tkinter is available.
+
+    :param title: Messagebox title string.
+    :param message: Messagebox body string.
+    :return: None
+    """
+
+    try:  # Attempt tkinter import and display flow.
+        import tkinter as tk  # Import tkinter module.
+        from tkinter import messagebox  # Import tkinter messagebox utility.
+
+        root = tk.Tk()  # Create tkinter root instance.
+        root.withdraw()  # Hide root window.
+        messagebox.showinfo(title, message)  # Show informational messagebox.
+        root.destroy()  # Destroy root window.
+    except Exception:  # Handle tkinter availability and GUI exceptions.
+        pass  # Skip messagebox display on exception.
+
+
 def run(tab_count: int | None, urls_file: Path, assets_dir: Path) -> int:
     """
     Runs the affiliate pages automation workflow.
