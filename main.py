@@ -736,6 +736,10 @@ def detect_platform(url):
         verbose_output(f"{BackgroundColors.GREEN}Detected platform: {BackgroundColors.CYAN}MercadoLivre{Style.RESET_ALL}")  # Output verbose message for shortened MercadoLivre domain detection
         return "mercadolivre"  # Return the canonical platform id for MercadoLivre when shortened domain matched
 
+    if hostname.endswith("br.shp.ee"):  # Verify if hostname matches Shopee short-link domain used for video pages
+        print(f"{BackgroundColors.RED}Error: Shopee short-link {url} appears to be a video page, not a product page. Skipping.{Style.RESET_ALL}")  # Report unsupported Shopee short-link and skip processing
+        return None  # Return None to indicate this URL should be skipped and not processed
+
     for platform_name, platform_id in PLATFORMS_MAP.items():  # Iterate through supported platforms to preserve existing substring detection logic
         if platform_id in url_lower:  # Verify if platform identifier substring exists in the URL (original behavior)
             verbose_output(
