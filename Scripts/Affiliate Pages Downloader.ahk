@@ -45,8 +45,13 @@ if (running) {
             Loop, Read, %urlsFile%
             {
                 line := Trim(A_LoopReadLine)
-                if (line != "")
-                    Urls.Push(line)
+                if (line != "") {
+                    ; Remove anything from the first whitespace to the end (strip filenames or extra text)
+                    clean := RegExReplace(line, "\s+.*$")
+                    clean := Trim(clean)
+                    if (clean != "")
+                        Urls.Push(clean)
+                }
             }
         }
 
