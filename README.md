@@ -601,7 +601,6 @@ This ensures maximum user convenience when specifying local HTML paths.
 Besides the AutoHotkey version, this repository now includes cross-platform alternatives:
 
 - `Scripts/affiliate_pages_downloader.py`: Python implementation (Linux/macOS/Windows) that mirrors the same image-detection + fallback-coordinates flow and condensed grouped report.
-- `Scripts/affiliate_pages_downloader.sh`: Shell launcher for Linux/macOS/WSL.
 
 For Windows users, the original AutoHotkey automation remains available at `Scripts/Affiliate Pages Downloader.ahk`. If you run on Windows and prefer the native AHK flow, use that script with AutoHotkey installed (double-click the file or run via the AutoHotkey tray menu).
 
@@ -610,13 +609,6 @@ Run it with:
 ```bash
 python Scripts/affiliate_pages_downloader.py
 ```
-
-Or on Linux/macOS/WSL:
-
-```bash
-bash Scripts/affiliate_pages_downloader.sh
-```
-
 Optional arguments:
 
 - `--tab-count 0` (default): process all URLs from `Inputs/urls.txt`
