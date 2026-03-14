@@ -8,7 +8,7 @@ CoordMode, Pixel, Screen
 
 TabCount := 0  ; If 0, will read from Inputs/urls.txt or prompt user
 
-; Fallback coordinates
+; Coordinates
 ExtensionX := 1752
 ExtensionY := 705
 DownloadButtonX := 1590
@@ -255,7 +255,7 @@ if (ErrorLevel = 0) {
 }
 
 Click, %ExtensionX%, %ExtensionY%
-lastMethod := "Fallback Coordinates"
+lastMethod := "Coordinates"
 return
 
 
@@ -281,7 +281,7 @@ while ((A_TickCount - startTime) < 3000) {
 }
 
 Click, %DownloadButtonX%, %DownloadButtonY%
-lastMethod := "Fallback Coordinates"
+lastMethod := "Coordinates"
 return
 
 
@@ -328,7 +328,7 @@ if (ErrorLevel = 0) {
 
 if (!found) {
     Click, %CloseDownloadTabX%, %CloseDownloadTabY%
-    lastMethod := "Fallback Coordinates"
+    lastMethod := "Coordinates"
 }
 
 Sleep, 500
