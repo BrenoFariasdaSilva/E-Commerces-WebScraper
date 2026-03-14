@@ -845,8 +845,8 @@ class Amazon:
         )  # End of verbose output call
         
         try:  # Attempt video extraction with error handling
-            html_content = str(soup)  # Convert parsed document to raw HTML string
-            hidden_video_values = re.findall(r'</div><input type="hidden" name="" value="(https?://[^"]+)" class="video-url">', html_content)  # Extract video URLs from strict hidden input pattern
+            hidden_video_inputs = soup.find_all("input", {"type": "hidden", "class": "video-url"})  # Find hidden inputs that store video URLs
+            hidden_video_values = [cast(str, video_input.get("value", "")).strip() for video_input in hidden_video_inputs if cast(str, video_input.get("name", "")) == "" and cast(str, video_input.get("value", "")).strip().startswith("http")]  # Extract valid hidden input values with empty name and HTTP URL
 
             for video_url in hidden_video_values:  # Iterate through hidden input video URLs
                 normalized_video_url = video_url.strip()  # Normalize URL spacing
