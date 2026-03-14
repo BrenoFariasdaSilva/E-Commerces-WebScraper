@@ -129,6 +129,33 @@ def verbose_output(true_string="", false_string=""):
         print(false_string)  # Output the false statement string
 
 
+def read_urls(urls_file: Path) -> List[str]:
+    """
+    Reads URLs from the specified file.
+
+    :param urls_file: Path to the URLs input file.
+    :return: List of cleaned URLs.
+    """
+
+    urls: List[str] = []  # Initialize URL list.
+
+    if not urls_file.exists():  # Verify URLs file existence.
+        return urls  # Return empty list when file does not exist.
+
+    for raw in urls_file.read_text(encoding="utf-8", errors="ignore").splitlines():  # Iterate over file lines.
+        line = raw.strip()  # Remove leading and trailing whitespace.
+
+        if not line:  # Verify line has content.
+            continue  # Skip empty lines.
+
+        clean = line.split()[0].strip()  # Extract first token from the line.
+
+        if clean:  # Verify extracted token has content.
+            urls.append(clean)  # Append cleaned URL to list.
+
+    return urls  # Return collected URLs.
+
+
 def locate_image(image_path: Path) -> Any:
     """
     Locates an image on screen.
