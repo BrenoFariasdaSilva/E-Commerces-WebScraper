@@ -107,10 +107,6 @@ Loop, %TabCount% {
 
     currentTab := A_Index
 
-    Gosub, RefreshCurrentTab
-    if (!running)
-        break
-
     ; Click "Go To Product" button for MercadoLivre, if present
     Gosub, ClickGoToProductButton
 
