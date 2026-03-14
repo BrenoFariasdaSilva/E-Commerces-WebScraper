@@ -99,6 +99,12 @@ Loop, %TabCount% {
 
     currentTab := A_Index
 
+    ; Close extension download tab
+    Gosub, CloseExtensionDownloadTab
+    if (!running)
+        break
+    closeMethod := lastMethod
+
     Gosub, RefreshCurrentTab
     if (!running)
         break
