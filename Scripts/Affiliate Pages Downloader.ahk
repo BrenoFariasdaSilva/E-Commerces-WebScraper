@@ -6,7 +6,7 @@ SendMode Input
 CoordMode, Mouse, Screen
 CoordMode, Pixel, Screen
 
-TabCount := 0  ; If 0, will read from Inputs\urls.txt or prompt user
+TabCount := 0  ; If 0, will read from Inputs/urls.txt or prompt user
 
 ; Fallback coordinates
 ExtensionX := 1752
@@ -167,15 +167,15 @@ waitMs := 5000
 Gosub, WaitWithStop
 return
 
-; --- New function for MercadoLivre ---
+; --- Function to handle MercadoLivre webpage ---
 ClickGoToProductButton:
 found := false
 ImageSearch, Px, Py, 0, 0, A_ScreenWidth, A_ScreenHeight, %mercadoLivreGoToImg%
 if (ErrorLevel = 0) {
     Click, %Px%, %Py%
-    Sleep, 500
     lastMethod := "MercadoLivre Go To Product"
     found := true
+    Sleep, 5000  ; <-- Wait 5s for page to load before proceeding
 } else {
     lastMethod := "Not Found / Skipped"
 }
