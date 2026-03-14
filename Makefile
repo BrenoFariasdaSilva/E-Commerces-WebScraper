@@ -46,6 +46,13 @@ run:  dependencies
 	$(call RUN_AND_LOG, ./urls_input_file_adder.py)
 	$(call RUN_AND_LOG, ./main.py)
 
+local:  dependencies
+	$(ENSURE_LOG_DIR)
+	$(CLEAR_CMD)
+	$(call RUN_AND_LOG, ./compressed_archives_renamer.py)
+	$(call RUN_AND_LOG, ./urls_input_file_adder.py)
+	$(call RUN_AND_LOG, ./main.py)
+
 # Execute the main script with logging and updated dependency management
 main: dependencies
 	$(ENSURE_LOG_DIR)
@@ -94,4 +101,4 @@ clean:
 	find . -type f -name '*.pyc' -delete || del /S /Q *.pyc 2>nul
 	find . -type d -name '__pycache__' -delete || rmdir /S /Q __pycache__ 2>nul
 
-.PHONY: all run main compressed_archives_renamer urls_input_file_adder affiliate_pages_downloader update_and_run clean dependencies generate_requirements
+.PHONY: all run local main compressed_archives_renamer urls_input_file_adder affiliate_pages_downloader update_and_run clean dependencies generate_requirements
