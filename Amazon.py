@@ -125,6 +125,7 @@ HTML_SELECTORS = {
         ("div", {"id": "feature-bullets"}),  # Feature bullets section fallback
         ("div", {"class": re.compile(r".*description.*", re.IGNORECASE)}),  # Generic description pattern fallback
     ],
+    "image_block": {"id": "imageBlock"},  # CSS selector for the main image block container
     "gallery": {"id": "altImages"},  # CSS selector for product gallery container with images
     "detail_table": {"id": "productDetails_techSpec_section_1"},  # CSS selector for product details table
     "detail_section": {"id": "prodDetails"},  # CSS selector for product details section
@@ -753,14 +754,20 @@ class Amazon:
         
         try:  # Attempt image extraction with error handling
             gallery = soup.find("div", HTML_SELECTORS["gallery"])  # Find gallery container
+            image_block = soup.find("div", HTML_SELECTORS["image_block"])  # Find main image block container
             
-            if not gallery:  # Check if gallery was found
+            if not gallery and not image_block:  # Verify if gallery containers were found
                 verbose_output(  # Output warning message
                     f"{BackgroundColors.YELLOW}Gallery container not found.{Style.RESET_ALL}"
                 )  # End of verbose output call
-                return image_urls  # Return empty list if gallery not found
+                return image_urls  # Return empty list if gallery containers were not found
             
-            images = gallery.find_all("img")  # Find all image tags in gallery
+            search_container = gallery if gallery else image_block  # Select the best available image container
+            images = search_container.find_all("img", alt=re.compile(r"product image", re.IGNORECASE)) if search_container else []  # Find thumbnail images with Product Image alt text
+
+            if not images and search_container:  # Verify if Product Image thumbnails were found
+                images = search_container.find_all("img")  # Fall back to all image tags inside the selected container
+
             for img in images:  # Iterate through each image
                 from typing import cast
 
@@ -778,9 +785,14 @@ class Amazon:
                         img_url = "https:" + img_url  # Add HTTPS protocol
                     elif img_url.startswith("/"):  # Check if absolute path
                         img_url = "https://www.amazon.com.br" + img_url  # Build complete URL
+                    elif img_url.startswith("./") or (not img_url.startswith("http") and not os.path.isabs(img_url)):  # Verify if URL is a relative local or page path
+                        if self.local_html_path:  # Verify if scraper is running in local HTML mode
+                            img_url = os.path.abspath(os.path.join(os.path.dirname(self.local_html_path), img_url))  # Resolve the image path relative to the local HTML file
+                        else:  # Handle relative web paths during live scraping
+                            img_url = urljoin(self.product_url, img_url)  # Resolve the image URL relative to the product page URL
                     
                     if img_url not in seen_urls:  # Check if URL is not duplicate
-                        if "images-amazon.com" in img_url or "ssl-images-amazon.com" in img_url:  # Validate Amazon image domain
+                        if img_url.startswith("http") or os.path.exists(img_url):  # Verify if image URL is remotely accessible or available locally
                             image_urls.append(img_url)  # Add URL to list
                             seen_urls.add(img_url)  # Mark URL as seen
                             verbose_output(  # Output found image
