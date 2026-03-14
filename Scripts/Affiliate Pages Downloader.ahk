@@ -2,6 +2,7 @@
 
 #NoEnv
 SendMode Input
+CoordMode, Mouse, Window  ; Use window-relative mouse coordinates.
 
 TabCount := 10  ; Total number of tabs to process starting from the currently active tab.
 ExtensionX := 0  ; X coordinate of the browser extension icon.
@@ -33,6 +34,12 @@ StartAutomation:
 
     isProcessing := true  ; Mark the automation run as active.
 
+    ; Activate the Chrome browser window
+    WinActivate, ahk_exe chrome.exe  ; Bring Chrome to the foreground for reliable input targeting.
+    WinWaitActive, ahk_exe chrome.exe  ; Wait until Chrome is the active window.
+    WinMaximize, ahk_exe chrome.exe  ; Maximize the browser window for consistent layout.
+    Sleep, 1000  ; Wait briefly after maximizing before starting tab actions.
+
     Loop, %TabCount% {  ; Process exactly TabCount tabs in sequence.
         if (!running) {  ; Abort immediately when toggled off.
             break  ; Stop processing remaining tabs.
@@ -47,8 +54,7 @@ StartAutomation:
         }
 
         ; Click extension icon
-        MouseMove, %ExtensionX%, %ExtensionY%, 0  ; Move mouse to extension icon coordinates instantly.
-        Click, left  ; Left-click the extension icon.
+        Click, %ExtensionX%, %ExtensionY%  ; Click extension icon using window-relative coordinates.
         waitMs := 2000  ; Set wait after opening extension panel to 2 seconds.
         Gosub, WaitWithStop  ; Wait for extension panel readiness.
         if (!running) {  ; Abort if stop was requested during wait.
@@ -56,8 +62,7 @@ StartAutomation:
         }
 
         ; Click Start download button
-        MouseMove, %DownloadButtonX%, %DownloadButtonY%, 0  ; Move mouse to Start download button coordinates instantly.
-        Click, left  ; Left-click the Start download button.
+        Click, %DownloadButtonX%, %DownloadButtonY%  ; Click Start download button using window-relative coordinates.
         waitMs := 180000  ; Set download processing wait to exactly 3 minutes.
         Gosub, WaitWithStop  ; Wait for downloads to finish while allowing stop toggle.
         if (!running) {  ; Abort if stop was requested during wait.
