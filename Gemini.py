@@ -204,6 +204,26 @@ def verify_env_variables():
     return True  # Return True if all required environment variables are set
 
 
+class QuotaExceededError(Exception):
+    """
+    Represents a quota exhaustion signal for a specific Gemini API key.
+
+    :param message: Error message describing the quota exhaustion event.
+    :param key_index: 1-based API key index that became exhausted.
+    :param status_code: Optional numeric HTTP-like status code.
+    :param status_text: Optional status text such as RESOURCE_EXHAUSTED.
+    :param original_error: Original exception object raised by the SDK.
+    :return: None
+    """
+
+    def __init__(self, message, key_index=None, status_code=None, status_text=None, original_error=None):
+        super().__init__(message)  # Initialize base Exception with provided message.
+        self.key_index = key_index  # Store the 1-based API key index for upstream rotation.
+        self.status_code = status_code  # Store parsed status code when available.
+        self.status_text = status_text  # Store parsed status text when available.
+        self.original_error = original_error  # Store original SDK exception for diagnostics.
+
+
 class Gemini:
     """
     Class for interacting with Google's Gemini AI model.
@@ -213,7 +233,7 @@ class Gemini:
     """
 
 
-    def __init__(self, api_key):
+    def __init__(self, api_key, api_key_index=None):
         """
         Initialize the Gemini class with an API key.
         
@@ -222,10 +242,11 @@ class Gemini:
         
         verbose_output(true_string=f"{BackgroundColors.GREEN}Initializing Gemini Client...{Style.RESET_ALL}")
         
-        self.api_key = api_key  # Store the API key
-        self.client = genai.Client(api_key=api_key)  # Create the Gemini client
-        self.model = "gemini-2.5-flash"  # Latest free model currently
-        self.chat = None  # Placeholder for chat session
+        self.api_key = api_key  # Store the API key.
+        self.api_key_index = api_key_index  # Store the 1-based key index for quota signaling.
+        self.client = genai.Client(api_key=api_key)  # Create the Gemini client.
+        self.model = "gemini-2.5-flash"  # Latest free model currently.
+        self.chat = None  # Placeholder for chat session.
 
 
     def read_input_file(self, file_path=INPUT_FILE):
@@ -262,6 +283,37 @@ class Gemini:
         return any(keyword in error_text for keyword in RETRYABLE_API_ERROR_KEYWORDS)  # Return True when any retryable keyword is present
 
 
+    def is_quota_exhausted_api_error(self, error):
+        """
+        Determines whether an API error indicates key quota exhaustion.
+
+        :param error: The exception raised during an API request.
+        :return: True if the error indicates exhausted key quota, otherwise False.
+        """
+
+        error_text = str(error).lower()  # Convert exception text to lowercase for deterministic matching.
+        has_status_resource_exhausted = "resource_exhausted" in error_text  # Verify explicit RESOURCE_EXHAUSTED status presence.
+        has_code_429 = "429" in error_text  # Verify HTTP 429 quota status presence.
+        return has_status_resource_exhausted or has_code_429  # Return True when either quota indicator is present.
+
+
+    def create_quota_exhausted_error(self, error):
+        """
+        Creates a structured quota exhaustion exception for caller-side key rotation.
+
+        :param error: Original exception raised by the Gemini SDK request.
+        :return: QuotaExceededError containing parsed key and status metadata.
+        """
+
+        error_text = str(error)  # Store original error text for message propagation.
+        error_text_lower = error_text.lower()  # Normalize text for status/code extraction.
+        status_code = 429 if "429" in error_text_lower else None  # Parse status code when present in message text.
+        status_text = "RESOURCE_EXHAUSTED" if "resource_exhausted" in error_text_lower else None  # Parse status label when present in message text.
+        key_index = self.api_key_index if self.api_key_index is not None else 0  # Use known key index or zero when unavailable.
+        message = f"Gemini API key {key_index} quota exhausted: {error_text}"  # Build deterministic upstream-facing error message.
+        return QuotaExceededError(message, key_index=key_index, status_code=status_code, status_text=status_text, original_error=error)  # Return structured quota exhaustion signal.
+
+
     def execute_with_retry(self, request_callable, operation_name="gemini_request"):
         """
         Executes a Gemini API callable with exponential backoff retry on temporary failures.
@@ -277,6 +329,9 @@ class Gemini:
             try:  # Attempt API call and return immediately when successful
                 return request_callable()  # Execute the provided Gemini API request callable
             except Exception as e:  # Capture request exceptions for retry decision
+                if self.is_quota_exhausted_api_error(e):  # Verify if this failure represents exhausted key quota.
+                    raise self.create_quota_exhausted_error(e)  # Raise controlled quota signal so caller can rotate key.
+
                 if not self.is_retryable_api_error(e):  # Stop retry flow for non-transient exceptions
                     raise  # Re-raise non-retryable error so caller can handle it
 
