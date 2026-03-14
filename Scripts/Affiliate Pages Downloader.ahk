@@ -67,7 +67,7 @@ Loop, %TabCount% {
         break
 
     if (A_Index < TabCount) {
-        Gosub, SwitchToNextTab
+        Gosub, CloseCurrentTab
         if (!running)
             break
     }
@@ -163,8 +163,8 @@ Loop {
 return
 
 
-SwitchToNextTab:
-Send, ^{Tab}
+CloseCurrentTab:
+Send, ^w
 waitMs := 1000
 Gosub, WaitWithStop
 return
