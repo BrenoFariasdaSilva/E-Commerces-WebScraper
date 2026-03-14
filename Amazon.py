@@ -126,7 +126,7 @@ HTML_SELECTORS = {
         ("div", {"id": "feature-bullets"}),  # Feature bullets section fallback
         ("div", {"class": re.compile(r".*description.*", re.IGNORECASE)}),  # Generic description pattern fallback
     ],
-    "image_block": {"id": "imageBlock"},  # CSS selector for the main image block container
+    "image_block": {"data-old-hires": True},  # CSS selector for tags exposing high-resolution product image URLs
     "gallery": {"id": "altImages"},  # CSS selector for product gallery container with images
     "detail_table": {"id": "productDetails_techSpec_section_1"},  # CSS selector for product details table
     "detail_section": {"id": "prodDetails"},  # CSS selector for product details section
