@@ -412,6 +412,11 @@ format_execution_time(sec) {
     m := Floor((sec - h*3600) / 60)
     s := sec - h*3600 - m*60
 
+    if (h < 10)
+        hStr := "0" . h
+    else
+        hStr := h
+
     if (m < 10)
         mStr := "0" . m
     else
@@ -422,7 +427,6 @@ format_execution_time(sec) {
     else
         sStr := s
 
-    if (h > 0)
-        return h . ":" . mStr . ":" . sStr
-    return mStr . ":" . sStr
+    ; Return full HH:MM:SS and explicit units (e.g., 00:18:55 (0h 18m 55s))
+    return hStr . ":" . mStr . ":" . sStr . " (" . h . "h " . m . "m " . s . "s)"
 }
