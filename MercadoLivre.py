@@ -1,6 +1,6 @@
 """
 ================================================================================
-Mercado Livre Web Scraper
+Mercado Livre Web Scraper - MercadoLivre.py
 ================================================================================
 Author      : Breno Farias da Silva
 Created     : 2026-02-04
