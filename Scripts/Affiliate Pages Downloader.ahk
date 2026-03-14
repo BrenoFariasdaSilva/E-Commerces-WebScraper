@@ -6,7 +6,7 @@ SendMode Input
 CoordMode, Mouse, Screen
 CoordMode, Pixel, Screen
 
-TabCount := 0  ; If 0, user will be prompted for the number of tabs
+TabCount := 0  ; If 0, will read from Inputs\urls.txt or prompt user
 
 ; Fallback coordinates
 ExtensionX := 1752
@@ -35,20 +35,31 @@ if (running) {
 
     if (TabCount = 0) {
 
-        InputBox, userTabCount, Automation Setup, Enter the number of tabs to process:, , 300, 140
-
-        if (ErrorLevel) {
-            running := false
-            return
+        ; Attempt to read number of URLs from Inputs\urls.txt
+        urlsFile := scriptDir . "\Inputs\urls.txt"
+        TabCount := 0
+        if FileExist(urlsFile) {
+            Loop, Read, %urlsFile%
+                TabCount++
         }
 
-        if (userTabCount = "" || userTabCount <= 0) {
-            MsgBox, 48, Invalid Value, Please enter a valid number greater than 0.
-            running := false
-            return
-        }
+        ; If file empty or missing, ask the user
+        if (TabCount = 0) {
+            InputBox, userTabCount, Automation Setup, Enter the number of tabs to process:, , 300, 140
 
-        TabCount := userTabCount
+            if (ErrorLevel) {
+                running := false
+                return
+            }
+
+            if (userTabCount = "" || userTabCount <= 0) {
+                MsgBox, 48, Invalid Value, Please enter a valid number greater than 0.
+                running := false
+                return
+            }
+
+            TabCount := userTabCount
+        }
     }
 
     SetTimer, StartAutomation, -10
@@ -122,7 +133,7 @@ running := false
 isProcessing := false
 
 if (completed) {
-MsgBox, 64, Automation Finished, Automation process completed.`n`n%automationReport%
+    MsgBox, 64, Automation Finished, Automation process completed.`n`n%automationReport%
 }
 
 return
