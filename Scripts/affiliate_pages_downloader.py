@@ -129,6 +129,89 @@ def verbose_output(true_string="", false_string=""):
         print(false_string)  # Output the false statement string
 
 
+def run(tab_count: int | None, urls_file: Path, assets_dir: Path) -> int:
+    """
+    Runs the affiliate pages automation workflow.
+
+    :param tab_count: Number of tabs and URLs to process.
+    :param urls_file: Path to URLs input file.
+    :param assets_dir: Path to image assets directory.
+    :return: Exit code where 0 means success and 1 means failure.
+    """
+
+    urls = read_urls(urls_file)  # Read URLs from input file.
+
+    if tab_count is None or tab_count <= 0:  # Verify tab count validity.
+        tab_count = len(urls)  # Use full URL list length when tab count is not positive.
+
+    if tab_count <= 0:  # Verify there are URLs to process.
+        print(f"Error: The file {urls_file} is empty or contains no valid URLs.")  # Print empty URLs error.
+        return 1  # Return error exit code.
+
+    urls = urls[:tab_count]  # Limit URL list to requested tab count.
+
+    extension_img = assets_dir / "Extension.png"  # Define extension image path.
+    download_img = assets_dir / "DownloadButton.png"  # Define download button image path.
+    confirmation_img = assets_dir / "ConfirmationFileDownloaded.png"  # Define confirmation image path.
+    close_download_tab_img = assets_dir / "CloseDownloadTab.png"  # Define close download tab image path.
+    mercado_livre_img = assets_dir / "MercadoLivre-GoToProduct.png"  # Define MercadoLivre go-to-product image path.
+
+    print("Focus the target Chrome window now, then press Enter to start...")  # Print user prompt for window focus.
+    input()  # Wait for user confirmation input.
+
+    ext_methods: Dict[str, List[int]] = {}  # Initialize extension method map.
+    download_methods: Dict[str, List[int]] = {}  # Initialize download method map.
+    completion_methods: Dict[str, List[int]] = {}  # Initialize completion method map.
+    close_methods: Dict[str, List[int]] = {}  # Initialize close tab method map.
+
+    processed_count = 0  # Initialize processed tab counter.
+    start_tick = time.time()  # Capture workflow start timestamp.
+
+    if tab_count > 0:  # Verify at least one URL will be processed.
+        pyautogui.hotkey("ctrl", "t")  # Open blank separator tab.
+        time.sleep(0.2)  # Wait after opening separator tab.
+
+    for index, url in enumerate(urls, start=1):  # Iterate URL list with one-based indexing.
+        pyautogui.hotkey("ctrl", "t")  # Open new browser tab.
+        time.sleep(0.2)  # Wait after opening tab.
+        pyautogui.hotkey("ctrl", "l")  # Focus browser address bar.
+        time.sleep(0.08)  # Wait after focusing address bar.
+        pyautogui.typewrite(url)  # Type URL into address bar.
+        time.sleep(0.1)  # Wait after typing URL.
+        pyautogui.press("enter")  # Navigate to URL.
+        time.sleep(7)  # Wait for page loading.
+
+        current_tab = index  # Store current tab index.
+
+        click_go_to_product_button(mercado_livre_img)  # Execute MercadoLivre button action when available.
+
+        extension_method = click_image_or_coords(extension_img, EXTENSION_X, EXTENSION_Y)  # Execute extension click action.
+        download_method = click_download_button(download_img)  # Execute download click action.
+        confirmation_method = wait_for_download_confirmation(confirmation_img)  # Execute completion polling action.
+        close_method = close_extension_download_tab(close_download_tab_img)  # Execute close extension tab action.
+
+        add_method(ext_methods, extension_method, current_tab)  # Store extension method for report.
+        add_method(download_methods, download_method, current_tab)  # Store download method for report.
+        add_method(completion_methods, confirmation_method, current_tab)  # Store completion method for report.
+        add_method(close_methods, close_method, current_tab)  # Store close method for report.
+
+        close_current_tab()  # Close current product tab.
+
+        processed_count += 1  # Increment processed counter.
+
+    if processed_count == tab_count:  # Verify all tabs were processed.
+        elapsed_sec = round(time.time() - start_tick)  # Compute elapsed seconds.
+        formatted = format_execution_time(elapsed_sec)  # Format elapsed time string.
+        report = build_report(ext_methods, download_methods, completion_methods, close_methods)  # Build consolidated report text.
+        final_report = f"Execution Time: {formatted}\n\n{report}"  # Compose final report output.
+
+        print("\nAutomation Finished\n")  # Print automation completion message.
+        print(final_report)  # Print final report details.
+        maybe_show_messagebox("Automation Finished", final_report)  # Display optional messagebox report.
+
+    return 0  # Return success exit code.
+
+
 def verify_filepath_exists(filepath):
     """
     Verify if a file or folder exists at the specified path.
