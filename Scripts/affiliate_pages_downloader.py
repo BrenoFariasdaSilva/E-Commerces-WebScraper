@@ -129,6 +129,23 @@ def verbose_output(true_string="", false_string=""):
         print(false_string)  # Output the false statement string
 
 
+def locate_image(image_path: Path) -> Any:
+    """
+    Locates an image on screen.
+
+    :param image_path: Path to the image file.
+    :return: Box location when found, otherwise None.
+    """
+
+    if not image_path.exists():  # Verify image file existence.
+        return None  # Return None when image file does not exist.
+
+    try:  # Attempt image location on screen.
+        return pyautogui.locateOnScreen(str(image_path))  # Return located box coordinates.
+    except Exception:  # Handle image search exception.
+        return None  # Return None when image search fails.
+
+
 def click_image_or_coords(image_path: Path, x: int, y: int) -> str:
     """
     Clicks image center or fallback coordinates.
