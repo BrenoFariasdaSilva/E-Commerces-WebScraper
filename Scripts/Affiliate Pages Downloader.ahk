@@ -73,8 +73,14 @@ Loop, %TabCount% {
     }
 }
 
+completed := running  ; true if finished normally
 running := false
 isProcessing := false
+
+if (completed) {
+    MsgBox, 64, Automation Finished, The browser automation process completed successfully.
+}
+
 return
 
 
