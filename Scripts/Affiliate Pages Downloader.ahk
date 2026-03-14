@@ -187,7 +187,7 @@ return
 WaitForDownloadConfirmation:
 
 verificationCount := 0
-maxVerifications := 36
+maxVerifications := 60  ; 60 attempts with 5s sleep = 300s (5 mins) max wait time
 
 Loop {
 
