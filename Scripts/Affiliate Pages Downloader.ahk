@@ -13,6 +13,8 @@ ExtensionX := 1752
 ExtensionY := 705
 DownloadButtonX := 1590
 DownloadButtonY := 64
+CloseDownloadTabX := 1905
+CloseDownloadTabY := 148
 
 ; Resolve asset paths
 scriptDir := A_ScriptDir
@@ -96,7 +98,7 @@ Loop, %TabCount% {
         break
     confirmationMethod := lastMethod
 
-    ; CRITICAL FIX
+    ; Close extension download tab
     Gosub, CloseExtensionDownloadTab
     if (!running)
         break
@@ -215,15 +217,17 @@ return
 
 CloseExtensionDownloadTab:
 
+found := false
 ImageSearch, Px, Py, 0, 0, A_ScreenWidth, A_ScreenHeight, %closeDownloadTabImg%
-
 if (ErrorLevel = 0) {
     Click, %Px%, %Py%
     lastMethod := "ImageSearch"
+    found := true
 }
-else {
-    Send, {Esc}
-    lastMethod := "Fallback ESC key"
+
+if (!found) {
+    Click, %CloseDownloadTabX%, %CloseDownloadTabY%
+    lastMethod := "Fallback Coordinates"
 }
 
 Sleep, 500
