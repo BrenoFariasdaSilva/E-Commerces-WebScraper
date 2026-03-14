@@ -69,7 +69,7 @@ from AliExpress import AliExpress  # Import the AliExpress class
 from Amazon import Amazon  # Import the Amazon class
 from colorama import Style  # For coloring the terminal
 from dotenv import load_dotenv  # For loading environment variables
-from Gemini import Gemini  # Import the Gemini class
+from Gemini import Gemini, QuotaExceededError  # Import the Gemini class and quota exhaustion signal.
 from Logger import Logger  # For logging output to both terminal and file
 from MercadoLivre import MercadoLivre  # Import the MercadoLivre class
 from pathlib import Path  # For handling file paths
@@ -190,6 +190,8 @@ INSTRUÇÕES:
 Gere APENAS o texto formatado, sem explicações adicionais."""  # Template for Gemini AI marketing text generation
 
 GEMINI_LAST_KEY_INDEX = 0  # Index to keep track of the last used key in the Gemini prompt template for dynamic replacement
+GEMINI_ALL_KEYS_EXHAUSTED_WAIT_SECONDS = 60  # Seconds to wait before restarting key rotation when all keys are exhausted.
+GEMINI_MAX_ALL_KEYS_EXHAUSTED_CYCLES = 3  # Maximum all-keys-exhausted cycles per URL before failing the request.
 
 # Functions Definitions:
 
@@ -1246,24 +1248,24 @@ def remove_url_line_from_input_file(url, local_html_path=None):
         return False  # Indicate nothing removed
 
 
-def generate_marketing_text(product_description, description_file, product_data=None, product_url=None):
+def generate_marketing_text(product_description, description_file, product_data=None, product_url=None, api_key=None, key_index=1, total_keys=1):
     """
     Generates marketing text from product description using Gemini AI.
-    Supports multiple API keys with automatic failover on rate limit errors.
+    Uses a single API key attempt and signals quota exhaustion for caller-side key rotation.
     
     :param product_description: The raw product description text
     :param description_file: Path to the description file (used to determine output directory)
     :param product_data: Optional dictionary containing product information (e.g., is_international)
     :param product_url: Optional product URL used to apply platform-specific prompt rules
+    :param api_key: Gemini API key string to use for this single generation attempt
+    :param key_index: 1-based index of the API key being used
+    :param total_keys: Total number of available API keys for log context
     :return: True if successful, False otherwise
     """
-    
-    api_keys_raw = os.getenv(ENV_VARIABLES["GEMINI"], "")  # Get Gemini API key(s)
-    api_keys = [key.strip() for key in api_keys_raw.split(",") if key.strip()]  # Split and clean keys
-    
-    if not api_keys:  # If no API keys are configured
-        print(f"{BackgroundColors.RED}Error: No Gemini API keys configured in .env file.{Style.RESET_ALL}")
-        return False  # Return failure
+
+    if not api_key:  # Verify if a concrete API key was provided by the caller.
+        print(f"{BackgroundColors.RED}Error: No Gemini API key provided for generation.{Style.RESET_ALL}")  # Report missing key for this attempt.
+        return False  # Return failure when key is unavailable.
     
     is_international = product_data.get("is_international", False) if product_data else False  # Verify if product is international
     International_instruction = ""  # Initialize international instruction as empty
@@ -1283,76 +1285,34 @@ def generate_marketing_text(product_description, description_file, product_data=
         amazon_24h_instruction = "\n\n**IMPORTANTE**: Para produtos da Amazon, ADICIONE IMEDIATAMENTE ANTES DA LINHA DO LINK (👉 ...) a seguinte mensagem EM NEGRITO E EM MAIUSCULAS: *ATENCAO: LINK VALIDO POR 24 HORAS. APOS 24 HORAS, SO PERMANECE VALIDO SE O PRODUTO FOR ADICIONADO AO CARRINHO DENTRO DESSE PRAZO.*"
     
     prompt = GEMINI_MARKETING_PROMPT_TEMPLATE.format(product_description=product_description) + International_instruction + no_discount_instruction + amazon_24h_instruction  # Format template with all instructions
-    
-    last_error = None  # Store the last error for reporting
-    
-    global GEMINI_LAST_KEY_INDEX  # Use module-level index state to rotate keys across products
-    total_keys = len(api_keys)  # Number of available API keys
 
-    start_idx = GEMINI_LAST_KEY_INDEX % total_keys if total_keys > 0 else 0
+    gemini = None  # Initialize Gemini client reference for safe cleanup in all execution paths.
 
-    for offset in range(total_keys):  # Try each key in the list, starting from the last attempted key
-        idx = (start_idx + offset) % total_keys  # 0-based index into api_keys
-        key_index = idx + 1  # 1-based display index for messages
-        api_key = api_keys[idx]  # Select API key for this attempt
-        try:  # Try to generate marketing text with current key
-            verbose_output(
-                true_string=f"{BackgroundColors.GREEN}Attempting to use Gemini API key {key_index} of {total_keys}...{Style.RESET_ALL}"
-            )  # Output verbose message
+    try:  # Try a single-key generation request and delegate key rotation to caller.
+        verbose_output(  # Emit verbose key-attempt diagnostics for this single-key attempt.
+            true_string=f"{BackgroundColors.GREEN}Attempting to use Gemini API key {key_index} of {total_keys}...{Style.RESET_ALL}"
+        )  # Output verbose message.
 
-            GEMINI_LAST_KEY_INDEX = idx  # Store last attempted key index (0-based)
+        gemini = Gemini(api_key, api_key_index=key_index)  # Create Gemini instance with key metadata for quota signaling.
+        formatted_output = gemini.generate_content(prompt)  # Generate formatted marketing text with the provided key.
 
-            gemini = Gemini(api_key)  # Create Gemini instance with current key
-            formatted_output = gemini.generate_content(prompt)  # Generate formatted marketing text
+        if formatted_output:  # Verify if generation returned content.
+            description_dir = os.path.dirname(description_file)  # Get directory of description file.
+            formatted_file = os.path.join(description_dir, f"Template.txt")  # Build output file path.
+            gemini.write_output_to_file(formatted_output, formatted_file)  # Write output to file.
+            return True  # Return success for this key attempt.
 
-            if formatted_output:  # If generation successful
-                description_dir = os.path.dirname(description_file)  # Get directory of description file
-                formatted_file = os.path.join(description_dir, f"Template.txt")  # Output file path
-                gemini.write_output_to_file(formatted_output, formatted_file)  # Write output to file
-
-                gemini.close()  # Close Gemini client
-
-                GEMINI_LAST_KEY_INDEX = idx  # Persist last successful key index
-
-                return True  # Return success
-            else:  # If generation failed but no exception
-                print(f"{BackgroundColors.YELLOW}API key {key_index} returned empty response.{Style.RESET_ALL}")
-                gemini.close()  # Close Gemini client
-                last_error = "Empty response from API"  # Store error message for reporting
-                continue  # Try next key
-
-        except Exception as e:  # If an error occurs with current key
-            GEMINI_LAST_KEY_INDEX = idx  # Store last attempted index even on exceptions
-
-            error_str = str(e).lower()  # Convert error to lowercase for verify
-
-            is_rate_limit = any(keyword in error_str for keyword in [
-                "rate", "quota", "limit", "429", "resource_exhausted",
-                "too many requests", "quota exceeded", "503", "unavailable",
-                "temporary", "temporarily", "service unavailable", "high demand",
-                "timeout", "timed out", "connection", "deadline exceeded",
-                "internal", "server error", "bad gateway", "gateway timeout"
-            ])  # Verify for temporary API failure indicators
-
-            if is_rate_limit:  # If rate limit error detected
-                last_error = e  # Store error
-                print(f"{BackgroundColors.YELLOW}[WARNING] Temporary Gemini API failure with key {key_index}: {e}{Style.RESET_ALL}")  # Log temporary API failure before key failover
-
-                if offset < total_keys - 1:  # If there are more keys to try
-                    continue  # Try next key
-                else:  # No more keys to try
-                    print(f"{BackgroundColors.RED}All API keys exhausted.{Style.RESET_ALL}")
-            else:  # Non-rate-limit error
-                print(f"{BackgroundColors.RED}Error with API key {key_index}: {e}{Style.RESET_ALL}")
-                last_error = e  # Store error
-
-                return False  # Return failure
-    
-    print(f"{BackgroundColors.RED}Failed to generate marketing text after trying all {len(api_keys)} API key(s).{Style.RESET_ALL}")
-    if last_error:  # If we have a stored error
-        print(f"{BackgroundColors.RED}Last error: {last_error}{Style.RESET_ALL}")
-    
-    return False  # Return failure
+        verbose_output(f"{BackgroundColors.YELLOW}API key {key_index} returned empty response.{Style.RESET_ALL}")  # Report empty successful-response body.
+        return False  # Return failure for empty response.
+    except QuotaExceededError as e:  # Handle controlled quota exhaustion from Gemini layer.
+        verbose_output(f"{BackgroundColors.YELLOW}[WARNING] API key {key_index} quota exhausted. Rotating to next API key.{Style.RESET_ALL}")  # Emit deterministic quota-rotation warning.
+        raise e  # Re-raise controlled signal so caller can rotate without skipping URL.
+    except Exception as e:  # Handle non-quota generation failures.
+        verbose_output(f"{BackgroundColors.RED}Error with API key {key_index}: {e}{Style.RESET_ALL}")  # Report unexpected generation failure.
+        return False  # Return failure for non-quota errors.
+    finally:  # Guarantee client cleanup regardless of success, quota signal, or generic failure.
+        if gemini is not None:  # Verify if Gemini client was instantiated before cleanup.
+            gemini.close()  # Close Gemini client to release resources.
 
 
 def to_seconds(obj):
@@ -1481,6 +1441,12 @@ def main():
     if not verify_env_variables():  # Verify if the required environment variables are set
         print(f"{BackgroundColors.RED}Environment variables missing. Exiting...{Style.RESET_ALL}")
         return
+
+    api_keys_raw = os.getenv(ENV_VARIABLES["GEMINI"], "")  # Get Gemini API key(s) from environment variables.
+    api_keys = [key.strip() for key in api_keys_raw.split(",") if key.strip()]  # Split and normalize non-empty keys.
+    if not api_keys:  # Verify if at least one Gemini API key exists before processing URLs.
+        print(f"{BackgroundColors.RED}Error: No Gemini API keys configured in .env file.{Style.RESET_ALL}")  # Report missing API key configuration.
+        return  # Exit early when no keys are available.
     
     create_directory(
         os.path.abspath(INPUT_DIRECTORY), INPUT_DIRECTORY.replace(".", "")
@@ -1606,7 +1572,52 @@ def main():
 
             verbose_output(f"{BackgroundColors.CYAN}Step 2{BackgroundColors.GREEN}: Formatting with Gemini AI{Style.RESET_ALL}")  # Step 2: Format the product description with Gemini AI
             
-            success = generate_marketing_text(product_description, description_file, product_data, url)  # Generate marketing text with product data and URL context
+            success = False  # Initialize Gemini formatting success flag for this URL.
+            exhausted_key_indices = set()  # Track exhausted key indices during the current rotation cycle.
+            exhausted_cycles = 0  # Track how many full exhausted cycles happened for this URL.
+            total_keys = len(api_keys)  # Compute total available keys for this URL attempt.
+
+            global GEMINI_LAST_KEY_INDEX  # Reuse module-level key index to preserve deterministic rotation across URLs.
+            current_idx = GEMINI_LAST_KEY_INDEX % total_keys if total_keys > 0 else 0  # Start from last successful key index.
+
+            while True:  # Keep retrying same product request until success or maximum exhausted cycles reached.
+                key_index = current_idx + 1  # Convert zero-based key index to one-based display index.
+                api_key = api_keys[current_idx]  # Select API key for this iteration.
+
+                try:  # Try processing the same product with current key.
+                    success = generate_marketing_text(  # Execute single-key Gemini generation attempt.
+                        product_description,  # Reuse same product description for deterministic retry behavior.
+                        description_file,  # Reuse same description file destination for deterministic retry behavior.
+                        product_data,  # Reuse same product data context across retries.
+                        url,  # Reuse same product URL across retries.
+                        api_key=api_key,  # Pass current key only and let main handle rotations.
+                        key_index=key_index,  # Pass one-based key index for logging and exception metadata.
+                        total_keys=total_keys,  # Pass total key count for contextual logging.
+                    )  # End single-key generation call.
+
+                    if success:  # Verify whether generation succeeded for this key.
+                        GEMINI_LAST_KEY_INDEX = current_idx  # Persist last successful key for next URL.
+                        break  # Exit retry loop and continue URL pipeline.
+
+                    current_idx = (current_idx + 1) % total_keys  # Rotate to next key on non-quota failure to maximize resilience.
+                    if current_idx == 0:  # Verify if a full key round has been completed.
+                        break  # Stop loop after one full non-quota rotation and keep failure result.
+                except QuotaExceededError as quota_error:  # Handle controlled quota exhaustion signal.
+                    exhausted_key_index = quota_error.key_index if quota_error.key_index else key_index  # Resolve exhausted key index from exception metadata.
+                    exhausted_key_indices.add(exhausted_key_index)  # Mark current key as exhausted for this cycle.
+                    current_idx = (current_idx + 1) % total_keys  # Rotate to next key for same URL and same prompt.
+
+                    if len(exhausted_key_indices) >= total_keys:  # Verify if all keys are exhausted in current cycle.
+                        exhausted_cycles += 1  # Increment all-keys-exhausted cycle counter.
+                        if exhausted_cycles > GEMINI_MAX_ALL_KEYS_EXHAUSTED_CYCLES:  # Verify if maximum cycle retries reached.
+                            print(f"{BackgroundColors.RED}All API keys remained exhausted after {GEMINI_MAX_ALL_KEYS_EXHAUSTED_CYCLES} cycle(s) for URL: {BackgroundColors.CYAN}{url}{Style.RESET_ALL}")  # Report final exhaustion failure for current URL.
+                            break  # Stop retrying this URL after configured exhausted cycles.
+                        print(f"{BackgroundColors.YELLOW}[WARNING] All API keys exhausted. Waiting {GEMINI_ALL_KEYS_EXHAUSTED_WAIT_SECONDS}s before retrying the same URL.{Style.RESET_ALL}")  # Report cooldown before restarting key rotation.
+                        time.sleep(GEMINI_ALL_KEYS_EXHAUSTED_WAIT_SECONDS)  # Wait before restarting rotation to allow quota reset windows.
+                        exhausted_key_indices.clear()  # Reset exhausted key tracking for next cycle.
+                        current_idx = 0  # Restart rotation from first key after cooldown.
+
+                    continue  # Continue retry loop for same URL.
             
             if success:  # If both scraping and formatting succeeded
                 description_dir = os.path.dirname(description_file)  # Get directory of description file
