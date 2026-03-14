@@ -67,6 +67,7 @@ import datetime  # Handle date and time operations
 import os  # Interact with operating system functionalities
 import platform  # Access underlying platform information
 import re  # Perform regular expression operations
+import requests  # Import requests library for HTTP image download
 import shutil  # For copying files (local HTML mode)
 import subprocess  # For running external commands (ffmpeg)
 import sys  # Access system-specific parameters and functions
@@ -1177,78 +1178,68 @@ class Amazon:
         return "".join(result)  # Join all sentences and delimiters back into a single string
 
 
-    def download_single_image(self, img_url: str, output_dir: str, image_count: int) -> Optional[str]:
+    def download_single_image(self, img_url, output_dir, image_count):
         """
-        Downloads or copies a single image to the specified output directory.
-        Supports HTTP downloads and local file copying for offline mode.
+        Downloads a single image to the specified output directory.
+        Supports both HTTP downloads and local file copying.
         
         :param img_url: URL of the image to download (HTTP URL or local path)
         :param output_dir: Directory to save the image
         :param image_count: Counter for generating unique filenames
-        :return: Path to downloaded image file or None if download failed
+        :return: Path to the downloaded file or None if download failed
         """
         
-        try:  # Attempt image download with error handling
-            if img_url.startswith("file://") or (not img_url.startswith("http") and os.path.exists(img_url)):  # Check if local file
-                local_img_path = img_url.replace("file://", "")  # Remove file protocol
+        try:  # Try to download or copy the image
+            if self.local_html_path and (img_url.startswith("./") or img_url.startswith("../") or not img_url.startswith(("http://", "https://"))):
+                html_dir = os.path.dirname(os.path.abspath(self.local_html_path))
+                local_img_path = os.path.normpath(os.path.join(html_dir, img_url))
                 
-                if not os.path.exists(local_img_path):  # Verify file exists
-                    verbose_output(  # Output not found message
-                        f"{BackgroundColors.YELLOW}Local image not found: {local_img_path}{Style.RESET_ALL}"
-                    )  # End of verbose output call
-                    return None  # Return None if file doesn't exist
+                if not os.path.exists(local_img_path):
+                    verbose_output(
+                        f"{BackgroundColors.YELLOW}Local image file not found: {local_img_path}{Style.RESET_ALL}"
+                    )
+                    return None
                 
-                file_ext = os.path.splitext(local_img_path)[1] or ".jpg"  # Get file extension or default
-                image_filename = f"image_{image_count}{file_ext}"  # Generate unique filename
-                image_path = os.path.join(output_dir, image_filename)  # Build full destination path
+                ext = os.path.splitext(local_img_path)[1]
+                if not ext:
+                    ext = ".webp"
                 
-                shutil.copy2(local_img_path, image_path)  # Copy file preserving metadata
+                filename = f"image_{image_count:03d}{ext}"
+                filepath = os.path.join(output_dir, filename)
                 
-                verbose_output(  # Output success message
-                    f"{BackgroundColors.GREEN}Image copied: {BackgroundColors.CYAN}{image_filename}{Style.RESET_ALL}"
-                )  # End of verbose output call
+                shutil.copy2(local_img_path, filepath)
                 
-                return image_path  # Return path to copied image
+                verbose_output(
+                    f"{BackgroundColors.GREEN}Copied: {BackgroundColors.CYAN}{filename}{Style.RESET_ALL}"
+                )
+                
+                return filepath
+            else:
+                img_response = requests.get(img_url, timeout=10)  # Download image directly from URL
+                img_response.raise_for_status()  # Raise exception on bad status
+                
+                parsed_url = urlparse(img_url)  # Parse URL
+                ext = os.path.splitext(parsed_url.path)[1]  # Get file extension
+                if not ext:  # If no extension
+                    ext = ".jpg"  # Default to JPG (common on Amazon)
+                
+                filename = f"image_{image_count:03d}{ext}"  # Create filename
+                filepath = os.path.join(output_dir, filename)  # Create path
+                
+                with open(filepath, "wb") as f:  # Write file
+                    f.write(img_response.content)  # Write content
+                
+                verbose_output(
+                    f"{BackgroundColors.GREEN}Downloaded: {BackgroundColors.CYAN}{filename}{Style.RESET_ALL}"
+                )  # Output verbose
+                
+                return filepath  # Return the file path
             
-            else:  # Handle HTTP URL download
-                import requests  # Import requests library for HTTP
-                
-                response = requests.get(img_url, timeout=30, stream=True)  # Send GET request with timeout
-                response.raise_for_status()  # Raise exception for bad status codes
-                
-                content_type = response.headers.get("content-type", "")  # Get content type header
-                if "image" not in content_type:  # Validate content is image
-                    verbose_output(  # Output warning message
-                        f"{BackgroundColors.YELLOW}URL does not point to an image: {img_url}{Style.RESET_ALL}"
-                    )  # End of verbose output call
-                    return None  # Return None if not image
-                
-                file_ext = ".jpg"  # Default extension
-                if "jpeg" in content_type or "jpg" in content_type:  # Check for JPEG
-                    file_ext = ".jpg"  # Set JPEG extension
-                elif "png" in content_type:  # Check for PNG
-                    file_ext = ".png"  # Set PNG extension
-                elif "gif" in content_type:  # Check for GIF
-                    file_ext = ".gif"  # Set GIF extension
-                elif "webp" in content_type:  # Check for WebP
-                    file_ext = ".webp"  # Set WebP extension
-                
-                image_filename = f"image_{image_count}{file_ext}"  # Generate unique filename
-                image_path = os.path.join(output_dir, image_filename)  # Build full destination path
-                
-                with open(image_path, "wb") as file:  # Open file for binary writing
-                    for chunk in response.iter_content(chunk_size=8192):  # Stream content in chunks
-                        file.write(chunk)  # Write chunk to file
-                
-                verbose_output(  # Output success message
-                    f"{BackgroundColors.GREEN}Image downloaded: {BackgroundColors.CYAN}{image_filename}{Style.RESET_ALL}"
-                )  # End of verbose output call
-                
-                return image_path  # Return path to downloaded image
-        
-        except Exception as e:  # Catch any exceptions during download
-            print(f"{BackgroundColors.YELLOW}Failed to download image {image_count}: {e}{Style.RESET_ALL}")  # Warn user about download failure
-            return None  # Return None to indicate download failed
+        except Exception as e:  # If error
+            verbose_output(
+                f"{BackgroundColors.RED}Error downloading/copying image: {e}{Style.RESET_ALL}"
+            )  # Output error
+            return None  # Return None on failure
 
 
     def download_single_video(self, video_url: str, output_dir: str, video_count: int) -> Optional[str]:
@@ -1266,6 +1257,12 @@ class Amazon:
         is_hls = video_url.endswith(".m3u8")  # Check if video URL is HLS stream
         
         try:  # Attempt video download with error handling
+            if video_url.startswith(("blob:", "data:")):  # Skip browser-local sources that requests/ffmpeg cannot access
+                verbose_output(
+                    f"{BackgroundColors.YELLOW}Skipping unsupported video download source: {video_url}{Style.RESET_ALL}"
+                )  # End of verbose output call
+                return None  # Return None because the source cannot be downloaded externally
+
             if video_url.startswith("file://") or (not video_url.startswith("http") and os.path.exists(video_url)):  # Check if local file
                 local_video_path = video_url.replace("file://", "")  # Remove file protocol
                 
