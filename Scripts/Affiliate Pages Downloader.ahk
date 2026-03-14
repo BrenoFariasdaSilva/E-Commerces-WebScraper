@@ -99,6 +99,15 @@ startTick := A_TickCount
 
 Gosub, ActivateChrome
 
+; Open a separator tab so the user's current tabs stay separated from automation tabs
+if (TabCount > 0) {
+    ClipSaved := ClipboardAll
+    Send, ^t
+    Sleep, 200
+    Clipboard := ClipSaved
+    Sleep, 200
+}
+
 ; Iterate through the loaded URLs and open each in a new tab before processing
 for index, url in Urls {
 
