@@ -845,6 +845,30 @@ class Amazon:
         )  # End of verbose output call
         
         try:  # Attempt video extraction with error handling
+            html_content = str(soup)  # Convert parsed document to raw HTML string
+            hidden_video_values = re.findall(r'</div><input type="hidden" name="" value="(https?://[^"]+)" class="video-url">', html_content)  # Extract video URLs from strict hidden input pattern
+
+            for video_url in hidden_video_values:  # Iterate through hidden input video URLs
+                normalized_video_url = video_url.strip()  # Normalize URL spacing
+
+                if normalized_video_url.startswith("//"):  # Verify protocol-relative URL
+                    normalized_video_url = "https:" + normalized_video_url  # Prepend HTTPS protocol
+                elif normalized_video_url.startswith("/"):  # Verify absolute web path
+                    normalized_video_url = "https://www.amazon.com.br" + normalized_video_url  # Build full URL
+
+                if normalized_video_url.startswith(("blob:", "data:")):  # Skip browser-local sources that cannot be fetched outside the page context
+                    verbose_output(
+                        f"{BackgroundColors.YELLOW}Skipping unsupported video source: {normalized_video_url}{Style.RESET_ALL}"
+                    )  # End of verbose output call
+                    continue  # Continue to next video source
+
+                if normalized_video_url not in seen_urls:  # Verify URL is not duplicate
+                    video_urls.append(normalized_video_url)  # Add URL to list
+                    seen_urls.add(normalized_video_url)  # Mark URL as seen
+                    verbose_output(  # Output found video
+                        f"{BackgroundColors.CYAN}Video found: {normalized_video_url}{Style.RESET_ALL}"
+                    )  # End of verbose output call
+
             videos = soup.find_all("video")  # Find all video tags
             from typing import cast
             from urllib.parse import urljoin
