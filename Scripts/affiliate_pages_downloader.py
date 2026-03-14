@@ -114,6 +114,8 @@ RUN_FUNCTIONS = {
     "Play Sound": True,  # Set to True to play a sound when the program finishes
 }
 
+TARGET_CHROME_TITLE = ""  # Store selected Chrome window title for reuse.
+
 
 # Functions Definitions:
 
@@ -131,6 +133,70 @@ def verbose_output(true_string="", false_string=""):
         print(true_string)  # Output the true statement string
     elif false_string != "":  # If a false_string was provided
         print(false_string)  # Output the false statement string
+
+
+def activate_chrome_window() -> bool:
+    """
+    Activates a Chrome window to receive automation keystrokes.
+
+    :return: True if a Chrome window is active, otherwise False.
+    """
+
+    global TARGET_CHROME_TITLE  # Reference global selected window title.
+
+    try:  # Attempt cross-platform window enumeration.
+        get_all_windows = getattr(pyautogui, "getAllWindows", None)  # Resolve optional window listing API.
+        windows_raw = get_all_windows() if callable(get_all_windows) else []  # Retrieve all desktop windows when API is available.
+        windows = windows_raw if isinstance(windows_raw, list) else []  # Normalize window collection to a list.
+    except Exception:  # Handle unsupported window-management backend.
+        print(f"{BackgroundColors.YELLOW}Window activation API is unavailable on this system. Keep Chrome focused manually.{Style.RESET_ALL}")  # Print manual-focus warning.
+        return True  # Continue execution with manual focus fallback.
+
+    chrome_windows = [w for w in windows if w.title and "chrome" in w.title.lower()]  # Filter Chrome windows by title.
+
+    if not chrome_windows:  # Verify at least one Chrome window exists.
+        print(f"{BackgroundColors.RED}No Chrome windows were detected. Automation cannot continue.{Style.RESET_ALL}")  # Print Chrome not found error.
+        return False  # Return failure status when no Chrome window is available.
+
+    target_window = None  # Initialize selected window reference.
+
+    if TARGET_CHROME_TITLE != "":  # Verify previous window title is available.
+        for window in chrome_windows:  # Iterate candidate Chrome windows.
+            if window.title == TARGET_CHROME_TITLE:  # Verify title match with previously selected window.
+                target_window = window  # Reuse previously selected window.
+                break  # Stop search after finding matching window.
+
+    if target_window is None:  # Verify selected window availability.
+        if len(chrome_windows) == 1:  # Verify single-window scenario.
+            target_window = chrome_windows[0]  # Select the only Chrome window.
+            TARGET_CHROME_TITLE = target_window.title  # Persist selected window title.
+        else:  # Enter multi-window selection scenario.
+            print(f"{BackgroundColors.YELLOW}Multiple Chrome windows detected:{Style.RESET_ALL}")  # Print multi-window selection header.
+            for index, window in enumerate(chrome_windows, start=1):  # Enumerate Chrome windows for user selection.
+                print(f"{BackgroundColors.CYAN}{index}.{Style.RESET_ALL} {window.title}")  # Print selectable Chrome window entry.
+
+            try:  # Attempt user selection parsing.
+                selected_index = int(input("Select the Chrome window index: ").strip())  # Read selected index from user input.
+            except Exception:  # Handle invalid index input.
+                print(f"{BackgroundColors.RED}Invalid selection. Automation cannot continue.{Style.RESET_ALL}")  # Print invalid selection error.
+                return False  # Return failure status on invalid selection input.
+
+            if selected_index < 1 or selected_index > len(chrome_windows):  # Verify selected index bounds.
+                print(f"{BackgroundColors.RED}Selected index is out of range. Automation cannot continue.{Style.RESET_ALL}")  # Print out-of-range selection error.
+                return False  # Return failure status on out-of-range selection.
+
+            target_window = chrome_windows[selected_index - 1]  # Select user-chosen Chrome window.
+            TARGET_CHROME_TITLE = target_window.title  # Persist selected window title.
+
+    try:  # Attempt window activation sequence.
+        target_window.activate()  # Activate selected Chrome window.
+        time.sleep(0.2)  # Wait after activation.
+        target_window.maximize()  # Maximize selected Chrome window.
+        time.sleep(0.8)  # Wait after maximize.
+        return True  # Return success status after activation.
+    except Exception:  # Handle window activation failure.
+        print(f"{BackgroundColors.RED}Failed to activate Chrome window. Keep Chrome focused manually and retry.{Style.RESET_ALL}")  # Print activation failure message.
+        return False  # Return failure status after activation exception.
 
 
 def read_urls(urls_file: Path) -> List[str]:
@@ -190,8 +256,7 @@ def click_image_or_coords(image_path: Path, x: int, y: int) -> str:
     box = locate_image(image_path)  # Locate image on screen.
 
     if box is not None:  # Verify image was found.
-        cx, cy = pyautogui.center(box)  # Compute center point from box.
-        pyautogui.click(cx, cy)  # Click image center point.
+        pyautogui.click(box.left, box.top)  # Click top-left point like AHK ImageSearch behavior.
         return "ImageSearch"  # Return image search method label.
 
     pyautogui.click(x, y)  # Click fallback coordinates.
@@ -212,8 +277,7 @@ def click_download_button(download_img: Path) -> str:
         box = locate_image(download_img)  # Locate download image on screen.
 
         if box is not None:  # Verify image was found.
-            cx, cy = pyautogui.center(box)  # Compute center point from box.
-            pyautogui.click(cx, cy)  # Click image center point.
+            pyautogui.click(box.left, box.top)  # Click top-left point like AHK ImageSearch behavior.
             return "ImageSearch"  # Return image search method label.
 
         time.sleep(0.2)  # Wait before retrying image search.
@@ -252,8 +316,7 @@ def close_extension_download_tab(close_download_tab_img: Path) -> str:
     box = locate_image(close_download_tab_img)  # Locate close tab image on screen.
 
     if box is not None:  # Verify image was found.
-        cx, cy = pyautogui.center(box)  # Compute center point from box.
-        pyautogui.click(cx, cy)  # Click image center point.
+        pyautogui.click(box.left, box.top)  # Click top-left point like AHK ImageSearch behavior.
         time.sleep(0.5)  # Wait briefly after image click.
         return "ImageSearch"  # Return image search method label.
 
@@ -273,8 +336,7 @@ def click_go_to_product_button(mercado_livre_img: Path) -> str:
     box = locate_image(mercado_livre_img)  # Locate MercadoLivre image on screen.
 
     if box is not None:  # Verify image was found.
-        cx, cy = pyautogui.center(box)  # Compute center point from box.
-        pyautogui.click(cx, cy)  # Click image center point.
+        pyautogui.click(box.left, box.top)  # Click top-left point like AHK ImageSearch behavior.
         time.sleep(5)  # Wait for page transition.
         return "MercadoLivre Go To Product"  # Return action performed status.
 
@@ -415,6 +477,9 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path) -> int:
     print("Focus the target Chrome window now, then press Enter to start...")  # Print user prompt for window focus.
     input()  # Wait for user confirmation input.
 
+    if not activate_chrome_window():  # Verify Chrome activation before sending hotkeys.
+        return 1  # Return failure exit code when activation fails.
+
     ext_methods: Dict[str, List[int]] = {}  # Initialize extension method map.
     download_methods: Dict[str, List[int]] = {}  # Initialize download method map.
     completion_methods: Dict[str, List[int]] = {}  # Initialize completion method map.
@@ -424,15 +489,23 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path) -> int:
     start_tick = time.time()  # Capture workflow start timestamp.
 
     if tab_count > 0:  # Verify at least one URL will be processed.
+        if not activate_chrome_window():  # Verify Chrome is active before opening separator tab.
+            return 1  # Return failure exit code when activation fails.
         pyautogui.hotkey("ctrl", "t")  # Open blank separator tab.
         time.sleep(0.2)  # Wait after opening separator tab.
 
     for index, url in enumerate(urls, start=1):  # Iterate URL list with one-based indexing.
+        if not activate_chrome_window():  # Verify Chrome is active before keyboard navigation.
+            return 1  # Return failure exit code when activation fails.
         pyautogui.hotkey("ctrl", "t")  # Open new browser tab.
         time.sleep(0.2)  # Wait after opening tab.
         pyautogui.hotkey("ctrl", "l")  # Focus browser address bar.
         time.sleep(0.08)  # Wait after focusing address bar.
-        pyautogui.typewrite(url)  # Type URL into address bar.
+        pyautogui.hotkey("ctrl", "a")  # Select any previous address-bar text.
+        time.sleep(0.05)  # Wait after selecting address text.
+        pyautogui.press("backspace")  # Clear selected address text.
+        time.sleep(0.05)  # Wait after clearing address text.
+        pyautogui.typewrite(url, interval=0.0)  # Type URL into address bar.
         time.sleep(0.1)  # Wait after typing URL.
         pyautogui.press("enter")  # Navigate to URL.
         time.sleep(7)  # Wait for page loading.
