@@ -5,8 +5,8 @@ SendMode Input
 CoordMode, Mouse, Window  ; Use window-relative mouse coordinates.
 
 TabCount := 10  ; Total number of tabs to process starting from the currently active tab.
-ExtensionX := 0  ; X coordinate of the browser extension icon.
-ExtensionY := 0  ; Y coordinate of the browser extension icon.
+ExtensionX := 1752  ; X coordinate of the browser extension icon.
+ExtensionY := 705  ; Y coordinate of the browser extension icon.
 DownloadButtonX := 0  ; X coordinate of the Start download button in the extension panel.
 DownloadButtonY := 0  ; Y coordinate of the Start download button in the extension panel.
 
