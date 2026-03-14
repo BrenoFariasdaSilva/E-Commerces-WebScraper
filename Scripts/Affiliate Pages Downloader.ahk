@@ -51,7 +51,7 @@ if (running) {
         }
 
         if (urlCount > 0) {
-            TabCount := urlCount - 1
+            TabCount := urlCount
         } else {
             ; If file empty or missing, ask the user for number of URLs
             InputBox, userUrlCount, Automation Setup, Enter the number of URLs to process:, , 300, 140
@@ -67,12 +67,19 @@ if (running) {
                 return
             }
 
-            if (userUrlCount > 0)
-                TabCount := userUrlCount - 1
-            else
+            if (userUrlCount > 0) {
+                TabCount := userUrlCount
+            } else
                 TabCount := 0
         }
     }
+
+        ; Normalize TabCount to represent number of tab switches (URLs - 1)
+        if (TabCount > 0) {
+            TabCount := TabCount - 1
+            if (TabCount < 0)
+                TabCount := 0
+        }
 
     SetTimer, StartAutomation, -10
 }
