@@ -81,6 +81,16 @@ class BackgroundColors:  # Colors for the terminal
 # Execution Constants:
 VERBOSE = False  # Set to True to output verbose messages
 
+pyautogui.FAILSAFE = True  # Enable fail-safe by moving cursor to the top-left corner.
+pyautogui.PAUSE = 0.05  # Apply default pause between pyautogui actions.
+
+EXTENSION_X = 1752  # Define extension click fallback X coordinate.
+EXTENSION_Y = 705  # Define extension click fallback Y coordinate.
+DOWNLOAD_BUTTON_X = 1590  # Define download button fallback X coordinate.
+DOWNLOAD_BUTTON_Y = 64  # Define download button fallback Y coordinate.
+CLOSE_DOWNLOAD_TAB_X = 1905  # Define close download tab fallback X coordinate.
+CLOSE_DOWNLOAD_TAB_Y = 148  # Define close download tab fallback Y coordinate.
+
 
 # Logger Setup:
 logger = Logger(f"./Logs/{Path(__file__).stem}.log", clean=True)  # Create a Logger instance
@@ -99,6 +109,7 @@ SOUND_FILE = "./.assets/Sounds/NotificationSound.wav"  # The path to the sound f
 RUN_FUNCTIONS = {
     "Play Sound": True,  # Set to True to play a sound when the program finishes
 }
+
 
 # Functions Definitions:
 
