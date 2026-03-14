@@ -6,7 +6,7 @@ SendMode Input
 CoordMode, Mouse, Screen
 CoordMode, Pixel, Screen
 
-TabCount := 3  ; Total number of tabs to process starting from the currently active tab.
+TabCount := 3
 
 ; Fallback coordinates
 ExtensionX := 1752
@@ -14,7 +14,7 @@ ExtensionY := 705
 DownloadButtonX := 1590
 DownloadButtonY := 64
 
-; Resolve asset paths relative to this script
+; Resolve asset paths
 scriptDir := A_ScriptDir
 extensionImg := scriptDir . "\..\.assets\Browser\Extension.png"
 downloadImg := scriptDir . "\..\.assets\Browser\DownloadButton.png"
@@ -23,14 +23,14 @@ confirmationImg := scriptDir . "\..\.assets\Browser\ConfirmationFileDownloaded.p
 running := false
 isProcessing := false
 waitMs := 0
+automationReport := ""
 
 F4::
 running := !running
-if (running) {
+if (running)
     SetTimer, StartAutomation, -10
-} else {
+else
     SetTimer, StartAutomation, Off
-}
 return
 
 
@@ -42,6 +42,7 @@ if (isProcessing)
     return
 
 isProcessing := true
+automationReport := ""
 
 Gosub, ActivateChrome
 
@@ -50,6 +51,8 @@ Loop, %TabCount% {
     if (!running)
         break
 
+    currentTab := A_Index
+
     Gosub, RefreshCurrentTab
     if (!running)
         break
@@ -57,14 +60,22 @@ Loop, %TabCount% {
     Gosub, ClickExtensionIcon
     if (!running)
         break
+    extensionMethod := lastMethod
 
     Gosub, ClickDownloadButton
     if (!running)
         break
+    downloadMethod := lastMethod
 
     Gosub, WaitForDownloadConfirmation
     if (!running)
         break
+    confirmationMethod := lastMethod
+
+    automationReport .= "Tab " currentTab ":`n"
+    automationReport .= "  Extension Click: " extensionMethod "`n"
+    automationReport .= "  Download Click: " downloadMethod "`n"
+    automationReport .= "  Completion Detection: " confirmationMethod "`n`n"
 
     if (A_Index < TabCount) {
         Gosub, CloseCurrentTab
@@ -73,12 +84,12 @@ Loop, %TabCount% {
     }
 }
 
-completed := running  ; true if finished normally
+completed := running
 running := false
 isProcessing := false
 
 if (completed) {
-    MsgBox, 64, Automation Finished, The browser automation process completed successfully.
+MsgBox, 64, Automation Finished, Automation process completed.`n`n%automationReport%
 }
 
 return
@@ -106,10 +117,12 @@ ImageSearch, Px, Py, 0, 0, A_ScreenWidth, A_ScreenHeight, %extensionImg%
 if (ErrorLevel = 0) {
     Click, %Px%, %Py%
     found := true
+    lastMethod := "ImageSearch"
 }
 
 if (!found) {
     Click, %ExtensionX%, %ExtensionY%
+    lastMethod := "Fallback Coordinates"
 }
 return
 
@@ -129,6 +142,7 @@ while ((A_TickCount - startTime) < 3000) {
     if (ErrorLevel = 0) {
         Click, %Px%, %Py%
         found := true
+        lastMethod := "ImageSearch"
         break
     }
 
@@ -137,6 +151,7 @@ while ((A_TickCount - startTime) < 3000) {
 
 if (!found) {
     Click, %DownloadButtonX%, %DownloadButtonY%
+    lastMethod := "Fallback Coordinates"
 }
 
 return
@@ -154,13 +169,17 @@ Loop {
 
     ImageSearch, Px, Py, 0, 0, A_ScreenWidth, A_ScreenHeight, %confirmationImg%
 
-    if (ErrorLevel = 0)
+    if (ErrorLevel = 0) {
+        lastMethod := "Confirmation Image Detected"
         break
+    }
 
     verificationCount++
 
-    if (verificationCount >= maxVerifications)
+    if (verificationCount >= maxVerifications) {
+        lastMethod := "Timeout (180s assumed complete)"
         break
+    }
 
     waitMs := 5000
     Gosub, WaitWithStop
