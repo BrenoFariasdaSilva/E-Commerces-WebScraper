@@ -634,7 +634,8 @@ class MercadoLivre:
         :return: Path to the created output directory
         """
         
-        directory_name = f"{self.prefix} - {product_name_safe}" if self.prefix else product_name_safe  # Construct directory name with platform prefix if available
+        raw_directory_name = f"{self.prefix} - {product_name_safe}" if self.prefix else product_name_safe  # Build raw directory name with platform prefix if available
+        directory_name = normalize_product_dir_name(raw_directory_name)  # Normalize full directory name to enforce 80-char path limit
         output_dir = os.path.join(self.output_directory, directory_name)  # Create the output directory path using instance output directory
         self.create_directory(os.path.abspath(output_dir), output_dir.replace(".", ""))  # Create the output directory
         
@@ -1206,7 +1207,9 @@ class MercadoLivre:
                 )
                 return downloaded_files  # Return empty list
 
-            output_dir = self.create_output_directory(product_name)  # Create the output directory
+            product_name_safe = normalize_product_dir_name(product_name)  # Normalize product name for canonical directory naming
+            output_dir = self.create_output_directory(product_name_safe)  # Create output directory using normalized product name
+            self.product_data["product_name_safe"] = os.path.basename(output_dir)  # Store canonical directory name for main.py lookup
             
             soup = self.fetch_product_page(self.session, self.product_url)  # Fetch and parse the product page
             
@@ -1228,7 +1231,7 @@ class MercadoLivre:
                 f"{BackgroundColors.GREEN}Creating product description file...{Style.RESET_ALL}"
             )  # Output message
             
-            txt_file = self.create_product_description_file(self.product_data, output_dir, product_name, self.url)  # Create description file
+            txt_file = self.create_product_description_file(self.product_data, output_dir, self.product_data["product_name_safe"], self.url)  # Create description file with canonical directory name
             if txt_file:  # If file was created successfully
                 downloaded_files.append(txt_file)  # Add to downloaded files
 
