@@ -410,7 +410,7 @@ Notes:
 - **Timestamped Run Folder**: `main.py` creates a timestamped folder under `Outputs/` for every execution; product folders for that run are created inside it. The folder name begins with an incremental index for the day, followed by the date and time (e.g., `1. 2026-02-15 - 16h26m31s`).
 - **Product Directory Name**: Product directory names use the platform prefix (from `PLATFORM_PREFIXES`) plus the sanitized product name (created by `sanitize_filename`) separated by ` - `.
 - **Product Directory Name**: Product directory names use the platform prefix (from `PLATFORM_PREFIXES`) plus the sanitized product name separated by ` - `.
-  All product directory names are generated via a single shared helper function `product_utils.normalize_product_dir_name(...)` which performs the existing sanitization rules and then enforces a strict, deterministic 80-character limit (truncation via slicing) applied AFTER sanitization. All scrapers and `main.py` use this helper for both directory creation and lookup to guarantee consistency.
+  All product directory names are generated via a single shared helper function `product_utils.normalize_product_name(...)` which performs the existing sanitization rules and then enforces a strict, deterministic 80-character limit (truncation via slicing) applied AFTER sanitization. All scrapers and `main.py` use this helper for both directory creation and lookup to guarantee consistency.
 - **Description File**: The scraper writes a description file named exactly `{product_name_safe}.txt` (not necessarily with `_description` suffix) containing the text generated from the product data and the `PRODUCT_DESCRIPTION_TEMPLATE`.
 - **AI Template File**: When Gemini is enabled the marketing text is saved as `{product_name_safe}_Template.txt` inside the same product directory.
 - **Snapshot & Assets**: The full page snapshot is saved as `index.html` and external assets are localized under an `assets/` subfolder; scrapers may reference `index.html` or `page.html` internally, but the current implementation saves snapshots as `index.html` inside the product folder.
@@ -425,13 +425,13 @@ Problem
 - Very long product names were previously used directly to create product directories. Some operating systems truncate long filesystem names, which caused directory lookup and move operations to fail when code used the original (non-truncated) name.
 
 Solution
-- A single, centralized helper function `product_utils.normalize_product_dir_name(raw_name, replace_with, title_case)` is now the authoritative way to produce product-directory-safe names. The helper:
+- A single, centralized helper function `product_utils.normalize_product_name(raw_name, replace_with, title_case)` is now the authoritative way to produce product-directory-safe names. The helper:
   - Preserves the existing sanitization behavior (NBSP normalization, whitespace collapse, title-casing where used, and replacement/removal of filesystem-invalid characters).
   - Enforces a strict maximum length of 80 characters AFTER sanitization using deterministic slicing (no hashing, no randomness).
   - Returns the final directory-safe string.
 
 Usage and requirements for developers
-- ALWAYS use `product_utils.normalize_product_dir_name(...)` when creating, searching, or referencing product directories in code. This applies to:
+- ALWAYS use `product_utils.normalize_product_name(...)` when creating, searching, or referencing product directories in code. This applies to:
   - `AliExpress.py`, `Amazon.py`, `MercadoLivre.py`, `Shein.py`, `Shopee.py`, and `main.py`.
 - The 80-character truncation is applied after sanitization; developers must not re-implement truncation or bypass the helper. Bypassing the helper will break directory-name consistency and may cause runtime failures (missing directories, failed moves, or lookup mismatches).
 
