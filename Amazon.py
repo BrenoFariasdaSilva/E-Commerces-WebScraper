@@ -655,7 +655,7 @@ class Amazon:
         verbose_output(  # Output not found message
             f"{BackgroundColors.YELLOW}Discount percentage not found.{Style.RESET_ALL}"
         )  # End of verbose output call
-        return None  # Return None when real discount element is not present
+        return "N/A"  # Return N/A when real discount element is not present
 
 
     def extract_product_description(self, soup: BeautifulSoup) -> str:
@@ -975,7 +975,7 @@ class Amazon:
             if cur_int in (None, "N/A") and old_int not in (None, "N/A"):  # Verify if current price is unavailable while old price is available
                 cur_int, cur_dec = old_int, old_dec  # Normalize current price to old price when current price is unavailable
 
-            if discount is None and cur_int not in (None, "N/A"):  # Verify if discount is absent while current price is available
+            if discount in (None, "N/A") and cur_int not in (None, "N/A"):  # Verify if discount is absent while current price is available
                 old_int, old_dec = cur_int, cur_dec  # Normalize old price to current price when no real discount exists
                 verbose_output(f"{BackgroundColors.CYAN}[DEBUG] No discount element detected. Prices normalized{Style.RESET_ALL}")  # Log deterministic no-discount normalization
             
