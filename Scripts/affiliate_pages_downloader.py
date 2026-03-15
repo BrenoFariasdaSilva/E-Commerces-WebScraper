@@ -228,6 +228,35 @@ def read_urls(urls_file: Path) -> List[str]:
     return urls  # Return collected URLs.
 
 
+def snapshot_download_directory(downloads_dir: Path) -> Dict[str, float]:
+    """
+    Captures file snapshot metadata from the downloads directory.
+
+    :param downloads_dir: Path to the monitored downloads directory.
+    :return: Dictionary mapping filename to modified timestamp.
+    """
+
+    snapshot: Dict[str, float] = {}  # Initialize snapshot dictionary.
+
+    if not downloads_dir.exists():  # Verify if monitored downloads directory exists.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Downloads directory not found: {downloads_dir}{Style.RESET_ALL}")  # Log missing downloads directory warning.
+        return snapshot  # Return empty snapshot when directory does not exist.
+
+    try:  # Attempt to iterate over monitored downloads directory.
+        for file_path in downloads_dir.iterdir():  # Iterate over entries from monitored downloads directory.
+            if not file_path.is_file():  # Verify if current entry is a file.
+                continue  # Skip non-file entries.
+
+            try:  # Attempt to retrieve file modified timestamp.
+                snapshot[file_path.name] = file_path.stat().st_mtime  # Store filename and modified timestamp in snapshot dictionary.
+            except Exception:  # Handle timestamp retrieval failures.
+                continue  # Skip file entries with inaccessible metadata.
+    except Exception:  # Handle downloads directory listing failures.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to read downloads directory snapshot: {downloads_dir}{Style.RESET_ALL}")  # Log downloads snapshot failure warning.
+
+    return snapshot  # Return captured downloads directory snapshot.
+
+
 def detect_new_download_file(before_snapshot: Dict[str, float], after_snapshot: Dict[str, float], url: str) -> str:
     """
     Detects new downloaded filename by comparing two snapshots.
