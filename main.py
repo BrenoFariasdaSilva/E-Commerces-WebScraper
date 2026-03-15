@@ -182,14 +182,15 @@ INSTRUÇÕES:
 5. A linha de preço (💰) é obrigatória e deve sempre aparecer
 6. Quando não houver desconto, OMITA apenas a linha de desconto (🎟️)
 7. Quando não houver preço antigo, use o mesmo valor do preço atual como preço antigo
-8. Inclua o link real do produto
-9. Crie 2-3 características principais marcantes
-10. Sugira onde/como usar o produto
-11. Se aplicável, sugira como presente ou ocasião especial
-12. Para o desconto, quando existir, nunca usar o termo "off", prefira algo como "20% de Desconto!"
-13. O texto final NÃO pode ultrapassar 1000 caracteres (incluindo espaços e emojis)
-14. Seja direto, evite parágrafos longos e evite textos explicativos extensos — consumidores não gostam de ler textos longos
-15. Priorize frases curtas, objetivas e de alto impacto
+8. Quando PREÇO_ANTIGO e PREÇO_ATUAL forem iguais, escreva a linha de preço como: 💰 POR APENAS *R$<PREÇO_ATUAL>* (sem usar "DE")
+9. Inclua o link real do produto
+10. Crie 2-3 características principais marcantes
+11. Sugira onde/como usar o produto
+12. Se aplicável, sugira como presente ou ocasião especial
+13. Para o desconto, quando existir, nunca usar o termo "off", prefira algo como "20% de Desconto!"
+14. O texto final NÃO pode ultrapassar 1000 caracteres (incluindo espaços e emojis)
+15. Seja direto, evite parágrafos longos e evite textos explicativos extensos — consumidores não gostam de ler textos longos
+16. Priorize frases curtas, objetivas e de alto impacto
 
 Gere APENAS o texto formatado, sem explicações adicionais."""  # Template for Gemini AI marketing text generation
 
@@ -1271,11 +1272,13 @@ def generate_marketing_text(product_description, description_file, product_data=
     
     old_price_int = str(product_data.get("old_price_integer", "")).strip() if product_data else ""
     old_price_dec = str(product_data.get("old_price_decimal", "")).strip() if product_data else ""
+    current_price_int = str(product_data.get("current_price_integer", "")).strip() if product_data else ""
+    current_price_dec = str(product_data.get("current_price_decimal", "")).strip() if product_data else ""
     discount = str(product_data.get("discount_percentage", "")).strip() if product_data else ""
     
     no_discount_instruction = ""
-    if (old_price_int in ["N/A", ""] or old_price_dec in ["N/A", ""]) and discount in ["N/A", ""]:
-        no_discount_instruction = "\n\n**IMPORTANTE**: Este produto NÃO possui desconto disponível. A linha de preço (💰) é OBRIGATÓRIA e deve permanecer. Se não houver preço antigo, repita o preço atual como preço antigo. Remova APENAS a linha de desconto (🎟️...)."
+    if ((old_price_int in ["N/A", ""] or old_price_dec in ["N/A", ""]) and discount in ["N/A", ""]) or (discount in ["N/A", ""] and old_price_int == current_price_int and old_price_dec == current_price_dec and current_price_int not in ["", "N/A"] and current_price_dec not in ["", "N/A"]):
+        no_discount_instruction = "\n\n**IMPORTANTE**: Este produto NÃO possui desconto disponível. A linha de preço (💰) é OBRIGATÓRIA e deve permanecer. Quando o preço antigo e o preço atual forem iguais, use EXATAMENTE o formato: 💰 POR APENAS *R$<PREÇO_ATUAL>* (sem usar 'DE'). Remova APENAS a linha de desconto (🎟️...)."
 
     amazon_24h_instruction = ""  # Initialize Amazon-specific warning instruction
     if product_url and detect_platform(product_url) == "amazon":  # Verify if the current product belongs to Amazon
