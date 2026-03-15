@@ -59,11 +59,12 @@ import datetime  # Capture execution timestamps.
 import os  # Execute operating-system commands.
 import platform  # Identify active operating system.
 import pyautogui  # Automate keyboard and mouse interactions.
+import shutil  # Move files between directories.
 import sys  # Access process-level runtime controls.
 import time  # Manage sleep and elapsed time operations.
 from colorama import Style  # Reset ANSI style output.
 from pathlib import Path  # Build and resolve filesystem paths.
-from typing import Any, Dict, List  # Provide typing annotations for containers and dynamic objects.
+from typing import Any, Dict, List, Tuple  # Provide typing annotations for containers and dynamic objects.
 
 PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)  # Project root directory
 if PROJECT_ROOT not in sys.path:  # Ensure project root is in sys.path
