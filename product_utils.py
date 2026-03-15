@@ -1,4 +1,4 @@
-"""
+r"""
 Product Directory Name Normalization Utility - product_utils.py
 
 Author      : Breno Farias da Silva
