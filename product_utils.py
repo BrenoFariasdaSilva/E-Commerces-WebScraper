@@ -38,7 +38,7 @@ import re  # Used for regex-based sanitization of product names for directory na
 
 
 # Execution Constants:
-VERBOSE = True  # Set to True to output verbose messages
+VERBOSE = False  # Set to True to output verbose messages
 
 
 # Functions Definitions:
