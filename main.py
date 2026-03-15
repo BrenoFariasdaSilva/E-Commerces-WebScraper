@@ -74,7 +74,6 @@ from Logger import Logger  # For logging output to both terminal and file
 from MercadoLivre import MercadoLivre  # Import the MercadoLivre class
 from pathlib import Path  # For handling file paths
 from PIL import Image  # For image processing
-from product_utils import normalize_product_dir_name  # Centralized product dir name normalization
 from Shein import Shein  # Import the Shein class
 from Shopee import Shopee  # Import the Shopee class
 from tqdm import tqdm  # Progress bar for URL processing
@@ -653,17 +652,6 @@ def load_urls_to_process(test_urls, input_file):
     return url_data  # Return the list of URL tuples
 
 
-def sanitize_filename(filename):
-    """
-    Sanitizes a filename by removing invalid characters for filesystem compatibility.
-    
-    :param filename: The filename string to sanitize
-    :return: Sanitized filename string containing only alphanumeric characters, spaces, hyphens, and underscores
-    """
-    
-    return normalize_product_dir_name(raw_name=filename)  # Use the centralized normalization function to sanitize the filename
-
-
 def get_next_run_index(base_output_dir, today_str):
     """
     Determines the next run index for the current day by scanning existing timestamped directories.
@@ -1093,9 +1081,9 @@ def scrape_product(url, timestamped_output_dir, local_html_path=None):
         if isinstance(product_name, str):  # Ensure we operate only on strings
             product_name = product_name.replace("\u00A0", " ")  # Replace NBSP with normal space
             product_name = re.sub(r"\s+", " ", product_name).strip()  # Collapse multiple whitespace to single spaces
-        product_name_safe = sanitize_filename(product_name)  # Sanitize filename (title-case and strip)
-        product_directory = f"{platform_prefix}{PLATFORM_PREFIX_SEPARATOR}{product_name_safe}" if platform_prefix else product_name_safe  # Construct directory name with platform prefix
-        description_file = f"{timestamped_output_dir}/{product_directory}/{product_name_safe}_description.txt"  # Construct full path to description file using timestamped directory
+        product_name_safe = product_data.get("product_name_safe", "")  # Get canonical directory name from scraper
+        product_directory = product_name_safe  # Use canonical directory name directly (already includes platform prefix)
+        description_file = f"{timestamped_output_dir}/{product_directory}/{product_name_safe}_description.txt"  # Construct full path to description file using canonical name
         
         if not verify_filepath_exists(description_file):  # If description file not found
             print(f"{BackgroundColors.RED}Description file not found: {description_file}{Style.RESET_ALL}")
@@ -1815,8 +1803,8 @@ def main():
                         shutil.rmtree(dest_dir)  # Remove existing destination to avoid conflicts
                     if os.path.exists(src_dir):  # Only move if staging source exists
                         shutil.move(src_dir, dest_dir)  # Move staging product to final run
-                    product_name_safe = sanitize_filename(product_data.get("name", "Unknown Product"))  # Sanitize product name
-                    description_file = os.path.join(dest_dir, f"{product_name_safe}_description.txt")  # Update description file path to final location
+                    product_name_safe = product_data.get("product_name_safe", "")  # Get canonical directory name from scraper
+                    description_file = os.path.join(dest_dir, f"{product_name_safe}_description.txt")  # Update description file path to final location using canonical name
                     product_directory = indexed_product_directory  # Use indexed final directory name for downstream steps
                 except Exception as e:  # Handle move errors
                     print(f"{BackgroundColors.YELLOW}Warning: Could not move staging output to final run directory: {e}{Style.RESET_ALL}")  # Warn user but continue
