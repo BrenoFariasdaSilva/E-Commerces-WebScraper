@@ -228,6 +228,22 @@ def read_urls(urls_file: Path) -> List[str]:
     return urls  # Return collected URLs.
 
 
+def associate_url_with_download(url_to_download: Dict[str, str], url: str, downloaded_filename: str) -> None:
+    """
+    Associates the processed URL with detected downloaded filename.
+
+    :param url_to_download: Dictionary mapping URL to downloaded filename.
+    :param url: Processed URL string.
+    :param downloaded_filename: Detected downloaded filename.
+    :return: None.
+    """
+
+    if downloaded_filename == "":  # Verify if downloaded filename is empty.
+        return  # Return without mapping when no file was detected.
+
+    url_to_download[url] = downloaded_filename  # Persist URL to downloaded filename association.
+
+
 def update_urls_file(urls_file: Path, url_to_download: Dict[str, str]) -> None:
     """
     Rewrites URLs file using URL and downloaded filename associations.
