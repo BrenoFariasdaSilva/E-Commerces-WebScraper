@@ -531,26 +531,35 @@ class Shopee:
                 
                 label_text = label.get_text(strip=True)  # Extract and clean label text
                 
-                if "País de Origem" in label_text or "Country of Origin" in label_text:
-                    parent = label.parent  # Get parent container
-                    if parent and isinstance(parent, Tag):  # Ensure parent is a Tag
-                        value_element = parent.find("div")  # Get first div in parent (contains the value)
-                        if value_element and isinstance(value_element, Tag):
-                            country_value = value_element.get_text(strip=True)  # Extract country value
-                            
-                            verbose_output(  # Log detected country
+                if "País de Origem" in label_text or "Country of Origin" in label_text:  # Verify if the current label corresponds to the country of origin field
+                    parent = label.parent  # Retrieve the parent container of the label element
+                    if parent and isinstance(parent, Tag):  # Verify that the parent container exists and is a valid Tag instance
+                        value_element = parent.find("div")  # Retrieve the first div element inside the parent container that holds the value
+
+                        if value_element and isinstance(value_element, Tag):  # Verify that the value element exists and is a valid Tag instance
+                            country_value = value_element.get_text(strip=True)  # Extract the country of origin text value
+                            verbose_output(  # Invoke verbose logging for the detected country
                                 f"{BackgroundColors.GREEN}Country of Origin: {BackgroundColors.CYAN}{country_value}{Style.RESET_ALL}"
-                            )  # End of verbose output call
-                            
-                            if country_value.lower() not in ["brasil", "brazil"]:
-                                verbose_output(  # Log international detection
-                                    f"{BackgroundColors.YELLOW}Product is INTERNATIONAL (from {country_value}){Style.RESET_ALL}"
-                                )  # End of verbose output call
-                                return True  # Return True for international product
-                            else:
-                                verbose_output(  # Log domestic product
+                            )  # Log the detected country of origin value
+
+                            if country_value.lower() not in ["brasil", "brazil"]:  # Verify whether the country of origin is different from Brazil
+                                shipping_value = extract_shipping_origin(soup)  # Retrieve the shipping origin value from the document
+                                if shipping_value and not is_brazilian_state(shipping_value):  # Verify whether shipping origin is outside Brazil
+                                    verbose_output(  # Invoke verbose logging indicating international product detection
+                                        f"{BackgroundColors.YELLOW}Product is INTERNATIONAL (from {country_value}){Style.RESET_ALL}"
+                                    )  # Log international product classification
+                                    return True  # Return True for international product
+
+                                else:  # Handle the case where the shipping origin is inside Brazil
+                                    verbose_output(  # Invoke verbose logging indicating domestic shipping override
+                                        f"{BackgroundColors.GREEN}Product ships from Brazil despite international origin{Style.RESET_ALL}"
+                                    )  # Log domestic shipping override
+                                    return False  # Return False indicating the product should not be treated as international
+
+                            else:  # Handle the case where the country of origin is Brazil
+                                verbose_output(  # Invoke verbose logging indicating domestic product
                                     f"{BackgroundColors.GREEN}Product is domestic (from Brazil){Style.RESET_ALL}"
-                                )  # End of verbose output call
+                                )  # Log domestic product classification
                                 return False  # Return False for domestic product
             
             verbose_output(  # Log country field not found
