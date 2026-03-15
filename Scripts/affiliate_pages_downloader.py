@@ -228,6 +228,36 @@ def read_urls(urls_file: Path) -> List[str]:
     return urls  # Return collected URLs.
 
 
+def move_downloaded_archives(downloads_dir: Path, destination_dir: Path, url_to_download: Dict[str, str]) -> None:
+    """
+    Moves downloaded archives from downloads directory to URLs directory.
+
+    :param downloads_dir: Path to the monitored downloads directory.
+    :param destination_dir: Path to the target directory where URLs file is located.
+    :param url_to_download: Dictionary mapping URL to downloaded filename.
+    :return: None.
+    """
+
+    unique_filenames = sorted({filename for filename in url_to_download.values() if filename != ""})  # Build sorted unique list of detected downloaded filenames.
+
+    for filename in unique_filenames:  # Iterate over detected downloaded filenames.
+        source_path = downloads_dir / filename  # Build source archive file path in downloads directory.
+        destination_path = destination_dir / filename  # Build destination archive file path in URLs directory.
+
+        if not source_path.exists():  # Verify if source archive exists before move.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Downloaded file not found for move: {source_path}{Style.RESET_ALL}")  # Log missing source archive warning.
+            continue  # Continue with next detected archive.
+
+        if destination_path.exists():  # Verify if destination archive already exists.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Destination file already exists. Skipping move: {destination_path}{Style.RESET_ALL}")  # Log existing destination archive warning.
+            continue  # Continue with next detected archive.
+
+        try:  # Attempt to move archive into destination directory.
+            shutil.move(str(source_path), str(destination_path))  # Move detected downloaded archive to URLs directory.
+        except Exception:  # Handle archive move failures.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Failed to move downloaded file: {source_path}{Style.RESET_ALL}")  # Log archive move failure warning.
+
+
 def process_urls_with_download_tracking(urls: List[str], tab_count: int, downloads_dir: Path, extension_img: Path, download_img: Path, confirmation_img: Path, close_download_tab_img: Path, mercado_livre_img: Path, ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]]) -> Tuple[int, Dict[str, str], bool]:
     """
     Processes URLs while tracking downloaded files by directory snapshots.
