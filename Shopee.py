@@ -494,6 +494,38 @@ class Shopee:
         return "Unknown Product"  # Return default placeholder when name extraction fails
 
 
+    def extract_shipping_origin(self, soup: BeautifulSoup) -> str | None:
+        """
+        Extract the shipping origin value from the product page.
+
+        :param soup: Parsed BeautifulSoup document of the product page.
+        :return: Shipping origin text if detected, otherwise None.
+        """
+
+        shipping_labels = soup.find_all(string=lambda t: isinstance(t, str) and "Envio de" in t)  # Retrieve all text nodes containing the shipping origin label
+
+        if shipping_labels:  # Verify if any shipping origin label exists in the document
+            for shipping_label in shipping_labels:  # Iterate through detected shipping origin labels
+                shipping_parent = shipping_label.parent  # Retrieve the parent element of the shipping label
+
+                if shipping_parent and isinstance(shipping_parent, Tag):  # Verify that the parent element exists and is a valid Tag
+                    shipping_container = shipping_parent.parent  # Retrieve the container holding the shipping information
+
+                    if shipping_container and isinstance(shipping_container, Tag):  # Verify that the container exists and is a valid Tag
+                        shipping_value_element = shipping_container.find("div")  # Retrieve the first div element containing the shipping value
+
+                        if shipping_value_element and isinstance(shipping_value_element, Tag):  # Verify that the shipping value element exists and is a valid Tag
+                            shipping_value = shipping_value_element.get_text(strip=True)  # Extract the shipping origin text value
+
+                            verbose_output(  # Invoke verbose logging for the detected shipping origin
+                                f"{BackgroundColors.GREEN}Shipping Origin: {BackgroundColors.CYAN}{shipping_value}{Style.RESET_ALL}"
+                            )  # Log the detected shipping origin value
+
+                            return shipping_value  # Return the detected shipping origin value
+
+        return None  # Return None when no shipping origin information is detected
+
+
     def detect_international(self, soup: BeautifulSoup) -> bool:
         """
         Detects if the product is international by checking for the international import declaration text.
@@ -543,8 +575,8 @@ class Shopee:
                             )  # Log the detected country of origin value
 
                             if country_value.lower() not in ["brasil", "brazil"]:  # Verify whether the country of origin is different from Brazil
-                                shipping_value = extract_shipping_origin(soup)  # Retrieve the shipping origin value from the document
-                                if shipping_value and not is_brazilian_state(shipping_value):  # Verify whether shipping origin is outside Brazil
+                                shipping_value = self.extract_shipping_origin(soup)  # Retrieve the shipping origin value from the document
+                                if shipping_value and not self.is_brazilian_state(shipping_value):  # Verify whether shipping origin is outside Brazil
                                     verbose_output(  # Invoke verbose logging indicating international product detection
                                         f"{BackgroundColors.YELLOW}Product is INTERNATIONAL (from {country_value}){Style.RESET_ALL}"
                                     )  # Log international product classification
