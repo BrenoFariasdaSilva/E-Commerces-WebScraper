@@ -66,7 +66,7 @@ from bs4 import BeautifulSoup, Tag  # For parsing HTML content
 from colorama import Style  # For coloring the terminal
 from Logger import Logger  # For logging output to both terminal and file
 from pathlib import Path  # For handling file paths
-from product_utils import normalize_product_dir_name  # Centralized product dir name normalization
+from product_utils import normalize_product_name  # Centralized product dir name normalization
 from urllib.parse import urlparse  # For URL manipulation
 
 
@@ -289,7 +289,7 @@ class MercadoLivre:
         name_element = soup.find(**HTML_SELECTORS["product_name"])  # Find the product name element using centralized selector
         if name_element:  # Verify if matching element was found
             raw_product_name = name_element.get_text(separator=" ", strip=True)  # Extract raw text, preserve single spaces between parts
-            product_name = normalize_product_dir_name(raw_name=raw_product_name)  # Normalize name for directory usage
+            product_name = normalize_product_name(raw_name=raw_product_name)  # Normalize name for directory usage
 
             verbose_output(
                 f"{BackgroundColors.GREEN}Product name: {BackgroundColors.CYAN}{product_name}{Style.RESET_ALL}"
@@ -635,7 +635,7 @@ class MercadoLivre:
         """
         
         raw_directory_name = f"{self.prefix} - {product_name_safe}" if self.prefix else product_name_safe  # Build raw directory name with platform prefix if available
-        directory_name = normalize_product_dir_name(raw_directory_name)  # Normalize full directory name to enforce 80-char path limit
+        directory_name = normalize_product_name(raw_directory_name)  # Normalize full directory name to enforce 80-char path limit
         output_dir = os.path.join(self.output_directory, directory_name)  # Create the output directory path using instance output directory
         self.create_directory(os.path.abspath(output_dir), output_dir.replace(".", ""))  # Create the output directory
         
@@ -1207,7 +1207,7 @@ class MercadoLivre:
                 )
                 return downloaded_files  # Return empty list
 
-            product_name_safe = normalize_product_dir_name(product_name)  # Normalize product name for canonical directory naming
+            product_name_safe = normalize_product_name(product_name)  # Normalize product name for canonical directory naming
             output_dir = self.create_output_directory(product_name_safe)  # Create output directory using normalized product name
             self.product_data["product_name_safe"] = os.path.basename(output_dir)  # Store canonical directory name for main.py lookup
             
