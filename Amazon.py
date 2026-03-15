@@ -1014,7 +1014,8 @@ class Amazon:
         :return: Path to the created output directory
         """
         
-        directory_name = f"{self.prefix} - {product_name_safe}" if self.prefix else product_name_safe  # Construct directory name with platform prefix if available
+        raw_directory_name = f"{self.prefix} - {product_name_safe}" if self.prefix else product_name_safe  # Build raw directory name with platform prefix if available
+        directory_name = normalize_product_dir_name(raw_directory_name)  # Normalize full directory name to enforce 80-char path limit
         output_dir = os.path.join(self.output_directory, directory_name)  # Construct full path for product output directory using instance output directory
         self.create_directory(os.path.abspath(output_dir), output_dir.replace(".", ""))  # Create directory with absolute path and cleaned relative name
         
@@ -1484,6 +1485,7 @@ class Amazon:
             product_name_safe = normalize_product_dir_name(raw_name=product_name)  # Normalize name for directory usage
             
             output_dir = self.create_output_directory(product_name_safe)  # Create product output directory
+                        self.product_data["product_name_safe"] = os.path.basename(output_dir)  # Store canonical directory name for main.py lookup
             
             soup = BeautifulSoup(self.html_content, "html.parser")  # Parse HTML content
             
@@ -1502,7 +1504,7 @@ class Amazon:
             desc_path = self.create_product_description_file(  # Create description file
                 self.product_data,  # Pass product data
                 output_dir,  # Pass output directory
-                product_name_safe,  # Pass safe product name
+                self.product_data["product_name_safe"],  # Pass canonical directory name for consistent description filename
                 self.url  # Pass original URL
             )  # End of function call
             if desc_path:  # Check if description file was created
