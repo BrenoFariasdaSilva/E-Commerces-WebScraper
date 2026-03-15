@@ -92,6 +92,9 @@ HTML_SELECTORS = {
     "product_name": {"class": "ui-pdp-title"},  # CSS selector for product name element
     "price_fraction": {"class": "andes-money-amount__fraction"},  # CSS selector for price integer part (used for both current and old prices)
     "current_price_cents": {"class": "andes-money-amount__cents"},  # CSS selector for current price decimal part
+    "price_container": {"class": "ui-pdp-container__row ui-pdp-container__row--price"},  # CSS selector for main price container
+    "price_subtitles": {"class": "ui-pdp-price__subtitles"},  # CSS selector for subtitle price container to ignore
+    "discount_marker": {"name": "span", "attrs": {"data-andes-money-amount-discount": "true"}},  # Selector for discounted price marker element (data attribute)
     "discount": {"class": re.compile(r"andes-money-amount__discount.*ui-pdp-family--SEMIBOLD.*ui-pdp-color--GREEN", re.IGNORECASE)},  # CSS selector for discount percentage element
     "description": {"class": "ui-pdp-description__content"},  # CSS selector for product description content
     "international_marker": {"id": "cbt_summary_rebranding--title"},  # ID selector for international product marker
