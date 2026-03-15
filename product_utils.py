@@ -79,20 +79,45 @@ def normalize_product_dir_name(raw_name: str, replace_with: str = "", title_case
     verbose_output(f"Before Normalization: '{raw_name}'")  # Log the raw product name being normalized
 
     if raw_name is None:  # Handle None input gracefully by treating it as an empty string
-        raw_name = ""  # This ensures the function always returns a string, even if the input is None
+        raw_name = ""  # Ensure function always processes a string value
 
-    name = raw_name.replace("\u00A0", " ")  # Normalize NBSP (non-breaking space) to regular space
-    name = re.sub(r"\s+", " ", name).strip()  # Collapse multiple spaces and trim leading/trailing whitespace
+    name = str(raw_name)  # Convert input to string for deterministic normalization flow
+    name = name.replace("\u00A0", " ")  # Normalize NBSP (non-breaking space) to regular space
+    name = name.replace("\\", "/")  # Convert backslashes to forward slashes for cross-platform stability
+    name = re.sub(r"/+", "/", name)  # Collapse duplicate separators into a single forward slash
+    name = name.replace(",", "")  # Remove commas from directory name content
+    name = re.sub(r"\s+", " ", name)  # Collapse multiple consecutive spaces to a single space
+    name = name.strip()  # Remove leading and trailing whitespace from the full normalized string
+    name = re.sub(r"\s*/\s*", "/", name)  # Remove whitespace around separators to avoid trailing-space segments
+
+    segments = [segment.strip() for segment in name.split("/") if segment.strip() != ""]  # Split path-like content and trim each segment deterministically
+    name = "/".join(segments)  # Rebuild normalized path-like directory name with single separators
 
     if title_case:  # Apply title-casing if enabled (some scrapers use title case, so this is optional)
-        name = name.title()  # Convert to title case (first letter of each word capitalized, rest lowercase)
+        titled_segments = [segment.title() for segment in name.split("/") if segment != ""]  # Title-case each segment without altering separator structure
+        name = "/".join(titled_segments)  # Rebuild name after title-casing each segment
 
-    name = re.sub(r'[<>:"/\\|?*]', replace_with, name)  # Replace invalid filesystem characters with the specified replacement (default is "_", but can be set to "" to remove them)
+    name = re.sub(r'[<>:"|?*]', replace_with, name)  # Replace invalid filesystem characters while preserving normalized separators
+    name = re.sub(r"\s+", " ", name)  # Collapse spaces again to keep deterministic output after replacement
+    name = re.sub(r"\s*/\s*", "/", name)  # Remove whitespace around separators again after replacement step
+    name = name.strip().rstrip("/")  # Remove leading and trailing whitespace and trailing separator from final name
 
-    name = re.sub(r"\s+", " ", name).strip()  # Collapse multiple spaces again after replacement and trim again, in case replacement introduced extra spaces
+    max_length = 80  # Define strict maximum length for deterministic truncation safety
+    if len(name) > max_length:  # Verify whether normalized name exceeds maximum length
+        truncated_name = name[:max_length].rstrip(" /")  # Truncate to length limit and remove trailing spaces or separators
 
-    if len(name) > 80:  # Enforce a strict 80-character limit on the final directory name after all sanitization steps (deterministic truncation via slicing)
-        name = name[:80]  # Truncate to the first 80 characters if it exceeds the limit
+        if max_length < len(name) and not name[max_length].isspace():  # Verify whether truncation occurred in the middle of a word
+            last_space_index = truncated_name.rfind(" ")  # Locate the last safe word boundary inside the truncated region
+            last_separator_index = truncated_name.rfind("/")  # Locate the last safe segment boundary inside the truncated region
+            cut_index = max(last_space_index, last_separator_index)  # Select the furthest safe boundary to avoid partial word endings
+
+            if cut_index > 0:  # Verify whether a safe boundary exists beyond the first character
+                truncated_name = truncated_name[:cut_index].rstrip(" /")  # Remove partial trailing word and clean trailing spaces or separators
+
+        name = truncated_name  # Apply hardened truncated value back to the normalized name
+
+    segments = [segment.rstrip() for segment in name.split("/") if segment.rstrip() != ""]  # Remove trailing whitespace from each segment and drop empty segments
+    name = "/".join(segments).strip().rstrip("/")  # Rebuild normalized name and enforce no trailing whitespace or separator
 
     verbose_output(f"After Normalization: '{name}'\n")  # Log the final normalized product name
     return name  # Return the fully normalized, sanitized, and truncated product name suitable for use as a directory name
