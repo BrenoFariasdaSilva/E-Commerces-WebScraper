@@ -1485,7 +1485,7 @@ class Amazon:
             product_name_safe = normalize_product_dir_name(raw_name=product_name)  # Normalize name for directory usage
             
             output_dir = self.create_output_directory(product_name_safe)  # Create product output directory
-                        self.product_data["product_name_safe"] = os.path.basename(output_dir)  # Store canonical directory name for main.py lookup
+            self.product_data["product_name_safe"] = os.path.basename(output_dir)  # Store canonical directory name for main.py lookup
             
             soup = BeautifulSoup(self.html_content, "html.parser")  # Parse HTML content
             
