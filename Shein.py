@@ -1208,7 +1208,8 @@ class Shein:
         :return: Path to the created output directory
         """
 
-        directory_name = f"{self.prefix} - {product_name_safe}" if self.prefix else product_name_safe  # Construct directory name with platform prefix if available
+        raw_directory_name = f"{self.prefix} - {product_name_safe}" if self.prefix else product_name_safe  # Build raw directory name with platform prefix if available
+        directory_name = normalize_product_dir_name(raw_directory_name)  # Normalize full directory name to enforce 80-char path limit
         output_dir = os.path.join(self.output_directory, directory_name)  # Construct full path for product output directory using instance output directory
         self.create_directory(os.path.abspath(output_dir), output_dir.replace(".", ""))  # Create directory with absolute path and cleaned relative name
         return output_dir  # Return the created output directory path
@@ -1624,7 +1625,9 @@ class Shein:
                 self.product_data["name"] = product_name  # Update product data with prefixed name
                 verbose_output(f"{BackgroundColors.YELLOW}Product name prefixed with 'International'.{Style.RESET_ALL}")
             
-            output_dir = self.create_output_directory(product_name)  # Create output directory for product
+            product_name_safe = normalize_product_dir_name(product_name)  # Normalize product name for canonical directory naming
+            output_dir = self.create_output_directory(product_name_safe)  # Create output directory using normalized product name
+            self.product_data["product_name_safe"] = os.path.basename(output_dir)  # Store canonical directory name for main.py lookup
             
             image_urls = self.find_image_urls(soup)
             if image_urls:
@@ -1648,7 +1651,7 @@ class Shein:
                 if snapshot_path:  # Verify if snapshot was saved successfully
                     downloaded_files.append(snapshot_path)  # Add snapshot path to downloaded files list
             
-            description_file = self.create_product_description_file(self.product_data, output_dir, product_name, self.product_url)  # Create product description text file
+            description_file = self.create_product_description_file(self.product_data, output_dir, self.product_data["product_name_safe"], self.product_url)  # Create product description text file with canonical directory name
             if description_file:  # Verify if description file was created successfully
                 downloaded_files.append(description_file)  # Add description file path to downloaded files list
             
