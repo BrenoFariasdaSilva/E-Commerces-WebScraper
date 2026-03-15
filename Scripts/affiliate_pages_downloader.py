@@ -228,6 +228,40 @@ def read_urls(urls_file: Path) -> List[str]:
     return urls  # Return collected URLs.
 
 
+def update_urls_file(urls_file: Path, url_to_download: Dict[str, str]) -> None:
+    """
+    Rewrites URLs file using URL and downloaded filename associations.
+
+    :param urls_file: Path to the URLs input file.
+    :param url_to_download: Dictionary mapping URL to downloaded filename.
+    :return: None.
+    """
+
+    if not urls_file.exists():  # Verify if URLs file exists before rewrite.
+        print(f"{BackgroundColors.YELLOW}[WARNING] URLs file not found for update: {urls_file}{Style.RESET_ALL}")  # Log missing URLs file warning.
+        return  # Return when URLs file does not exist.
+
+    original_lines = urls_file.read_text(encoding="utf-8", errors="ignore").splitlines()  # Read current URLs file content as lines.
+    updated_lines: List[str] = []  # Initialize updated URLs lines collection.
+
+    for raw_line in original_lines:  # Iterate over original URLs file lines.
+        line = raw_line.strip()  # Normalize line by removing outer whitespace.
+
+        if line == "":  # Verify if normalized line is empty.
+            updated_lines.append(raw_line)  # Preserve blank line entry in rewritten output.
+            continue  # Continue processing next line.
+
+        url = line.split()[0].strip()  # Extract URL token from current line.
+
+        if url in url_to_download:  # Verify if URL has detected downloaded filename.
+            updated_lines.append(f"{url} {url_to_download[url]}")  # Append URL and downloaded filename mapping entry.
+            continue  # Continue processing next line after mapped update.
+
+        updated_lines.append(line)  # Preserve original URL line when no mapping is available.
+
+    urls_file.write_text("\n".join(updated_lines) + "\n", encoding="utf-8")  # Rewrite URLs file with updated mapping lines.
+
+
 def move_downloaded_archives(downloads_dir: Path, destination_dir: Path, url_to_download: Dict[str, str]) -> None:
     """
     Moves downloaded archives from downloads directory to URLs directory.
