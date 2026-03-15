@@ -122,6 +122,7 @@ HTML_SELECTORS = {
         ("span", {"class": re.compile(r".*savingsPercentage.*", re.IGNORECASE)}),  # Generic discount span fallback
         ("span", {"class": re.compile(r".*discount.*", re.IGNORECASE)}),  # Sale badge container as last resort fallback
     ],
+    "real_discount": {"class": "a-size-large a-color-price savingPriceOverride aok-align-center reinventPriceSavingsPercentageMargin savingsPercentage"},  # CSS selector for the real Amazon discount element
     "description": [  # List of CSS selectors for product description in priority order
         ("div", {"class": "a-section a-spacing-large bucket"}),  # Amazon description container with specific class
         ("div", {"id": "feature-bullets"}),  # Feature bullets section fallback
@@ -596,7 +597,7 @@ class Amazon:
         verbose_output(  # Output warning message
             f"{BackgroundColors.YELLOW}Current price not found.{Style.RESET_ALL}"
         )  # End of verbose output call
-        return "0", "00"  # Return default zero price when extraction fails
+        return "N/A", "N/A"  # Return N/A price when extraction fails
 
 
     def extract_old_price(self, soup: BeautifulSoup) -> Tuple[str, str]:
@@ -606,6 +607,10 @@ class Amazon:
         :param soup: BeautifulSoup object containing the parsed HTML
         :return: Tuple of (integer_part, decimal_part) for old price
         """
+
+        real_discount_element = soup.find("span", **HTML_SELECTORS["real_discount"])  # Locate the real Amazon discount element before old price extraction
+        if not real_discount_element:  # Verify if the real discount element is missing
+            return "N/A", "N/A"  # Return N/A old price when no real discount element exists
         
         for tag, attrs in HTML_SELECTORS["old_price"]:  # Iterate through prioritized selectors
             price_container = soup.find(tag, attrs)  # Search for old price container element
@@ -638,36 +643,19 @@ class Amazon:
         :return: Discount percentage string (e.g., "15%") or "N/A" if not found
         """
         
-        for tag, attrs in HTML_SELECTORS["discount"]:  # Iterate through prioritized selectors
-            discount_element = soup.find(tag, attrs)  # Search for discount element
-            if discount_element:  # Check if element was found
-                discount_text = discount_element.get_text(strip=True)  # Extract and strip whitespace
-                discount_text = discount_text.replace("-", "").strip()  # Remove minus sign and extra spaces
-                verbose_output(  # Output found discount
-                    f"{BackgroundColors.GREEN}Discount found: {BackgroundColors.CYAN}{discount_text}{Style.RESET_ALL}"
-                )  # End of verbose output call
-                return discount_text  # Return cleaned discount text
-
-        try:  # Compute discount from current and old prices when possible
-            old_int, old_dec = self.extract_old_price(soup)  # Get old price components
-            curr_int, curr_dec = self.extract_current_price(soup)  # Get current price components
-            if old_int and old_int != "N/A" and curr_int:  # Ensure we have valid numeric parts
-                old_value = float(f"{old_int}.{old_dec}")  # Compose old price float value
-                curr_value = float(f"{curr_int}.{curr_dec}")  # Compose current price float value
-                if old_value > 0:  # Avoid division by zero
-                    discount = ((old_value - curr_value) / old_value) * 100.0  # Compute discount percentage
-                    discount_int = int(round(discount))  # Round to nearest integer percent
-                    verbose_output(  # Log computed discount percentage
-                        f"{BackgroundColors.GREEN}Computed discount: {discount_int}%{Style.RESET_ALL}"
-                    )  # End of verbose output call
-                    return f"{discount_int}%"  # Return formatted percentage string
-        except Exception:  # Fail silently and return N/A on any error
-            pass  # Continue to fallback
+        discount_element = soup.find("span", **HTML_SELECTORS["real_discount"])  # Search only for the real Amazon discount element
+        if discount_element and isinstance(discount_element, Tag):  # Verify if the real discount element exists
+            discount_text = discount_element.get_text(strip=True)  # Extract and strip discount text
+            discount_text = discount_text.replace("-", "").strip()  # Normalize discount text by removing minus sign and extra spaces
+            verbose_output(  # Output found discount
+                f"{BackgroundColors.GREEN}Discount found: {BackgroundColors.CYAN}{discount_text}{Style.RESET_ALL}"
+            )  # End of verbose output call
+            return discount_text  # Return cleaned discount text when real discount element exists
         
         verbose_output(  # Output not found message
             f"{BackgroundColors.YELLOW}Discount percentage not found.{Style.RESET_ALL}"
         )  # End of verbose output call
-        return "N/A"  # Return N/A when discount cannot be computed
+        return None  # Return None when real discount element is not present
 
 
     def extract_product_description(self, soup: BeautifulSoup) -> str:
@@ -980,9 +968,19 @@ class Amazon:
             discount = self.extract_discount_percentage(soup)  # Extract discount percentage
             description = self.extract_product_description(soup)  # Extract product description
             product_details = self.extract_product_details(soup)  # Extract product details table
+
+            if old_int in (None, "N/A") and cur_int not in (None, "N/A"):  # Verify if old price is unavailable while current price is available
+                old_int, old_dec = cur_int, cur_dec  # Normalize old price to current price when old price is unavailable
+
+            if cur_int in (None, "N/A") and old_int not in (None, "N/A"):  # Verify if current price is unavailable while old price is available
+                cur_int, cur_dec = old_int, old_dec  # Normalize current price to old price when current price is unavailable
+
+            if discount is None and cur_int not in (None, "N/A"):  # Verify if discount is absent while current price is available
+                old_int, old_dec = cur_int, cur_dec  # Normalize old price to current price when no real discount exists
+                verbose_output(f"{BackgroundColors.CYAN}[DEBUG] No discount element detected. Prices normalized{Style.RESET_ALL}")  # Log deterministic no-discount normalization
             
-            current_price = f"R${cur_int},{cur_dec}"  # Build current price display string
-            old_price = f"R${old_int},{old_dec}" if old_int != "N/A" else "N/A"  # Build old price display string
+            current_price = f"R${cur_int},{cur_dec}" if cur_int != "N/A" else "N/A"  # Build current price display string using normalized values
+            old_price = f"R${old_int},{old_dec}" if old_int != "N/A" else "N/A"  # Build old price display string using normalized values
             
             product_data = {  # Build product data dictionary
                 "name": product_name,  # Store product name
