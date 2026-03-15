@@ -413,8 +413,26 @@ class MercadoLivre:
         
         discount_element = soup.find(**HTML_SELECTORS["discount"])  # Find discount element using centralized selector
         discount_percentage = discount_element.get_text(strip=True) if discount_element else "N/A"  # Extract discount percentage
-        
-        return discount_percentage  # Return the discount percentage
+        if discount_percentage != "N/A":  # Verify discount was extracted directly from HTML
+            return discount_percentage  # Return discount found in HTML
+
+        try:  # Compute discount from current and old prices when possible
+            old_int, old_dec = self.extract_old_price(soup)  # Get old price components
+            curr_int, curr_dec = self.extract_current_price(soup)  # Get current price components
+            if old_int and old_int != "N/A" and curr_int:  # Ensure we have valid numeric parts
+                old_value = float(f"{old_int}.{old_dec}")  # Compose old price float value
+                curr_value = float(f"{curr_int}.{curr_dec}")  # Compose current price float value
+                if old_value > 0:  # Avoid division by zero
+                    discount = ((old_value - curr_value) / old_value) * 100.0  # Compute discount percentage
+                    discount_int = int(round(discount))  # Round to nearest integer percent
+                    verbose_output(  # Log computed discount percentage
+                        f"{BackgroundColors.GREEN}Computed discount: {discount_int}%{Style.RESET_ALL}"
+                    )  # End of verbose output call
+                    return f"{discount_int}%"  # Return formatted percentage string
+        except Exception:  # Fail silently and return N/A on any error
+            pass  # Continue to fallback
+
+        return "N/A"  # Return N/A when discount cannot be computed
 
 
     def extract_product_description(self, soup):
