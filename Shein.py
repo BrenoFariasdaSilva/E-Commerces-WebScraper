@@ -612,6 +612,21 @@ class Shein:
                 if match:  # Verify if discount pattern was found in text
                     verbose_output(f"{BackgroundColors.GREEN}Discount: {match.group(1)}{Style.RESET_ALL}")  # Log successfully extracted discount percentage
                     return match.group(1)  # Return the discount percentage string
+
+        try:  # Compute discount from current and old prices when possible
+            old_int, old_dec = self.extract_old_price(soup)  # Get old price components
+            curr_int, curr_dec = self.extract_current_price(soup)  # Get current price components
+            if old_int and old_int != "N/A" and curr_int and curr_int != "0":  # Ensure we have valid numeric parts
+                old_value = float(f"{old_int}.{old_dec}")  # Compose old price float value
+                curr_value = float(f"{curr_int}.{curr_dec}")  # Compose current price float value
+                if old_value > 0:  # Avoid division by zero
+                    discount = ((old_value - curr_value) / old_value) * 100.0  # Compute discount percentage
+                    discount_int = int(round(discount))  # Round to nearest integer percent
+                    verbose_output(f"{BackgroundColors.GREEN}Computed discount: {discount_int}%{Style.RESET_ALL}")  # Log computed discount percentage
+                    return f"{discount_int}%"  # Return formatted percentage string
+        except Exception:  # Fail silently and return N/A on any error
+            pass  # Continue to fallback
+
         return "N/A"  # Return N/A when discount is not available
 
 
