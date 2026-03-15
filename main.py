@@ -161,7 +161,7 @@ INFORMAÇÕES DO PRODUTO:
 FORMATO OBRIGATÓRIO (siga EXATAMENTE este formato):
 *{{{{NOME DO PRODUTO}}}} – {{{{DIFERENCIAL CURTO}}}}*
 
-💰 DE *R${{{{PREÇO_ANTIGO}}}}* POR APENAS *R${{{{PREÇO_ATUAL}}}}* (SE DISPONÍVEL)
+💰 DE *R${{{{PREÇO_ANTIGO}}}}* POR APENAS *R${{{{PREÇO_ATUAL}}}}*
 🎟️ *{{{{INFORMAÇÃO DE CUPOM / % DE DESCONTO}}}}* (SE DISPONÍVEL)
 
 *{{{{FRASE DE IMPACTO / BENEFÍCIO PRINCIPAL}}}}*
@@ -179,15 +179,17 @@ INSTRUÇÕES:
 2. Seja persuasivo, criativo e chamativo
 3. Mantenha o formato EXATAMENTE como mostrado
 4. Use os preços e descontos reais do produto quando disponíveis
-5. Se o preço antigo ou desconto não estiver disponível (N/A), OMITA essas linhas completamente
-6. Inclua o link real do produto
-7. Crie 2-3 características principais marcantes
-8. Sugira onde/como usar o produto
-9. Se aplicável, sugira como presente ou ocasião especial
-10. Para o desconto, quando existir, nunca usar o termo "off", prefira algo como "20% de Desconto!"
-11. O texto final NÃO pode ultrapassar 1000 caracteres (incluindo espaços e emojis)
-12. Seja direto, evite parágrafos longos e evite textos explicativos extensos — consumidores não gostam de ler textos longos
-13. Priorize frases curtas, objetivas e de alto impacto
+5. A linha de preço (💰) é obrigatória e deve sempre aparecer
+6. Quando não houver desconto, OMITA apenas a linha de desconto (🎟️)
+7. Quando não houver preço antigo, use o mesmo valor do preço atual como preço antigo
+8. Inclua o link real do produto
+9. Crie 2-3 características principais marcantes
+10. Sugira onde/como usar o produto
+11. Se aplicável, sugira como presente ou ocasião especial
+12. Para o desconto, quando existir, nunca usar o termo "off", prefira algo como "20% de Desconto!"
+13. O texto final NÃO pode ultrapassar 1000 caracteres (incluindo espaços e emojis)
+14. Seja direto, evite parágrafos longos e evite textos explicativos extensos — consumidores não gostam de ler textos longos
+15. Priorize frases curtas, objetivas e de alto impacto
 
 Gere APENAS o texto formatado, sem explicações adicionais."""  # Template for Gemini AI marketing text generation
 
@@ -1273,7 +1275,7 @@ def generate_marketing_text(product_description, description_file, product_data=
     
     no_discount_instruction = ""
     if (old_price_int in ["N/A", ""] or old_price_dec in ["N/A", ""]) and discount in ["N/A", ""]:
-        no_discount_instruction = "\n\n**IMPORTANTE**: Este produto NÃO possui preço antigo ou desconto disponível. Você deve REMOVER as linhas de preço antigo (DE R$...) e desconto (🎟️...) do texto formatado. Mostre APENAS o preço atual."
+        no_discount_instruction = "\n\n**IMPORTANTE**: Este produto NÃO possui desconto disponível. A linha de preço (💰) é OBRIGATÓRIA e deve permanecer. Se não houver preço antigo, repita o preço atual como preço antigo. Remova APENAS a linha de desconto (🎟️...)."
 
     amazon_24h_instruction = ""  # Initialize Amazon-specific warning instruction
     if product_url and detect_platform(product_url) == "amazon":  # Verify if the current product belongs to Amazon
