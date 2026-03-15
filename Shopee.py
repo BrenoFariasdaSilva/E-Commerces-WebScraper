@@ -494,6 +494,28 @@ class Shopee:
         return "Unknown Product"  # Return default placeholder when name extraction fails
 
 
+    def is_brazilian_state(self, shipping_value: str) -> bool:
+        """
+        Verify whether the shipping origin corresponds to a Brazilian state.
+
+        :param shipping_value: Shipping origin text extracted from the page.
+        :return: True if the shipping origin corresponds to a Brazilian state.
+        """
+
+        brazil_states = [  # Initialize the list containing all Brazilian states and federal district identifiers
+            "Acre", "AC", "Amapá", "AP", "Amazonas", "AM", "Pará", "PA", "Rondônia", "RO", "Roraima", "RR", "Tocantins", "TO",
+            "Alagoas", "AL", "Bahia", "BA", "Ceará", "CE", "Maranhão", "MA", "Paraíba", "PB", "Pernambuco", "PE", "Piauí", "PI",
+            "Rio Grande do Norte", "RN", "Sergipe", "SE",
+            "Distrito Federal", "DF", "Goiás", "GO", "Mato Grosso", "MT", "Mato Grosso do Sul", "MS",
+            "Espírito Santo", "ES", "Minas Gerais", "MG", "Rio de Janeiro", "RJ", "São Paulo", "SP",
+            "Paraná", "PR", "Rio Grande do Sul", "RS", "Santa Catarina", "SC"
+        ]  # Define the list of valid Brazilian state names and abbreviations
+
+        shipping_value_lower = shipping_value.lower()  # Normalize the shipping value text for comparison
+
+        return any(state.lower() in shipping_value_lower for state in brazil_states)  # Return True if any Brazilian state identifier is present
+
+
     def extract_shipping_origin(self, soup: BeautifulSoup) -> str | None:
         """
         Extract the shipping origin value from the product page.
