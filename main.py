@@ -191,6 +191,13 @@ INSTRUÇÕES:
 14. O texto final NÃO pode ultrapassar 1000 caracteres (incluindo espaços e emojis)
 15. Seja direto, evite parágrafos longos e evite textos explicativos extensos — consumidores não gostam de ler textos longos
 16. Priorize frases curtas, objetivas e de alto impacto
+17. ESPAÇAMENTO É OBRIGATÓRIO: deixe exatamente 1 linha em branco entre blocos principais (título, preço/desconto, frase de impacto, lista de benefícios, bloco final da loja/link)
+18. Após o título, SEMPRE inserir 1 linha em branco antes da linha de preço
+19. Após o bloco de preço/desconto, SEMPRE inserir 1 linha em branco antes da frase de impacto
+20. Após a frase de impacto, SEMPRE inserir 1 linha em branco antes da primeira linha com ✨
+21. Após a última linha com ✨, SEMPRE inserir 1 linha em branco antes de "🛒 Encontre ..."
+22. NUNCA comprimir o texto em um bloco único contínuo
+23. NUNCA remover as linhas em branco obrigatórias mesmo quando o texto estiver curto
 
 Gere APENAS o texto formatado, sem explicações adicionais."""  # Template for Gemini AI marketing text generation
 
