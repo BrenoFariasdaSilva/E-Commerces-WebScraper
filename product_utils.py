@@ -6,7 +6,7 @@ Created     : 2026-02-16
 Description :
     Small utility module that provides a single source-of-truth for producing
     filesystem-safe product directory names across the scrapers and
-    orchestration code. The main export is `normalize_product_dir_name`, which
+    orchestration code. The main export is `normalize_product_name`, which
     performs the following steps in order:
 
     - Normalizes non-breaking spaces to regular spaces and collapses
@@ -19,8 +19,8 @@ Description :
     mismatches.
 
 Usage:
-    from product_utils import normalize_product_dir_name
-    safe_name = normalize_product_dir_name(raw_name, replace_with="", title_case=True)
+    from product_utils import normalize_product_name
+    safe_name = normalize_product_name(raw_name, replace_with="", title_case=True)
 
 Returns:
     A sanitized string suitable for use as a directory name.
@@ -38,7 +38,7 @@ import re  # Used for regex-based sanitization of product names for directory na
 
 
 # Execution Constants:
-VERBOSE = False  # Set to True to output verbose messages
+VERBOSE = True  # Set to True to output verbose messages
 
 
 # Functions Definitions:
@@ -59,7 +59,7 @@ def verbose_output(true_string="", false_string=""):
         print(false_string)  # Output the false statement string
 
 
-def normalize_product_dir_name(raw_name: str, replace_with: str = "", title_case: bool = True) -> str:
+def normalize_product_name(raw_name: str, replace_with: str = "", title_case: bool = True) -> str:
     """
     Normalize and sanitize a product name for use as a directory name.
 
