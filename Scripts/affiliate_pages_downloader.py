@@ -459,7 +459,8 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path) -> int:
     :return: Exit code where 0 means success and 1 means failure.
     """
 
-    urls = read_urls(urls_file)  # Read URLs from input file.
+    urls = read_urls_file(urls_file)  # Read URLs from input file.
+    downloads_dir = Path(DOWNLOADS_DIR)  # Build monitored downloads directory path object.
 
     if tab_count is None or tab_count <= 0:  # Verify tab count validity.
         tab_count = len(urls)  # Use full URL list length when tab count is not positive.
@@ -488,52 +489,20 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path) -> int:
 
     processed_count = 0  # Initialize processed tab counter.
     start_tick = time.time()  # Capture workflow start timestamp.
+    url_to_download: Dict[str, str] = {}  # Initialize URL to downloaded filename mapping dictionary.
+    processed_count, url_to_download, process_success = process_urls_with_download_tracking(urls, tab_count, downloads_dir, extension_img, download_img, confirmation_img, close_download_tab_img, mercado_livre_img, ext_methods, download_methods, completion_methods, close_methods)  # Process URLs with download tracking and retrieve mapping details.
 
-    if tab_count > 0:  # Verify at least one URL will be processed.
-        if not activate_chrome_window():  # Verify Chrome is active before opening separator tab.
-            return 1  # Return failure exit code when activation fails.
-        pyautogui.hotkey("ctrl", "t")  # Open blank separator tab.
-        time.sleep(0.2)  # Wait after opening separator tab.
-
-    for index, url in enumerate(urls, start=1):  # Iterate URL list with one-based indexing.
-        if not activate_chrome_window():  # Verify Chrome is active before keyboard navigation.
-            return 1  # Return failure exit code when activation fails.
-        pyautogui.hotkey("ctrl", "t")  # Open new browser tab.
-        time.sleep(0.2)  # Wait after opening tab.
-        pyautogui.hotkey("ctrl", "l")  # Focus browser address bar.
-        time.sleep(0.08)  # Wait after focusing address bar.
-        pyautogui.hotkey("ctrl", "a")  # Select any previous address-bar text.
-        time.sleep(0.05)  # Wait after selecting address text.
-        pyautogui.press("backspace")  # Clear selected address text.
-        time.sleep(0.05)  # Wait after clearing address text.
-        pyautogui.typewrite(url, interval=0.0)  # Type URL into address bar.
-        time.sleep(0.1)  # Wait after typing URL.
-        pyautogui.press("enter")  # Navigate to URL.
-        time.sleep(7)  # Wait for page loading.
-
-        current_tab = index  # Store current tab index.
-
-        click_go_to_product_button(mercado_livre_img)  # Execute MercadoLivre button action when available.
-
-        extension_method = click_image_or_coords(extension_img, EXTENSION_X, EXTENSION_Y)  # Execute extension click action.
-        download_method = click_download_button(download_img)  # Execute download click action.
-        confirmation_method = wait_for_download_confirmation(confirmation_img)  # Execute completion polling action.
-        close_method = close_extension_download_tab(close_download_tab_img)  # Execute close extension tab action.
-
-        add_method(ext_methods, extension_method, current_tab)  # Store extension method for report.
-        add_method(download_methods, download_method, current_tab)  # Store download method for report.
-        add_method(completion_methods, confirmation_method, current_tab)  # Store completion method for report.
-        add_method(close_methods, close_method, current_tab)  # Store close method for report.
-
-        close_current_tab()  # Close current product tab.
-
-        processed_count += 1  # Increment processed counter.
+    if not process_success:  # Verify if URL processing completed without activation failure.
+        return 1  # Return failure exit code when URL processing fails.
 
     if processed_count == tab_count:  # Verify all tabs were processed.
         elapsed_sec = round(time.time() - start_tick)  # Compute elapsed seconds.
         formatted = format_execution_time(elapsed_sec)  # Format elapsed time string.
         report = build_report(ext_methods, download_methods, completion_methods, close_methods)  # Build consolidated report text.
         final_report = f"{BackgroundColors.GREEN}Execution Time: {BackgroundColors.CYAN}{formatted}{BackgroundColors.GREEN}\n\n{report}{Style.RESET_ALL}"  # Compose final report output.
+
+        update_urls_file(urls_file, url_to_download)  # Rewrite URLs file with URL to downloaded filename mapping.
+        move_downloaded_archives(downloads_dir, urls_file.resolve().parent, url_to_download)  # Move downloaded archives into URLs file directory.
 
         print(f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Automation Finished{Style.RESET_ALL}\n")  # Print automation completion message.
         print(f"{final_report}")  # Print final report details.
