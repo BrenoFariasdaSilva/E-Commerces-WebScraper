@@ -228,6 +228,17 @@ def read_urls(urls_file: Path) -> List[str]:
     return urls  # Return collected URLs.
 
 
+def read_urls_file(urls_file: Path) -> List[str]:
+    """
+    Reads URL entries from the URLs file.
+
+    :param urls_file: Path to the URLs input file.
+    :return: List of cleaned URLs.
+    """
+
+    return read_urls(urls_file)  # Return URL entries parsed from the URLs file.
+
+
 def snapshot_download_directory(downloads_dir: Path) -> Dict[str, float]:
     """
     Captures file snapshot metadata from the downloads directory.
