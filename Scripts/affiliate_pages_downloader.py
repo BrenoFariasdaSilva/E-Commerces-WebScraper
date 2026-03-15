@@ -228,6 +228,29 @@ def read_urls(urls_file: Path) -> List[str]:
     return urls  # Return collected URLs.
 
 
+def detect_new_download_file(before_snapshot: Dict[str, float], after_snapshot: Dict[str, float], url: str) -> str:
+    """
+    Detects new downloaded filename by comparing two snapshots.
+
+    :param before_snapshot: Snapshot captured before URL processing.
+    :param after_snapshot: Snapshot captured after URL processing.
+    :param url: URL associated with current processing cycle.
+    :return: Detected downloaded filename or empty string.
+    """
+
+    new_filenames = [filename for filename in after_snapshot if filename not in before_snapshot]  # Build list of files present only in post-download snapshot.
+
+    if len(new_filenames) == 0:  # Verify if no new files were detected.
+        print(f"{BackgroundColors.YELLOW}[WARNING] No new download detected for URL: {url}{Style.RESET_ALL}")  # Log missing download warning for current URL.
+        return ""  # Return empty filename when no new file is detected.
+
+    if len(new_filenames) > 1:  # Verify if multiple new files were detected.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Multiple downloads detected. Using most recent file.{Style.RESET_ALL}")  # Log multiple downloads warning.
+
+    selected_filename = max(new_filenames, key=lambda filename: after_snapshot.get(filename, 0.0))  # Select most recently modified filename from detected files.
+    return selected_filename  # Return selected downloaded filename.
+
+
 def associate_url_with_download(url_to_download: Dict[str, str], url: str, downloaded_filename: str) -> None:
     """
     Associates the processed URL with detected downloaded filename.
