@@ -66,6 +66,7 @@ import atexit  # Register functions to execute at program termination
 import datetime  # Handle date and time operations
 import os  # Interact with operating system functionalities
 import platform  # Access underlying platform information
+import random  # Generate jitter and pacing delays for resilient HTTP retries
 import re  # Perform regular expression operations
 import requests  # Import requests library for HTTP image download
 import shutil  # For copying files (local HTML mode)
@@ -144,6 +145,10 @@ PAGE_LOAD_TIMEOUT = 30000  # Maximum time in milliseconds to wait for page load
 NETWORK_IDLE_TIMEOUT = 5000  # Maximum time in milliseconds to wait for network idle state
 SCROLL_PAUSE_TIME = 0.5  # Pause duration in seconds between scroll steps
 SCROLL_STEP = 300  # Number of pixels to scroll per step for lazy loading
+MAX_VIDEO_DOWNLOAD_RETRIES = 8  # Maximum retry attempts for Amazon CDN video downloads
+BASE_VIDEO_DOWNLOAD_DELAY_SECONDS = 2  # Base delay in seconds used for exponential backoff
+VIDEO_DOWNLOAD_MIN_PACING_SECONDS = 1.5  # Minimum pacing delay between sequential video downloads
+VIDEO_DOWNLOAD_MAX_PACING_SECONDS = 4.0  # Maximum pacing delay between sequential video downloads
 
 # Template Constants:
 PRODUCT_DESCRIPTION_TEMPLATE = """Product Name: {product_name}
@@ -1286,7 +1291,75 @@ class Amazon:
             return None  # Return None on failure
 
 
-    def download_single_video(self, video_url: str, output_dir: str, video_count: int) -> Optional[str]:
+    def download_amazon_video(self, video_url: str, output_path: str, session: requests.Session) -> bool:
+        """
+        Downloads one Amazon CDN video using retries, backoff, and jitter.
+
+        :param video_url: URL of the Amazon CDN video file
+        :param output_path: Destination file path for the downloaded video
+        :param session: Persistent HTTP session configured with download headers
+        :return: True if the file was downloaded, False if all retries failed
+        """
+
+        retryable_status_codes = {429, 500, 502, 503, 504}  # Define retryable HTTP status codes for resilient downloads
+        time.sleep(random.uniform(0.5, 2.0))  # Apply randomized delay before the first request to reduce burst traffic
+
+        for retry_attempt in range(MAX_VIDEO_DOWNLOAD_RETRIES):  # Iterate through bounded retry attempts for the current video
+            try:  # Attempt one streamed HTTP download request
+                response = session.get(video_url, timeout=60, stream=True)  # Execute streamed GET request using persistent session
+                status_code = response.status_code  # Capture HTTP status code for retry decision logic
+
+                if status_code in retryable_status_codes:  # Verify whether response status is retryable
+                    delay_seconds = BASE_VIDEO_DOWNLOAD_DELAY_SECONDS * (2 ** retry_attempt)  # Compute exponential backoff delay for current retry attempt
+                    delay_seconds += random.uniform(0.5, 2.0)  # Add randomized jitter to spread retry traffic
+                    print(f"{BackgroundColors.YELLOW}Retryable video download status {status_code} for URL: {video_url}. Retrying in {delay_seconds:.2f}s (attempt {retry_attempt + 1}/{MAX_VIDEO_DOWNLOAD_RETRIES}){Style.RESET_ALL}")  # Log retryable status and scheduled delay
+                    response.close()  # Close current response before retrying the next attempt
+                    time.sleep(delay_seconds)  # Wait using exponential backoff before next retry attempt
+                    continue  # Continue retry loop after waiting
+
+                response.raise_for_status()  # Raise exception immediately for non-retryable HTTP failure responses
+
+                with open(output_path, "wb") as file:  # Open destination file in binary mode for streamed writes
+                    for chunk in response.iter_content(chunk_size=8192):  # Iterate streamed response chunks using bounded chunk size
+                        if chunk:  # Verify that streamed chunk contains data bytes
+                            file.write(chunk)  # Write streamed chunk bytes to destination file
+
+                response.close()  # Close successful response stream to release network resources
+                return True  # Return success after complete streamed file write
+
+            except requests.HTTPError as http_error:  # Handle HTTP errors raised by response.raise_for_status
+                status_code = http_error.response.status_code if http_error.response is not None else None  # Resolve status code from exception response when available
+
+                if status_code in retryable_status_codes and retry_attempt < (MAX_VIDEO_DOWNLOAD_RETRIES - 1):  # Verify whether HTTP error is retryable and retries are still available
+                    delay_seconds = BASE_VIDEO_DOWNLOAD_DELAY_SECONDS * (2 ** retry_attempt)  # Compute exponential backoff delay for current retry attempt
+                    delay_seconds += random.uniform(0.5, 2.0)  # Add randomized jitter to spread retry traffic
+                    print(f"{BackgroundColors.YELLOW}Retryable HTTP error {status_code} for URL: {video_url}. Retrying in {delay_seconds:.2f}s (attempt {retry_attempt + 1}/{MAX_VIDEO_DOWNLOAD_RETRIES}){Style.RESET_ALL}")  # Log retryable HTTP error and scheduled delay
+                    time.sleep(delay_seconds)  # Wait before attempting the next retry
+                    continue  # Continue retry loop after backoff wait
+
+                print(f"{BackgroundColors.YELLOW}HTTP failure for video URL: {video_url} ({http_error}){Style.RESET_ALL}")  # Log definitive HTTP failure when retries are exhausted or not retryable
+                return False  # Return failure for non-retryable or exhausted HTTP errors
+
+            except requests.RequestException as request_error:  # Handle network-level request errors from requests
+                if retry_attempt < (MAX_VIDEO_DOWNLOAD_RETRIES - 1):  # Verify whether retries are still available for request-level failures
+                    delay_seconds = BASE_VIDEO_DOWNLOAD_DELAY_SECONDS * (2 ** retry_attempt)  # Compute exponential backoff delay for current retry attempt
+                    delay_seconds += random.uniform(0.5, 2.0)  # Add randomized jitter to spread retry traffic
+                    print(f"{BackgroundColors.YELLOW}Network failure for video URL: {video_url} ({request_error}). Retrying in {delay_seconds:.2f}s (attempt {retry_attempt + 1}/{MAX_VIDEO_DOWNLOAD_RETRIES}){Style.RESET_ALL}")  # Log network failure and scheduled delay
+                    time.sleep(delay_seconds)  # Wait before attempting the next retry
+                    continue  # Continue retry loop after backoff wait
+
+                print(f"{BackgroundColors.YELLOW}Failed to download video after retries for URL: {video_url} ({request_error}){Style.RESET_ALL}")  # Log definitive request failure after retry exhaustion
+                return False  # Return failure after exhausting retries for request errors
+
+            except Exception as error:  # Catch any unexpected exceptions during resilient download flow
+                print(f"{BackgroundColors.YELLOW}Unexpected error while downloading video URL: {video_url} ({error}){Style.RESET_ALL}")  # Log unexpected download exception details
+                return False  # Return failure for unexpected exceptions to keep caller resilient
+
+        print(f"{BackgroundColors.YELLOW}Reached maximum retry attempts for video URL: {video_url}{Style.RESET_ALL}")  # Log final retry exhaustion when loop completes without success
+        return False  # Return failure after bounded retry loop is exhausted
+
+
+    def download_single_video(self, video_url: str, output_dir: str, video_count: int, session: Optional[requests.Session] = None) -> Optional[str]:
         """
         Downloads or copies a single video to the specified output directory.
         Supports HLS (.m3u8) downloads using ffmpeg, HTTP downloads, and local file copying.
@@ -1294,6 +1367,7 @@ class Amazon:
         :param video_url: URL of the video to download (HLS .m3u8, HTTP URL, or local path)
         :param output_dir: Directory to save the video
         :param video_count: Counter for generating unique filenames
+        :param session: Optional persistent HTTP session configured for resilient Amazon video downloads
         :return: Path to downloaded video file or None if download failed
         """
         
@@ -1367,12 +1441,12 @@ class Amazon:
                 return video_path  # Return path to downloaded video
             
             else:  # Handle regular HTTP video download
-                import requests  # Import requests library for HTTP
-                
-                response = requests.get(video_url, timeout=60, stream=True)  # Send GET request with timeout
-                response.raise_for_status()  # Raise exception for bad status codes
-                
-                content_type = response.headers.get("content-type", "")  # Get content type header
+                content_type = ""  # Initialize content type placeholder for extension selection
+                if session is not None:  # Verify whether caller provided a persistent HTTP session
+                    head_response = session.head(video_url, timeout=30, allow_redirects=True)  # Execute lightweight HEAD request for content-type discovery
+                    if head_response.status_code < 400:  # Verify whether HEAD request was successful
+                        content_type = head_response.headers.get("content-type", "")  # Read content type from successful HEAD response headers
+                    head_response.close()  # Close HEAD response to release network resources
                 
                 file_ext = ".mp4"  # Default extension
                 if "mp4" in content_type:  # Check for MP4
@@ -1384,10 +1458,12 @@ class Amazon:
                 
                 video_filename = f"video_{video_count}{file_ext}"  # Generate unique filename
                 video_path = os.path.join(output_dir, video_filename)  # Build full destination path
-                
-                with open(video_path, "wb") as file:  # Open file for binary writing
-                    for chunk in response.iter_content(chunk_size=8192):  # Stream content in chunks
-                        file.write(chunk)  # Write chunk to file
+
+                if session is None:  # Verify whether persistent session was not provided by caller
+                    session = requests.Session()  # Create fallback session to preserve resilient downloader interface
+
+                if not self.download_amazon_video(video_url, video_path, session):  # Execute resilient streamed download with retry and backoff
+                    return None  # Return None when resilient downloader exhausts retries
                 
                 verbose_output(  # Output success message
                     f"{BackgroundColors.GREEN}Video downloaded: {BackgroundColors.CYAN}{video_filename}{Style.RESET_ALL}"
@@ -1445,11 +1521,25 @@ class Amazon:
         )  # End of verbose output call
         
         video_urls = self.find_video_urls(soup)  # Get all video URLs from gallery
-        
+
+        session = requests.Session()  # Create persistent HTTP session for sequential Amazon CDN video downloads
+        session.headers.update({  # Update persistent session headers with realistic browser-like values
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",  # Set realistic desktop browser user agent
+            "Accept": "video/webm,video/mp4,video/*;q=0.9,*/*;q=0.8",  # Set acceptable content types prioritizing video resources
+            "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",  # Set language preference matching Amazon Brasil traffic profile
+            "Connection": "keep-alive",  # Keep TCP connection open for sequential downloads
+            "Referer": self.product_url,  # Set referer to current Amazon product page URL
+        })  # End of persistent session headers update
+
         for idx, video_url in enumerate(video_urls, 1):  # Iterate with counter starting at 1
-            video_path = self.download_single_video(video_url, output_dir, idx)  # Download video
+            video_path = self.download_single_video(video_url, output_dir, idx, session=session)  # Download video using persistent session and resilient retry flow
             if video_path:  # Check if download succeeded
                 downloaded_videos.append(video_path)  # Add to downloaded list
+            if idx < len(video_urls):  # Verify whether more videos remain in the current sequential loop
+                pacing_delay = random.uniform(VIDEO_DOWNLOAD_MIN_PACING_SECONDS, VIDEO_DOWNLOAD_MAX_PACING_SECONDS)  # Compute randomized pacing delay between sequential video downloads
+                time.sleep(pacing_delay)  # Sleep between videos to reduce burst traffic to Amazon CDN
+
+        session.close()  # Close persistent session after sequential video download loop finishes
         
         verbose_output(  # Output success message with count
             f"{BackgroundColors.GREEN}Downloaded {BackgroundColors.CYAN}{len(downloaded_videos)}{BackgroundColors.GREEN} videos.{Style.RESET_ALL}"
