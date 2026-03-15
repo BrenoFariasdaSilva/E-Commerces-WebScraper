@@ -228,6 +228,79 @@ def read_urls(urls_file: Path) -> List[str]:
     return urls  # Return collected URLs.
 
 
+def process_urls_with_download_tracking(urls: List[str], tab_count: int, downloads_dir: Path, extension_img: Path, download_img: Path, confirmation_img: Path, close_download_tab_img: Path, mercado_livre_img: Path, ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]]) -> Tuple[int, Dict[str, str], bool]:
+    """
+    Processes URLs while tracking downloaded files by directory snapshots.
+
+    :param urls: URL list to process.
+    :param tab_count: Number of URLs to process.
+    :param downloads_dir: Path to the monitored downloads directory.
+    :param extension_img: Path to extension action image.
+    :param download_img: Path to download button image.
+    :param confirmation_img: Path to download confirmation image.
+    :param close_download_tab_img: Path to close extension tab image.
+    :param mercado_livre_img: Path to MercadoLivre go-to-product image.
+    :param ext_methods: Grouped extension click methods dictionary.
+    :param download_methods: Grouped download click methods dictionary.
+    :param completion_methods: Grouped completion detection methods dictionary.
+    :param close_methods: Grouped close extension tab methods dictionary.
+    :return: Processed count, URL mapping dictionary, and success status.
+    """
+
+    url_to_download: Dict[str, str] = {}  # Initialize URL to downloaded filename mapping dictionary.
+    processed_count = 0  # Initialize processed URL counter.
+
+    if tab_count > 0:  # Verify if there are URLs to process.
+        if not activate_chrome_window():  # Verify if Chrome activation succeeds before opening separator tab.
+            return processed_count, url_to_download, False  # Return failure state when Chrome activation fails.
+
+        pyautogui.hotkey("ctrl", "t")  # Open blank separator tab.
+        time.sleep(0.2)  # Wait after opening separator tab.
+
+    for index, url in enumerate(urls, start=1):  # Iterate URL list with one-based indexing.
+        pre_download_snapshot = snapshot_download_directory(downloads_dir)  # Capture downloads directory snapshot before URL processing.
+
+        if not activate_chrome_window():  # Verify if Chrome activation succeeds before URL navigation.
+            return processed_count, url_to_download, False  # Return failure state when Chrome activation fails.
+
+        pyautogui.hotkey("ctrl", "t")  # Open new browser tab.
+        time.sleep(0.2)  # Wait after opening tab.
+        pyautogui.hotkey("ctrl", "l")  # Focus browser address bar.
+        time.sleep(0.08)  # Wait after focusing address bar.
+        pyautogui.hotkey("ctrl", "a")  # Select any previous address-bar text.
+        time.sleep(0.05)  # Wait after selecting address text.
+        pyautogui.press("backspace")  # Clear selected address text.
+        time.sleep(0.05)  # Wait after clearing address text.
+        pyautogui.typewrite(url, interval=0.0)  # Type URL into address bar.
+        time.sleep(0.1)  # Wait after typing URL.
+        pyautogui.press("enter")  # Navigate to URL.
+        time.sleep(7)  # Wait for page loading.
+
+        current_tab = index  # Store current tab index.
+
+        click_go_to_product_button(mercado_livre_img)  # Execute MercadoLivre button action when available.
+
+        extension_method = click_image_or_coords(extension_img, EXTENSION_X, EXTENSION_Y)  # Execute extension click action.
+        download_method = click_download_button(download_img)  # Execute download click action.
+        confirmation_method = wait_for_download_confirmation(confirmation_img)  # Execute completion polling action.
+        close_method = close_extension_download_tab(close_download_tab_img)  # Execute close extension tab action.
+
+        post_download_snapshot = snapshot_download_directory(downloads_dir)  # Capture downloads directory snapshot after download completion.
+        detected_filename = detect_new_download_file(pre_download_snapshot, post_download_snapshot, url)  # Detect downloaded filename associated with current URL.
+        associate_url_with_download(url_to_download, url, detected_filename)  # Persist URL to downloaded filename mapping when detection succeeds.
+
+        add_method(ext_methods, extension_method, current_tab)  # Store extension method for report.
+        add_method(download_methods, download_method, current_tab)  # Store download method for report.
+        add_method(completion_methods, confirmation_method, current_tab)  # Store completion method for report.
+        add_method(close_methods, close_method, current_tab)  # Store close method for report.
+
+        close_current_tab()  # Close current product tab.
+
+        processed_count += 1  # Increment processed counter.
+
+    return processed_count, url_to_download, True  # Return processed counter, URL mapping, and success status.
+
+
 def locate_image(image_path: Path) -> Any:
     """
     Locates an image on screen.
