@@ -88,7 +88,7 @@ def normalize_product_name(raw_name: str, replace_with: str = "", title_case: bo
     :return: Sanitized, truncated product-name-safe string
     """
     
-    verbose_output(f"Before Normalization: '{raw_name}'")  # Log the raw product name being normalized
+    verbose_output(f"{BackgroundColors.GREEN}Before Normalization: '{BackgroundColors.CYAN}{raw_name}{BackgroundColors.GREEN}'{Style.RESET_ALL}")  # Log the raw product name being normalized
 
     if raw_name is None:  # Handle None input gracefully by treating it as an empty string
         raw_name = ""  # Ensure function always processes a string value
@@ -128,5 +128,6 @@ def normalize_product_name(raw_name: str, replace_with: str = "", title_case: bo
     name = re.sub(r"\s+", " ", name)  # Collapse multiple spaces after truncation adjustments
     name = name.strip().rstrip("-/")  # Enforce no trailing whitespace or separator characters in final normalized value
 
-    verbose_output(f"After Normalization: '{name}'\n")  # Log the final normalized product name
+    verbose_output(f"{BackgroundColors.GREEN}After Normalization: '{BackgroundColors.CYAN}{name}{BackgroundColors.GREEN}'{Style.RESET_ALL}")  # Log the final normalized product name
+    
     return name  # Return the fully normalized, sanitized, and truncated product name suitable for use as a directory name
