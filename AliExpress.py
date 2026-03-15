@@ -653,6 +653,17 @@ class AliExpress:  # AliExpress scraper class preserving structure and methods
         :param soup: BeautifulSoup object containing the parsed HTML
         :return: Discount percentage string or "N/A" if not found
         """
+
+        for tag, attrs in HTML_SELECTORS["discount"]:  # Iterate through each selector combination from centralized dictionary
+            discount_element = soup.find(tag, attrs if attrs else None)  # type: ignore[arg-type]  # Search for element matching current selector
+            if discount_element:  # Verify if matching element was found
+                discount_text = discount_element.get_text(strip=True)  # Extract and clean text content from element
+                match = re.search(r"(\d+%)", discount_text)  # Search for discount percentage pattern
+                if match:  # Verify if discount pattern was found in text
+                    verbose_output(  # Log successfully extracted discount percentage
+                        f"{BackgroundColors.GREEN}Discount: {match.group(1)}{Style.RESET_ALL}"
+                    )  # End of verbose output call
+                    return match.group(1)  # Return the discount percentage string
         
         try:  # Compute discount from current and old prices when possible
             old_int, old_dec = self.extract_old_price(soup)  # Get old price components
