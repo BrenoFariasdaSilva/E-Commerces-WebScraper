@@ -95,6 +95,7 @@ DOWNLOAD_BUTTON_X = 1590  # Define download button fallback X coordinate.
 DOWNLOAD_BUTTON_Y = 64  # Define download button fallback Y coordinate.
 CLOSE_DOWNLOAD_TAB_X = 1905  # Define close download tab fallback X coordinate.
 CLOSE_DOWNLOAD_TAB_Y = 148  # Define close download tab fallback Y coordinate.
+DOWNLOADS_DIR = r"D:\Sem Backup\Download"  # Define monitored downloads directory path.
 
 
 # Logger Setup:
