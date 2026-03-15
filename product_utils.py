@@ -75,6 +75,8 @@ def normalize_product_dir_name(raw_name: str, replace_with: str = "", title_case
     :param title_case: Whether to apply title-casing (some scrapers use title case)
     :return: Sanitized, truncated product-name-safe string
     """
+    
+    verbose_output(f"Before Normalization: '{raw_name}'")  # Log the raw product name being normalized
 
     if raw_name is None:  # Handle None input gracefully by treating it as an empty string
         raw_name = ""  # This ensures the function always returns a string, even if the input is None
@@ -92,4 +94,5 @@ def normalize_product_dir_name(raw_name: str, replace_with: str = "", title_case
     if len(name) > 80:  # Enforce a strict 80-character limit on the final directory name after all sanitization steps (deterministic truncation via slicing)
         name = name[:80]  # Truncate to the first 80 characters if it exceeds the limit
 
+    verbose_output(f"After Normalization: '{name}'\n")  # Log the final normalized product name
     return name  # Return the fully normalized, sanitized, and truncated product name suitable for use as a directory name
