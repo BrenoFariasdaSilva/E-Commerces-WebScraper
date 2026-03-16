@@ -524,6 +524,33 @@ def prepare_active_downloads_directory() -> List[str]:
     return ACTIVE_DOWNLOADS_DIRS  # Return cached active downloads directories for immediate usage.
 
 
+def open_chrome_download_settings_page() -> bool:
+    """
+    Opens the Chrome downloads settings page in a new tab.
+
+    :param: None.
+    :return: True when the settings page is opened, otherwise False.
+    """
+
+    try:  # Attempt to open the Chrome downloads settings page in a new tab.
+        pyautogui.hotkey("ctrl", "t")  # Open a new Chrome tab for downloads settings.
+        time.sleep(0.2)  # Wait after opening the settings tab.
+        pyautogui.hotkey("ctrl", "l")  # Focus the address bar in the settings tab.
+        time.sleep(0.08)  # Wait after focusing the address bar.
+        pyautogui.hotkey("ctrl", "a")  # Select any existing address-bar text.
+        time.sleep(0.05)  # Wait after selecting the address-bar text.
+        pyautogui.press("backspace")  # Clear the selected address-bar text.
+        time.sleep(0.05)  # Wait after clearing the address-bar text.
+        pyautogui.typewrite(CHROME_DOWNLOAD_SETTINGS_URL, interval=0.0)  # Type the Chrome downloads settings URL.
+        time.sleep(0.1)  # Wait after typing the settings URL.
+        pyautogui.press("enter")  # Navigate to the Chrome downloads settings page.
+        time.sleep(DOWNLOAD_SETTINGS_RENDER_WAIT_SECONDS)  # Wait for the Chrome downloads settings page to render.
+        return True  # Return success after opening the downloads settings page.
+    except Exception:  # Handle settings-tab opening failures.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to open Chrome downloads settings page.{Style.RESET_ALL}")  # Log downloads settings page opening failure.
+        return False  # Return failure when the downloads settings page cannot be opened.
+
+
 def get_chrome_download_settings_region() -> Tuple[int, int, int, int] | None:
     """
     Resolves the Chrome downloads settings capture region.
