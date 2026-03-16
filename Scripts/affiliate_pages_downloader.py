@@ -524,6 +524,23 @@ def prepare_active_downloads_directory() -> List[str]:
     return ACTIVE_DOWNLOADS_DIRS  # Return cached active downloads directories for immediate usage.
 
 
+def close_chrome_download_settings_tab() -> bool:
+    """
+    Closes the Chrome downloads settings tab and restores focus.
+
+    :param: None.
+    :return: True when focus returns to Chrome, otherwise False.
+    """
+
+    try:  # Attempt to close the Chrome downloads settings tab.
+        close_current_tab()  # Close the active Chrome downloads settings tab.
+    except Exception:  # Handle downloads settings tab close failures.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to close Chrome downloads settings tab cleanly.{Style.RESET_ALL}")  # Log downloads settings tab close failure.
+        return False  # Return failure when the downloads settings tab cannot be closed.
+
+    return activate_chrome_window()  # Restore Chrome focus after closing the downloads settings tab.
+
+
 def verify_and_correct_chrome_download_settings(assets_dir: Path) -> bool:
     """
     Verifies and corrects Chrome downloads settings before automation starts.
