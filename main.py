@@ -105,14 +105,6 @@ PLATFORMS_MAP = {
     "Shopee": "shopee",
 }
 
-PLATFORM_PREFIXES = {
-    "aliexpress": "AliExpress",
-    "amazon": "Amazon",
-    "mercadolivre": "MercadoLivre",
-    "shein": "Shein",
-    "shopee": "Shopee",
-}  # Mapping of platform identifiers to display prefixes for output directories
-
 PLATFORM_PREFIX_SEPARATOR = " - "  # Separator between platform prefix and product name in directory structure
 
 # File Path Constants:
@@ -1078,7 +1070,7 @@ def scrape_product(url, timestamped_output_dir, local_html_path=None):
         print(f"{BackgroundColors.RED}Scraper not implemented for platform: {platform}{Style.RESET_ALL}")
         return None, None, None, None, None, None  # Return None values
     
-    platform_prefix = PLATFORM_PREFIXES.get(platform, "")  # Get the platform prefix for output directory naming
+    platform_prefix = {v: k for k, v in PLATFORMS_MAP.items()}.get(platform, "")  # Derive reverse mapping from PLATFORMS_MAP and get platform prefix for output directory naming
     
     try:  # Try to scrape the product
         scraper = scraper_class(url, local_html_path=html_path, prefix=platform_prefix, output_directory=timestamped_output_dir)  # Create scraper instance with timestamped output directory
@@ -1948,7 +1940,7 @@ def main():
         )
         for index, (url, local_html_path) in enumerate(pbar, 1):  # Iterate through all URLs with optional local HTML paths
             platform_id = detect_platform(url) or ""  # Detect platform for current URL
-            platform_name = PLATFORM_PREFIXES.get(platform_id, platform_id if platform_id else "Unknown")  # Human-friendly platform name
+            platform_name = ({v: k for k, v in PLATFORMS_MAP.items()}).get(platform_id, platform_id if platform_id else "Unknown")  # Derive reverse mapping from PLATFORMS_MAP and get human-friendly platform name
             desc = (
                 f"{BackgroundColors.GREEN}Processing {BackgroundColors.CYAN}{index}{BackgroundColors.GREEN}/{BackgroundColors.CYAN}{total_urls}{BackgroundColors.GREEN} - {BackgroundColors.CYAN}{platform_name}{BackgroundColors.GREEN}"
             )  # Build colored description with platform
