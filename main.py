@@ -846,7 +846,7 @@ def resolve_local_html_path(local_html_path):
     
     if verify_filepath_exists(local_html_path):  # If path exists as provided
         if os.path.isdir(local_html_path):  # Check if it's a directory
-            index_html_path = os.path.join(local_html_path, 'index.html')  # Construct path to index.html inside directory
+            index_html_path = os.path.join(local_html_path, "index.html")  # Construct path to index.html inside directory
             if verify_filepath_exists(index_html_path):  # If index.html exists inside directory
                 verbose_output(f"{BackgroundColors.GREEN}Resolved local HTML path (directory): {BackgroundColors.CYAN}{local_html_path}{BackgroundColors.GREEN} -> {BackgroundColors.CYAN}{index_html_path}{Style.RESET_ALL}")  # Confirm resolution
                 return index_html_path  # Return path to index.html inside directory
@@ -864,7 +864,7 @@ def resolve_local_html_path(local_html_path):
             test_path = f"{prefix}{local_html_path}{suffix}"  # Construct test path with prefix and suffix
             if verify_filepath_exists(test_path):  # If test path exists
                 if os.path.isdir(test_path):  # Check if the resolved path is a directory
-                    index_html_path = os.path.join(test_path, 'index.html')  # Construct path to index.html inside directory
+                    index_html_path = os.path.join(test_path, "index.html")  # Construct path to index.html inside directory
                     if verify_filepath_exists(index_html_path):  # If index.html exists inside directory
                         verbose_output(f"{BackgroundColors.GREEN}Resolved local HTML path (directory): {BackgroundColors.CYAN}{local_html_path}{BackgroundColors.GREEN} -> {BackgroundColors.CYAN}{index_html_path}{Style.RESET_ALL}")  # Inform about resolution
                         return index_html_path  # Return path to index.html inside directory
@@ -874,7 +874,7 @@ def resolve_local_html_path(local_html_path):
                 verbose_output(f"{BackgroundColors.GREEN}Resolved path variation: {BackgroundColors.CYAN}{test_path}{Style.RESET_ALL}")  # Inform user about resolution
                 return test_path  # Return resolved path
     
-    if local_html_path.lower().endswith('.html'):  # Verify if path ends with .html extension
+    if local_html_path.lower().endswith(".html"):  # Verify if path ends with .html extension
         last_slash_idx = local_html_path.rfind('/')  # Find the last slash in the path
         if last_slash_idx != -1:  # If there's a slash, we can extract base path
             base_path = local_html_path[:last_slash_idx]  # Remove /filename.html to get base directory path
@@ -926,7 +926,7 @@ def copy_original_input_to_output(input_source, product_directory, base_output_d
 
         if os.path.isfile(input_source):  # If the input source points to a file
             # If the file is an HTML file, prefer copying the originating zip or extracted folder
-            if str(input_source).lower().endswith('.html'):  # If the source is an HTML file
+            if str(input_source).lower().endswith(".html"):  # If the source is an HTML file
                 html_dir = os.path.dirname(input_source)  # Directory containing the HTML file
                 html_dir_name = os.path.basename(html_dir)  # Basename of the directory containing HTML
                 copied_any = False  # Track whether we copied any preferred artifact
@@ -1038,7 +1038,7 @@ def scrape_product(url, timestamped_output_dir, local_html_path=None):
     zip_path = None  # Path to the zip file for cleanup
     html_path = local_html_path  # Initialize html_path with local_html_path (will be overridden if zip extraction occurs)
     
-    if local_html_path and local_html_path.lower().endswith('.zip'):  # If a local HTML path is provided and it is a zip file, extract it
+    if local_html_path and local_html_path.lower().endswith(".zip"):  # If a local HTML path is provided and it is a zip file, extract it
         zip_path = local_html_path  # Store the zip path for later cleanup
         zip_dir = os.path.dirname(zip_path)  # Get the directory of the zip file
         zip_name = os.path.basename(zip_path)  # Get the name of the zip file
@@ -1046,9 +1046,9 @@ def scrape_product(url, timestamped_output_dir, local_html_path=None):
         extracted_dir = os.path.join(zip_dir, extract_name)  # Directory to extract the zip contents into
         
         try:  # Try to extract the zip file
-            with zipfile.ZipFile(zip_path, 'r') as zip_ref:  # Open the zip file for reading
+            with zipfile.ZipFile(zip_path, "r") as zip_ref:  # Open the zip file for reading
                 zip_ref.extractall(extracted_dir)  # Extract the contents to the extracted_dir
-            html_path = os.path.join(extracted_dir, 'index.html')  # Assume the main HTML file is named index.html in the extracted directory
+            html_path = os.path.join(extracted_dir, "index.html")  # Assume the main HTML file is named index.html in the extracted directory
             if not os.path.exists(html_path):  # Verify if the expected HTML file exists after extraction
                 print(f"{BackgroundColors.RED}Error: index.html not found in extracted directory {extracted_dir}{Style.RESET_ALL}")
                 return None, None, None, None, None, None  # Return None values if extraction failed or expected file not found
@@ -1161,11 +1161,11 @@ def validate_and_fix_output_file(file_path):
         
         original_content = content  # Store original content for comparison
         
-        content = re.sub(r'\n\n\n+', '\n\n', content)  # Replace 3 or more newlines with exactly 2
+        content = re.sub(r"\n\n\n+", "\n\n", content)  # Replace 3 or more newlines with exactly 2
         
-        content = re.sub(r' {2,}', ' ', content)  # Replace 2 or more spaces with single space
-        
-        content = re.sub(r'\*{2,}', '*', content)  # Replace 2 or more asterisks with single asterisk
+        content = re.sub(r" {2,}", " ", content)  # Replace 2 or more spaces with single space
+
+        content = re.sub(r"\*{2,}", "*", content)  # Replace 2 or more asterisks with single asterisk
         
         if content != original_content:  # If any fixes were applied
             with open(file_path, "w", encoding="utf-8") as f:  # Open the file for writing
