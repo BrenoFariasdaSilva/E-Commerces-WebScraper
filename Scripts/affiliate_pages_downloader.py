@@ -164,6 +164,37 @@ def verbose_output(true_string="", false_string=""):
         print(false_string)  # Output the false statement string
 
 
+def open_chrome_by_os() -> bool:
+    """
+    Opens Google Chrome using operating-system specific commands.
+
+    :param: None.
+    :return: True when the launch command is dispatched, otherwise False.
+    """
+
+    current_os = platform.system().lower()  # Retrieve normalized operating system name.
+
+    try:  # Attempt Chrome launch using operating-system specific command.
+        if current_os == "windows":  # Verify whether the current operating system is Windows.
+            os.system("start chrome")  # Dispatch Windows command to open Chrome.
+        elif current_os == "darwin":  # Verify whether the current operating system is macOS.
+            os.system("open -a 'Google Chrome'")  # Dispatch macOS command to open Chrome.
+        elif current_os == "linux":  # Verify whether the current operating system is Linux.
+            launch_code = os.system("google-chrome >/dev/null 2>&1 &")  # Dispatch Linux command to open Chrome in background.
+
+            if launch_code != 0:  # Verify whether primary Linux Chrome command failed.
+                os.system("chromium-browser >/dev/null 2>&1 &")  # Dispatch Linux Chromium fallback command in background.
+        else:  # Handle unsupported operating systems.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Unsupported operating system for Chrome auto-launch: {current_os}{Style.RESET_ALL}")  # Log unsupported operating system warning.
+            return False  # Return failure status for unsupported operating systems.
+
+        time.sleep(2.0)  # Wait for Chrome process and window initialization.
+        return True  # Return success status after launch command dispatch.
+    except Exception:  # Handle Chrome launch failures.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to open Chrome automatically using operating-system command.{Style.RESET_ALL}")  # Log Chrome auto-launch failure warning.
+        return False  # Return failure status when launch attempt fails.
+
+
 def activate_chrome_window() -> bool:
     """
     Activates a Chrome window to receive automation keystrokes.
@@ -176,8 +207,16 @@ def activate_chrome_window() -> bool:
     chrome_windows = get_chrome_windows()  # Retrieve visible non-minimized Chrome windows.
 
     if len(chrome_windows) == 0:  # Verify at least one Chrome window exists.
-        print(f"{BackgroundColors.RED}No Chrome windows were detected. Automation cannot continue.{Style.RESET_ALL}")  # Print Chrome not found error.
-        return False  # Return failure status when no Chrome window is available.
+        launch_result = open_chrome_by_os()  # Attempt to open Chrome using operating-system specific command.
+
+        if not launch_result:  # Verify whether automatic Chrome launch failed.
+            return False  # Return failure status when no Chrome window is available.
+
+        chrome_windows = get_chrome_windows()  # Retrieve visible non-minimized Chrome windows after launch attempt.
+
+        if len(chrome_windows) == 0:  # Verify at least one Chrome window exists after launch attempt.
+            print(f"{BackgroundColors.RED}No Chrome windows were detected after automatic launch. Automation cannot continue.{Style.RESET_ALL}")  # Print Chrome not found error after launch retry.
+            return False  # Return failure status when no Chrome window is available after launch retry.
 
     target_window = select_chrome_window(chrome_windows)  # Resolve deterministic Chrome target window.
 
