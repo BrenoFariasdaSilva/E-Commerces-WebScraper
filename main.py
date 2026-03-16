@@ -1193,106 +1193,198 @@ def validate_and_fix_output_file(file_path):
         return False  # Return failure
 
 
-def validate_template_file(template_path: Path) -> bool:
+def read_template_content(template_path: Path) -> Optional[str]:
     """
-    Validates the generated template file content.
+    Read template file content safely.
 
-    :param template_path: Path to the template file to validate.
-    :return: True when template is valid, False when invalid.
+    :param template_path: Path to the template file to read.
+    :return: The file content string or None when read fails.
     """
 
-    try:  # Try to open and read the template file for validation
-        if not verify_filepath_exists(template_path):  # Verify template file exists before reading
-            print(f"[WARNING] Template validation failed: missing mandatory field Template File")  # Log missing file as warning
-            return False  # Return False when template file is missing
+    try:  # Try to ensure the template file exists before reading
+        if not verify_filepath_exists(template_path):  # Verify template file exists at provided path
+            return None  # Return None when file does not exist
 
         with open(template_path, "r", encoding="utf-8") as f:  # Open the template file for reading
-            content = f.read()  # Read the entire template content
+            content = f.read()  # Read the entire file content into a string
 
-    except Exception as e:  # Handle unexpected file I/O errors during read
-        print(f"[WARNING] Template validation failed: {e}")  # Log I/O exception as warning
-        return False  # Return False on read error
+        return content  # Return the read content on success
+    except Exception:  # Handle unexpected exceptions during file I/O
+        return None  # Return None when an exception occurs while reading
 
-    missing_fields = []  # Collect names of missing mandatory fields
 
-    product_name = None  # Initialize detected product name variable
-    for line in content.splitlines():  # Iterate lines to locate probable product title
-        if line and re.search(r"[A-Za-zÀ-ž0-9]", line):  # Verify line contains visible characters
-            product_name = line.strip()  # Use first sensible non-empty line as product name
-            break  # Stop after finding first candidate product name
+def detect_product_name(content: str) -> Optional[str]:
+    """
+    Detect the product name from template content.
 
-    if not product_name:  # Verify product name was found
-        missing_fields.append("Product name")  # Record missing product name when not found
+    :param content: The template file content string.
+    :return: The detected product name string or None when not found.
+    """
 
-    platform_found = False  # Track whether a known platform indicator is present
-    for display_name, platform_id in PLATFORMS_MAP.items():  # Iterate configured platform mappings
-        if re.search(rf"\b{re.escape(display_name)}\b", content, re.IGNORECASE) or re.search(rf"\b{re.escape(platform_id)}\b", content, re.IGNORECASE):  # Verify presence of either display or id
-            platform_found = True  # Mark platform as found when matched
-            break  # Exit loop once a platform indicator is detected
+    product_name = None  # Initialize variable for detected product name
 
-    if not platform_found:  # Verify platform indicator presence
-        missing_fields.append("Platform indicator")  # Record missing platform indicator when not found
+    for line in content.splitlines():  # Iterate through each line to find a sensible title
+        if line and re.search(r"[A-Za-zÀ-ž0-9]", line):  # Verify line contains visible alphanumeric characters
+            product_name = line.strip()  # Use the first sensible non-empty line as product name
+            break  # Stop after locating the first candidate product name
 
-    url_match = re.search(r"https?://[\w\-\.\/~\?&=%#]+", content)  # Search for HTTP/HTTPS URL pattern
-    if not url_match:  # Verify product URL presence
-        missing_fields.append("Product URL")  # Record missing product URL when not found
+    return product_name  # Return detected product name or None
 
-    price_matches = re.findall(r"R\$\s*[\d\.,]+|\b[\d]{1,3}(?:[\.,][\d]{2,3})\b", content)  # Find potential price tokens
 
-    current_price = None  # Initialize current price value
-    old_price = None  # Initialize old price value
+def detect_platform_indicator(content: str) -> bool:
+    """
+    Detect whether a platform indicator exists in the content.
 
-    if price_matches:  # If any price-like tokens exist in the template
-        por_match = re.search(r"POR APENAS\s*\*?R\$\s*([\d\.,]+)\*?", content, re.IGNORECASE)  # Try to capture current price in expected phrase
-        if por_match:  # Verify that the expected current price phrase matched
-            current_price = por_match.group(1).strip()  # Extract the numeric portion of current price
+    :param content: The template file content string.
+    :return: True when a platform indicator is found, False otherwise.
+    """
 
-        de_match = re.search(r"DE\s*\*?R\$\s*([\d\.,]+)\*?", content, re.IGNORECASE)  # Try to capture old price from expected phrase
-        if de_match:  # Verify that old price phrase matched
-            old_price = de_match.group(1).strip()  # Extract the numeric portion of old price
+    for display_name, platform_id in PLATFORMS_MAP.items():  # Iterate platform display and id mappings
+        if re.search(rf"\b{re.escape(display_name)}\b", content, re.IGNORECASE) or re.search(rf"\b{re.escape(platform_id)}\b", content, re.IGNORECASE):  # Verify either display or id appears
+            return True  # Return True immediately when a platform indicator is detected
 
-        if current_price is None and old_price is None and any(m.startswith("R$") for m in price_matches):  # Verify presence of currency-prefixed tokens
-            r_prices = [m for m in price_matches if m.strip().startswith("R$")]  # Collect currency-prefixed tokens
-            if r_prices:  # Verify there is at least one currency-prefixed token for fallback
-                if len(r_prices) == 1:  # If only one currency appears, treat it as current price only
-                    current_price = re.sub(r"[^\d,\.]", "", r_prices[0]).strip()  # Normalize numeric characters for current price
-                else:  # If multiple currency tokens appear, assume first is old and last is current
-                    old_price = re.sub(r"[^\d,\.]", "", r_prices[0]).strip()  # Normalize numeric characters for old price
-                    current_price = re.sub(r"[^\d,\.]", "", r_prices[-1]).strip()  # Normalize numeric characters for current price
+    return False  # Return False when no known platform indicator was found
 
-    if not current_price:  # Verify a current price was detected
-        missing_fields.append("Current price")  # Record missing current price when not found
 
-    try:  # Try to convert detected numeric strings to floats for logical comparisons
+def detect_product_url(content: str) -> Optional[str]:
+    """
+    Detect the first HTTP/HTTPS URL in the content.
+
+    :param content: The template file content string.
+    :return: The matched URL string or None when not found.
+    """
+
+    match = re.search(r"https?://[\w\-\.\/~\?&=%#]+", content)  # Search for HTTP/HTTPS URL using existing pattern
+    return match.group(0) if match else None  # Return matched URL or None
+
+
+def detect_price_fields(content: str) -> Tuple[Optional[str], Optional[str], List[str]]:
+    """
+    Detect price-like tokens and extract current and old prices.
+
+    :param content: The template file content string.
+    :return: Tuple(current_price, old_price, price_matches).
+    """
+
+    price_matches = re.findall(r"R\$\s*[\d\.,]+|\b[\d]{1,3}(?:[\.,][\d]{2,3})\b", content)  # Find potential price tokens using existing pattern
+
+    current_price = None  # Initialize current price variable
+    old_price = None  # Initialize old price variable
+
+    if price_matches:  # If one or more price-like tokens were found
+        por_match = re.search(r"POR APENAS\s*\*?R\$\s*([\d\.,]+)\*?", content, re.IGNORECASE)  # Try to capture current price from explicit phrase
+        if por_match:  # Verify the explicit current price phrase matched
+            current_price = por_match.group(1).strip()  # Extract numeric portion for current price
+
+        de_match = re.search(r"DE\s*\*?R\$\s*([\d\.,]+)\*?", content, re.IGNORECASE)  # Try to capture old price from explicit phrase
+        if de_match:  # Verify the explicit old price phrase matched
+            old_price = de_match.group(1).strip()  # Extract numeric portion for old price
+
+        if current_price is None and old_price is None and any(m.startswith("R$") for m in price_matches):  # Use currency-prefixed fallback when explicit phrases not present
+            r_prices = [m for m in price_matches if m.strip().startswith("R$")]  # Collect tokens that explicitly include currency prefix
+            if r_prices:  # Verify there is at least one currency-prefixed token for fallback logic
+                if len(r_prices) == 1:  # If only one currency-prefixed token exists
+                    current_price = re.sub(r"[^\d,\.]", "", r_prices[0]).strip()  # Normalize token into numeric string for current price
+                else:  # If multiple currency-prefixed tokens exist
+                    old_price = re.sub(r"[^\d,\.]", "", r_prices[0]).strip()  # Normalize first token as old price
+                    current_price = re.sub(r"[^\d,\.]", "", r_prices[-1]).strip()  # Normalize last token as current price
+
+    return current_price, old_price, price_matches  # Return extracted price values and the raw matches list
+
+
+def validate_price_relationships(old_price: Optional[str], current_price: Optional[str], content: str) -> Tuple[bool, Optional[str]]:
+    """
+    Validate logical relationships between detected price fields.
+
+    :param old_price: The detected old price string or None.
+    :param current_price: The detected current price string or None.
+    :param content: The template file content string.
+    :return: Tuple(valid_flag, error_message_or_None).
+    """
+
+    try:  # Try to parse numeric strings into floats for comparison
         def parse_price(p: str) -> float:  # Define inline parser for localized numeric strings
             return float(p.replace('.', '').replace(',', '.'))  # Convert Brazilian-style numeric to python float
 
         parsed_old = parse_price(old_price) if old_price else None  # Parse old price when present
         parsed_current = parse_price(current_price) if current_price else None  # Parse current price when present
-    except Exception:  # Handle parsing errors gracefully
+    except Exception:  # Handle parsing exceptions gracefully
         parsed_old = None  # Reset parsed_old on parse failure
         parsed_current = None  # Reset parsed_current on parse failure
 
     if old_price and not current_price:  # Verify old price must not appear without a current price
-        print("[WARNING] Template validation failed: inconsistent price fields detected")  # Log inconsistent price fields detected
-        return False  # Return False for inconsistent price appearance
+        return False, "inconsistent price fields detected"  # Return invalid status and reason when old price exists alone
 
-    discount_present = bool(re.search(r"\d{1,3}%|desconto", content, re.IGNORECASE))  # Detect discount percentage or keyword
+    discount_present = bool(re.search(r"\d{1,3}%|desconto", content, re.IGNORECASE))  # Detect discount percentage or keyword using existing pattern
     if discount_present and not old_price:  # Verify discount must not appear without old price
-        print("[WARNING] Template validation failed: inconsistent price fields detected")  # Log inconsistent price fields detected
-        return False  # Return False for inconsistent discount appearance
+        return False, "inconsistent price fields detected"  # Return invalid status and reason when discount appears without old price
 
-    if parsed_old is not None and parsed_current is not None and abs(parsed_old - parsed_current) < 1e-6:  # Verify old and current price are not equal
-        print("[WARNING] Template validation failed: inconsistent price fields detected")  # Log inconsistent price fields detected when prices match
-        return False  # Return False when old and current prices are equal
+    if parsed_old is not None and parsed_current is not None and abs(parsed_old - parsed_current) < 1e-6:  # Verify old and current prices are not equal
+        return False, "inconsistent price fields detected"  # Return invalid status when prices are equal
 
-    if missing_fields:  # Verify if any mandatory fields are missing
-        for field in missing_fields:  # Iterate each missing mandatory field
-            print(f"[WARNING] Template validation failed: missing mandatory field {field}")  # Log missing field warning for each
-        return False  # Return False when fields are missing
+    return True, None  # Return valid status when all logical price checks passed
 
-    print("[DEBUG] Template validation successful")  # Log debug message when validation succeeded
-    return True  # Return True when template is valid
+
+def output_missing_fields(missing_fields: List[str]) -> bool:
+    """
+    Output formatted warning messages for missing mandatory fields and return true if any fields are missing.
+
+    :param missing_fields: List of missing field names.
+    :return: True if any fields are missing, False otherwise.
+    """
+    
+    if not missing_fields:  # If the list of missing fields is empty
+        return False  # Return False when no fields are missing
+
+    for field in missing_fields:  # Iterate each missing field to create a warning message
+        print(f"{BackgroundColors.RED}Template validation failed: missing mandatory field {BackgroundColors.GREEN}{field}{Style.RESET_ALL}")  # Append formatted message for the missing field
+    
+    return True  # Return True when any missing fields are found
+
+
+def validate_template_file(template_path: Path) -> bool:
+    """
+    Orchestrate template validation using smaller validation functions.
+
+    :param template_path: Path to the template file to validate.
+    :return: True when template is valid, False when invalid.
+    """
+
+    content = read_template_content(template_path)  # Read template file content safely and get string or None
+    if content is None:  # Verify the template content was read successfully
+        print(f"{BackgroundColors.YELLOW}[WARNING] Template validation failed: missing mandatory field Template File{Style.RESET_ALL}")  # Log warning when file missing or unreadable
+        return False  # Return False when content could not be read
+
+    missing_fields: List[str] = []  # Initialize list to collect missing mandatory fields
+
+    product_name = detect_product_name(content)  # Detect product name from content using dedicated function
+    if not product_name:  # Verify product name detection result
+        missing_fields.append("Product name")  # Record missing product name when detection failed
+
+    platform_ok = detect_platform_indicator(content)  # Detect platform indicator presence using dedicated function
+    if not platform_ok:  # Verify platform indicator detection result
+        missing_fields.append("Platform indicator")  # Record missing platform indicator when detection failed
+
+    product_url = detect_product_url(content)  # Detect product URL using dedicated function
+    if not product_url:  # Verify product URL detection result
+        missing_fields.append("Product URL")  # Record missing product URL when detection failed
+
+    current_price, old_price, _ = detect_price_fields(content)  # Detect price fields using dedicated function
+    if not current_price:  # Verify current price detection result
+        missing_fields.append("Current price")  # Record missing current price when detection failed
+
+    if missing_fields:  # If any mandatory fields are missing, build and emit warnings
+        msgs = output_missing_fields(missing_fields)  # Build warning messages for missing fields
+        return not msgs  # Return False when mandatory fields are missing
+
+    valid_prices, reason = validate_price_relationships(old_price, current_price, content)  # Validate logical price relationships
+    if not valid_prices:  # Verify result of price relationship validation
+        print(f"{BackgroundColors.YELLOW}[WARNING] Template validation failed: {BackgroundColors.GREEN}{reason}{Style.RESET_ALL}")  # Print price inconsistency warning with color
+        return False  # Return False when price relationships are invalid
+
+    verbose_output(f"{BackgroundColors.GREEN}Template validation successful{Style.RESET_ALL}")  # Output verbose success message when validation passes
+
+    return True  # Return True when all validations passed
 
 
 def remove_url_line_from_input_file(url, local_html_path=None):
