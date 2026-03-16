@@ -469,6 +469,30 @@ def ensure_chrome_on_primary_monitor(target_window: Any) -> bool:
     return detach_tab_to_new_window()  # Return fallback tab extraction strategy result.
 
 
+def resolve_downloads_directory() -> str:
+    """
+    Resolves the active downloads directory for the current operating system.
+
+    :param: None.
+    :return: Active downloads directory path string.
+    """
+
+    current_os = platform.system().lower()  # Retrieve normalized operating system name.
+    candidates = DOWNLOADS_DIR.get(current_os, [])  # Retrieve downloads directory candidates for the detected operating system.
+
+    if len(candidates) == 0:  # Verify if no downloads directory candidates were configured for the detected operating system.
+        fallback_path = os.path.join(os.path.expanduser("~"), "Downloads")  # Build the default downloads fallback path.
+        print(f"{BackgroundColors.YELLOW}[WARNING] No downloads directory candidates configured for detected OS, using fallback path: {fallback_path}{Style.RESET_ALL}")  # Log missing operating system configuration warning.
+        return fallback_path  # Return the default downloads fallback path.
+
+    for candidate in candidates:  # Iterate downloads directory candidates in configured priority order.
+        if os.path.isdir(candidate):  # Verify if the current downloads directory candidate exists.
+            return candidate  # Return the first existing downloads directory candidate.
+
+    print(f"{BackgroundColors.YELLOW}[WARNING] No existing downloads directory found for detected OS, using fallback path.{Style.RESET_ALL}")  # Log missing downloads directory warning.
+    return candidates[0]  # Return the first configured downloads directory candidate as fallback.
+
+
 def read_urls(urls_file: Path) -> List[str]:
     """
     Reads URLs from the specified file.
