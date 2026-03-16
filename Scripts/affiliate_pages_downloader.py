@@ -598,6 +598,28 @@ def snapshot_download_directories(downloads_dirs: List[str]) -> Dict[str, Dict[s
     return snapshots  # Return collected snapshots for all monitored directories.
 
 
+def resolve_first_download_directory(downloads_dirs: List[str], before_snapshots: Dict[str, Dict[str, float]], after_snapshots: Dict[str, Dict[str, float]]) -> str | None:
+    """
+    Resolves which monitored directory received the first new download.
+
+    :param downloads_dirs: List of monitored downloads directory paths.
+    :param before_snapshots: Directory snapshots captured before processing the URL.
+    :param after_snapshots: Directory snapshots captured after processing the URL.
+    :return: Resolved directory path when detected, otherwise None.
+    """
+
+    for downloads_dir in downloads_dirs:  # Iterate monitored downloads directory paths in priority order.
+        resolved_dir = str(Path(downloads_dir).resolve())  # Resolve and normalize current monitored directory path.
+        before_snapshot = before_snapshots.get(resolved_dir, {})  # Retrieve pre-processing snapshot for current directory.
+        after_snapshot = after_snapshots.get(resolved_dir, {})  # Retrieve post-processing snapshot for current directory.
+        new_filenames = [filename for filename in after_snapshot if filename not in before_snapshot]  # Build new filenames list for current monitored directory.
+
+        if len(new_filenames) > 0:  # Verify whether current monitored directory received at least one new file.
+            return resolved_dir  # Return first resolved directory that received a new file.
+
+    return None  # Return None when no monitored directory received a new file.
+
+
 def detect_new_download_file(before_snapshot: Dict[str, float], after_snapshot: Dict[str, float], url: str) -> str:
     """
     Detects new downloaded filename by comparing two snapshots.
