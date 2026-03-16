@@ -605,9 +605,9 @@ def locate_image_in_region(image_path: Path, region: Tuple[int, int, int, int] |
 
     try:  # Attempt image location on screen using an optional capture region.
         if region is not None:  # Verify whether a capture region was provided for the image search.
-            return pyautogui.locateOnScreen(str(image_path), region=region, confidence=0.9)  # Return located box coordinates inside the provided region.
+            return pyautogui.locateOnScreen(str(image_path), region=region, confidence=0.8)  # Return located box coordinates inside the provided region.
 
-        return pyautogui.locateOnScreen(str(image_path), confidence=0.9)  # Return located box coordinates from the full screen.
+        return pyautogui.locateOnScreen(str(image_path), confidence=0.8)  # Return located box coordinates from the full screen.
     except Exception:  # Handle image search exceptions.
         return None  # Return None when image search fails.
 
