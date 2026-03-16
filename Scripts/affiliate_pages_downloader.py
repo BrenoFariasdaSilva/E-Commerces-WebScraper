@@ -142,6 +142,51 @@ def verbose_output(true_string="", false_string=""):
         print(false_string)  # Output the false statement string
 
 
+def activate_window_with_fallback(target_window: Any) -> bool:
+    """
+    Activates a window using primary and secondary strategies.
+
+    :param target_window: Window object selected for activation.
+    :return: True when activation succeeds, otherwise False.
+    """
+
+    if target_window is None:  # Verify window reference exists before activation attempts.
+        return False  # Return failure status when target window is missing.
+
+    try:  # Attempt primary activation strategy.
+        target_window.activate()  # Activate selected Chrome window.
+        time.sleep(0.2)  # Wait after activation.
+        target_window.maximize()  # Maximize selected Chrome window.
+        time.sleep(0.8)  # Wait after maximize.
+        return True  # Return success status after primary activation strategy.
+    except Exception:  # Handle primary activation strategy failure.
+        pass  # Continue to secondary activation strategy.
+
+    try:  # Attempt secondary activation strategy.
+        if bool(getattr(target_window, "isMinimized", False)):  # Verify if the target window is minimized.
+            restore_function = getattr(target_window, "restore", None)  # Resolve restore method for minimized window recovery.
+
+            if callable(restore_function):  # Verify restore method availability.
+                restore_function()  # Restore minimized window before activation retry.
+                time.sleep(0.2)  # Wait after restore operation.
+
+        left = int(getattr(target_window, "left", 0))  # Retrieve window left coordinate.
+        top = int(getattr(target_window, "top", 0))  # Retrieve window top coordinate.
+        width = int(getattr(target_window, "width", 0))  # Retrieve window width value.
+        height = int(getattr(target_window, "height", 0))  # Retrieve window height value.
+        center_x = left + max(1, width // 2)  # Compute safe window center X coordinate.
+        center_y = top + max(1, height // 2)  # Compute safe window center Y coordinate.
+        pyautogui.click(center_x, center_y)  # Focus window by clicking inside it.
+        time.sleep(0.2)  # Wait after focus click.
+        target_window.activate()  # Retry window activation after focus click.
+        time.sleep(0.2)  # Wait after activation retry.
+        target_window.maximize()  # Retry maximize operation for consistent coordinates.
+        time.sleep(0.8)  # Wait after maximize retry.
+        return True  # Return success status after secondary activation strategy.
+    except Exception:  # Handle secondary activation strategy failure.
+        return False  # Return failure status when all activation strategies fail.
+
+
 def get_primary_monitor_bounds() -> Tuple[int, int, int, int]:
     """
     Retrieves primary monitor bounds from screen size.
