@@ -142,6 +142,44 @@ def verbose_output(true_string="", false_string=""):
         print(false_string)  # Output the false statement string
 
 
+def select_chrome_window(chrome_windows: List[Any]) -> Any:
+    """
+    Selects a deterministic Chrome window target.
+
+    :param chrome_windows: List of visible non-minimized Chrome windows.
+    :return: Selected Chrome window object or None.
+    """
+
+    global TARGET_CHROME_TITLE  # Reference persisted Chrome window title.
+
+    if len(chrome_windows) == 0:  # Verify there is at least one candidate window.
+        return None  # Return None when no candidates are available.
+
+    if TARGET_CHROME_TITLE != "":  # Verify persisted title exists from previous successful selection.
+        for window in chrome_windows:  # Iterate candidate windows to reuse persisted title.
+            if str(getattr(window, "title", "")) == TARGET_CHROME_TITLE:  # Verify title matches persisted selection.
+                return window  # Return persisted target window.
+
+    try:  # Attempt retrieval of currently active desktop window.
+        get_active_window = getattr(pyautogui, "getActiveWindow", None)  # Resolve optional active-window API.
+        active_window = get_active_window() if callable(get_active_window) else None  # Retrieve currently active desktop window when API is available.
+    except Exception:  # Handle active-window API failures.
+        active_window = None  # Fallback to None when active-window retrieval fails.
+
+    if active_window is not None:  # Verify an active window object was retrieved.
+        active_title = str(getattr(active_window, "title", "")).lower()  # Retrieve and normalize active window title.
+
+        if "chrome" in active_title and not bool(getattr(active_window, "isMinimized", False)):  # Verify active window is a valid non-minimized Chrome window.
+            return active_window  # Return active Chrome window as most recently focused target.
+
+    sorted_windows = sorted(  # Build deterministic ordering for remaining candidates.
+        chrome_windows,  # Provide candidate Chrome windows list.
+        key=lambda window: (str(getattr(window, "title", "")).lower(), int(getattr(window, "left", 0)), int(getattr(window, "top", 0))),  # Sort by title and position for deterministic fallback.
+    )  # Finalize deterministic ordering for candidate windows.
+
+    return sorted_windows[0] if len(sorted_windows) > 0 else None  # Return first deterministic candidate when available.
+
+
 def activate_window_with_fallback(target_window: Any) -> bool:
     """
     Activates a window using primary and secondary strategies.
