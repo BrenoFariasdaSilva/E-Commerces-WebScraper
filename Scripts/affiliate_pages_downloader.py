@@ -706,6 +706,18 @@ def detect_new_download_from_directories(before_snapshots: Dict[str, Dict[str, f
         sel_dir, sel_file, _ = max(single_compressed_entries, key=lambda item: item[2])  # Select most recent compressed file across single-compressed directories.
         return sel_dir, sel_file  # Return resolved directory and filename for the single compressed addition.
 
+    compressed_entries: List[Tuple[str, str, float]] = [entry for entry in detected_entries if is_compressed_file(entry[1])]  # Build list of detected entries that are compressed archives.
+
+    if len(compressed_entries) > 1:  # Verify whether multiple compressed files were detected across directories.
+        keywords = ["aliexpress", "amazon", "mercadolivre", "shein", "shopee"]  # Marketplace keywords to prioritize when multiple compressed files exist.
+        filenames = [entry[1] for entry in compressed_entries]  # Extract filenames from compressed entries for keyword scanning.
+        matched = find_filename_by_marketplace(filenames, keywords)  # Attempt to locate a filename containing marketplace keywords.
+
+        if matched is not None:  # Verify whether a marketplace keyword matched a filename among compressed entries.
+            for d, f, _ in compressed_entries:  # Iterate compressed entries to find matching directory for the matched filename.
+                if f == matched:  # Verify whether current entry filename matches the matched filename.
+                    return d, f  # Return resolved directory and filename for the matched marketplace file.
+
     if len(detected_entries) == 0:  # Verify whether any monitored directory received new files when no single compressed detection occurred.
         print(f"{BackgroundColors.YELLOW}[WARNING] No new download detected for URL: {url}{Style.RESET_ALL}")  # Log missing download warning for current URL.
         return "", ""  # Return empty detection tuple when no new download is found.
