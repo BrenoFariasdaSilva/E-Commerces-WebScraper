@@ -581,6 +581,23 @@ def snapshot_download_directory(downloads_dir: Path) -> Dict[str, float]:
     return snapshot  # Return captured downloads directory snapshot.
 
 
+def snapshot_download_directories(downloads_dirs: List[str]) -> Dict[str, Dict[str, float]]:
+    """
+    Captures snapshots for all monitored downloads directories.
+
+    :param downloads_dirs: List of monitored downloads directory paths.
+    :return: Dictionary mapping directory path to its file snapshot.
+    """
+
+    snapshots: Dict[str, Dict[str, float]] = {}  # Initialize directory-to-snapshot mapping dictionary.
+
+    for downloads_dir in downloads_dirs:  # Iterate monitored downloads directory paths.
+        resolved_dir = str(Path(downloads_dir).resolve())  # Resolve and normalize downloads directory path.
+        snapshots[resolved_dir] = snapshot_download_directory(Path(resolved_dir))  # Capture and store snapshot for current downloads directory.
+
+    return snapshots  # Return collected snapshots for all monitored directories.
+
+
 def detect_new_download_file(before_snapshot: Dict[str, float], after_snapshot: Dict[str, float], url: str) -> str:
     """
     Detects new downloaded filename by comparing two snapshots.
