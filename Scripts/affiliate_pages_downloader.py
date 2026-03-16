@@ -1073,7 +1073,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
 
     urls = read_urls_file(urls_file)  # Read URLs from input file.
 
-    downloads_dir = prepare_active_downloads_directory()  # Prepare and return monitored downloads directory path object.
+    downloads_dirs = prepare_active_downloads_directory()  # Prepare and return monitored downloads directory path object.
 
     if tab_count is None or tab_count <= 0:  # Verify tab count validity.
         tab_count = len(urls)  # Use full URL list length when tab count is not positive.
@@ -1103,7 +1103,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
     processed_count = 0  # Initialize processed tab counter.
     start_tick = time.time()  # Capture workflow start timestamp.
     url_to_download: Dict[str, str] = {}  # Initialize URL to downloaded filename mapping dictionary.
-    processed_count, url_to_download, process_success = process_urls_with_download_tracking(urls, tab_count, downloads_dir, extension_img, download_img, confirmation_img, close_download_tab_img, mercado_livre_img, ext_methods, download_methods, completion_methods, close_methods)  # Process URLs with download tracking and retrieve mapping details.
+    processed_count, url_to_download, process_success = process_urls_with_download_tracking(urls, tab_count, downloads_dirs, extension_img, download_img, confirmation_img, close_download_tab_img, mercado_livre_img, ext_methods, download_methods, completion_methods, close_methods)  # Process URLs with download tracking and retrieve mapping details.
 
     if not process_success:  # Verify if URL processing completed without activation failure.
         return 1  # Return failure exit code when URL processing fails.
@@ -1115,7 +1115,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
         final_report = f"{BackgroundColors.GREEN}Execution Time: {BackgroundColors.CYAN}{formatted}{BackgroundColors.GREEN}\n\n{report}{Style.RESET_ALL}"  # Compose final report output.
 
         update_urls_file(urls_file, url_to_download)  # Rewrite URLs file with URL to downloaded filename mapping.
-        move_downloaded_archives(downloads_dir, urls_file.resolve().parent, url_to_download)  # Move downloaded archives into URLs file directory.
+        move_downloaded_archives(downloads_dirs, urls_file.resolve().parent, url_to_download)  # Move downloaded archives into URLs file directory.
 
         print(f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Automation Finished{Style.RESET_ALL}\n")  # Print automation completion message.
         print(f"{final_report}")  # Print final report details.
