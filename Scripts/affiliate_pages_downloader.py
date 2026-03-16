@@ -91,6 +91,14 @@ class BackgroundColors:  # Colors for the terminal
 # Execution Constants:
 VERBOSE = False  # Set to True to output verbose messages
 
+ACTIVE_DOWNLOADS_DIR = None  # Store the resolved active downloads directory path for reuse.
+
+DOWNLOADS_DIR = {
+    "windows": [os.path.join(os.path.expanduser("~"), "Downloads"), r"D:\Sem Backup\Download"],  # Define Windows downloads directory candidates.
+    "linux": [os.path.join(os.path.expanduser("~"), "Downloads")],  # Define Linux downloads directory candidates.
+    "darwin": [os.path.join(os.path.expanduser("~"), "Downloads")],  # Define macOS downloads directory candidates.
+}  # Define monitored downloads directory candidates by operating system.
+
 pyautogui.FAILSAFE = True  # Enable fail-safe by moving cursor to the top-left corner.
 pyautogui.PAUSE = 0.05  # Apply default pause between pyautogui actions.
 
@@ -105,9 +113,6 @@ DOWNLOAD_BUTTON_X_REF = 1590  # Define download button reference X coordinate fo
 DOWNLOAD_BUTTON_Y_REF = 64  # Define download button reference Y coordinate for 1920x1080.
 CLOSE_DOWNLOAD_TAB_X_REF = 1905  # Define close download tab reference X coordinate for 1920x1080.
 CLOSE_DOWNLOAD_TAB_Y_REF = 148  # Define close download tab reference Y coordinate for 1920x1080.
-
-DOWNLOADS_DIR = r"D:\Sem Backup\Download"  # Define monitored downloads directory path.
-
 
 # Logger Setup:
 logger = Logger(f"./Logs/{Path(__file__).stem}.log", clean=True)  # Create a Logger instance
