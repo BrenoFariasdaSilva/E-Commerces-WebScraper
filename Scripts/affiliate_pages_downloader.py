@@ -1347,7 +1347,7 @@ def locate_image(image_path: Path) -> Any:
         return None  # Return None when image file does not exist.
 
     try:  # Attempt image location on screen.
-        return pyautogui.locateOnScreen(str(image_path))  # Return located box coordinates.
+        return pyautogui.locateOnScreen(str(image_path), confidence=0.8)  # Return located box coordinates.
     except Exception:  # Handle image search exception.
         return None  # Return None when image search fails.
 
@@ -1673,8 +1673,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
         return 1  # Return failure exit code when activation fails.
 
     if not verify_and_correct_chrome_download_settings(assets_dir):  # Verify Chrome downloads settings before processing product URLs.
-        print(f"{BackgroundColors.RED}Error: Chrome downloads settings could not be verified or corrected automatically.{Style.RESET_ALL}")  # Print downloads settings verification failure.
-        return 1  # Return failure exit code when downloads settings preparation fails.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Chrome downloads settings could not be verified or corrected automatically. Continuing execution.{Style.RESET_ALL}")  # Log non-blocking downloads settings verification warning.
 
     ext_methods: Dict[str, List[int]] = {}  # Initialize extension method map.
     download_methods: Dict[str, List[int]] = {}  # Initialize download method map.
