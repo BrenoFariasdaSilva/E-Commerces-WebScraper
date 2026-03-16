@@ -91,7 +91,7 @@ class BackgroundColors:  # Colors for the terminal
 # Execution Constants:
 VERBOSE = False  # Set to True to output verbose messages
 
-ACTIVE_DOWNLOADS_DIR = None  # Store the resolved active downloads directory path for reuse.
+ACTIVE_DOWNLOADS_DIRS = []  # Store the resolved active downloads directories path for reuse.
 
 DOWNLOADS_DIR = {
     "windows": [os.path.join(os.path.expanduser("~"), "Downloads"), r"D:\Sem Backup\Download"],  # Define Windows downloads directory candidates.
@@ -498,21 +498,19 @@ def resolve_downloads_directories() -> List[str]:
     return existing  # Return the list of existing downloads directory candidates.
 
 
-def prepare_active_downloads_directory() -> Path:
+def prepare_active_downloads_directory() -> None:
     """
-    Prepares the active downloads directory and returns a Path.
+    Prepares the active downloads directories by resolving candidates and caching the result for reuse.
 
     :param: None.
-    :return: Path to the active downloads directories
+    :return: Path object for the active downloads directory.
     """
 
-    global ACTIVE_DOWNLOADS_DIR  # Declare global variable for active downloads directory.
+    global ACTIVE_DOWNLOADS_DIRS  # Declare global variable for active downloads directory.
 
     candidates = resolve_downloads_directories()  # Resolve downloads directory candidates for the current operating system.
 
-    ACTIVE_DOWNLOADS_DIR = candidates[0] if isinstance(candidates, list) and len(candidates) > 0 else os.path.join(os.path.expanduser("~"), "Downloads")  # Select first candidate or fallback to default Downloads path.
-
-    return Path(ACTIVE_DOWNLOADS_DIR)  # Build and return Path object for the resolved downloads directory.
+    ACTIVE_DOWNLOADS_DIRS = candidates if isinstance(candidates, list) and len(candidates) > 0 else [os.path.join(os.path.expanduser("~"), "Downloads")]  # Select candidates or fallback to default Downloads path.
 
 
 def read_urls(urls_file: Path) -> List[str]:
