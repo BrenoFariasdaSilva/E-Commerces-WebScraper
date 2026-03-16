@@ -1071,7 +1071,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
 
     urls = read_urls_file(urls_file)  # Read URLs from input file.
 
-    downloads_dirs = prepare_active_downloads_directory()  # Prepare and return monitored downloads directory path object.
+    downloads_dirs = ACTIVE_DOWNLOADS_DIRS if ACTIVE_DOWNLOADS_DIRS else prepare_active_downloads_directory()  # Use cached downloads directories or resolve if cache is empty.
 
     if tab_count is None or tab_count <= 0:  # Verify tab count validity.
         tab_count = len(urls)  # Use full URL list length when tab count is not positive.
