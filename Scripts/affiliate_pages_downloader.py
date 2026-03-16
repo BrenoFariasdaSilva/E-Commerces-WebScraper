@@ -498,12 +498,12 @@ def resolve_downloads_directories() -> List[str]:
     return existing  # Return the list of existing downloads directory candidates.
 
 
-def prepare_active_downloads_directory() -> None:
+def prepare_active_downloads_directory() -> List[str]:
     """
     Prepares the active downloads directories by resolving candidates and caching the result for reuse.
 
     :param: None.
-    :return: Path object for the active downloads directory.
+    :return: Active downloads directory paths as list of strings.
     """
 
     global ACTIVE_DOWNLOADS_DIRS  # Declare global variable for active downloads directory.
@@ -511,6 +511,7 @@ def prepare_active_downloads_directory() -> None:
     candidates = resolve_downloads_directories()  # Resolve downloads directory candidates for the current operating system.
 
     ACTIVE_DOWNLOADS_DIRS = [str(Path(candidate).resolve()) for candidate in candidates]  # Resolve and cache active downloads directory paths for reuse.
+    return ACTIVE_DOWNLOADS_DIRS  # Return cached active downloads directories for immediate usage.
 
 
 def read_urls(urls_file: Path) -> List[str]:
