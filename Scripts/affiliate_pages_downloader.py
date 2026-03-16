@@ -646,7 +646,7 @@ def is_compressed_file(filename: str) -> bool:
     compressed_suffixes = (".zip", ".rar", ".7z", ".tar.gz", ".tgz", ".tar", ".gz")  # Define common compressed archive suffixes.
     return any(lower.endswith(suf) for suf in compressed_suffixes)  # Return True when any suffix matches.
 
- 
+
 def detect_new_download_from_directories(before_snapshots: Dict[str, Dict[str, float]], after_snapshots: Dict[str, Dict[str, float]], downloads_dirs: List[str], url: str) -> Tuple[str, str]:
     """
     Detects a new downloaded file across one or multiple monitored directories.
@@ -700,7 +700,7 @@ def detect_new_download_file(before_snapshot: Dict[str, float], after_snapshot: 
         return ""  # Return empty filename when no new file is detected.
 
     if len(new_filenames) > 1:  # Verify if multiple new files were detected.
-        print(f"{BackgroundColors.YELLOW}[WARNING] Multiple downloads detected. Using most recent file.{Style.RESET_ALL}")  # Log multiple downloads warning.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Multiple downloads detected across monitored directories. Using most recent file.{Style.RESET_ALL}")  # Log multiple downloads warning across directories.
 
     selected_filename = max(new_filenames, key=lambda filename: after_snapshot.get(filename, 0.0))  # Select most recently modified filename from detected files.
     return selected_filename  # Return selected downloaded filename.
