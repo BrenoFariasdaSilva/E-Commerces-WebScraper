@@ -620,6 +620,20 @@ def resolve_first_download_directory(downloads_dirs: List[str], before_snapshots
     return None  # Return None when no monitored directory received a new file.
 
 
+def update_active_download_directory(directory: str) -> None:
+    """
+    Updates cached active downloads directories with a single resolved directory.
+
+    :param directory: Resolved downloads directory path.
+    :return: None.
+    """
+
+    global ACTIVE_DOWNLOADS_DIRS  # Declare global variable for active downloads directory cache.
+
+    resolved_dir = str(Path(directory).resolve())  # Resolve and normalize detected downloads directory path.
+    ACTIVE_DOWNLOADS_DIRS = [resolved_dir]  # Persist single resolved downloads directory in global cache.
+
+
 def detect_new_download_file(before_snapshot: Dict[str, float], after_snapshot: Dict[str, float], url: str) -> str:
     """
     Detects new downloaded filename by comparing two snapshots.
