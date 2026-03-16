@@ -653,24 +653,32 @@ def update_urls_file(urls_file: Path, url_to_download: Dict[str, str]) -> None:
     urls_file.write_text("\n".join(updated_lines) + "\n", encoding="utf-8")  # Rewrite URLs file with updated mapping lines.
 
 
-def move_downloaded_archives(downloads_dir: Path, destination_dir: Path, url_to_download: Dict[str, str]) -> None:
+def move_downloaded_archives(downloads_dirs: List[str], destination_dir: Path, url_to_download: Dict[str, str]) -> None:
     """
     Moves downloaded archives from downloads directory to URLs directory.
 
-    :param downloads_dir: Path to the monitored downloads directory.
+    :param downloads_dirs: Paths to monitored downloads directories.
     :param destination_dir: Path to the target directory where URLs file is located.
     :param url_to_download: Dictionary mapping URL to downloaded filename.
     :return: None.
     """
 
     unique_filenames = sorted({filename for filename in url_to_download.values() if filename != ""})  # Build sorted unique list of detected downloaded filenames.
+    normalized_downloads_dirs = [str(Path(downloads_dir).resolve()) for downloads_dir in downloads_dirs]  # Resolve and normalize monitored downloads directory paths.
 
     for filename in unique_filenames:  # Iterate over detected downloaded filenames.
-        source_path = downloads_dir / filename  # Build source archive file path in downloads directory.
+        source_path = None  # Initialize source archive file path placeholder.
         destination_path = destination_dir / filename  # Build destination archive file path in URLs directory.
 
-        if not source_path.exists():  # Verify if source archive exists before move.
-            print(f"{BackgroundColors.YELLOW}[WARNING] Downloaded file not found for move: {source_path}{Style.RESET_ALL}")  # Log missing source archive warning.
+        for downloads_dir in normalized_downloads_dirs:  # Iterate monitored downloads directories while searching for current archive.
+            candidate_path = Path(downloads_dir) / filename  # Build candidate source archive path for current monitored downloads directory.
+
+            if candidate_path.exists():  # Verify whether current candidate source archive path exists.
+                source_path = candidate_path  # Persist existing source archive path.
+                break  # Stop iteration after locating the first existing source archive path.
+
+        if source_path is None:  # Verify whether a source archive path was located.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Downloaded file not found for move: {filename}{Style.RESET_ALL}")  # Log missing source archive warning.
             continue  # Continue with next detected archive.
 
         if destination_path.exists():  # Verify if destination archive already exists.
@@ -683,13 +691,13 @@ def move_downloaded_archives(downloads_dir: Path, destination_dir: Path, url_to_
             print(f"{BackgroundColors.YELLOW}[WARNING] Failed to move downloaded file: {source_path}{Style.RESET_ALL}")  # Log archive move failure warning.
 
 
-def process_urls_with_download_tracking(urls: List[str], tab_count: int, downloads_dir: Path, extension_img: Path, download_img: Path, confirmation_img: Path, close_download_tab_img: Path, mercado_livre_img: Path, ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]]) -> Tuple[int, Dict[str, str], bool]:
+def process_urls_with_download_tracking(urls: List[str], tab_count: int, downloads_dirs: List[str], extension_img: Path, download_img: Path, confirmation_img: Path, close_download_tab_img: Path, mercado_livre_img: Path, ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]]) -> Tuple[int, Dict[str, str], bool]:
     """
     Processes URLs while tracking downloaded files by directory snapshots.
 
     :param urls: URL list to process.
     :param tab_count: Number of URLs to process.
-    :param downloads_dir: Path to the monitored downloads directory.
+    :param downloads_dirs: Paths to monitored downloads directories.
     :param extension_img: Path to extension action image.
     :param download_img: Path to download button image.
     :param confirmation_img: Path to download confirmation image.
@@ -704,6 +712,7 @@ def process_urls_with_download_tracking(urls: List[str], tab_count: int, downloa
 
     url_to_download: Dict[str, str] = {}  # Initialize URL to downloaded filename mapping dictionary.
     processed_count = 0  # Initialize processed URL counter.
+    downloads_dirs[:] = [str(Path(downloads_dir).resolve()) for downloads_dir in downloads_dirs]  # Resolve and normalize monitored downloads directory paths.
 
     if tab_count > 0:  # Verify if there are URLs to process.
         if not activate_chrome_window():  # Verify if Chrome activation succeeds before opening separator tab.
@@ -713,7 +722,7 @@ def process_urls_with_download_tracking(urls: List[str], tab_count: int, downloa
         time.sleep(0.2)  # Wait after opening separator tab.
 
     for index, url in enumerate(tqdm(urls, total=len(urls), desc=f"{BackgroundColors.GREEN}Processing URLs{Style.RESET_ALL}"), start=1):  # Initialize tqdm progress bar for URL processing while preserving enumerate indexing
-        pre_download_snapshot = snapshot_download_directory(downloads_dir)  # Capture downloads directory snapshot before URL processing.
+        pre_download_snapshots = snapshot_download_directories(downloads_dirs)  # Capture downloads directory snapshots before URL processing.
 
         if not activate_chrome_window():  # Verify if Chrome activation succeeds before URL navigation.
             return processed_count, url_to_download, False  # Return failure state when Chrome activation fails.
@@ -740,8 +749,21 @@ def process_urls_with_download_tracking(urls: List[str], tab_count: int, downloa
         confirmation_method = wait_for_download_confirmation(confirmation_img)  # Execute completion polling action.
         close_method = close_extension_download_tab(close_download_tab_img)  # Execute close extension tab action.
 
-        post_download_snapshot = snapshot_download_directory(downloads_dir)  # Capture downloads directory snapshot after download completion.
-        detected_filename = detect_new_download_file(pre_download_snapshot, post_download_snapshot, url)  # Detect downloaded filename associated with current URL.
+        post_download_snapshots = snapshot_download_directories(downloads_dirs)  # Capture downloads directory snapshots after download completion.
+
+        if len(downloads_dirs) > 1:  # Verify whether monitored downloads directories are unresolved.
+            resolved_download_dir = resolve_first_download_directory(downloads_dirs, pre_download_snapshots, post_download_snapshots)  # Resolve monitored downloads directory using first detected file.
+
+            if resolved_download_dir is not None:  # Verify whether monitored downloads directory resolution succeeded.
+                update_active_download_directory(resolved_download_dir)  # Persist resolved monitored downloads directory in global cache.
+                downloads_dirs[:] = ACTIVE_DOWNLOADS_DIRS  # Update local monitored downloads directories list with resolved cache.
+
+        detected_download_dir, detected_filename = detect_new_download_from_directories(pre_download_snapshots, post_download_snapshots, downloads_dirs, url)  # Detect downloaded filename and source directory associated with current URL.
+
+        if detected_download_dir != "" and len(downloads_dirs) > 1:  # Verify whether detected directory exists while local list remains unresolved.
+            update_active_download_directory(detected_download_dir)  # Persist detected monitored downloads directory in global cache.
+            downloads_dirs[:] = ACTIVE_DOWNLOADS_DIRS  # Update local monitored downloads directories list with detected cache.
+
         associate_url_with_download(url_to_download, url, detected_filename)  # Persist URL to downloaded filename mapping when detection succeeds.
 
         add_method(ext_methods, extension_method, current_tab)  # Store extension method for report.
