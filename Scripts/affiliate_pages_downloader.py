@@ -67,6 +67,7 @@ import tkinter as tk  # Import tkinter module.
 from colorama import Style  # Reset ANSI style output.
 from pathlib import Path  # Build and resolve filesystem paths.
 from tkinter import messagebox  # Import tkinter messagebox utility.
+from tqdm import tqdm  # Import tqdm progress bar iterator.
 from typing import Any, Dict, List, Tuple  # Provide typing annotations for containers and dynamic objects.
 
 
@@ -404,7 +405,7 @@ def process_urls_with_download_tracking(urls: List[str], tab_count: int, downloa
         pyautogui.hotkey("ctrl", "t")  # Open blank separator tab.
         time.sleep(0.2)  # Wait after opening separator tab.
 
-    for index, url in enumerate(urls, start=1):  # Iterate URL list with one-based indexing.
+    for index, url in enumerate(tqdm(urls, total=len(urls), desc=f"{BackgroundColors.GREEN}Processing URLs{Style.RESET_ALL}"), start=1):  # Initialize tqdm progress bar for URL processing while preserving enumerate indexing
         pre_download_snapshot = snapshot_download_directory(downloads_dir)  # Capture downloads directory snapshot before URL processing.
 
         if not activate_chrome_window():  # Verify if Chrome activation succeeds before URL navigation.
