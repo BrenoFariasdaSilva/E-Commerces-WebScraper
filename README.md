@@ -25,7 +25,7 @@ A production-ready web scraper for extracting product information from multiple 
 ![GitHub Stars](https://img.shields.io/github/stars/BrenoFariasdaSilva/E-Commerces-WebScraper)
 ![GitHub Contributors](https://img.shields.io/github/contributors/BrenoFariasdaSilva/E-Commerces-WebScraper)
 ![GitHub Created At](https://img.shields.io/github/created-at/BrenoFariasdaSilva/E-Commerces-WebScraper)
-![wakatime](https://wakatime.com/badge/github/BrenoFariasdaSilva/E-Commerces-WebScraper.svg)
+[![wakatime project](https://wakatime.com/badge/user/28f6c354-43b3-4634-8ec1-631893fe27d0/project/18106b85-18de-468a-8962-0c29e908be43.svg)](https://wakatime.com/badge/user/28f6c354-43b3-4634-8ec1-631893fe27d0/project/18106b85-18de-468a-8962-0c29e908be43)
 
 </div>
 
