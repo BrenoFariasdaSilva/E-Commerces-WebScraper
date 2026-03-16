@@ -142,6 +142,45 @@ def verbose_output(true_string="", false_string=""):
         print(false_string)  # Output the false statement string
 
 
+def detach_tab_to_new_window() -> bool:
+    """
+    Opens a new Chrome window to recover primary-monitor focus.
+
+    :param: None.
+    :return: True when a new Chrome window is activated on primary monitor, otherwise False.
+    """
+
+    previous_windows = get_chrome_windows()  # Capture current Chrome windows before creating a new window.
+    previous_titles = {str(getattr(window, "title", "")) for window in previous_windows}  # Capture current Chrome window titles for delta detection.
+
+    try:  # Attempt fallback new-window strategy.
+        pyautogui.hotkey("ctrl", "n")  # Open a new Chrome window as fallback strategy.
+        time.sleep(0.8)  # Wait for new Chrome window creation.
+    except Exception:  # Handle shortcut execution failure.
+        return False  # Return failure when fallback shortcut cannot be executed.
+
+    refreshed_windows = get_chrome_windows()  # Refresh Chrome windows list after fallback shortcut.
+    target_window = None  # Initialize fallback target window reference.
+
+    for window in refreshed_windows:  # Iterate refreshed Chrome windows for new window detection.
+        title = str(getattr(window, "title", ""))  # Retrieve current window title.
+
+        if title not in previous_titles:  # Verify whether current window title was not present previously.
+            target_window = window  # Select newly detected window candidate.
+            break  # Stop iteration after selecting first new candidate.
+
+    if target_window is None and len(refreshed_windows) > 0:  # Verify fallback target is still unresolved.
+        target_window = select_chrome_window(refreshed_windows)  # Resolve deterministic fallback target from refreshed list.
+
+    if target_window is None:  # Verify fallback target availability.
+        return False  # Return failure when no fallback window is available.
+
+    if not activate_window_with_fallback(target_window):  # Verify activation for fallback window.
+        return False  # Return failure when fallback window activation fails.
+
+    return relocate_window_to_primary_monitor(target_window)  # Return relocation status for fallback window.
+
+
 def ensure_chrome_on_primary_monitor(target_window: Any) -> bool:
     """
     Ensures active Chrome window is usable on the primary monitor.
