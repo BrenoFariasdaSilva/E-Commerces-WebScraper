@@ -753,6 +753,24 @@ def scale_coordinate_to_screen(reference_x: float, reference_y: float) -> Tuple[
     return scaled_x, scaled_y  # Return tuple of scaled coordinates.
 
 
+def get_active_window_bounds() -> Dict[str, int]:
+    """
+    Retrieves active Chrome window bounds for relative positioning.
+
+    :param: None.
+    :return: Dictionary with left, top, width, height of active Chrome window or zeros if unavailable.
+    """
+
+    try:  # Attempt to retrieve active window bounds from global tracking variable.
+        if ACTIVE_CHROME_BOUNDS["width"] > 0 and ACTIVE_CHROME_BOUNDS["height"] > 0:  # Verify active window bounds were previously cached.
+            return ACTIVE_CHROME_BOUNDS.copy()  # Return cached active window bounds.
+    except Exception:  # Handle global variable access failures.
+        pass  # Continue to screen dimensions fallback.
+
+    screen_width, screen_height = get_screen_dimensions()  # Retrieve current screen dimensions.
+    return {"left": 0, "top": 0, "width": screen_width, "height": screen_height}  # Return full screen as fallback bounds.
+
+
 def click_image_or_coords(image_path: Path, reference_x: float, reference_y: float) -> str:
     """
     Clicks image center or scaled fallback coordinates.
