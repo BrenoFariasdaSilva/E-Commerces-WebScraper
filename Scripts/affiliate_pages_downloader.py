@@ -524,6 +524,18 @@ def prepare_active_downloads_directory() -> List[str]:
     return ACTIVE_DOWNLOADS_DIRS  # Return cached active downloads directories for immediate usage.
 
 
+def disable_both_chrome_download_toggles(box: Any) -> None:
+    """
+    Disables both Chrome downloads settings toggles.
+
+    :param box: Matched bounding box for the downloads settings state image.
+    :return: None.
+    """
+
+    disable_chrome_download_toggle_1(box)  # Disable the first downloads settings toggle.
+    disable_chrome_download_toggle_2(box)  # Disable the second downloads settings toggle.
+
+
 def move_cursor_to_active_window_center() -> None:
     """
     Moves the cursor to the center of the active Chrome window.
