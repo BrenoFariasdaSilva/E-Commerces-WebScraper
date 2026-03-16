@@ -648,6 +648,20 @@ def build_report(ext_methods: Dict[str, List[int]], download_methods: Dict[str, 
     return "\n".join(lines).strip()  # Return report text.
 
 
+def strip_ansi(text: str) -> str:
+    """
+    Remove ANSI escape sequences from text so GUI messageboxes show plain text.
+
+    :param text: Input string possibly containing ANSI codes.
+    :return: Cleaned string without ANSI sequences.
+    """
+
+    if not isinstance(text, str):  # Verify input is a string before processing.
+        return text  # Return original input when it's not a string.
+
+    return re.sub(r"\x1B\[[0-?]*[ -/]*[@-~]", "", text)  # This regex matches most ANSI escape sequences (CSI and related codes).
+
+
 def maybe_show_messagebox(title: str, message: str) -> None:
     """
     Displays messagebox when tkinter is available.
@@ -660,7 +674,11 @@ def maybe_show_messagebox(title: str, message: str) -> None:
     try:  # Attempt tkinter messagebox display.
         root = tk.Tk()  # Create tkinter root instance.
         root.withdraw()  # Hide root window.
-        messagebox.showinfo(title, message)  # Show informational messagebox.
+
+        clean_title = strip_ansi(title)  # Strip ANSI codes from title for clean display.
+        clean_message = strip_ansi(message)  # Strip ANSI codes from message for clean display.
+
+        messagebox.showinfo(clean_title, clean_message)  # Show informational messagebox without ANSI codes.
         root.destroy()  # Destroy root window.
     except Exception:  # Handle tkinter availability and GUI exceptions.
         pass  # Skip messagebox display on exception.
