@@ -1307,6 +1307,10 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
     if not activate_chrome_window():  # Verify Chrome activation before sending hotkeys.
         return 1  # Return failure exit code when activation fails.
 
+    if not verify_and_correct_chrome_download_settings(assets_dir):  # Verify Chrome downloads settings before processing product URLs.
+        print(f"{BackgroundColors.RED}Error: Chrome downloads settings could not be verified or corrected automatically.{Style.RESET_ALL}")  # Print downloads settings verification failure.
+        return 1  # Return failure exit code when downloads settings preparation fails.
+
     ext_methods: Dict[str, List[int]] = {}  # Initialize extension method map.
     download_methods: Dict[str, List[int]] = {}  # Initialize download method map.
     completion_methods: Dict[str, List[int]] = {}  # Initialize completion method map.
