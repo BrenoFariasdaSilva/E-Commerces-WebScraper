@@ -743,12 +743,13 @@ def detect_new_download_from_directories(before_snapshots: Dict[str, Dict[str, f
     if len(compressed_entries) > 1:  # Verify whether multiple compressed files were detected across directories.
         keywords = ["aliexpress", "amazon", "mercadolivre", "shein", "shopee"]  # Marketplace keywords to prioritize when multiple compressed files exist.
         filenames = [entry[1] for entry in compressed_entries]  # Extract filenames from compressed entries for keyword scanning.
-        matched = find_filename_by_marketplace(filenames, keywords)  # Attempt to locate a filename containing marketplace keywords.
+        filename_mtimes = {entry[1]: entry[2] for entry in compressed_entries}  # Build mapping of filename to modified timestamp from detected compressed entries.
+        matched = select_preferred_filename(filenames, filename_mtimes, keywords)  # Attempt to select preferred filename using duplicate-aware selection.
 
-        if matched is not None:  # Verify whether a marketplace keyword matched a filename among compressed entries.
-            for d, f, _ in compressed_entries:  # Iterate compressed entries to find matching directory for the matched filename.
-                if f == matched:  # Verify whether current entry filename matches the matched filename.
-                    return d, f  # Return resolved directory and filename for the matched marketplace file.
+        if matched is not None:  # Verify whether a preferred filename was selected among compressed entries.
+            for d, f, _ in compressed_entries:  # Iterate compressed entries to locate the directory for the selected filename.
+                if f == matched:  # Verify whether current entry filename matches the selected filename.
+                    return d, f  # Return resolved directory and filename for the selected marketplace file.
 
     if len(detected_entries) == 0:  # Verify whether any monitored directory received new files when no single compressed detection occurred.
         print(f"{BackgroundColors.YELLOW}[WARNING] No new download detected for URL: {url}{Style.RESET_ALL}")  # Log missing download warning for current URL.
