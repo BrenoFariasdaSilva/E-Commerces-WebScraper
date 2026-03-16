@@ -524,6 +524,48 @@ def prepare_active_downloads_directory() -> List[str]:
     return ACTIVE_DOWNLOADS_DIRS  # Return cached active downloads directories for immediate usage.
 
 
+def verify_and_correct_chrome_download_settings(assets_dir: Path) -> bool:
+    """
+    Verifies and corrects Chrome downloads settings before automation starts.
+
+    :param assets_dir: Path to the browser assets directory.
+    :return: True when Chrome downloads settings are ready, otherwise False.
+    """
+
+    correct_img = assets_dir / "AskUserDownloadConfirmation - Correct.png"  # Define image path for the correct downloads settings state.
+    wrong_toggle_1_img = assets_dir / "AskUserDownloadConfirmation - Wrong - Toggle 1 On.png"  # Define image path for Toggle 1 enabled.
+    wrong_toggle_2_img = assets_dir / "AskUserDownloadConfirmation - Wrong - Toggle 2 On.png"  # Define image path for Toggle 2 enabled.
+    wrong_both_img = assets_dir / "AskUserDownloadConfirmation - Wrong - Both Toggles On.png"  # Define image path for both toggles enabled.
+
+    if not open_chrome_download_settings_page():  # Verify whether the Chrome downloads settings page was opened successfully.
+        return False  # Return failure when the Chrome downloads settings page cannot be opened.
+
+    detected_state, matched_box = detect_chrome_download_settings_state(correct_img, wrong_toggle_1_img, wrong_toggle_2_img, wrong_both_img)  # Detect the current Chrome downloads settings state.
+
+    if detected_state == DOWNLOAD_SETTINGS_STATE_TOGGLE_1_ON and matched_box is not None:  # Verify whether only the first downloads settings toggle is enabled.
+        disable_chrome_download_toggle_1(matched_box)  # Disable the first downloads settings toggle.
+    elif detected_state == DOWNLOAD_SETTINGS_STATE_TOGGLE_2_ON and matched_box is not None:  # Verify whether only the second downloads settings toggle is enabled.
+        disable_chrome_download_toggle_2(matched_box)  # Disable the second downloads settings toggle.
+    elif detected_state == DOWNLOAD_SETTINGS_STATE_BOTH_TOGGLES_ON and matched_box is not None:  # Verify whether both downloads settings toggles are enabled.
+        disable_both_chrome_download_toggles(matched_box)  # Disable both downloads settings toggles.
+    elif detected_state == DOWNLOAD_SETTINGS_STATE_UNKNOWN or matched_box is None:  # Verify whether the downloads settings state could not be resolved.
+        close_result = close_chrome_download_settings_tab()  # Close the downloads settings tab before aborting.
+
+        if not close_result:  # Verify whether Chrome focus restoration succeeded after aborting.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Chrome focus restoration failed after downloads settings detection error.{Style.RESET_ALL}")  # Log Chrome focus restoration failure after aborting.
+
+        return False  # Return failure when the downloads settings state cannot be resolved.
+
+    verified = verify_chrome_download_settings_correct_state(correct_img)  # Verify whether the downloads settings are now in the correct state.
+    close_result = close_chrome_download_settings_tab()  # Close the downloads settings tab and restore Chrome focus.
+
+    if not close_result:  # Verify whether Chrome focus restoration succeeded after settings handling.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Chrome focus restoration failed after downloads settings handling.{Style.RESET_ALL}")  # Log Chrome focus restoration failure after settings handling.
+        return False  # Return failure when Chrome focus cannot be restored.
+
+    return verified  # Return final downloads settings verification result.
+
+
 def read_urls(urls_file: Path) -> List[str]:
     """
     Reads URLs from the specified file.
