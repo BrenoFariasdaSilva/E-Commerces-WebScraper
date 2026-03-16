@@ -724,6 +724,43 @@ def disable_both_chrome_download_toggles(box: Any) -> None:
     disable_chrome_download_toggle_2(box)  # Disable the second downloads settings toggle.
 
 
+def correct_chrome_download_settings_state(correct_imgs: List[Path], wrong_toggle_1_imgs: List[Path], wrong_toggle_2_imgs: List[Path], wrong_both_imgs: List[Path]) -> bool:
+    """
+    Corrects the Chrome downloads settings state using iterative re-detection.
+
+    :param correct_imgs: List of image paths representing the correct settings state.
+    :param wrong_toggle_1_imgs: List of image paths representing Toggle 1 enabled.
+    :param wrong_toggle_2_imgs: List of image paths representing Toggle 2 enabled.
+    :param wrong_both_imgs: List of image paths representing both toggles enabled.
+    :return: True when settings reach the correct state, otherwise False.
+    """
+
+    max_correction_cycles = 4  # Limit correction loops to avoid infinite retries.
+
+    for _ in range(max_correction_cycles):  # Iterate correction cycles with fresh state detection after each click.
+        detected_state, matched_box = detect_chrome_download_settings_state(correct_imgs, wrong_toggle_1_imgs, wrong_toggle_2_imgs, wrong_both_imgs)  # Detect current settings state.
+
+        if detected_state == DOWNLOAD_SETTINGS_STATE_CORRECT:  # Verify whether settings are already in the expected state.
+            return True  # Return success when no additional correction is required.
+
+        if detected_state == DOWNLOAD_SETTINGS_STATE_UNKNOWN or matched_box is None:  # Verify whether state detection failed.
+            return False  # Return failure when state cannot be resolved for correction.
+
+        if detected_state == DOWNLOAD_SETTINGS_STATE_TOGGLE_1_ON:  # Verify whether only the first toggle is enabled.
+            disable_chrome_download_toggle_1(matched_box)  # Disable the first toggle using a fresh matched box.
+            continue  # Continue loop for re-detection.
+
+        if detected_state == DOWNLOAD_SETTINGS_STATE_TOGGLE_2_ON:  # Verify whether only the second toggle is enabled.
+            disable_chrome_download_toggle_2(matched_box)  # Disable the second toggle using a fresh matched box.
+            continue  # Continue loop for re-detection.
+
+        if detected_state == DOWNLOAD_SETTINGS_STATE_BOTH_TOGGLES_ON:  # Verify whether both toggles are enabled.
+            disable_chrome_download_toggle_1(matched_box)  # Disable one toggle first and re-detect before second click.
+            continue  # Continue loop so next cycle handles the remaining enabled toggle with a fresh box.
+
+    return False  # Return failure when correction cycles are exhausted without reaching correct state.
+
+
 def move_cursor_to_active_window_center() -> None:
     """
     Moves the cursor to the center of the active Chrome window.
@@ -793,15 +830,9 @@ def verify_and_correct_chrome_download_settings(assets_dir: Path) -> bool:
     if not open_chrome_download_settings_page():  # Verify whether the Chrome downloads settings page was opened successfully.
         return False  # Return failure when the Chrome downloads settings page cannot be opened.
 
-    detected_state, matched_box = detect_chrome_download_settings_state(correct_imgs, wrong_toggle_1_imgs, wrong_toggle_2_imgs, wrong_both_imgs)  # Detect the current Chrome downloads settings state using all color variants.
+    correction_result = correct_chrome_download_settings_state(correct_imgs, wrong_toggle_1_imgs, wrong_toggle_2_imgs, wrong_both_imgs)  # Correct settings state with iterative re-detection between clicks.
 
-    if detected_state == DOWNLOAD_SETTINGS_STATE_TOGGLE_1_ON and matched_box is not None:  # Verify whether only the first downloads settings toggle is enabled.
-        disable_chrome_download_toggle_1(matched_box)  # Disable the first downloads settings toggle.
-    elif detected_state == DOWNLOAD_SETTINGS_STATE_TOGGLE_2_ON and matched_box is not None:  # Verify whether only the second downloads settings toggle is enabled.
-        disable_chrome_download_toggle_2(matched_box)  # Disable the second downloads settings toggle.
-    elif detected_state == DOWNLOAD_SETTINGS_STATE_BOTH_TOGGLES_ON and matched_box is not None:  # Verify whether both downloads settings toggles are enabled.
-        disable_both_chrome_download_toggles(matched_box)  # Disable both downloads settings toggles.
-    elif detected_state == DOWNLOAD_SETTINGS_STATE_UNKNOWN or matched_box is None:  # Verify whether the downloads settings state could not be resolved.
+    if not correction_result:  # Verify whether automatic settings correction failed.
         close_result = close_chrome_download_settings_tab()  # Close the downloads settings tab before aborting.
 
         if not close_result:  # Verify whether Chrome focus restoration succeeded after aborting.
