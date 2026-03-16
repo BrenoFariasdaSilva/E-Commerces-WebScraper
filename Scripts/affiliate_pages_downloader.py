@@ -524,6 +524,19 @@ def prepare_active_downloads_directory() -> List[str]:
     return ACTIVE_DOWNLOADS_DIRS  # Return cached active downloads directories for immediate usage.
 
 
+def disable_chrome_download_toggle_1(box: Any) -> None:
+    """
+    Disables the first Chrome downloads settings toggle.
+
+    :param box: Matched bounding box for the downloads settings state image.
+    :return: None.
+    """
+
+    click_x, click_y = resolve_download_settings_toggle_click_position(box, 1)  # Resolve the click position for the first downloads settings toggle.
+    pyautogui.click(click_x, click_y)  # Click the first downloads settings toggle.
+    time.sleep(DOWNLOAD_SETTINGS_TOGGLE_CLICK_WAIT_SECONDS)  # Wait after disabling the first downloads settings toggle.
+
+
 def disable_chrome_download_toggle_2(box: Any) -> None:
     """
     Disables the second Chrome downloads settings toggle.
