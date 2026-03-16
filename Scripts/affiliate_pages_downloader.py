@@ -113,6 +113,16 @@ DOWNLOAD_BUTTON_X_REF = 1590  # Define download button reference X coordinate fo
 DOWNLOAD_BUTTON_Y_REF = 64  # Define download button reference Y coordinate for 1920x1080.
 CLOSE_DOWNLOAD_TAB_X_REF = 1905  # Define close download tab reference X coordinate for 1920x1080.
 CLOSE_DOWNLOAD_TAB_Y_REF = 148  # Define close download tab reference Y coordinate for 1920x1080.
+CHROME_DOWNLOAD_SETTINGS_URL = "chrome://settings/downloads"  # Define Chrome downloads settings page URL.
+DOWNLOAD_SETTINGS_RENDER_WAIT_SECONDS = 2.0  # Define wait time after loading Chrome downloads settings page.
+DOWNLOAD_SETTINGS_TOGGLE_CLICK_WAIT_SECONDS = 0.4  # Define wait time after clicking a downloads settings toggle.
+DOWNLOAD_SETTINGS_VERIFICATION_ATTEMPTS = 5  # Define the number of final-state verification attempts.
+DOWNLOAD_SETTINGS_VERIFICATION_WAIT_SECONDS = 0.5  # Define wait time between final-state verification attempts.
+DOWNLOAD_SETTINGS_STATE_CORRECT = "Correct"  # Define state label for the expected downloads settings configuration.
+DOWNLOAD_SETTINGS_STATE_TOGGLE_1_ON = "Toggle 1 On"  # Define state label for the first downloads settings toggle enabled.
+DOWNLOAD_SETTINGS_STATE_TOGGLE_2_ON = "Toggle 2 On"  # Define state label for the second downloads settings toggle enabled.
+DOWNLOAD_SETTINGS_STATE_BOTH_TOGGLES_ON = "Both Toggles On"  # Define state label for both downloads settings toggles enabled.
+DOWNLOAD_SETTINGS_STATE_UNKNOWN = "Unknown"  # Define state label for an unresolved downloads settings configuration.
 
 TARGET_CHROME_TITLE = ""  # Store selected Chrome window title for reuse.
 ACTIVE_CHROME_BOUNDS = {"left": 0, "top": 0, "width": 0, "height": 0}  # Store active Chrome window bounds for coordinate calculations.
