@@ -571,6 +571,25 @@ def get_chrome_download_settings_region() -> Tuple[int, int, int, int] | None:
     return left, top, width, height  # Return the Chrome settings capture region tuple.
 
 
+def diagnose_screenshot_capability() -> Tuple[bool, str]:
+    """
+    Diagnoses whether pyautogui screenshot capability is working.
+
+    :return: Tuple of (is_working: bool, diagnostic_message: str)
+    """
+
+    try:  # Attempt to take a screenshot to diagnose screenshot capability.
+        screenshot = pyautogui.screenshot()  # Attempt to capture screenshot from screen.
+        if screenshot is None:  # Verify whether screenshot was successfully captured.
+            return False, "Screenshot returned None"  # Return failure with diagnostic message.
+        size = screenshot.size  # Retrieve screenshot image size dimensions.
+        return True, f"Screenshot working - Size: {size}"  # Return success with diagnostic message.
+    except Exception as e:  # Handle screenshot diagnostic exceptions.
+        import traceback  # Import traceback module for detailed exception reporting.
+        error_details = traceback.format_exc()  # Capture full exception traceback for diagnostic purposes.
+        return False, f"Screenshot failed: {str(e)} | Traceback: {error_details}"  # Return failure with diagnostic details.
+
+
 def locate_image_in_region(image_path: Path, region: Tuple[int, int, int, int] | None) -> Any:
     """
     Locates an image on screen inside an optional region.
@@ -581,13 +600,14 @@ def locate_image_in_region(image_path: Path, region: Tuple[int, int, int, int] |
     """
 
     if not image_path.exists():  # Verify image file existence before image search.
+        print(f"{BackgroundColors.RED}[DEBUG] Image file not found: {image_path}{Style.RESET_ALL}")  # Log missing image file for diagnostic purposes.
         return None  # Return None when image file does not exist.
 
     try:  # Attempt image location on screen using an optional capture region.
         if region is not None:  # Verify whether a capture region was provided for the image search.
-            return pyautogui.locateOnScreen(str(image_path), region=region)  # Return located box coordinates inside the provided region.
+            return pyautogui.locateOnScreen(str(image_path), region=region, confidence=0.9)  # Return located box coordinates inside the provided region.
 
-        return pyautogui.locateOnScreen(str(image_path))  # Return located box coordinates from the full screen.
+        return pyautogui.locateOnScreen(str(image_path), confidence=0.9)  # Return located box coordinates from the full screen.
     except Exception:  # Handle image search exceptions.
         return None  # Return None when image search fails.
 
@@ -602,6 +622,10 @@ def locate_image_variants(image_paths: List[Path], region: Tuple[int, int, int, 
     """
 
     for image_path in image_paths:  # Iterate through image variant candidates in priority order.
+        if not image_path.exists():  # Verify whether the image file exists before attempting detection.
+            print(f"{BackgroundColors.RED}Image file not found: {BackgroundColors.GREEN}{image_path}{Style.RESET_ALL}")  # Log missing image file for diagnostic purposes.
+            continue  # Skip to next image variant when current file does not exist.
+
         box = locate_image_in_region(image_path, region)  # Attempt to locate the current image variant in the capture region.
 
         if box is not None:  # Verify whether the current image variant was successfully detected.
