@@ -647,6 +647,24 @@ def is_compressed_file(filename: str) -> bool:
     return any(lower.endswith(suf) for suf in compressed_suffixes)  # Return True when any suffix matches.
 
 
+def find_filename_by_marketplace(filenames: List[str], keywords: List[str]) -> str | None:
+    """
+    Select a filename that contains any of the marketplace keywords.
+
+    :param filenames: List of filenames to evaluate.
+    :param keywords: List of marketplace keywords to search for.
+    :return: Filename matching keywords or None when no match is found.
+    """
+
+    for name in filenames:  # Iterate candidate filenames for keyword matching.
+        lower_name = name.lower()  # Normalize candidate filename to lowercase for comparison.
+        for kw in keywords:  # Iterate keywords to test presence in filename.
+            if kw in lower_name:  # Verify whether the keyword appears as substring in filename.
+                return name  # Return the first matching filename immediately when found.
+
+    return None  # Return None when no marketplace keyword match is found.
+
+
 def detect_new_download_from_directories(before_snapshots: Dict[str, Dict[str, float]], after_snapshots: Dict[str, Dict[str, float]], downloads_dirs: List[str], url: str) -> Tuple[str, str]:
     """
     Detects a new downloaded file across one or multiple monitored directories.
