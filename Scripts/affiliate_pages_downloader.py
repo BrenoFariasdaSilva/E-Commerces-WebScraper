@@ -469,12 +469,12 @@ def ensure_chrome_on_primary_monitor(target_window: Any) -> bool:
     return detach_tab_to_new_window()  # Return fallback tab extraction strategy result.
 
 
-def resolve_downloads_directory() -> str:
+def resolve_downloads_directories() -> List[str]:
     """
     Resolves the active downloads directory for the current operating system.
 
     :param: None.
-    :return: Active downloads directory path string.
+    :return: Active downloads directory paths as list of strings, or fallback path when no candidates are available.
     """
 
     current_os = platform.system().lower()  # Retrieve normalized operating system name.
@@ -483,14 +483,19 @@ def resolve_downloads_directory() -> str:
     if len(candidates) == 0:  # Verify if no downloads directory candidates were configured for the detected operating system.
         fallback_path = os.path.join(os.path.expanduser("~"), "Downloads")  # Build the default downloads fallback path.
         print(f"{BackgroundColors.YELLOW}[WARNING] No downloads directory candidates configured for detected OS, using fallback path: {fallback_path}{Style.RESET_ALL}")  # Log missing operating system configuration warning.
-        return fallback_path  # Return the default downloads fallback path.
+        return [fallback_path]  # Return the default downloads fallback path in a list.
+
+    existing: List[str] = []  # Initialize list for existing candidate paths.
 
     for candidate in candidates:  # Iterate downloads directory candidates in configured priority order.
         if os.path.isdir(candidate):  # Verify if the current downloads directory candidate exists.
-            return candidate  # Return the first existing downloads directory candidate.
+            existing.append(candidate)  # Append existing candidate to the list.
 
-    print(f"{BackgroundColors.YELLOW}[WARNING] No existing downloads directory found for detected OS, using fallback path.{Style.RESET_ALL}")  # Log missing downloads directory warning.
-    return candidates[0]  # Return the first configured downloads directory candidate as fallback.
+    if len(existing) == 0:  # Verify if no existing candidates were found after evaluation.
+        print(f"{BackgroundColors.YELLOW}[WARNING] No existing downloads directory found for detected OS, using configured fallback.{Style.RESET_ALL}")  # Log missing downloads directory warning.
+        return [candidates[0]]  # Return the first configured downloads directory candidate as fallback.
+
+    return existing  # Return the list of existing downloads directory candidates.
 
 
 def prepare_active_downloads_directory() -> Path:
@@ -498,13 +503,15 @@ def prepare_active_downloads_directory() -> Path:
     Prepares the active downloads directory and returns a Path.
 
     :param: None.
-    :return: Path to the active downloads directory.
+    :return: Path to the active downloads directories
     """
 
     global ACTIVE_DOWNLOADS_DIR  # Declare global variable for active downloads directory.
-    
-    ACTIVE_DOWNLOADS_DIR = resolve_downloads_directory()  # Resolve active downloads directory for the current operating system.
-    
+
+    candidates = resolve_downloads_directories()  # Resolve downloads directory candidates for the current operating system.
+
+    ACTIVE_DOWNLOADS_DIR = candidates[0] if isinstance(candidates, list) and len(candidates) > 0 else os.path.join(os.path.expanduser("~"), "Downloads")  # Select first candidate or fallback to default Downloads path.
+
     return Path(ACTIVE_DOWNLOADS_DIR)  # Build and return Path object for the resolved downloads directory.
 
 
