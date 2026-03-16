@@ -684,13 +684,14 @@ def maybe_show_messagebox(title: str, message: str) -> None:
         pass  # Skip messagebox display on exception.
 
 
-def run(tab_count: int | None, urls_file: Path, assets_dir: Path) -> int:
+def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bool = True) -> int:
     """
     Runs the affiliate pages automation workflow.
 
     :param tab_count: Number of tabs and URLs to process.
     :param urls_file: Path to URLs input file.
     :param assets_dir: Path to image assets directory.
+    :param headerless: Whether to suppress GUI messagebox when True.
     :return: Exit code where 0 means success and 1 means failure.
     """
 
@@ -741,7 +742,9 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path) -> int:
 
         print(f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Automation Finished{Style.RESET_ALL}\n")  # Print automation completion message.
         print(f"{final_report}")  # Print final report details.
-        maybe_show_messagebox("Automation Finished", final_report)  # Display optional messagebox report.
+
+        if not headerless:  # Verify if headerless flag is disabled before showing GUI messagebox
+            maybe_show_messagebox("Automation Finished", final_report)  # Display optional messagebox report when allowed
 
     return 0  # Return success exit code.
 
@@ -880,10 +883,11 @@ def main():
     parser.add_argument("--tab-count", type=int, default=0, help="Number of URLs/tabs to process (0 = use all URLs from Inputs/urls.txt)")  # Register tab-count argument.
     parser.add_argument("--urls-file", type=Path, default=repo_root / "Inputs" / "urls.txt", help="Path to URLs input file")  # Register urls-file argument.
     parser.add_argument("--assets-dir", type=Path, default=repo_root / ".assets" / "Browser", help="Directory containing image assets")  # Register assets-dir argument.
+    parser.add_argument("--headerless", type=lambda s: str(s).lower() in ("true", "1", "yes", "y"), default=True, help="Whether to suppress GUI messagebox (default: True)")  # Register headerless argument with boolean conversion
 
     args = parser.parse_args()  # Parse command-line arguments.
     
-    exit_code = run(args.tab_count, args.urls_file, args.assets_dir)  # Execute automation flow.
+    exit_code = run(args.tab_count, args.urls_file, args.assets_dir, args.headerless)  # Execute automation flow with headerless option
 
     finish_time = datetime.datetime.now()  # Capture program finish timestamp.
     print(f"{BackgroundColors.GREEN}Start time: {BackgroundColors.CYAN}{start_time.strftime('%d/%m/%Y - %H:%M:%S')}\n{BackgroundColors.GREEN}Finish time: {BackgroundColors.CYAN}{finish_time.strftime('%d/%m/%Y - %H:%M:%S')}\n{BackgroundColors.GREEN}Execution time: {BackgroundColors.CYAN}{calculate_execution_time(start_time, finish_time)}{Style.RESET_ALL}")  # Print execution timing summary.
