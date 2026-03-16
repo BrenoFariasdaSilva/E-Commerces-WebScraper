@@ -524,6 +524,27 @@ def prepare_active_downloads_directory() -> List[str]:
     return ACTIVE_DOWNLOADS_DIRS  # Return cached active downloads directories for immediate usage.
 
 
+def verify_chrome_download_settings_correct_state(correct_img: Path) -> bool:
+    """
+    Verifies the final Chrome downloads settings state.
+
+    :param correct_img: Path to the image representing the correct settings state.
+    :return: True when the correct settings state is detected, otherwise False.
+    """
+
+    region = get_chrome_download_settings_region()  # Resolve the Chrome downloads settings capture region for verification.
+    move_cursor_to_active_window_center()  # Move the cursor away from the downloads settings block before verification.
+
+    for _ in range(DOWNLOAD_SETTINGS_VERIFICATION_ATTEMPTS):  # Iterate the configured number of final-state verification attempts.
+        if locate_image_in_region(correct_img, region) is not None:  # Verify whether the correct downloads settings image is now detected.
+            return True  # Return success when the correct downloads settings state is detected.
+
+        time.sleep(DOWNLOAD_SETTINGS_VERIFICATION_WAIT_SECONDS)  # Wait before retrying final-state verification.
+
+    print(f"{BackgroundColors.YELLOW}[WARNING] Chrome downloads settings remain in an unexpected state after correction attempt.{Style.RESET_ALL}")  # Log final-state verification failure.
+    return False  # Return failure when the correct downloads settings state is not detected.
+
+
 def close_chrome_download_settings_tab() -> bool:
     """
     Closes the Chrome downloads settings tab and restores focus.
