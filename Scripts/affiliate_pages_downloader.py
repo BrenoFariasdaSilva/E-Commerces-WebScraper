@@ -94,12 +94,18 @@ VERBOSE = False  # Set to True to output verbose messages
 pyautogui.FAILSAFE = True  # Enable fail-safe by moving cursor to the top-left corner.
 pyautogui.PAUSE = 0.05  # Apply default pause between pyautogui actions.
 
-EXTENSION_X = 1752  # Define extension click fallback X coordinate.
-EXTENSION_Y = 705  # Define extension click fallback Y coordinate.
-DOWNLOAD_BUTTON_X = 1590  # Define download button fallback X coordinate.
-DOWNLOAD_BUTTON_Y = 64  # Define download button fallback Y coordinate.
-CLOSE_DOWNLOAD_TAB_X = 1905  # Define close download tab fallback X coordinate.
-CLOSE_DOWNLOAD_TAB_Y = 148  # Define close download tab fallback Y coordinate.
+# Resolution Independence Reference Dimensions:
+REFERENCE_SCREEN_WIDTH = 1920  # Define reference screen width for coordinate scaling.
+REFERENCE_SCREEN_HEIGHT = 1080  # Define reference screen height for coordinate scaling.
+
+# Coordinate Fallback Values (for 1920x1080 reference resolution):
+EXTENSION_X_REF = 1752  # Define extension click reference X coordinate for 1920x1080.
+EXTENSION_Y_REF = 705  # Define extension click reference Y coordinate for 1920x1080.
+DOWNLOAD_BUTTON_X_REF = 1590  # Define download button reference X coordinate for 1920x1080.
+DOWNLOAD_BUTTON_Y_REF = 64  # Define download button reference Y coordinate for 1920x1080.
+CLOSE_DOWNLOAD_TAB_X_REF = 1905  # Define close download tab reference X coordinate for 1920x1080.
+CLOSE_DOWNLOAD_TAB_Y_REF = 148  # Define close download tab reference Y coordinate for 1920x1080.
+
 DOWNLOADS_DIR = r"D:\Sem Backup\Download"  # Define monitored downloads directory path.
 
 
@@ -122,6 +128,7 @@ RUN_FUNCTIONS = {
 }
 
 TARGET_CHROME_TITLE = ""  # Store selected Chrome window title for reuse.
+ACTIVE_CHROME_BOUNDS = {"left": 0, "top": 0, "width": 0, "height": 0}  # Store active Chrome window bounds for coordinate calculations.
 
 
 # Functions Definitions:
@@ -667,7 +674,7 @@ def process_urls_with_download_tracking(urls: List[str], tab_count: int, downloa
 
         click_go_to_product_button(mercado_livre_img)  # Execute MercadoLivre button action when available.
 
-        extension_method = click_image_or_coords(extension_img, EXTENSION_X, EXTENSION_Y)  # Execute extension click action.
+        extension_method = click_image_or_coords(extension_img, EXTENSION_X_REF, EXTENSION_Y_REF)  # Execute extension click action with scaled fallback coordinates.
         download_method = click_download_button(download_img)  # Execute download click action.
         confirmation_method = wait_for_download_confirmation(confirmation_img)  # Execute completion polling action.
         close_method = close_extension_download_tab(close_download_tab_img)  # Execute close extension tab action.
@@ -705,13 +712,13 @@ def locate_image(image_path: Path) -> Any:
         return None  # Return None when image search fails.
 
 
-def click_image_or_coords(image_path: Path, x: int, y: int) -> str:
+def click_image_or_coords(image_path: Path, reference_x: float, reference_y: float) -> str:
     """
-    Clicks image center or fallback coordinates.
+    Clicks image center or scaled fallback coordinates.
 
     :param image_path: Path to the primary image target.
-    :param x: Fallback X coordinate.
-    :param y: Fallback Y coordinate.
+    :param reference_x: Fallback X coordinate from reference resolution (1920x1080).
+    :param reference_y: Fallback Y coordinate from reference resolution (1920x1080).
     :return: Method name used for the click.
     """
 
@@ -721,13 +728,14 @@ def click_image_or_coords(image_path: Path, x: int, y: int) -> str:
         pyautogui.click(box.left, box.top)  # Click top-left point like AHK ImageSearch behavior.
         return "ImageSearch"  # Return image search method label.
 
-    pyautogui.click(x, y)  # Click fallback coordinates.
+    scaled_x, scaled_y = get_scaled_fallback_coords(reference_x, reference_y)  # Compute scaled fallback coordinates relative to active window.
+    pyautogui.click(scaled_x, scaled_y)  # Click scaled fallback coordinates.
     return "Coordinates"  # Return coordinates method label.
 
 
 def click_download_button(download_img: Path) -> str:
     """
-    Clicks the download button with retry fallback.
+    Clicks the download button with retry fallback and scaled coordinates.
 
     :param download_img: Path to the download button image.
     :return: Method name used for the click.
@@ -744,7 +752,8 @@ def click_download_button(download_img: Path) -> str:
 
         time.sleep(0.2)  # Wait before retrying image search.
 
-    pyautogui.click(DOWNLOAD_BUTTON_X, DOWNLOAD_BUTTON_Y)  # Click fallback download coordinates.
+    scaled_x, scaled_y = get_scaled_fallback_coords(DOWNLOAD_BUTTON_X_REF, DOWNLOAD_BUTTON_Y_REF)  # Compute scaled download button fallback coordinates.
+    pyautogui.click(scaled_x, scaled_y)  # Click scaled download button coordinates.
     return "Coordinates"  # Return coordinates method label.
 
 
@@ -769,7 +778,7 @@ def wait_for_download_confirmation(confirmation_img: Path) -> str:
 
 def close_extension_download_tab(close_download_tab_img: Path) -> str:
     """
-    Closes extension download tab using image or coordinates.
+    Closes extension download tab using image or scaled fallback coordinates.
 
     :param close_download_tab_img: Path to close tab image.
     :return: Method name used for the click.
@@ -782,7 +791,8 @@ def close_extension_download_tab(close_download_tab_img: Path) -> str:
         time.sleep(0.5)  # Wait briefly after image click.
         return "ImageSearch"  # Return image search method label.
 
-    pyautogui.click(CLOSE_DOWNLOAD_TAB_X, CLOSE_DOWNLOAD_TAB_Y)  # Click fallback close tab coordinates.
+    scaled_x, scaled_y = get_scaled_fallback_coords(CLOSE_DOWNLOAD_TAB_X_REF, CLOSE_DOWNLOAD_TAB_Y_REF)  # Compute scaled close tab fallback coordinates.
+    pyautogui.click(scaled_x, scaled_y)  # Click scaled close tab coordinates.
     time.sleep(0.5)  # Wait briefly after fallback click.
     return "Coordinates"  # Return coordinates method label.
 
