@@ -646,7 +646,7 @@ def is_compressed_file(filename: str) -> bool:
     compressed_suffixes = (".zip", ".rar", ".7z", ".tar.gz", ".tgz", ".tar", ".gz")  # Define common compressed archive suffixes.
     return any(lower.endswith(suf) for suf in compressed_suffixes)  # Return True when any suffix matches.
 
-    
+ 
 def detect_new_download_from_directories(before_snapshots: Dict[str, Dict[str, float]], after_snapshots: Dict[str, Dict[str, float]], downloads_dirs: List[str], url: str) -> Tuple[str, str]:
     """
     Detects a new downloaded file across one or multiple monitored directories.
