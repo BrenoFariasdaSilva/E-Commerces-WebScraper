@@ -142,6 +142,41 @@ def verbose_output(true_string="", false_string=""):
         print(false_string)  # Output the false statement string
 
 
+def activate_chrome_window() -> bool:
+    """
+    Activates a Chrome window to receive automation keystrokes.
+
+    :return: True if a Chrome window is active, otherwise False.
+    """
+
+    global TARGET_CHROME_TITLE  # Reference global selected window title.
+
+    chrome_windows = get_chrome_windows()  # Retrieve visible non-minimized Chrome windows.
+
+    if len(chrome_windows) == 0:  # Verify at least one Chrome window exists.
+        print(f"{BackgroundColors.RED}No Chrome windows were detected. Automation cannot continue.{Style.RESET_ALL}")  # Print Chrome not found error.
+        return False  # Return failure status when no Chrome window is available.
+
+    target_window = select_chrome_window(chrome_windows)  # Resolve deterministic Chrome target window.
+
+    if target_window is None:  # Verify if a deterministic target window was selected.
+        print(f"{BackgroundColors.RED}Failed to select a Chrome window. Automation cannot continue.{Style.RESET_ALL}")  # Print selection failure error.
+        return False  # Return failure status when no target window can be selected.
+
+    TARGET_CHROME_TITLE = str(getattr(target_window, "title", ""))  # Persist selected Chrome window title for next cycle.
+
+    if not activate_window_with_fallback(target_window):  # Verify if Chrome activation succeeded.
+        print(f"{BackgroundColors.RED}Failed to activate Chrome window. Keep Chrome focused manually and retry.{Style.RESET_ALL}")  # Print activation failure message.
+        return False  # Return failure status after activation attempts.
+
+    ensure_result = ensure_chrome_on_primary_monitor(target_window)  # Ensure active Chrome window is usable on the primary monitor.
+
+    if not ensure_result:  # Verify if monitor-placement assurance failed.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Chrome window relocation fallback did not complete. Continuing with current active window.{Style.RESET_ALL}")  # Log relocation fallback warning without interrupting workflow.
+
+    return True  # Return success status after activation and relocation flow.
+
+
 def get_chrome_windows() -> List[Any]:
     """
     Retrieves visible and non-minimized Chrome windows.
