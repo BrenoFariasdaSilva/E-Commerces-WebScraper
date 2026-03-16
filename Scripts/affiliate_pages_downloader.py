@@ -592,33 +592,51 @@ def locate_image_in_region(image_path: Path, region: Tuple[int, int, int, int] |
         return None  # Return None when image search fails.
 
 
-def detect_chrome_download_settings_state(correct_img: Path, wrong_toggle_1_img: Path, wrong_toggle_2_img: Path, wrong_both_img: Path) -> Tuple[str, Any]:
+def locate_image_variants(image_paths: List[Path], region: Tuple[int, int, int, int] | None) -> Any:
     """
-    Detects the current Chrome downloads settings toggle state.
+    Attempts to locate an image from multiple candidate variant paths.
 
-    :param correct_img: Path to the image representing the correct settings state.
-    :param wrong_toggle_1_img: Path to the image representing Toggle 1 enabled.
-    :param wrong_toggle_2_img: Path to the image representing Toggle 2 enabled.
-    :param wrong_both_img: Path to the image representing both toggles enabled.
+    :param image_paths: List of image file paths to test in sequence.
+    :param region: Optional screen region tuple used during image search.
+    :return: Bounding box when any variant matches, otherwise None.
+    """
+
+    for image_path in image_paths:  # Iterate through image variant candidates in priority order.
+        box = locate_image_in_region(image_path, region)  # Attempt to locate the current image variant in the capture region.
+
+        if box is not None:  # Verify whether the current image variant was successfully detected.
+            return box  # Return matched bounding box immediately upon first successful match.
+
+    return None  # Return None when no image variants match.
+
+
+def detect_chrome_download_settings_state(correct_imgs: List[Path], wrong_toggle_1_imgs: List[Path], wrong_toggle_2_imgs: List[Path], wrong_both_imgs: List[Path]) -> Tuple[str, Any]:
+    """
+    Detects the current Chrome downloads settings toggle state using dual-theme image variants.
+
+    :param correct_imgs: List of image paths representing the correct settings state (both color variants).
+    :param wrong_toggle_1_imgs: List of image paths representing Toggle 1 enabled (both color variants).
+    :param wrong_toggle_2_imgs: List of image paths representing Toggle 2 enabled (both color variants).
+    :param wrong_both_imgs: List of image paths representing both toggles enabled (both color variants).
     :return: Tuple containing the detected state label and matched bounding box.
     """
 
     region = get_chrome_download_settings_region()  # Resolve the Chrome downloads settings capture region.
-    image_candidates = [  # Define ordered image candidates for state detection.
-        (DOWNLOAD_SETTINGS_STATE_CORRECT, correct_img),  # Define the correct settings-state candidate.
-        (DOWNLOAD_SETTINGS_STATE_TOGGLE_1_ON, wrong_toggle_1_img),  # Define the Toggle 1 enabled candidate.
-        (DOWNLOAD_SETTINGS_STATE_TOGGLE_2_ON, wrong_toggle_2_img),  # Define the Toggle 2 enabled candidate.
-        (DOWNLOAD_SETTINGS_STATE_BOTH_TOGGLES_ON, wrong_both_img),  # Define the both-toggles-enabled candidate.
-    ]  # Finalize ordered image candidates for state detection.
+    image_candidates = [  # Define ordered image candidate groups for state detection.
+        (DOWNLOAD_SETTINGS_STATE_CORRECT, correct_imgs),  # Define the correct settings-state variants.
+        (DOWNLOAD_SETTINGS_STATE_TOGGLE_1_ON, wrong_toggle_1_imgs),  # Define the Toggle 1 enabled variants.
+        (DOWNLOAD_SETTINGS_STATE_TOGGLE_2_ON, wrong_toggle_2_imgs),  # Define the Toggle 2 enabled variants.
+        (DOWNLOAD_SETTINGS_STATE_BOTH_TOGGLES_ON, wrong_both_imgs),  # Define the both-toggles-enabled variants.
+    ]  # Finalize ordered image candidate groups for state detection.
 
-    for state_name, image_path in image_candidates:  # Iterate downloads settings image candidates in priority order.
-        box = locate_image_in_region(image_path, region)  # Attempt to locate the current candidate image in the capture region.
+    for state_name, image_paths in image_candidates:  # Iterate downloads settings state candidates in priority order.
+        box = locate_image_variants(image_paths, region)  # Attempt to locate any color variant of the current state image.
 
-        if box is not None:  # Verify whether the current candidate image was detected.
+        if box is not None:  # Verify whether the current state was successfully detected from any color variant.
             return state_name, box  # Return the detected downloads settings state and bounding box.
 
     print(f"{BackgroundColors.YELLOW}[WARNING] Unable to detect Chrome downloads settings toggle state.{Style.RESET_ALL}")  # Log unresolved downloads settings state warning.
-    return DOWNLOAD_SETTINGS_STATE_UNKNOWN, None  # Return unresolved downloads settings state when no image matches.
+    return DOWNLOAD_SETTINGS_STATE_UNKNOWN, None  # Return unresolved downloads settings state when no image variants match.
 
 
 def resolve_download_settings_toggle_click_position(box: Any, toggle_number: int) -> Tuple[int, int]:
@@ -697,11 +715,11 @@ def move_cursor_to_active_window_center() -> None:
     time.sleep(DOWNLOAD_SETTINGS_TOGGLE_CLICK_WAIT_SECONDS)  # Wait after moving the cursor away from the toggles.
 
 
-def verify_chrome_download_settings_correct_state(correct_img: Path) -> bool:
+def verify_chrome_download_settings_correct_state(correct_imgs: List[Path]) -> bool:
     """
-    Verifies the final Chrome downloads settings state.
+    Verifies the final Chrome downloads settings state using dual-theme image variants.
 
-    :param correct_img: Path to the image representing the correct settings state.
+    :param correct_imgs: List of image paths representing the correct settings state (both color variants).
     :return: True when the correct settings state is detected, otherwise False.
     """
 
@@ -709,7 +727,7 @@ def verify_chrome_download_settings_correct_state(correct_img: Path) -> bool:
     move_cursor_to_active_window_center()  # Move the cursor away from the downloads settings block before verification.
 
     for _ in range(DOWNLOAD_SETTINGS_VERIFICATION_ATTEMPTS):  # Iterate the configured number of final-state verification attempts.
-        if locate_image_in_region(correct_img, region) is not None:  # Verify whether the correct downloads settings image is now detected.
+        if locate_image_variants(correct_imgs, region) is not None:  # Verify whether any correct downloads settings image variant is now detected.
             return True  # Return success when the correct downloads settings state is detected.
 
         time.sleep(DOWNLOAD_SETTINGS_VERIFICATION_WAIT_SECONDS)  # Wait before retrying final-state verification.
@@ -743,15 +761,15 @@ def verify_and_correct_chrome_download_settings(assets_dir: Path) -> bool:
     :return: True when Chrome downloads settings are ready, otherwise False.
     """
 
-    correct_img = assets_dir / "AskUserDownloadConfirmation - Correct.png"  # Define image path for the correct downloads settings state.
-    wrong_toggle_1_img = assets_dir / "AskUserDownloadConfirmation - Wrong - Toggle 1 On.png"  # Define image path for Toggle 1 enabled.
-    wrong_toggle_2_img = assets_dir / "AskUserDownloadConfirmation - Wrong - Toggle 2 On.png"  # Define image path for Toggle 2 enabled.
-    wrong_both_img = assets_dir / "AskUserDownloadConfirmation - Wrong - Both Toggles On.png"  # Define image path for both toggles enabled.
+    correct_imgs = [assets_dir / "AskUserDownload - Black - Confirmation - Correct.png", assets_dir / "AskUserDownload - White - Confirmation - Correct.png"]  # Define image paths for the correct downloads settings state (both color variants).
+    wrong_toggle_1_imgs = [assets_dir / "AskUserDownloadConfirmation - Black - Wrong - Toggle 1 On.png", assets_dir / "AskUserDownloadConfirmation - White - Wrong - Toggle 1 On.png"]  # Define image paths for Toggle 1 enabled (both color variants).
+    wrong_toggle_2_imgs = [assets_dir / "AskUserDownloadConfirmation - Black - Wrong - Toggle 2 On.png", assets_dir / "AskUserDownloadConfirmation - White - Wrong - Toggle 2 On.png"]  # Define image paths for Toggle 2 enabled (both color variants).
+    wrong_both_imgs = [assets_dir / "AskUserDownloadConfirmation - Black - Wrong - Both Toggles On.png", assets_dir / "AskUserDownloadConfirmation - White - Wrong - Both Toggles On.png"]  # Define image paths for both toggles enabled (both color variants).
 
     if not open_chrome_download_settings_page():  # Verify whether the Chrome downloads settings page was opened successfully.
         return False  # Return failure when the Chrome downloads settings page cannot be opened.
 
-    detected_state, matched_box = detect_chrome_download_settings_state(correct_img, wrong_toggle_1_img, wrong_toggle_2_img, wrong_both_img)  # Detect the current Chrome downloads settings state.
+    detected_state, matched_box = detect_chrome_download_settings_state(correct_imgs, wrong_toggle_1_imgs, wrong_toggle_2_imgs, wrong_both_imgs)  # Detect the current Chrome downloads settings state using all color variants.
 
     if detected_state == DOWNLOAD_SETTINGS_STATE_TOGGLE_1_ON and matched_box is not None:  # Verify whether only the first downloads settings toggle is enabled.
         disable_chrome_download_toggle_1(matched_box)  # Disable the first downloads settings toggle.
@@ -767,7 +785,7 @@ def verify_and_correct_chrome_download_settings(assets_dir: Path) -> bool:
 
         return False  # Return failure when the downloads settings state cannot be resolved.
 
-    verified = verify_chrome_download_settings_correct_state(correct_img)  # Verify whether the downloads settings are now in the correct state.
+    verified = verify_chrome_download_settings_correct_state(correct_imgs)  # Verify whether the downloads settings are now in the correct state using all color variants.
     close_result = close_chrome_download_settings_tab()  # Close the downloads settings tab and restore Chrome focus.
 
     if not close_result:  # Verify whether Chrome focus restoration succeeded after settings handling.
