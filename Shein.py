@@ -77,7 +77,7 @@ from Logger import Logger  # For logging output to both terminal and file
 from pathlib import Path  # For handling file paths
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError  # For browser automation
 from product_utils import normalize_product_name  # Centralized product dir name normalization
-from typing import Optional, Dict, Any, List, Tuple, cast  # For type hints
+from typing import Optional, Any, List  # For type hints
 from urllib.parse import urljoin, urlparse  # For URL manipulation
 
 # Macros:
