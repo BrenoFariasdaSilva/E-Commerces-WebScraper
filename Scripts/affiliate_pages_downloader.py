@@ -510,7 +510,7 @@ def prepare_active_downloads_directory() -> None:
 
     candidates = resolve_downloads_directories()  # Resolve downloads directory candidates for the current operating system.
 
-    ACTIVE_DOWNLOADS_DIRS = candidates if isinstance(candidates, list) and len(candidates) > 0 else [os.path.join(os.path.expanduser("~"), "Downloads")]  # Select candidates or fallback to default Downloads path.
+    ACTIVE_DOWNLOADS_DIRS = [str(Path(candidate).resolve()) for candidate in candidates]  # Resolve and cache active downloads directory paths for reuse.
 
 
 def read_urls(urls_file: Path) -> List[str]:
