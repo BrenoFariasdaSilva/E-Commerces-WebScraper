@@ -724,6 +724,18 @@ def locate_image(image_path: Path) -> Any:
         return None  # Return None when image search fails.
 
 
+def get_screen_dimensions() -> Tuple[int, int]:
+    """
+    Retrieves current screen dimensions.
+
+    :param: None.
+    :return: Tuple of screen width and height in pixels.
+    """
+
+    screen_size = pyautogui.size()  # Retrieve primary monitor size from pyautogui backend.
+    return int(screen_size.width), int(screen_size.height)  # Return screen dimensions as tuple.
+
+
 def click_image_or_coords(image_path: Path, reference_x: float, reference_y: float) -> str:
     """
     Clicks image center or scaled fallback coordinates.
