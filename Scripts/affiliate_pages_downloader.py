@@ -524,6 +524,27 @@ def prepare_active_downloads_directory() -> List[str]:
     return ACTIVE_DOWNLOADS_DIRS  # Return cached active downloads directories for immediate usage.
 
 
+def locate_image_in_region(image_path: Path, region: Tuple[int, int, int, int] | None) -> Any:
+    """
+    Locates an image on screen inside an optional region.
+
+    :param image_path: Path to the image file.
+    :param region: Optional screen region tuple used during image search.
+    :return: Box location when found, otherwise None.
+    """
+
+    if not image_path.exists():  # Verify image file existence before image search.
+        return None  # Return None when image file does not exist.
+
+    try:  # Attempt image location on screen using an optional capture region.
+        if region is not None:  # Verify whether a capture region was provided for the image search.
+            return pyautogui.locateOnScreen(str(image_path), region=region)  # Return located box coordinates inside the provided region.
+
+        return pyautogui.locateOnScreen(str(image_path))  # Return located box coordinates from the full screen.
+    except Exception:  # Handle image search exceptions.
+        return None  # Return None when image search fails.
+
+
 def detect_chrome_download_settings_state(correct_img: Path, wrong_toggle_1_img: Path, wrong_toggle_2_img: Path, wrong_both_img: Path) -> Tuple[str, Any]:
     """
     Detects the current Chrome downloads settings toggle state.
