@@ -659,6 +659,7 @@ def detect_new_download_from_directories(before_snapshots: Dict[str, Dict[str, f
     """
 
     detected_entries: List[Tuple[str, str, float]] = []  # Initialize detected entries list as tuples of directory, filename, and modified timestamp.
+    single_compressed_entries: List[Tuple[str, str, float]] = []  # Initialize list for directories with exactly one compressed addition.
 
     for downloads_dir in downloads_dirs:  # Iterate monitored downloads directory paths.
         resolved_dir = str(Path(downloads_dir).resolve())  # Resolve and normalize current monitored directory path.
@@ -669,15 +670,30 @@ def detect_new_download_from_directories(before_snapshots: Dict[str, Dict[str, f
         if len(new_filenames) == 0:  # Verify whether current monitored directory has new files.
             continue  # Continue iteration when current directory has no new files.
 
+        compressed_new = [fn for fn in new_filenames if is_compressed_file(fn)]  # Filter new filenames to compressed archive candidates.
+
+        if len(compressed_new) == 1:  # Verify whether current monitored directory received exactly one compressed archive.
+            comp_name = max(compressed_new, key=lambda fn: after_snapshot.get(fn, 0.0))  # Select the compressed filename by timestamp when single.
+            comp_mtime = after_snapshot.get(comp_name, 0.0)  # Retrieve compressed filename modified timestamp.
+            single_compressed_entries.append((resolved_dir, comp_name, comp_mtime))  # Append single compressed detection entry.
+            continue  # Continue iteration after recording single compressed detection.
+
         selected_filename = max(new_filenames, key=lambda filename: after_snapshot.get(filename, 0.0))  # Select most recently modified new filename for current monitored directory.
         detected_entries.append((resolved_dir, selected_filename, after_snapshot.get(selected_filename, 0.0)))  # Append detected directory, filename, and modified timestamp entry.
 
-    if len(detected_entries) == 0:  # Verify whether any monitored directory received new files.
+    if len(single_compressed_entries) > 0:  # Verify whether any directory reported exactly one compressed addition.
+        if len(single_compressed_entries) > 1:  # Verify multiple candidate directories with single compressed additions.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Multiple compressed downloads detected. Using most recent compressed file.{Style.RESET_ALL}")  # Log multiple compressed detection warning.
+
+        sel_dir, sel_file, _ = max(single_compressed_entries, key=lambda item: item[2])  # Select most recent compressed file across single-compressed directories.
+        return sel_dir, sel_file  # Return resolved directory and filename for the single compressed addition.
+
+    if len(detected_entries) == 0:  # Verify whether any monitored directory received new files when no single compressed detection occurred.
         print(f"{BackgroundColors.YELLOW}[WARNING] No new download detected for URL: {url}{Style.RESET_ALL}")  # Log missing download warning for current URL.
         return "", ""  # Return empty detection tuple when no new download is found.
 
     if len(detected_entries) > 1:  # Verify whether multiple directories or files were detected in the same cycle.
-        print(f"{BackgroundColors.YELLOW}[WARNING] Multiple downloads detected. Using most recent file.{Style.RESET_ALL}")  # Log multiple downloads warning.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Multiple downloads detected across monitored directories. Using most recent file.{Style.RESET_ALL}")  # Log multiple downloads warning across directories.
 
     selected_dir, selected_filename, _ = max(detected_entries, key=lambda item: item[2])  # Select most recently modified file across all monitored directories.
     return selected_dir, selected_filename  # Return detected directory and filename.
