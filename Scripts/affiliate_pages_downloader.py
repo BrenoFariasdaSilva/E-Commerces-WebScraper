@@ -142,6 +142,48 @@ def verbose_output(true_string="", false_string=""):
         print(false_string)  # Output the false statement string
 
 
+def get_chrome_windows() -> List[Any]:
+    """
+    Retrieves visible and non-minimized Chrome windows.
+
+    :param: None.
+    :return: List of visible non-minimized Chrome windows.
+    """
+
+    try:  # Attempt cross-platform window enumeration.
+        get_all_windows = getattr(pyautogui, "getAllWindows", None)  # Resolve optional window listing API.
+        windows_raw = get_all_windows() if callable(get_all_windows) else []  # Retrieve all desktop windows when API is available.
+        windows = windows_raw if isinstance(windows_raw, list) else []  # Normalize window collection to a list.
+    except Exception:  # Handle unsupported window-management backend.
+        print(f"{BackgroundColors.YELLOW}Window activation API is unavailable on this system. Keep Chrome focused manually.{Style.RESET_ALL}")  # Print manual-focus warning.
+        return []  # Return empty list when desktop window enumeration is unavailable.
+
+    chrome_windows: List[Any] = []  # Initialize filtered Chrome windows list.
+
+    for window in windows:  # Iterate all desktop windows.
+        title = str(getattr(window, "title", "")).strip()  # Retrieve and normalize window title.
+
+        if title == "":  # Verify window title has content.
+            continue  # Skip untitled windows.
+
+        if "chrome" not in title.lower():  # Verify window title belongs to Chrome.
+            continue  # Skip non-Chrome windows.
+
+        is_minimized = bool(getattr(window, "isMinimized", False))  # Retrieve minimized state from window object.
+
+        if is_minimized:  # Verify window is not minimized.
+            continue  # Skip minimized Chrome windows.
+
+        is_visible = bool(getattr(window, "visible", True))  # Retrieve visible state with True default when property is absent.
+
+        if not is_visible:  # Verify window is visible.
+            continue  # Skip hidden Chrome windows.
+
+        chrome_windows.append(window)  # Append valid Chrome window to filtered list.
+
+    return chrome_windows  # Return filtered Chrome windows.
+
+
 def select_chrome_window(chrome_windows: List[Any]) -> Any:
     """
     Selects a deterministic Chrome window target.
