@@ -142,6 +142,93 @@ def verbose_output(true_string="", false_string=""):
         print(false_string)  # Output the false statement string
 
 
+def get_primary_monitor_bounds() -> Tuple[int, int, int, int]:
+    """
+    Retrieves primary monitor bounds from screen size.
+
+    :param: None.
+    :return: Tuple of primary monitor bounds as left, top, right, bottom.
+    """
+
+    screen_size = pyautogui.size()  # Retrieve primary monitor size from pyautogui backend.
+    return 0, 0, int(screen_size.width), int(screen_size.height)  # Return primary monitor bounds tuple.
+
+
+def is_window_outside_primary_monitor(target_window: Any, primary_bounds: Tuple[int, int, int, int]) -> bool:
+    """
+    Verifies whether a window center is outside primary monitor bounds.
+
+    :param target_window: Window object to evaluate.
+    :param primary_bounds: Primary monitor bounds as left, top, right, bottom.
+    :return: True when the window center is outside primary bounds, otherwise False.
+    """
+
+    if target_window is None:  # Verify window reference exists for bounds evaluation.
+        return False  # Return False when no window is available for evaluation.
+
+    left = int(getattr(target_window, "left", 0))  # Retrieve window left coordinate.
+    top = int(getattr(target_window, "top", 0))  # Retrieve window top coordinate.
+    width = max(1, int(getattr(target_window, "width", 1)))  # Retrieve window width using safe minimum value.
+    height = max(1, int(getattr(target_window, "height", 1)))  # Retrieve window height using safe minimum value.
+    center_x = left + (width // 2)  # Compute window center X coordinate.
+    center_y = top + (height // 2)  # Compute window center Y coordinate.
+    primary_left, primary_top, primary_right, primary_bottom = primary_bounds  # Unpack primary monitor bounds.
+
+    if center_x < primary_left or center_x >= primary_right:  # Verify horizontal center position against primary bounds.
+        return True  # Return True when horizontal center is outside primary bounds.
+
+    if center_y < primary_top or center_y >= primary_bottom:  # Verify vertical center position against primary bounds.
+        return True  # Return True when vertical center is outside primary bounds.
+
+    return False  # Return False when center is inside primary bounds.
+
+
+def relocate_window_to_primary_monitor(target_window: Any) -> bool:
+    """
+    Relocates a window to the primary monitor when needed.
+
+    :param target_window: Window object selected for relocation.
+    :return: True when relocation is not required or succeeds, otherwise False.
+    """
+
+    if target_window is None:  # Verify window reference exists before relocation.
+        return False  # Return failure status when target window is missing.
+
+    try:  # Attempt primary monitor relocation logic.
+        primary_left, primary_top, primary_right, primary_bottom = get_primary_monitor_bounds()  # Retrieve primary monitor bounds.
+
+        if not is_window_outside_primary_monitor(target_window, (primary_left, primary_top, primary_right, primary_bottom)):  # Verify whether relocation is required.
+            return True  # Return success when window is already on primary monitor.
+
+        move_to_function = getattr(target_window, "moveTo", None)  # Resolve moveTo method for window relocation.
+
+        if not callable(move_to_function):  # Verify moveTo method availability.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Window relocation API is unavailable for Chrome window.{Style.RESET_ALL}")  # Log relocation API warning.
+            return False  # Return failure when relocation API is unavailable.
+
+        width = max(1, int(getattr(target_window, "width", 1)))  # Retrieve current window width using safe minimum value.
+        height = max(1, int(getattr(target_window, "height", 1)))  # Retrieve current window height using safe minimum value.
+        primary_width = max(1, primary_right - primary_left)  # Compute primary monitor width.
+        primary_height = max(1, primary_bottom - primary_top)  # Compute primary monitor height.
+        target_left = primary_left if width >= primary_width else max(primary_left, min(int(getattr(target_window, "left", primary_left)), primary_right - width))  # Compute relocated left coordinate while preserving size when possible.
+        target_top = primary_top if height >= primary_height else max(primary_top, min(int(getattr(target_window, "top", primary_top)), primary_bottom - height))  # Compute relocated top coordinate while preserving size when possible.
+        move_to_function(target_left, target_top)  # Move window into primary monitor bounds.
+        time.sleep(0.2)  # Wait after relocation operation.
+
+        resize_to_function = getattr(target_window, "resizeTo", None)  # Resolve resizeTo method for oversized window fallback.
+
+        if callable(resize_to_function) and (width > primary_width or height > primary_height):  # Verify resize is required and supported.
+            resize_to_function(min(width, primary_width), min(height, primary_height))  # Resize only when window exceeds primary monitor dimensions.
+            time.sleep(0.2)  # Wait after resize operation.
+
+        target_window.activate()  # Re-activate window after relocation.
+        time.sleep(0.2)  # Wait after re-activation.
+        return True  # Return success when relocation flow completes.
+    except Exception:  # Handle relocation failures.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to relocate Chrome window to the primary monitor.{Style.RESET_ALL}")  # Log relocation failure warning.
+        return False  # Return failure status on relocation exception.
+
+
 def detach_tab_to_new_window() -> bool:
     """
     Opens a new Chrome window to recover primary-monitor focus.
