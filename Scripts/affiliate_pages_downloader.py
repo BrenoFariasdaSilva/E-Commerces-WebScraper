@@ -524,6 +524,26 @@ def prepare_active_downloads_directory() -> List[str]:
     return ACTIVE_DOWNLOADS_DIRS  # Return cached active downloads directories for immediate usage.
 
 
+def get_chrome_download_settings_region() -> Tuple[int, int, int, int] | None:
+    """
+    Resolves the Chrome downloads settings capture region.
+
+    :param: None.
+    :return: Tuple with left, top, width, and height or None when unavailable.
+    """
+
+    window_bounds = get_active_window_bounds()  # Retrieve active Chrome window bounds for region capture.
+    left = max(0, int(window_bounds.get("left", 0)))  # Resolve safe left coordinate for region capture.
+    top = max(0, int(window_bounds.get("top", 0)))  # Resolve safe top coordinate for region capture.
+    width = max(1, int(window_bounds.get("width", 0)))  # Resolve safe width for region capture.
+    height = max(1, int(window_bounds.get("height", 0)))  # Resolve safe height for region capture.
+
+    if width <= 0 or height <= 0:  # Verify whether the resolved region dimensions are invalid.
+        return None  # Return None when the Chrome settings capture region is unavailable.
+
+    return left, top, width, height  # Return the Chrome settings capture region tuple.
+
+
 def locate_image_in_region(image_path: Path, region: Tuple[int, int, int, int] | None) -> Any:
     """
     Locates an image on screen inside an optional region.
