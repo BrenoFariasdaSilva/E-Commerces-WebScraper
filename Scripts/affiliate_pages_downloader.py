@@ -771,6 +771,22 @@ def get_active_window_bounds() -> Dict[str, int]:
     return {"left": 0, "top": 0, "width": screen_width, "height": screen_height}  # Return full screen as fallback bounds.
 
 
+def get_scaled_fallback_coords(reference_x: float, reference_y: float) -> Tuple[int, int]:
+    """
+    Computes scaled fallback coordinates relative to active Chrome window.
+
+    :param reference_x: X coordinate from reference resolution (1920x1080).
+    :param reference_y: Y coordinate from reference resolution (1920x1080).
+    :return: Tuple of adjusted coordinates relative to Chrome window position.
+    """
+
+    scaled_x, scaled_y = scale_coordinate_to_screen(reference_x, reference_y)  # Scale coordinates to current screen dimensions.
+    window_bounds = get_active_window_bounds()  # Retrieve active Chrome window bounds.
+    adjusted_x = window_bounds["left"] + scaled_x  # Adjust X coordinate relative to window left edge.
+    adjusted_y = window_bounds["top"] + scaled_y  # Adjust Y coordinate relative to window top edge.
+    return adjusted_x, adjusted_y  # Return tuple of window-adjusted coordinates.
+
+
 def click_image_or_coords(image_path: Path, reference_x: float, reference_y: float) -> str:
     """
     Clicks image center or scaled fallback coordinates.
