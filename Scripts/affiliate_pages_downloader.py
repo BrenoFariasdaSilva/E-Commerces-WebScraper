@@ -524,6 +524,29 @@ def prepare_active_downloads_directory() -> List[str]:
     return ACTIVE_DOWNLOADS_DIRS  # Return cached active downloads directories for immediate usage.
 
 
+def resolve_download_settings_toggle_click_position(box: Any, toggle_number: int) -> Tuple[int, int]:
+    """
+    Resolves the click position for a downloads settings toggle.
+
+    :param box: Matched bounding box for the downloads settings state image.
+    :param toggle_number: Toggle index where 1 is the middle toggle and 2 is the bottom toggle.
+    :return: Tuple containing the click X and Y coordinates.
+    """
+
+    left = int(getattr(box, "left", 0))  # Retrieve the matched bounding-box left coordinate.
+    top = int(getattr(box, "top", 0))  # Retrieve the matched bounding-box top coordinate.
+    width = max(1, int(getattr(box, "width", 1)))  # Retrieve the matched bounding-box width using a safe minimum.
+    height = max(1, int(getattr(box, "height", 1)))  # Retrieve the matched bounding-box height using a safe minimum.
+    click_x = left + int(width / 2)  # Compute the horizontal center of the matched bounding box.
+
+    if toggle_number == 1:  # Verify whether the first downloads settings toggle position was requested.
+        click_y = top + int(height * 0.5)  # Compute the first toggle vertical position from the matched bounding box.
+    else:  # Resolve the second downloads settings toggle position as fallback.
+        click_y = top + int(height * 5 / 6)  # Compute the second toggle vertical position from the matched bounding box.
+
+    return click_x, click_y  # Return the resolved toggle click coordinates.
+
+
 def disable_chrome_download_toggle_1(box: Any) -> None:
     """
     Disables the first Chrome downloads settings toggle.
