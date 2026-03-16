@@ -634,6 +634,42 @@ def update_active_download_directory(directory: str) -> None:
     ACTIVE_DOWNLOADS_DIRS = [resolved_dir]  # Persist single resolved downloads directory in global cache.
 
 
+def detect_new_download_from_directories(before_snapshots: Dict[str, Dict[str, float]], after_snapshots: Dict[str, Dict[str, float]], downloads_dirs: List[str], url: str) -> Tuple[str, str]:
+    """
+    Detects a new downloaded file across one or multiple monitored directories.
+
+    :param before_snapshots: Directory snapshots captured before URL processing.
+    :param after_snapshots: Directory snapshots captured after URL processing.
+    :param downloads_dirs: List of monitored downloads directory paths.
+    :param url: URL associated with current processing cycle.
+    :return: Tuple containing detected directory and detected filename.
+    """
+
+    detected_entries: List[Tuple[str, str, float]] = []  # Initialize detected entries list as tuples of directory, filename, and modified timestamp.
+
+    for downloads_dir in downloads_dirs:  # Iterate monitored downloads directory paths.
+        resolved_dir = str(Path(downloads_dir).resolve())  # Resolve and normalize current monitored directory path.
+        before_snapshot = before_snapshots.get(resolved_dir, {})  # Retrieve pre-processing snapshot for current directory.
+        after_snapshot = after_snapshots.get(resolved_dir, {})  # Retrieve post-processing snapshot for current directory.
+        new_filenames = [filename for filename in after_snapshot if filename not in before_snapshot]  # Build list of new filenames for current monitored directory.
+
+        if len(new_filenames) == 0:  # Verify whether current monitored directory has new files.
+            continue  # Continue iteration when current directory has no new files.
+
+        selected_filename = max(new_filenames, key=lambda filename: after_snapshot.get(filename, 0.0))  # Select most recently modified new filename for current monitored directory.
+        detected_entries.append((resolved_dir, selected_filename, after_snapshot.get(selected_filename, 0.0)))  # Append detected directory, filename, and modified timestamp entry.
+
+    if len(detected_entries) == 0:  # Verify whether any monitored directory received new files.
+        print(f"{BackgroundColors.YELLOW}[WARNING] No new download detected for URL: {url}{Style.RESET_ALL}")  # Log missing download warning for current URL.
+        return "", ""  # Return empty detection tuple when no new download is found.
+
+    if len(detected_entries) > 1:  # Verify whether multiple directories or files were detected in the same cycle.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Multiple downloads detected. Using most recent file.{Style.RESET_ALL}")  # Log multiple downloads warning.
+
+    selected_dir, selected_filename, _ = max(detected_entries, key=lambda item: item[2])  # Select most recently modified file across all monitored directories.
+    return selected_dir, selected_filename  # Return detected directory and filename.
+
+
 def detect_new_download_file(before_snapshot: Dict[str, float], after_snapshot: Dict[str, float], url: str) -> str:
     """
     Detects new downloaded filename by comparing two snapshots.
