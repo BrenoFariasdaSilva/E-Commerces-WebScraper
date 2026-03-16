@@ -665,6 +665,38 @@ def find_filename_by_marketplace(filenames: List[str], keywords: List[str]) -> s
     return None  # Return None when no marketplace keyword match is found.
 
 
+def select_preferred_filename(filenames: List[str], filename_mtimes: Dict[str, float], keywords: List[str]) -> str | None:
+    """
+    Select a preferred filename among candidates, preferring unnumbered variants.
+
+    :param filenames: List of filenames to evaluate.
+    :param filename_mtimes: Mapping of filename to its modified timestamp.
+    :param keywords: List of marketplace keywords to prioritize.
+    :return: Preferred filename or None when no candidates are available.
+    """
+
+    if len(filenames) == 0:  # Verify whether candidate filenames list is empty.
+        return None  # Return None when there are no candidate filenames.
+
+    normalized_keywords = [kw.lower() for kw in keywords]  # Normalize keywords for case-insensitive matching.
+
+    matched = [name for name in filenames if any(kw in name.lower() for kw in normalized_keywords)]  # Filter filenames that contain any marketplace keyword.
+
+    if len(matched) == 0:  # Verify whether no filenames matched marketplace keywords.
+        matched = filenames  # Fallback to all filenames when no marketplace-specific match was found.
+
+    pattern = re.compile(r" \(\d+\)(?=\.[^./\\]+$)")  # Compile pattern that matches trailing numbered copies like " (1)" before extension.
+
+    unnumbered = [name for name in matched if not pattern.search(name)]  # Filter matched names that do not contain numbered-copy suffixes.
+
+    if len(unnumbered) > 0:  # Verify whether there are unnumbered candidate filenames.
+        chosen = max(unnumbered, key=lambda fn: filename_mtimes.get(fn, 0.0))  # Select most recently modified unnumbered filename.
+        return chosen  # Return the chosen unnumbered filename.
+
+    chosen = max(matched, key=lambda fn: filename_mtimes.get(fn, 0.0))  # Select most recently modified filename when all are numbered.
+    return chosen  # Return chosen filename as fallback when only numbered variants exist.
+
+
 def detect_new_download_from_directories(before_snapshots: Dict[str, Dict[str, float]], after_snapshots: Dict[str, Dict[str, float]], downloads_dirs: List[str], url: str) -> Tuple[str, str]:
     """
     Detects a new downloaded file across one or multiple monitored directories.
