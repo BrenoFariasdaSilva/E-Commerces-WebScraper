@@ -493,6 +493,21 @@ def resolve_downloads_directory() -> str:
     return candidates[0]  # Return the first configured downloads directory candidate as fallback.
 
 
+def prepare_active_downloads_directory() -> Path:
+    """
+    Prepares the active downloads directory and returns a Path.
+
+    :param: None.
+    :return: Path to the active downloads directory.
+    """
+
+    global ACTIVE_DOWNLOADS_DIR  # Declare global variable for active downloads directory.
+    
+    ACTIVE_DOWNLOADS_DIR = resolve_downloads_directory()  # Resolve active downloads directory for the current operating system.
+    
+    return Path(ACTIVE_DOWNLOADS_DIR)  # Build and return Path object for the resolved downloads directory.
+
+
 def read_urls(urls_file: Path) -> List[str]:
     """
     Reads URLs from the specified file.
