@@ -142,68 +142,21 @@ def verbose_output(true_string="", false_string=""):
         print(false_string)  # Output the false statement string
 
 
-def activate_chrome_window() -> bool:
+def ensure_chrome_on_primary_monitor(target_window: Any) -> bool:
     """
-    Activates a Chrome window to receive automation keystrokes.
+    Ensures active Chrome window is usable on the primary monitor.
 
-    :return: True if a Chrome window is active, otherwise False.
+    :param target_window: Window object selected for activation flow.
+    :return: True when the window is usable on primary monitor, otherwise False.
     """
 
-    global TARGET_CHROME_TITLE  # Reference global selected window title.
+    relocation_result = relocate_window_to_primary_monitor(target_window)  # Attempt relocation of active Chrome window to primary monitor.
 
-    try:  # Attempt cross-platform window enumeration.
-        get_all_windows = getattr(pyautogui, "getAllWindows", None)  # Resolve optional window listing API.
-        windows_raw = get_all_windows() if callable(get_all_windows) else []  # Retrieve all desktop windows when API is available.
-        windows = windows_raw if isinstance(windows_raw, list) else []  # Normalize window collection to a list.
-    except Exception:  # Handle unsupported window-management backend.
-        print(f"{BackgroundColors.YELLOW}Window activation API is unavailable on this system. Keep Chrome focused manually.{Style.RESET_ALL}")  # Print manual-focus warning.
-        return True  # Continue execution with manual focus fallback.
+    if relocation_result:  # Verify relocation was successful or not required.
+        return True  # Return success when active window is already usable on primary monitor.
 
-    chrome_windows = [w for w in windows if w.title and "chrome" in w.title.lower()]  # Filter Chrome windows by title.
-
-    if not chrome_windows:  # Verify at least one Chrome window exists.
-        print(f"{BackgroundColors.RED}No Chrome windows were detected. Automation cannot continue.{Style.RESET_ALL}")  # Print Chrome not found error.
-        return False  # Return failure status when no Chrome window is available.
-
-    target_window = None  # Initialize selected window reference.
-
-    if TARGET_CHROME_TITLE != "":  # Verify previous window title is available.
-        for window in chrome_windows:  # Iterate candidate Chrome windows.
-            if window.title == TARGET_CHROME_TITLE:  # Verify title match with previously selected window.
-                target_window = window  # Reuse previously selected window.
-                break  # Stop search after finding matching window.
-
-    if target_window is None:  # Verify selected window availability.
-        if len(chrome_windows) == 1:  # Verify single-window scenario.
-            target_window = chrome_windows[0]  # Select the only Chrome window.
-            TARGET_CHROME_TITLE = target_window.title  # Persist selected window title.
-        else:  # Enter multi-window selection scenario.
-            print(f"{BackgroundColors.YELLOW}Multiple Chrome windows detected:{Style.RESET_ALL}")  # Print multi-window selection header.
-            for index, window in enumerate(chrome_windows, start=1):  # Enumerate Chrome windows for user selection.
-                print(f"{BackgroundColors.CYAN}{index}.{Style.RESET_ALL} {window.title}")  # Print selectable Chrome window entry.
-
-            try:  # Attempt user selection parsing.
-                selected_index = int(input("Select the Chrome window index: ").strip())  # Read selected index from user input.
-            except Exception:  # Handle invalid index input.
-                print(f"{BackgroundColors.RED}Invalid selection. Automation cannot continue.{Style.RESET_ALL}")  # Print invalid selection error.
-                return False  # Return failure status on invalid selection input.
-
-            if selected_index < 1 or selected_index > len(chrome_windows):  # Verify selected index bounds.
-                print(f"{BackgroundColors.RED}Selected index is out of range. Automation cannot continue.{Style.RESET_ALL}")  # Print out-of-range selection error.
-                return False  # Return failure status on out-of-range selection.
-
-            target_window = chrome_windows[selected_index - 1]  # Select user-chosen Chrome window.
-            TARGET_CHROME_TITLE = target_window.title  # Persist selected window title.
-
-    try:  # Attempt window activation sequence.
-        target_window.activate()  # Activate selected Chrome window.
-        time.sleep(0.2)  # Wait after activation.
-        target_window.maximize()  # Maximize selected Chrome window.
-        time.sleep(0.8)  # Wait after maximize.
-        return True  # Return success status after activation.
-    except Exception:  # Handle window activation failure.
-        print(f"{BackgroundColors.RED}Failed to activate Chrome window. Keep Chrome focused manually and retry.{Style.RESET_ALL}")  # Print activation failure message.
-        return False  # Return failure status after activation exception.
+    print(f"{BackgroundColors.YELLOW}[DEBUG] Attempting fallback tab extraction strategy for Chrome window focus recovery.{Style.RESET_ALL}")  # Log fallback activation path.
+    return detach_tab_to_new_window()  # Return fallback tab extraction strategy result.
 
 
 def read_urls(urls_file: Path) -> List[str]:
