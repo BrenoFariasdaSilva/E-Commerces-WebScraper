@@ -524,6 +524,21 @@ def prepare_active_downloads_directory() -> List[str]:
     return ACTIVE_DOWNLOADS_DIRS  # Return cached active downloads directories for immediate usage.
 
 
+def move_cursor_to_active_window_center() -> None:
+    """
+    Moves the cursor to the center of the active Chrome window.
+
+    :param: None.
+    :return: None.
+    """
+
+    window_bounds = get_active_window_bounds()  # Retrieve active Chrome window bounds for pointer repositioning.
+    center_x = int(window_bounds["left"] + (window_bounds["width"] / 2))  # Compute the active Chrome window horizontal center.
+    center_y = int(window_bounds["top"] + (window_bounds["height"] / 2))  # Compute the active Chrome window vertical center.
+    pyautogui.moveTo(center_x, center_y)  # Move the cursor to the center of the active Chrome window.
+    time.sleep(DOWNLOAD_SETTINGS_TOGGLE_CLICK_WAIT_SECONDS)  # Wait after moving the cursor away from the toggles.
+
+
 def verify_chrome_download_settings_correct_state(correct_img: Path) -> bool:
     """
     Verifies the final Chrome downloads settings state.
