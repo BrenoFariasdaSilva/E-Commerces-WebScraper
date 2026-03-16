@@ -524,6 +524,35 @@ def prepare_active_downloads_directory() -> List[str]:
     return ACTIVE_DOWNLOADS_DIRS  # Return cached active downloads directories for immediate usage.
 
 
+def detect_chrome_download_settings_state(correct_img: Path, wrong_toggle_1_img: Path, wrong_toggle_2_img: Path, wrong_both_img: Path) -> Tuple[str, Any]:
+    """
+    Detects the current Chrome downloads settings toggle state.
+
+    :param correct_img: Path to the image representing the correct settings state.
+    :param wrong_toggle_1_img: Path to the image representing Toggle 1 enabled.
+    :param wrong_toggle_2_img: Path to the image representing Toggle 2 enabled.
+    :param wrong_both_img: Path to the image representing both toggles enabled.
+    :return: Tuple containing the detected state label and matched bounding box.
+    """
+
+    region = get_chrome_download_settings_region()  # Resolve the Chrome downloads settings capture region.
+    image_candidates = [  # Define ordered image candidates for state detection.
+        (DOWNLOAD_SETTINGS_STATE_CORRECT, correct_img),  # Define the correct settings-state candidate.
+        (DOWNLOAD_SETTINGS_STATE_TOGGLE_1_ON, wrong_toggle_1_img),  # Define the Toggle 1 enabled candidate.
+        (DOWNLOAD_SETTINGS_STATE_TOGGLE_2_ON, wrong_toggle_2_img),  # Define the Toggle 2 enabled candidate.
+        (DOWNLOAD_SETTINGS_STATE_BOTH_TOGGLES_ON, wrong_both_img),  # Define the both-toggles-enabled candidate.
+    ]  # Finalize ordered image candidates for state detection.
+
+    for state_name, image_path in image_candidates:  # Iterate downloads settings image candidates in priority order.
+        box = locate_image_in_region(image_path, region)  # Attempt to locate the current candidate image in the capture region.
+
+        if box is not None:  # Verify whether the current candidate image was detected.
+            return state_name, box  # Return the detected downloads settings state and bounding box.
+
+    print(f"{BackgroundColors.YELLOW}[WARNING] Unable to detect Chrome downloads settings toggle state.{Style.RESET_ALL}")  # Log unresolved downloads settings state warning.
+    return DOWNLOAD_SETTINGS_STATE_UNKNOWN, None  # Return unresolved downloads settings state when no image matches.
+
+
 def resolve_download_settings_toggle_click_position(box: Any, toggle_number: int) -> Tuple[int, int]:
     """
     Resolves the click position for a downloads settings toggle.
