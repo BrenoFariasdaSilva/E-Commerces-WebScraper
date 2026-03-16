@@ -736,6 +736,23 @@ def get_screen_dimensions() -> Tuple[int, int]:
     return int(screen_size.width), int(screen_size.height)  # Return screen dimensions as tuple.
 
 
+def scale_coordinate_to_screen(reference_x: float, reference_y: float) -> Tuple[int, int]:
+    """
+    Scales reference coordinates to current screen dimensions.
+
+    :param reference_x: X coordinate from reference resolution (1920x1080).
+    :param reference_y: Y coordinate from reference resolution (1920x1080).
+    :return: Tuple of scaled X and Y coordinates for current screen.
+    """
+
+    current_width, current_height = get_screen_dimensions()  # Retrieve current screen dimensions.
+    scale_x = current_width / REFERENCE_SCREEN_WIDTH  # Compute horizontal scaling factor.
+    scale_y = current_height / REFERENCE_SCREEN_HEIGHT  # Compute vertical scaling factor.
+    scaled_x = int(reference_x * scale_x)  # Apply horizontal scaling to reference X coordinate.
+    scaled_y = int(reference_y * scale_y)  # Apply vertical scaling to reference Y coordinate.
+    return scaled_x, scaled_y  # Return tuple of scaled coordinates.
+
+
 def click_image_or_coords(image_path: Path, reference_x: float, reference_y: float) -> str:
     """
     Clicks image center or scaled fallback coordinates.
