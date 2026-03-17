@@ -1836,43 +1836,54 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
     if not activate_chrome_window():  # Verify Chrome activation before sending hotkeys.
         return 1  # Return failure exit code when activation fails.
 
+    dedicated_created = False  # Track dedicated automation window creation state.
+    
     if not prepare_dedicated_chrome_window_for_automation():  # Verify dedicated Chrome window preparation before opening automation tabs.
         return 1  # Return failure exit code when dedicated automation window is unavailable.
+    
+    dedicated_created = True  # Mark that a dedicated window was prepared for later cleanup.
 
-    chrome_download_settings_ready = verify_and_correct_chrome_download_settings(assets_dir, open_in_new_tab=False)  # Verify Chrome downloads settings in the current tab before processing product URLs.
+    try:  # Begin main processing block so dedicated window can be closed in finally.
+        pyautogui.hotkey("ctrl", "t")  # Open a constant empty tab in the dedicated window for settings navigation.
+        time.sleep(0.2)  # Wait after opening the constant empty tab.
 
-    if not chrome_download_settings_ready:  # Verify whether Chrome downloads settings could not be verified or corrected automatically.
-        print(f"{BackgroundColors.YELLOW}[WARNING] Chrome downloads settings could not be verified or corrected automatically. Continuing execution.{Style.RESET_ALL}")  # Log non-blocking downloads settings verification warning.
+        chrome_download_settings_ready = verify_and_correct_chrome_download_settings(assets_dir, open_in_new_tab=False)  # Verify Chrome downloads settings in the current tab before processing product URLs.
 
-    ext_methods: Dict[str, List[int]] = {}  # Initialize extension method map.
-    download_methods: Dict[str, List[int]] = {}  # Initialize download method map.
-    completion_methods: Dict[str, List[int]] = {}  # Initialize completion method map.
-    close_methods: Dict[str, List[int]] = {}  # Initialize close tab method map.
+        if not chrome_download_settings_ready:  # Verify whether Chrome downloads settings could not be verified or corrected automatically.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Chrome downloads settings could not be verified or corrected automatically. Continuing execution.{Style.RESET_ALL}")  # Log non-blocking downloads settings verification warning.
 
-    processed_count = 0  # Initialize processed tab counter.
-    start_tick = time.time()  # Capture workflow start timestamp.
-    url_to_download: Dict[str, str] = {}  # Initialize URL to downloaded filename mapping dictionary.
-    processed_count, url_to_download, process_success = process_urls_with_download_tracking(urls, tab_count, downloads_dirs, extension_img, download_img, confirmation_img, close_download_tab_img, mercado_livre_img, ext_methods, download_methods, completion_methods, close_methods, chrome_download_settings_ready)  # Process URLs with download tracking and retrieve mapping details.
+        ext_methods: Dict[str, List[int]] = {}  # Initialize extension method map.
+        download_methods: Dict[str, List[int]] = {}  # Initialize download method map.
+        completion_methods: Dict[str, List[int]] = {}  # Initialize completion method map.
+        close_methods: Dict[str, List[int]] = {}  # Initialize close tab method map.
 
-    if not process_success:  # Verify if URL processing completed without activation failure.
-        return 1  # Return failure exit code when URL processing fails.
+        processed_count = 0  # Initialize processed tab counter.
+        start_tick = time.time()  # Capture workflow start timestamp.
+        url_to_download: Dict[str, str] = {}  # Initialize URL to downloaded filename mapping dictionary.
+        processed_count, url_to_download, process_success = process_urls_with_download_tracking(urls, tab_count, downloads_dirs, extension_img, download_img, confirmation_img, close_download_tab_img, mercado_livre_img, ext_methods, download_methods, completion_methods, close_methods, chrome_download_settings_ready)  # Process URLs with download tracking and retrieve mapping details.
 
-    if processed_count == tab_count:  # Verify all tabs were processed.
-        elapsed_sec = round(time.time() - start_tick)  # Compute elapsed seconds.
-        formatted = format_execution_time(elapsed_sec)  # Format elapsed time string.
-        report = build_report(ext_methods, download_methods, completion_methods, close_methods)  # Build consolidated report text.
-        final_report = f"{BackgroundColors.GREEN}Execution Time: {BackgroundColors.CYAN}{formatted}{BackgroundColors.GREEN}\n\n{report}{Style.RESET_ALL}"  # Compose final report output.
+        if not process_success:  # Verify if URL processing completed without activation failure.
+            return 1  # Return failure exit code when URL processing fails.
 
-        update_urls_file(urls_file, url_to_download)  # Rewrite URLs file with URL to downloaded filename mapping.
-        move_downloaded_archives(downloads_dirs, urls_file.resolve().parent, url_to_download)  # Move downloaded archives into URLs file directory.
+        if processed_count == tab_count:  # Verify all tabs were processed.
+            elapsed_sec = round(time.time() - start_tick)  # Compute elapsed seconds.
+            formatted = format_execution_time(elapsed_sec)  # Format elapsed time string.
+            report = build_report(ext_methods, download_methods, completion_methods, close_methods)  # Build consolidated report text.
+            final_report = f"{BackgroundColors.GREEN}Execution Time: {BackgroundColors.CYAN}{formatted}{BackgroundColors.GREEN}\n\n{report}{Style.RESET_ALL}"  # Compose final report output.
 
-        print(f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Automation Finished{Style.RESET_ALL}\n")  # Print automation completion message.
-        print(f"{final_report}")  # Print final report details.
+            update_urls_file(urls_file, url_to_download)  # Rewrite URLs file with URL to downloaded filename mapping.
+            move_downloaded_archives(downloads_dirs, urls_file.resolve().parent, url_to_download)  # Move downloaded archives into URLs file directory.
 
-        if not headerless:  # Verify if headerless flag is disabled before showing GUI messagebox
-            maybe_show_messagebox("Automation Finished", final_report)  # Display optional messagebox report when allowed
+            print(f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Automation Finished{Style.RESET_ALL}\n")  # Print automation completion message.
+            print(f"{final_report}")  # Print final report details.
 
-    return 0  # Return success exit code.
+            if not headerless:  # Verify if headerless flag is disabled before showing GUI messagebox
+                maybe_show_messagebox("Automation Finished", final_report)  # Display optional messagebox report when allowed
+
+        return 0  # Return success exit code.
+    finally:  # Ensure dedicated automation window cleanup regardless of success or failure.
+        if dedicated_created:  # Verify whether a dedicated automation window was created earlier.
+            close_dedicated_automation_window()  # Attempt to close the dedicated automation window to restore original state.
 
 
 def verify_filepath_exists(filepath):
