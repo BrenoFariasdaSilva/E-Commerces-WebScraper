@@ -1654,7 +1654,9 @@ def close_extension_download_tab(close_download_tab_img: Path) -> str:
     box = locate_image(close_download_tab_img)  # Locate close tab image on screen.
 
     if box is not None:  # Verify image was found.
-        pyautogui.click(box.left, box.top)  # Click top-left point like AHK ImageSearch behavior.
+        click_x = int(box.left + (box.width * 0.75))  # Compute X coordinate for right-quarter click within the matched box.
+        click_y = int(box.top + (box.height / 2))  # Compute Y coordinate for vertically centered click within the matched box.
+        pyautogui.click(click_x, click_y)  # Click the right-quarter of the matched box.
         time.sleep(0.5)  # Wait briefly after image click.
         return "ImageSearch"  # Return image search method label.
 
