@@ -519,6 +519,32 @@ def ensure_chrome_on_primary_monitor(target_window: Any) -> bool:
     return detach_tab_to_new_window()  # Return fallback tab extraction strategy result.
 
 
+def prepare_dedicated_chrome_window_for_automation() -> bool:
+    """
+    Prepares a dedicated Chrome window for automation tab lifecycle isolation.
+
+    :param: None.
+    :return: True when a dedicated automation window is ready, otherwise False.
+    """
+
+    global DEDICATED_AUTOMATION_HWND  # Reference global dedicated automation window handle.
+
+    detach_result = detach_tab_to_new_window()  # Open and activate a dedicated Chrome window for automation.
+
+    if not detach_result:  # Verify whether dedicated Chrome window preparation failed.
+        print(f"{BackgroundColors.RED}Failed to prepare dedicated Chrome window for automation. Aborting to preserve user tabs.{Style.RESET_ALL}")  # Log dedicated-window preparation failure.
+        return False  # Return failure status when dedicated automation window is unavailable.
+
+    try:  # Attempt to capture the dedicated automation window OS handle for reliable re-activation.
+        get_active_window = getattr(pyautogui, "getActiveWindow", None)  # Resolve optional active-window API for handle capture.
+        active_window = get_active_window() if callable(get_active_window) else None  # Retrieve active window reference after dedicated window creation.
+        DEDICATED_AUTOMATION_HWND = int(getattr(active_window, "_hWnd", 0)) if active_window is not None else 0  # Extract and persist OS window handle from the newly created dedicated automation window.
+    except Exception:  # Handle dedicated window handle capture failures.
+        DEDICATED_AUTOMATION_HWND = 0  # Reset handle on capture failure to prevent stale automation references.
+
+    return True  # Return success status when dedicated automation window is ready.
+
+
 def resolve_downloads_directories() -> List[str]:
     """
     Resolves the active downloads directory for the current operating system.
