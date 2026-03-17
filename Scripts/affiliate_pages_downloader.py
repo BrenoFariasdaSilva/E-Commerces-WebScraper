@@ -975,6 +975,33 @@ def notify_manual_chrome_download_settings_intervention(url: str) -> None:
             print(f"{BackgroundColors.YELLOW}[WARNING] Failed to open Chrome downloads settings automatically. Open it manually using the URL above.{Style.RESET_ALL}")  # Instruct the user to open the settings URL manually when automatic navigation fails.
 
 
+def handle_initial_chrome_download_failures(chrome_download_settings_ready: bool, index: int, detected_filename: str, initial_consecutive_download_failures: int, url: str, processed_count: int, url_to_download: Dict[str, str]) -> Tuple[int, Tuple[int, Dict[str, str], bool] | None]:
+    """
+    Handle initial Chrome download failures and request manual intervention when needed.
+
+    :param chrome_download_settings_ready: Whether Chrome downloads settings were previously verified.
+    :param index: Current URL processing index (1-based).
+    :param detected_filename: Detected downloaded filename for current URL.
+    :param initial_consecutive_download_failures: Current consecutive initial download failures count.
+    :param url: URL associated with current processing cycle.
+    :param processed_count: Number of URLs processed so far.
+    :param url_to_download: Mapping from URL to detected downloaded filename.
+    :return: Tuple of updated failures count and optional abort tuple when manual intervention is requested.
+    """
+
+    if not chrome_download_settings_ready and index <= 3:  # Verify whether downloads settings unresolved and index within the first three
+        if detected_filename == "":  # Verify whether current URL produced no detected compressed download
+            initial_consecutive_download_failures += 1  # Increment consecutive initial download-failure counter
+        else:  # Handle a detected compressed download within the first three processed URLs
+            initial_consecutive_download_failures = 0  # Reset the consecutive initial download-failure counter
+
+        if index == 3 and initial_consecutive_download_failures == 3:  # Verify whether the first three processed URLs failed consecutively
+            notify_manual_chrome_download_settings_intervention(url)  # Request manual Chrome downloads settings correction and attempt to open the settings page
+            return initial_consecutive_download_failures, (processed_count, url_to_download, False)  # Return abort tuple to stop processing remaining URLs
+
+    return initial_consecutive_download_failures, None  # Return updated failures count and no abort when continuing
+
+
 def read_urls(urls_file: Path) -> List[str]:
     """
     Reads URLs from the specified file.
