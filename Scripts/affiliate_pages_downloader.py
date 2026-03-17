@@ -957,6 +957,24 @@ def verify_and_correct_chrome_download_settings(assets_dir: Path) -> bool:
     return verified  # Return final downloads settings verification result.
 
 
+def notify_manual_chrome_download_settings_intervention(url: str) -> None:
+    """
+    Requests manual Chrome downloads settings correction after first-URL download failure.
+
+    :param url: URL that failed to produce the expected compressed download.
+    :return: None.
+    """
+
+    print(f"{BackgroundColors.YELLOW}[WARNING] No compressed download was detected for the first URL after Chrome downloads settings verification failed earlier: {BackgroundColors.CYAN}{url}{Style.RESET_ALL}")  # Log the first-URL compressed download failure after prior settings verification failure.
+    print(f"{BackgroundColors.YELLOW}[WARNING] Disable \"Ask where to save each file before downloading\" in Chrome downloads settings before continuing.{Style.RESET_ALL}")  # Instruct the user to disable the Chrome prompt-for-save setting.
+    print(f"{BackgroundColors.YELLOW}[WARNING] Open this URL in Chrome now: {BackgroundColors.CYAN}{CHROME_DOWNLOAD_SETTINGS_URL}{Style.RESET_ALL}")  # Instruct the user to open the Chrome downloads settings URL.
+    print(f"{BackgroundColors.YELLOW}[WARNING] Stopping the remaining URL processing to avoid invalid automation results.{Style.RESET_ALL}")  # Inform that the remaining URLs will not be processed.
+
+    if activate_automation_window():  # Verify whether the automation Chrome window can be activated before opening the settings URL.
+        if not open_chrome_download_settings_page():  # Verify whether the Chrome downloads settings page could be opened automatically.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Failed to open Chrome downloads settings automatically. Open it manually using the URL above.{Style.RESET_ALL}")  # Instruct the user to open the settings URL manually when automatic navigation fails.
+
+
 def read_urls(urls_file: Path) -> List[str]:
     """
     Reads URLs from the specified file.
