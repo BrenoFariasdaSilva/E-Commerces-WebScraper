@@ -1491,7 +1491,8 @@ def process_urls_with_download_tracking(urls: List[str], tab_count: int, downloa
         add_method(completion_methods, confirmation_method, current_tab)  # Store completion method for report.
         add_method(close_methods, close_method, current_tab)  # Store close method for report.
 
-        close_current_tab()  # Close current product tab.
+        if index != len(urls):  # Verify whether current URL is not the last one before closing the tab.
+            close_current_tab()  # Close current product tab when not processing the final URL.
 
         processed_count += 1  # Increment processed counter.
 
