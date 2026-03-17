@@ -126,6 +126,7 @@ DOWNLOAD_SETTINGS_STATE_UNKNOWN = "Unknown"  # Define state label for an unresol
 
 TARGET_CHROME_TITLE = ""  # Store selected Chrome window title for reuse.
 ACTIVE_CHROME_BOUNDS = {"left": 0, "top": 0, "width": 0, "height": 0}  # Store active Chrome window bounds for coordinate calculations.
+DEDICATED_AUTOMATION_HWND: int = 0  # Store OS window handle of dedicated automation Chrome window for tab lifecycle isolation.
 
 # Logger Setup:
 logger = Logger(f"./Logs/{Path(__file__).stem}.log", clean=True)  # Create a Logger instance
