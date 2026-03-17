@@ -1390,8 +1390,6 @@ def process_urls_with_download_tracking(urls: List[str], tab_count: int, downloa
         if not activate_automation_window():  # Verify if automation window activation succeeds before opening separator tab.
             return processed_count, url_to_download, False  # Return failure state when activation fails.
 
-        pyautogui.hotkey("ctrl", "t")  # Open blank separator tab.
-        time.sleep(0.2)  # Wait after opening separator tab.
 
     bar_format = (
         f"{BackgroundColors.GREEN}{{desc}}: {Style.RESET_ALL}"  # Format the description and a green colon for clarity
