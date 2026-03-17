@@ -918,7 +918,7 @@ def close_chrome_download_settings_tab() -> bool:
         print(f"{BackgroundColors.YELLOW}[WARNING] Failed to close Chrome downloads settings tab cleanly.{Style.RESET_ALL}")  # Log downloads settings tab close failure.
         return False  # Return failure when the downloads settings tab cannot be closed.
 
-    return activate_chrome_window()  # Restore Chrome focus after closing the downloads settings tab.
+    return activate_automation_window()  # Restore dedicated automation window focus after closing the downloads settings tab.
 
 
 def verify_and_correct_chrome_download_settings(assets_dir: Path) -> bool:
@@ -1340,8 +1340,8 @@ def process_urls_with_download_tracking(urls: List[str], tab_count: int, downloa
     downloads_dirs[:] = [str(Path(downloads_dir).resolve()) for downloads_dir in downloads_dirs]  # Resolve and normalize monitored downloads directory paths.
 
     if tab_count > 0:  # Verify if there are URLs to process.
-        if not activate_chrome_window():  # Verify if Chrome activation succeeds before opening separator tab.
-            return processed_count, url_to_download, False  # Return failure state when Chrome activation fails.
+        if not activate_automation_window():  # Verify if automation window activation succeeds before opening separator tab.
+            return processed_count, url_to_download, False  # Return failure state when activation fails.
 
         pyautogui.hotkey("ctrl", "t")  # Open blank separator tab.
         time.sleep(0.2)  # Wait after opening separator tab.
@@ -1349,8 +1349,8 @@ def process_urls_with_download_tracking(urls: List[str], tab_count: int, downloa
     for index, url in enumerate(tqdm(urls, total=len(urls), desc=f"{BackgroundColors.GREEN}Processing URLs{Style.RESET_ALL}"), start=1):  # Initialize tqdm progress bar for URL processing while preserving enumerate indexing
         pre_download_snapshots = snapshot_download_directories(downloads_dirs)  # Capture downloads directory snapshots before URL processing.
 
-        if not activate_chrome_window():  # Verify if Chrome activation succeeds before URL navigation.
-            return processed_count, url_to_download, False  # Return failure state when Chrome activation fails.
+        if not activate_automation_window():  # Verify if automation window activation succeeds before URL navigation.
+            return processed_count, url_to_download, False  # Return failure state when activation fails.
 
         pyautogui.hotkey("ctrl", "t")  # Open new browser tab.
         time.sleep(0.2)  # Wait after opening tab.
@@ -1739,6 +1739,9 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
 
     if not activate_chrome_window():  # Verify Chrome activation before sending hotkeys.
         return 1  # Return failure exit code when activation fails.
+
+    if not prepare_dedicated_chrome_window_for_automation():  # Verify dedicated Chrome window preparation before opening automation tabs.
+        return 1  # Return failure exit code when dedicated automation window is unavailable.
 
     if not verify_and_correct_chrome_download_settings(assets_dir):  # Verify Chrome downloads settings before processing product URLs.
         print(f"{BackgroundColors.YELLOW}[WARNING] Chrome downloads settings could not be verified or corrected automatically. Continuing execution.{Style.RESET_ALL}")  # Log non-blocking downloads settings verification warning.
