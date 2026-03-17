@@ -545,6 +545,42 @@ def prepare_dedicated_chrome_window_for_automation() -> bool:
     return True  # Return success status when dedicated automation window is ready.
 
 
+def close_dedicated_automation_window() -> bool:
+    """
+    Closes the dedicated automation Chrome window when present.
+
+    :param: None.
+    :return: True when closed or absent, False on failure.
+    """
+
+    global DEDICATED_AUTOMATION_HWND  # Reference stored dedicated automation window handle.
+
+    if DEDICATED_AUTOMATION_HWND == 0:  # Verify whether a dedicated handle is stored.
+        return True  # Nothing to close when handle is zero.
+
+    window = find_window_by_hwnd(DEDICATED_AUTOMATION_HWND)  # Locate window by stored OS handle.
+
+    if window is None:  # Verify window existence after handle lookup.
+        DEDICATED_AUTOMATION_HWND = 0  # Reset stored handle when no matching window is found.
+        return True  # Treat missing window as already closed.
+
+    try:  # Attempt to activate and close the dedicated window gracefully.
+        activate_window_with_fallback(window)  # Activate the dedicated automation window before closing.
+        time.sleep(0.2)  # Wait after activation.
+        current_os = platform.system().lower()  # Detect current operating system for proper close hotkey.
+
+        if current_os == "darwin":  # Verify macOS for command-quit hotkey.
+            pyautogui.hotkey("command", "q")  # Send Command+Q to quit Chrome on macOS.
+        else:  # Use Alt+F4 for non-macOS platforms as the close hotkey.
+            pyautogui.hotkey("alt", "f4")  # Send Alt+F4 to close the dedicated Chrome window on Windows/Linux.
+
+        time.sleep(0.6)  # Wait after close hotkey to allow window teardown.
+        DEDICATED_AUTOMATION_HWND = 0  # Reset stored handle after successful close.
+        return True  # Return success after closing the dedicated window.
+    except Exception:  # Handle any exceptions during activation or close operations.
+        return False  # Return failure when an exception prevented closing.
+
+
 def find_window_by_hwnd(hwnd: int) -> Any:
     """
     Finds a Chrome window by its OS window handle.
