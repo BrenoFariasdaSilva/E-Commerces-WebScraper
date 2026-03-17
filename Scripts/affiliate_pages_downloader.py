@@ -545,6 +545,28 @@ def prepare_dedicated_chrome_window_for_automation() -> bool:
     return True  # Return success status when dedicated automation window is ready.
 
 
+def find_window_by_hwnd(hwnd: int) -> Any:
+    """
+    Finds a Chrome window by its OS window handle.
+
+    :param hwnd: OS window handle to search for among visible Chrome windows.
+    :return: Matching Chrome window object or None when not found.
+    """
+
+    if hwnd == 0:  # Verify handle is non-zero before iterating Chrome windows.
+        return None  # Return None when no valid handle is stored.
+
+    chrome_windows = get_chrome_windows()  # Retrieve visible non-minimized Chrome windows.
+
+    for window in chrome_windows:  # Iterate Chrome windows to locate the OS handle match.
+        window_hwnd = int(getattr(window, "_hWnd", 0))  # Retrieve OS window handle from the current window object.
+
+        if window_hwnd == hwnd:  # Verify whether current window matches the stored dedicated handle.
+            return window  # Return matched window object immediately.
+
+    return None  # Return None when no matching window is found.
+
+
 def resolve_downloads_directories() -> List[str]:
     """
     Resolves the active downloads directory for the current operating system.
