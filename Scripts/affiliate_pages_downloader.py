@@ -667,29 +667,31 @@ def prepare_active_downloads_directory() -> List[str]:
     return ACTIVE_DOWNLOADS_DIRS  # Return cached active downloads directories for immediate usage.
 
 
-def open_chrome_download_settings_page() -> bool:
+def open_chrome_download_settings_page(open_in_new_tab: bool = True) -> bool:
     """
-    Opens the Chrome downloads settings page in a new tab.
+    Opens the Chrome downloads settings page, optionally in a new tab.
 
-    :param: None.
+    :param open_in_new_tab: Whether to open a fresh tab before navigating.
     :return: True when the settings page is opened, otherwise False.
     """
 
-    try:  # Attempt to open the Chrome downloads settings page in a new tab.
-        pyautogui.hotkey("ctrl", "t")  # Open a new Chrome tab for downloads settings.
-        time.sleep(0.2)  # Wait after opening the settings tab.
-        pyautogui.hotkey("ctrl", "l")  # Focus the address bar in the settings tab.
+    try:  # Attempt to open or reuse the current tab for the Chrome downloads settings page.
+        if open_in_new_tab:  # Verify whether a new tab should be created for the settings page.
+            pyautogui.hotkey("ctrl", "t")  # Open a new Chrome tab for downloads settings when requested.
+            time.sleep(0.2)  # Wait after opening the settings tab.
+
+        pyautogui.hotkey("ctrl", "l")  # Focus the address bar in the current tab.
         time.sleep(0.08)  # Wait after focusing the address bar.
         pyautogui.hotkey("ctrl", "a")  # Select any existing address-bar text.
         time.sleep(0.05)  # Wait after selecting the address-bar text.
         pyautogui.press("backspace")  # Clear the selected address-bar text.
         time.sleep(0.05)  # Wait after clearing the address-bar text.
-        pyautogui.typewrite(CHROME_DOWNLOAD_SETTINGS_URL, interval=0.0)  # Type the Chrome downloads settings URL.
+        pyautogui.typewrite(CHROME_DOWNLOAD_SETTINGS_URL, interval=0.0)  # Type the Chrome downloads settings URL into the address bar.
         time.sleep(0.1)  # Wait after typing the settings URL.
         pyautogui.press("enter")  # Navigate to the Chrome downloads settings page.
         time.sleep(DOWNLOAD_SETTINGS_RENDER_WAIT_SECONDS)  # Wait for the Chrome downloads settings page to render.
-        return True  # Return success after opening the downloads settings page.
-    except Exception:  # Handle settings-tab opening failures.
+        return True  # Return success after opening or navigating to the downloads settings page.
+    except Exception:  # Handle settings navigation failures.
         print(f"{BackgroundColors.YELLOW}[WARNING] Failed to open Chrome downloads settings page.{Style.RESET_ALL}")  # Log downloads settings page opening failure.
         return False  # Return failure when the downloads settings page cannot be opened.
 
@@ -957,11 +959,12 @@ def close_chrome_download_settings_tab() -> bool:
     return activate_automation_window()  # Restore dedicated automation window focus after closing the downloads settings tab.
 
 
-def verify_and_correct_chrome_download_settings(assets_dir: Path) -> bool:
+def verify_and_correct_chrome_download_settings(assets_dir: Path, open_in_new_tab: bool = True) -> bool:
     """
     Verifies and corrects Chrome downloads settings before automation starts.
 
     :param assets_dir: Path to the browser assets directory.
+    :param open_in_new_tab: Whether to open the settings page in a new tab.
     :return: True when Chrome downloads settings are ready, otherwise False.
     """
 
@@ -970,7 +973,7 @@ def verify_and_correct_chrome_download_settings(assets_dir: Path) -> bool:
     wrong_toggle_2_imgs = [assets_dir / "AskUserDownloadConfirmation - Black - Wrong - Toggle 2 On.png", assets_dir / "AskUserDownloadConfirmation - White - Wrong - Toggle 2 On.png"]  # Define image paths for Toggle 2 enabled (both color variants).
     wrong_both_imgs = [assets_dir / "AskUserDownloadConfirmation - Black - Wrong - Both Toggles On.png", assets_dir / "AskUserDownloadConfirmation - White - Wrong - Both Toggles On.png"]  # Define image paths for both toggles enabled (both color variants).
 
-    if not open_chrome_download_settings_page():  # Verify whether the Chrome downloads settings page was opened successfully.
+    if not open_chrome_download_settings_page(open_in_new_tab=open_in_new_tab):  # Verify whether the Chrome downloads settings page was opened successfully.
         return False  # Return failure when the Chrome downloads settings page cannot be opened.
 
     correction_result = correct_chrome_download_settings_state(correct_imgs, wrong_toggle_1_imgs, wrong_toggle_2_imgs, wrong_both_imgs)  # Correct settings state with iterative re-detection between clicks.
@@ -1835,7 +1838,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
     if not prepare_dedicated_chrome_window_for_automation():  # Verify dedicated Chrome window preparation before opening automation tabs.
         return 1  # Return failure exit code when dedicated automation window is unavailable.
 
-    chrome_download_settings_ready = verify_and_correct_chrome_download_settings(assets_dir)  # Verify Chrome downloads settings before processing product URLs.
+    chrome_download_settings_ready = verify_and_correct_chrome_download_settings(assets_dir, open_in_new_tab=False)  # Verify Chrome downloads settings in the current tab before processing product URLs.
 
     if not chrome_download_settings_ready:  # Verify whether Chrome downloads settings could not be verified or corrected automatically.
         print(f"{BackgroundColors.YELLOW}[WARNING] Chrome downloads settings could not be verified or corrected automatically. Continuing execution.{Style.RESET_ALL}")  # Log non-blocking downloads settings verification warning.
