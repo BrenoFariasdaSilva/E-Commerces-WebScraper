@@ -567,6 +567,25 @@ def find_window_by_hwnd(hwnd: int) -> Any:
     return None  # Return None when no matching window is found.
 
 
+def activate_automation_window() -> bool:
+    """
+    Activates the dedicated automation Chrome window using the stored OS window handle.
+
+    :param: None.
+    :return: True when the dedicated automation window is activated, otherwise False.
+    """
+
+    global DEDICATED_AUTOMATION_HWND  # Reference stored dedicated automation window handle.
+
+    if DEDICATED_AUTOMATION_HWND != 0:  # Verify that a dedicated automation window handle was previously stored.
+        window = find_window_by_hwnd(DEDICATED_AUTOMATION_HWND)  # Locate dedicated automation window by OS handle.
+
+        if window is not None:  # Verify whether the dedicated automation window is still present.
+            return activate_window_with_fallback(window)  # Activate dedicated automation window using existing fallback strategy.
+
+    return activate_chrome_window()  # Fall back to standard Chrome activation when dedicated handle is unavailable.
+
+
 def resolve_downloads_directories() -> List[str]:
     """
     Resolves the active downloads directory for the current operating system.
