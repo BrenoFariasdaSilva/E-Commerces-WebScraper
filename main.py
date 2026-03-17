@@ -1231,9 +1231,24 @@ def detect_platform_indicator(content: str) -> bool:
     :return: True when a platform indicator is found, False otherwise.
     """
 
+    normalized_content = re.sub(r"[^a-z0-9]+", "", content.lower())  # Normalize content to compare compact platform names regardless of spaces/punctuation
+
     for display_name, platform_id in PLATFORMS_MAP.items():  # Iterate platform display and id mappings
-        if re.search(rf"\b{re.escape(display_name)}\b", content, re.IGNORECASE) or re.search(rf"\b{re.escape(platform_id)}\b", content, re.IGNORECASE):  # Verify either display or id appears
+        spaced_display_name = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", display_name)  # Split camel-cased platform name into spaced variant (e.g., MercadoLivre -> Mercado Livre)
+        compact_display_name = re.sub(r"[^a-z0-9]+", "", display_name.lower())  # Compact display name for normalized comparison
+        compact_platform_id = re.sub(r"[^a-z0-9]+", "", platform_id.lower())  # Compact platform id for normalized comparison
+
+        if re.search(rf"\b{re.escape(display_name)}\b", content, re.IGNORECASE):  # Verify original display name appears in content
             return True  # Return True immediately when a platform indicator is detected
+
+        if re.search(rf"\b{re.escape(spaced_display_name)}\b", content, re.IGNORECASE):  # Verify spaced display variant appears in content
+            return True  # Return True immediately when a platform indicator is detected
+
+        if re.search(rf"\b{re.escape(platform_id)}\b", content, re.IGNORECASE):  # Verify platform id appears in content
+            return True  # Return True immediately when a platform indicator is detected
+
+        if compact_display_name in normalized_content or compact_platform_id in normalized_content:  # Verify compact forms against normalized content as a final fallback
+            return True  # Return True when compact indicator match is detected
 
     return False  # Return False when no known platform indicator was found
 
