@@ -571,8 +571,8 @@ def close_dedicated_automation_window() -> bool:
 
         if current_os == "darwin":  # Verify macOS for command-quit hotkey.
             pyautogui.hotkey("command", "q")  # Send Command+Q to quit Chrome on macOS.
-        else:  # Use Alt+F4 for non-macOS platforms as the close hotkey.
-            pyautogui.hotkey("alt", "f4")  # Send Alt+F4 to close the dedicated Chrome window on Windows/Linux.
+        else:  # Use Control Shift+W for Windows/Linux to close the current window without affecting other windows.
+            pyautogui.hotkey("ctrl", "shift", "w")  # Send Control+Shift+W to close the current Chrome window on Windows/Linux.
 
         time.sleep(0.6)  # Wait after close hotkey to allow window teardown.
         DEDICATED_AUTOMATION_HWND = 0  # Reset stored handle after successful close.
