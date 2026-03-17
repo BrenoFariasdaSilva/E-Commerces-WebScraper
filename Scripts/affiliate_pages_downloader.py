@@ -1361,7 +1361,7 @@ def move_downloaded_archives(downloads_dirs: List[str], destination_dir: Path, u
             print(f"{BackgroundColors.YELLOW}[WARNING] Failed to move downloaded file: {source_path}{Style.RESET_ALL}")  # Log archive move failure warning.
 
 
-def process_urls_with_download_tracking(urls: List[str], tab_count: int, downloads_dirs: List[str], extension_img: Path, download_img: Path, confirmation_img: Path, close_download_tab_img: Path, mercado_livre_img: Path, ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]]) -> Tuple[int, Dict[str, str], bool]:
+def process_urls_with_download_tracking(urls: List[str], tab_count: int, downloads_dirs: List[str], extension_img: Path, download_img: Path, confirmation_img: Path, close_download_tab_img: Path, mercado_livre_img: Path, ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]], chrome_download_settings_ready: bool) -> Tuple[int, Dict[str, str], bool]:
     """
     Processes URLs while tracking downloaded files by directory snapshots.
 
@@ -1377,11 +1377,13 @@ def process_urls_with_download_tracking(urls: List[str], tab_count: int, downloa
     :param download_methods: Grouped download click methods dictionary.
     :param completion_methods: Grouped completion detection methods dictionary.
     :param close_methods: Grouped close extension tab methods dictionary.
+    :param chrome_download_settings_ready: Whether Chrome downloads settings were verified successfully before URL processing.
     :return: Processed count, URL mapping dictionary, and success status.
     """
 
     url_to_download: Dict[str, str] = {}  # Initialize URL to downloaded filename mapping dictionary.
     processed_count = 0  # Initialize processed URL counter.
+    initial_consecutive_download_failures = 0  # Initialize consecutive download-failure counter for the first processed URLs when Chrome downloads settings are unresolved.
     downloads_dirs[:] = [str(Path(downloads_dir).resolve()) for downloads_dir in downloads_dirs]  # Resolve and normalize monitored downloads directory paths.
 
     if tab_count > 0:  # Verify if there are URLs to process.
@@ -1439,6 +1441,11 @@ def process_urls_with_download_tracking(urls: List[str], tab_count: int, downloa
         if detected_download_dir != "" and len(downloads_dirs) > 1:  # Verify whether detected directory exists while local list remains unresolved.
             update_active_download_directory(detected_download_dir)  # Persist detected monitored downloads directory in global cache.
             downloads_dirs[:] = ACTIVE_DOWNLOADS_DIRS  # Update local monitored downloads directories list with detected cache.
+
+        initial_consecutive_download_failures, abort_result = handle_initial_chrome_download_failures(chrome_download_settings_ready, index, detected_filename, initial_consecutive_download_failures, url, processed_count, url_to_download)  # Verify initial downloads and possibly request manual intervention
+
+        if abort_result is not None:  # Verify whether handler requested abort after manual intervention request
+            return abort_result  # Return handler-provided abort tuple to stop processing remaining URLs
 
         associate_url_with_download(url_to_download, url, detected_filename)  # Persist URL to downloaded filename mapping when detection succeeds.
 
@@ -1794,7 +1801,9 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
     if not prepare_dedicated_chrome_window_for_automation():  # Verify dedicated Chrome window preparation before opening automation tabs.
         return 1  # Return failure exit code when dedicated automation window is unavailable.
 
-    if not verify_and_correct_chrome_download_settings(assets_dir):  # Verify Chrome downloads settings before processing product URLs.
+    chrome_download_settings_ready = verify_and_correct_chrome_download_settings(assets_dir)  # Verify Chrome downloads settings before processing product URLs.
+
+    if not chrome_download_settings_ready:  # Verify whether Chrome downloads settings could not be verified or corrected automatically.
         print(f"{BackgroundColors.YELLOW}[WARNING] Chrome downloads settings could not be verified or corrected automatically. Continuing execution.{Style.RESET_ALL}")  # Log non-blocking downloads settings verification warning.
 
     ext_methods: Dict[str, List[int]] = {}  # Initialize extension method map.
@@ -1805,7 +1814,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
     processed_count = 0  # Initialize processed tab counter.
     start_tick = time.time()  # Capture workflow start timestamp.
     url_to_download: Dict[str, str] = {}  # Initialize URL to downloaded filename mapping dictionary.
-    processed_count, url_to_download, process_success = process_urls_with_download_tracking(urls, tab_count, downloads_dirs, extension_img, download_img, confirmation_img, close_download_tab_img, mercado_livre_img, ext_methods, download_methods, completion_methods, close_methods)  # Process URLs with download tracking and retrieve mapping details.
+    processed_count, url_to_download, process_success = process_urls_with_download_tracking(urls, tab_count, downloads_dirs, extension_img, download_img, confirmation_img, close_download_tab_img, mercado_livre_img, ext_methods, download_methods, completion_methods, close_methods, chrome_download_settings_ready)  # Process URLs with download tracking and retrieve mapping details.
 
     if not process_success:  # Verify if URL processing completed without activation failure.
         return 1  # Return failure exit code when URL processing fails.
