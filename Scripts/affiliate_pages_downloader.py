@@ -1346,7 +1346,13 @@ def process_urls_with_download_tracking(urls: List[str], tab_count: int, downloa
         pyautogui.hotkey("ctrl", "t")  # Open blank separator tab.
         time.sleep(0.2)  # Wait after opening separator tab.
 
-    for index, url in enumerate(tqdm(urls, total=len(urls), desc=f"{BackgroundColors.GREEN}Processing URLs{Style.RESET_ALL}"), start=1):  # Initialize tqdm progress bar for URL processing while preserving enumerate indexing
+    bar_format = (
+        f"{BackgroundColors.GREEN}{{desc}}: {Style.RESET_ALL}"  # Format the description and a green colon for clarity
+        f"{BackgroundColors.CYAN}{{bar}}{Style.RESET_ALL} "  # Render the progress bar itself in cyan for visibility
+        f"{BackgroundColors.GREEN}{{n_fmt}}/{{total_fmt}} [{{elapsed}}<{{remaining}}, {{rate_fmt}}/it]{Style.RESET_ALL}"
+    )  # Combine ANSI-colored segments into a single tqdm bar format string
+
+    for index, url in enumerate(tqdm(urls, total=len(urls), desc="Processing URLs", bar_format=bar_format), start=1):  # Initialize tqdm with custom colored bar_format and enumerate indexing
         pre_download_snapshots = snapshot_download_directories(downloads_dirs)  # Capture downloads directory snapshots before URL processing.
 
         if not activate_automation_window():  # Verify if automation window activation succeeds before URL navigation.
