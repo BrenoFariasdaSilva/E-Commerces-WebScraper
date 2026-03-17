@@ -1343,6 +1343,7 @@ def validate_template_file(template_path: Path) -> bool:
     """
 
     content = read_template_content(template_path)  # Read template file content safely and get string or None
+
     if content is None:  # Verify the template content was read successfully
         print(f"{BackgroundColors.YELLOW}[WARNING] Template validation failed: missing mandatory field Template File{Style.RESET_ALL}")  # Log warning when file missing or unreadable
         return False  # Return False when content could not be read
@@ -1496,9 +1497,9 @@ def generate_marketing_text(product_description, description_file, product_data=
             try:  # Try to validate the generated template file immediately after writing it.
                 valid_template = validate_template_file(Path(formatted_file))  # Validate generated template file and get boolean result.
                 if not valid_template:  # Verify if validation failed for the generated template.
-                    print(f"[WARNING] Template validation failed for file: {formatted_file}")  # Log warning when template is invalid.
+                    print(f"{BackgroundColors.YELLOW}[WARNING] Template validation failed for file: {BackgroundColors.CYAN}{formatted_file}{Style.RESET_ALL}")  # Log warning when template is invalid.
             except Exception as e:  # Handle unexpected exceptions raised by the validation function.
-                print(f"[WARNING] Template validation failed: {e}")  # Log warning including exception message when validation raises.
+                print(f"{BackgroundColors.YELLOW}[WARNING] Template validation failed: {e}{Style.RESET_ALL}")  # Log warning including exception message when validation raises.
 
             return True  # Return success for this key attempt even if validation logged warnings.
 
