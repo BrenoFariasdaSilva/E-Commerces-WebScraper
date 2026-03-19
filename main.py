@@ -76,6 +76,7 @@ from pathlib import Path  # For handling file paths
 from PIL import Image  # For image processing
 from Shein import Shein  # Import the Shein class
 from Shopee import Shopee  # Import the Shopee class
+from tkinter import Tk, messagebox  # For showing GUI warnings
 from tqdm import tqdm  # Progress bar for URL processing
 from typing import Dict, List, Optional, Set, Tuple  # For type-annotated containers used by final verification functions
 from urllib.parse import urlparse  # For parsing URL hostnames
@@ -1889,6 +1890,31 @@ def run_final_output_integrity_verification(timestamped_output_dir: Optional[str
     remove_duplicate_directories_with_highest_index(timestamped_output_dir, duplicate_records)  # Remove higher-index directories for duplicate product names
 
 
+def show_amazon_update_warning(has_amazon: bool, title: str) -> None:
+    """
+    Show a GUI warning when Amazon URLs were present in the run.
+
+    :param has_amazon: Boolean flag indicating whether any Amazon URLs were processed.
+    :param title: Title for the GUI warning dialog.
+    :return: None
+    """
+
+    if not has_amazon:  # Verify if no Amazon URLs were processed and nothing to do
+        return  # Return immediately when no Amazon URLs were present
+
+    try:  # Try to display a GUI warning to the user using tkinter
+        root = Tk()  # Create a hidden Tk root window for the dialog
+        root.withdraw()  # Hide the root window so only the dialog is shown
+        message = (
+            "One or more Amazon links were processed. Amazon short links are valid for 24 hours. "
+            "Please update Amazon URLs that require freshness to avoid expired affiliate links in the generated template files."
+        )  # Compose the user-facing message explaining the 24h validity constraint
+        messagebox.showwarning(title, message)  # Show a modal warning dialog to the user
+        root.destroy()  # Destroy the hidden root to clean up GUI resources
+    except Exception as e:  # If GUI display fails, fallback to console warning without raising
+        print(f"{BackgroundColors.YELLOW}[WARNING] Could not display GUI warning: {e}{Style.RESET_ALL}")  # Emit fallback console warning
+
+
 def main():
     """
     Main function.
@@ -1938,6 +1964,7 @@ def main():
     timestamped_output_dir = None  # Will be created lazily on first successful scrape
     
     successful_scrapes = 0  # Counter for successful operations
+    has_amazon = False  # Initialize flag to detect presence of Amazon URLs during processing
 
     urls_to_process = load_urls_to_process(TEST_URLs, INPUT_FILE)  # Load URLs to process (returns list of tuples)
     
@@ -1956,6 +1983,8 @@ def main():
         )
         for index, (url, local_html_path) in enumerate(pbar, 1):  # Iterate through all URLs with optional local HTML paths
             platform_id = detect_platform(url) or ""  # Detect platform for current URL
+            if platform_id == "amazon":  # Verify if current platform is Amazon
+                has_amazon = True  # Mark presence of Amazon URL for later GUI warning
             platform_name = ({v: k for k, v in PLATFORMS_MAP.items()}).get(platform_id, platform_id if platform_id else "Unknown")  # Derive reverse mapping from PLATFORMS_MAP and get human-friendly platform name
             desc = (
                 f"{BackgroundColors.GREEN}Processing {BackgroundColors.CYAN}{index}{BackgroundColors.GREEN}/{BackgroundColors.CYAN}{total_urls}{BackgroundColors.GREEN} - {BackgroundColors.CYAN}{platform_name}{BackgroundColors.GREEN}"
@@ -2172,6 +2201,7 @@ def main():
     print(
         f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Program finished.{Style.RESET_ALL}"
     )  # Output the end of the program message
+    show_amazon_update_warning(has_amazon, "Amazon URLs Expire in 24h")  # Show GUI warning when Amazon URLs were present in input
 
     (
         atexit.register(play_sound) if RUN_FUNCTIONS["Play Sound"] else None
