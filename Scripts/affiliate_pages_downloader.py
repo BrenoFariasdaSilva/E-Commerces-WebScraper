@@ -266,6 +266,41 @@ def open_chrome_by_os() -> bool:
         return False  # Return failure status when launch attempt fails.
 
 
+def open_chrome_with_profile(display_name: str) -> bool:
+    """
+    Open Google Chrome using the requested profile when no windows are present.
+
+    :param display_name: Display name of the Chrome profile to open.
+    :return: True when the launch command is dispatched, otherwise False.
+    """
+
+    try:  # Attempt profile-aware Chrome launch using OS-specific commands
+        profile_dir = resolve_chrome_profile_with_fallback(display_name)  # Resolve profile directory using display name with Default fallback.
+
+        user_data_dir = str(Path(CHROME_USER_DATA_DIR).resolve())  # Resolve absolute user-data directory path for Chrome.
+
+        current_os = platform.system().lower()  # Retrieve normalized operating system name.
+
+        if current_os == "windows":  # Verify whether the current operating system is Windows.
+            os.system(f'start chrome --user-data-dir="{user_data_dir}" --profile-directory="{profile_dir}"')  # Dispatch Windows start command to open Chrome with profile flags.
+        elif current_os == "darwin":  # Verify whether the current operating system is macOS.
+            os.system(f'open -a "Google Chrome" --args --user-data-dir="{user_data_dir}" --profile-directory="{profile_dir}"')  # Dispatch macOS open command with Chrome args to open specific profile.
+        elif current_os == "linux":  # Verify whether the current operating system is Linux.
+            launch_code = os.system(f'google-chrome --user-data-dir="{user_data_dir}" --profile-directory="{profile_dir}" >/dev/null 2>&1 &')  # Dispatch Linux chrome command in background with profile flags.
+
+            if launch_code != 0:  # Verify whether primary Linux Chrome command failed.
+                os.system(f'chromium-browser --user-data-dir="{user_data_dir}" --profile-directory="{profile_dir}" >/dev/null 2>&1 &')  # Dispatch Linux Chromium fallback command in background with profile flags.
+        else:  # Handle unsupported operating systems.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Unsupported operating system for Chrome auto-launch: {current_os}{Style.RESET_ALL}")  # Log unsupported operating system warning.
+            return False  # Return failure status for unsupported operating systems.
+
+        time.sleep(2.0)  # Wait for Chrome process and window initialization.
+        return True  # Return success status after profile-aware launch command dispatch.
+    except Exception:  # Handle Chrome launch failures.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to open Chrome automatically with profile: {display_name}{Style.RESET_ALL}")  # Log Chrome auto-launch failure warning.
+        return False  # Return failure status when profile-aware launch attempt fails.
+
+
 def activate_chrome_window() -> bool:
     """
     Activates a Chrome window to receive automation keystrokes.
