@@ -155,6 +155,33 @@ RUN_FUNCTIONS = {
 # Functions Definitions:
 
 
+def resolve_chrome_profile_directory(display_name: str) -> str | None:
+    """
+    Resolve Chrome profile directory folder (e.g. "Profile 1" or "Default")
+    from the Chrome "Local State" file by matching the profile display name.
+
+    Returns the directory name when found, otherwise None.
+    """
+    
+    try:  # Attempt to read Chrome Local State and resolve profile
+        local_state_path = Path(CHROME_USER_DATA_DIR) / "Local State"  # Construct Local State path
+        if not local_state_path.exists():  # Verify Local State exists
+            return None  # Return when Local State is missing
+
+        raw = local_state_path.read_text(encoding="utf-8", errors="ignore")  # Read Local State file
+        data = json.loads(raw)  # Parse Local State JSON
+        info_cache = data.get("profile", {}).get("info_cache", {})  # Get profile info cache
+
+        for profile_dir, info in info_cache.items():  # Iterate profile entries
+            if info.get("name") == display_name:  # Match profile display name
+                return profile_dir  # Return matching profile directory
+
+    except Exception:  # Return None on any error during resolution
+        return None  # Return None on failure
+
+    return None  # Return None when no matching profile is found
+
+
 def verbose_output(true_string="", false_string=""):
     """
     Outputs a message if the VERBOSE constant is set to True.
