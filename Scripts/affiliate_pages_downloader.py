@@ -313,7 +313,7 @@ def activate_chrome_window() -> bool:
     chrome_windows = get_chrome_windows()  # Retrieve visible non-minimized Chrome windows.
 
     if len(chrome_windows) == 0:  # Verify at least one Chrome window exists.
-        launch_result = open_chrome_by_os()  # Attempt to open Chrome using operating-system specific command.
+        launch_result = open_chrome_with_profile(CHROME_PROFILE_DISPLAY_NAME)  # Attempt to open Chrome using profile-aware launch command.
 
         if not launch_result:  # Verify whether automatic Chrome launch failed.
             return False  # Return failure status when no Chrome window is available.
