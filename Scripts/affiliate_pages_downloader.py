@@ -182,6 +182,29 @@ def resolve_chrome_profile_directory(display_name: str) -> str | None:
     return None  # Return None when no matching profile is found
 
 
+def resolve_chrome_profile_with_fallback(display_name: str, fallback_folder_name: str = "Default") -> str | None:
+    """
+    Resolve profile directory or fallback to the main profile.
+
+    :param display_name: Display name of the desired profile.
+    :param fallback_folder_name: Folder name to use as fallback (default "Default").
+    :return: Resolved profile folder name or fallback when resolution fails.
+    """
+
+    try:  # Attempt primary then fallback resolution
+        profile = resolve_chrome_profile_directory(display_name)  # Attempt to resolve requested profile
+        if profile is not None:  # Verify if requested profile was resolved
+            return profile  # Return the resolved profile directory
+
+        fallback = resolve_chrome_profile_directory(fallback_folder_name)  # Attempt to resolve fallback profile
+        if fallback is not None:  # Verify if fallback profile was resolved
+            return fallback  # Return the resolved fallback directory
+
+        return fallback_folder_name  # Return folder name string as final fallback
+    except Exception:  # Handle any exception during resolution
+        return fallback_folder_name  # Return fallback folder name on error
+
+
 def verbose_output(true_string="", false_string=""):
     """
     Outputs a message if the VERBOSE constant is set to True.
@@ -2057,7 +2080,7 @@ def main():
     parser.add_argument("--headerless", type=lambda s: str(s).lower() in ("true", "1", "yes", "y"), default=True, help="Whether to suppress GUI messagebox (default: True)")  # Register headerless argument with boolean conversion
 
     args = parser.parse_args()  # Parse command-line arguments.
-    
+
     exit_code = run(args.tab_count, args.urls_file, args.assets_dir, args.headerless)  # Execute automation flow with headerless option
 
     finish_time = datetime.datetime.now()  # Capture program finish timestamp.
