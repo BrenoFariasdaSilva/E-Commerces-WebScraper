@@ -205,6 +205,21 @@ def resolve_chrome_profile_with_fallback(display_name: str, fallback_folder_name
         return fallback_folder_name  # Return fallback folder name on error
 
 
+def update_chrome_profile(display_name: str) -> None:
+    """
+    Update CHROME_PROFILE_DIRECTORY from the provided display name.
+
+    :param display_name: Display name of the desired profile.
+    :return: None.
+    """
+
+    global CHROME_PROFILE_DIRECTORY  # Reference global resolved profile directory variable.
+
+    resolved_profile = resolve_chrome_profile_with_fallback(display_name)  # Resolve profile directory using configured display name with Default fallback.
+
+    CHROME_PROFILE_DIRECTORY = resolved_profile  # Assign resolved profile directory to global configuration variable.
+
+
 def verbose_output(true_string="", false_string=""):
     """
     Outputs a message if the VERBOSE constant is set to True.
@@ -2080,6 +2095,8 @@ def main():
     parser.add_argument("--headerless", type=lambda s: str(s).lower() in ("true", "1", "yes", "y"), default=True, help="Whether to suppress GUI messagebox (default: True)")  # Register headerless argument with boolean conversion
 
     args = parser.parse_args()  # Parse command-line arguments.
+    
+    update_chrome_profile(CHROME_PROFILE_DISPLAY_NAME)  # Resolve and set CHROME_PROFILE_DIRECTORY using configured display name with Default fallback.
 
     exit_code = run(args.tab_count, args.urls_file, args.assets_dir, args.headerless)  # Execute automation flow with headerless option
 
