@@ -56,6 +56,7 @@ Assumptions & Notes:
 import argparse  # Parse command-line arguments.
 import atexit  # Register post-execution callback functions.
 import datetime  # Capture execution timestamps.
+import json  # Handle JSON data for Chrome profile resolution.
 import os  # Execute operating-system commands.
 import platform  # Identify active operating system.
 import pyautogui  # Automate keyboard and mouse interactions.
