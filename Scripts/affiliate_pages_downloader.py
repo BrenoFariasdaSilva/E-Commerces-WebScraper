@@ -100,6 +100,10 @@ DOWNLOADS_DIR = {
     "darwin": [os.path.join(os.path.expanduser("~"), "Downloads")],  # Define macOS downloads directory candidates.
 }  # Define monitored downloads directory candidates by operating system.
 
+CHROME_USER_DATA_DIR = os.path.join(os.path.expanduser("~"), "AppData", "Local", "Google", "Chrome", "User Data")  # Chrome User Data dir (Windows default)
+CHROME_PROFILE_DISPLAY_NAME = "Achadinhos Brasil Amanda"  # Profile display name to use
+CHROME_PROFILE_DIRECTORY: str | None = None  # Resolved profile folder name (e.g. "Profile 1")
+
 pyautogui.FAILSAFE = True  # Enable fail-safe by moving cursor to the top-left corner.
 pyautogui.PAUSE = 0.05  # Apply default pause between pyautogui actions.
 
