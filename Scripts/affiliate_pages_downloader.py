@@ -1807,23 +1807,24 @@ def scroll_extension_tab_to_start_button(scroll_amount: int = -500) -> None:
     time.sleep(0.2)  # Wait briefly after scrolling to allow elements to become visible.
 
 
-def scroll_window_to_top_center(scroll_amount: int = 10000) -> None:
+def scroll_window_to_top_center() -> None:
     """
     Scrolls the active window to the top center.
 
-    :param scroll_amount: Number of scroll units to attempt upward.
     :return: None.
     """
 
     try:  # Guard against unexpected errors during UI automation
         current_width, current_height = get_screen_dimensions()  # Retrieve current screen dimensions.
         center_x, center_y = current_width // 2, current_height // 2  # Compute center coordinates for the active window.
-        pyautogui.moveTo(center_x, center_y, duration=0.12)  # Move cursor to center of screen to prepare for scrolling.
+        pyautogui.moveTo(center_x, center_y, duration=0.12)  # Move cursor to center of screen to prepare for input.
         time.sleep(0.05)  # Wait briefly after moving cursor for UI stability.
-        pyautogui.scroll(scroll_amount)  # Scroll up by scroll_amount units to move content to top.
-        time.sleep(0.2)  # Wait after scrolling to allow UI elements to stabilize.
+        pyautogui.keyDown("home")  # Press and hold Home key to move content to top.
+        time.sleep(3)  # Hold Home key for three seconds to ensure top alignment.
+        pyautogui.keyUp("home")  # Release Home key after hold duration.
+        time.sleep(0.2)  # Wait after input to allow UI elements to stabilize.
     except Exception:  # Handle unexpected exceptions to avoid breaking main flow
-        pass  # Ignore exceptions to preserve execution flow when scrolling fails
+        pass  # Ignore exceptions to preserve execution flow when Home key press fails
 
 def click_download_button(download_img: Path) -> str:
     """
