@@ -1890,6 +1890,27 @@ def run_final_output_integrity_verification(timestamped_output_dir: Optional[str
     remove_duplicate_directories_with_highest_index(timestamped_output_dir, duplicate_records)  # Remove higher-index directories for duplicate product names
 
 
+def parse_history_occurrences(history: dict) -> Dict[Tuple[str, str, str], List[str]]:
+    """
+    Parse the history dictionary into occurrences grouped by platform, product name and affiliate URL.
+
+    :param history: Full history dictionary loaded from JSON file.
+    :return: Mapping from (platform, product_name, affiliate_url) to list of day strings.
+    """
+
+    occurrences: Dict[Tuple[str, str, str], List[str]] = {}  # Initialize occurrences mapping to collect entries
+
+    for day_str, platforms in history.items():  # Iterate recorded days in history
+        for platform_name, products in platforms.items():  # Iterate each platform group for the day
+            for prod in products:  # Iterate each product entry for the platform/day
+                pname = prod.get("Product Name", "")  # Extract product name from entry
+                aurl = prod.get("Affiliate URL", "")  # Extract affiliate URL from entry
+                key = (platform_name, pname, aurl)  # Build grouping key for this product entry
+                occurrences.setdefault(key, []).append(day_str)  # Append the day string to the occurrences list for key
+
+    return occurrences  # Return the built occurrences mapping
+
+
 def show_amazon_update_warning(has_amazon: bool, title: str) -> None:
     """
     Show a GUI warning when Amazon URLs were present in the run.
