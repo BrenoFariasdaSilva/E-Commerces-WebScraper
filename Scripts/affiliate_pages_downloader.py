@@ -1927,6 +1927,24 @@ def get_url_from_clipboard() -> str:
             return ""  # Return empty string when clipboard cannot be accessed.
 
 
+def validate_amazon_affiliate_url(url: str) -> bool:
+    """
+    Validate if URL is in correct Amazon affiliate format.
+
+    :param url: URL string to validate.
+    :return: True if URL matches Amazon affiliate pattern, False otherwise.
+    """
+
+    try:  # Attempt URL validation using pattern matching.
+        amazon_patterns = [r"https?://(?:www\.)?amazon(?:\.com|\.co\.uk|\.de|\.fr|\.es|\.it|\.com\.br).*[/?&]tag=", r"https?://amzn\.to/"]  # Define valid Amazon affiliate URL patterns.
+        for pattern in amazon_patterns:  # Iterate each Amazon affiliate pattern.
+            if re.search(pattern, url, re.IGNORECASE):  # Verify if URL matches current pattern (case-insensitive).
+                return True  # Return validation success when pattern matched.
+        return False  # Return validation failure when no patterns matched.
+    except Exception:  # Handle regex or parsing failures.
+        return False  # Return validation failure on exception.
+
+
 def build_report(ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]]) -> str:
     """
     Builds grouped execution report text.
