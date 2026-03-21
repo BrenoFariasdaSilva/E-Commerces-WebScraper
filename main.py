@@ -1454,6 +1454,50 @@ def save_history_file(history: dict, history_file_path: str) -> None:
         return  # Return early on failure
 
 
+def append_processed_product_to_history(day_str: str, platform_name: str, product_name: str, affiliate_url: str, old_price: str, current_price: str, discount_percent: str, history_file_path: str) -> None:
+    """
+    Append a processed product entry into the JSON history file under the given day and platform.
+
+    :param day_str: Day string in format "DD-MM-YYYY" to store the entry under.
+    :param platform_name: Platform name to group the entry (e.g., "Amazon").
+    :param product_name: Name of the product to record.
+    :param affiliate_url: Affiliate or product URL to record.
+    :param old_price: Old price value as string to record.
+    :param current_price: Current price value as string to record.
+    :param discount_percent: Discount percentage as string to record.
+    :param history_file_path: Path to the JSON history file.
+    :return: None
+    """
+
+    if not ensure_history_file_exists(history_file_path):  # Verify the history file exists or was created
+        return  # Return early when history file cannot be ensured
+
+    try:  # Try to read existing history content
+        with open(history_file_path, "r", encoding="utf-8") as f:  # Open the history file for reading
+            history = json.load(f)  # Load the existing history dictionary from file
+    except Exception:  # Handle read/parse exceptions by initializing empty history
+        history = {}  # Use an empty dict when existing history cannot be read
+
+    day_records = history.get(day_str, {})  # Retrieve the day's grouped records or empty dict
+
+    platform_records = day_records.get(platform_name, [])  # Retrieve the platform list or initialize empty list
+
+    product_entry = {  # Build the product entry dictionary with required fields
+        "Product Name": product_name,  # Store the product name
+        "Affiliate URL": affiliate_url,  # Store the affiliate or product URL
+        "Old Price": old_price,  # Store the old price string
+        "Current Price": current_price,  # Store the current price string
+        "Discount (%)": discount_percent,  # Store the discount percentage string
+    }
+
+    platform_records.append(product_entry)  # Append the new product entry to the platform list
+
+    day_records[platform_name] = platform_records  # Update the day's records with the platform list
+
+    history[day_str] = day_records  # Update the full history with the day's records
+
+    save_history_file(history, history_file_path)  # Persist the updated history to disk
+
 
 def remove_url_line_from_input_file(url, local_html_path=None):
     """
