@@ -661,6 +661,11 @@ def prepare_dedicated_chrome_window_for_automation() -> bool:
             activation_result = activate_window_with_fallback(dedicated_window)  # Activate the dedicated profile window before storing its handle.
 
             if activation_result:  # Verify whether dedicated profile window activation succeeded.
+                relocation_result = ensure_chrome_on_primary_monitor(dedicated_window)  # Ensure dedicated profile window is relocated to the primary monitor before automation.
+
+                if not relocation_result:  # Verify whether relocation fallback failed for dedicated profile window.
+                    print(f"{BackgroundColors.YELLOW}[WARNING] Dedicated profile window relocation did not complete. Continuing with current active window.{Style.RESET_ALL}")  # Log dedicated-window relocation warning without interrupting workflow.
+
                 try:  # Attempt to capture dedicated profile window handle after activation.
                     DEDICATED_AUTOMATION_HWND = int(getattr(dedicated_window, "_hWnd", 0))  # Persist dedicated automation OS window handle.
                 except Exception:  # Handle dedicated window handle capture exception.
