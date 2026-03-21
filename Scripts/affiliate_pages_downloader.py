@@ -1945,6 +1945,34 @@ def validate_amazon_affiliate_url(url: str) -> bool:
         return False  # Return validation failure on exception.
 
 
+def update_urls_txt_with_new_amazon_url(old_url: str, new_url: str, urls_file: Path) -> bool:
+    """
+    Update urls.txt file by replacing old Amazon URL with newly copied affiliate URL.
+
+    :param old_url: Original Amazon URL to replace.
+    :param new_url: New affiliate URL copied from clipboard.
+    :param urls_file: Path to the urls.txt file.
+    :return: True if update succeeded, False otherwise.
+    """
+
+    try:  # Attempt file read and update operation.
+        if not urls_file.exists():  # Verify urls.txt file exists before reading.
+            return False  # Return failure when file does not exist.
+
+        content = urls_file.read_text(encoding="utf-8")  # Read complete urls.txt file content.
+        updated_content = content.replace(old_url, new_url)  # Replace old URL with new affiliate URL.
+
+        if updated_content == content:  # Verify if replacement actually occurred.
+            return False  # Return failure when no replacement happened.
+
+        urls_file.write_text(updated_content, encoding="utf-8")  # Write updated content back to urls.txt file.
+        verbose_output(f"{BackgroundColors.GREEN}Updated Amazon URL in urls.txt{Style.RESET_ALL}")  # Log successful URL update when verbose enabled.
+        return True  # Return success after file update.
+    except Exception as e:  # Handle file IO or replacement errors.
+        verbose_output(f"{BackgroundColors.RED}Failed to update Amazon URL in urls.txt: {e}{Style.RESET_ALL}")  # Log URL update failure when verbose enabled.
+        return False  # Return failure when exception occurs.
+
+
 def build_report(ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]]) -> str:
     """
     Builds grouped execution report text.
