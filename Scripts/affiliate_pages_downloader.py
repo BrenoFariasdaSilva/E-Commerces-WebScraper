@@ -1565,6 +1565,12 @@ def process_urls_with_download_tracking(urls: List[str], tab_count: int, downloa
         click_go_to_product_button(mercado_livre_img)  # Execute MercadoLivre button action when available.
 
         extension_method = click_image_or_coords(extension_img, EXTENSION_X_REF, EXTENSION_Y_REF)  # Execute extension click action with scaled fallback coordinates.
+        
+        px, py = compute_extension_cursor_position()  # Compute cursor position based on current browser/window size.
+        pyautogui.moveTo(px, py, duration=0.12)  # Move cursor to computed extension position to prepare for scrolling.
+        time.sleep(0.05)  # Wait briefly after moving cursor to allow UI to stabilize before scrolling.
+        scroll_extension_tab_to_start_button()  # Scroll at cursor position to reveal the Start download button on low-resolution screens.
+        
         download_method = click_download_button(download_img)  # Execute download click action.
         confirmation_method = wait_for_download_confirmation(confirmation_img)  # Execute completion polling action.
         close_method = close_extension_download_tab(close_download_tab_img)  # Execute close extension tab action.
