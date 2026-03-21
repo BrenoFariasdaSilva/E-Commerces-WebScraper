@@ -2138,8 +2138,15 @@ def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, urls_fi
     if not copied_url:  # Verify if clipboard retrieval succeeded.
         verbose_output(f"{BackgroundColors.RED}Failed to retrieve URL from clipboard{Style.RESET_ALL}")  # Log clipboard retrieval failure when verbose enabled.
         return False  # Return failure when clipboard is empty.
+    try:  # Attempt to validate copied URL using AFFILIATE_URL_PATTERN from Amazon module.
+        if isinstance(AFFILIATE_URL_PATTERN, str):  # Verify if AFFILIATE_URL_PATTERN is a string pattern.
+            matched = bool(re.search(AFFILIATE_URL_PATTERN, copied_url, re.IGNORECASE))  # Search using string pattern with ignore-case.
+        else:  # Handle compiled pattern objects when AFFILIATE_URL_PATTERN is a compiled regex.
+            matched = bool(AFFILIATE_URL_PATTERN.search(copied_url))  # Use compiled pattern search method for matching.
+    except Exception:  # Handle unexpected errors during pattern matching.
+        matched = False  # Fallback to False when pattern matching raises an exception.
 
-    if not validate_amazon_affiliate_url(copied_url):  # Verify if copied URL matches Amazon affiliate format.
+    if not matched:  # Verify if copied URL matches affiliate pattern.
         verbose_output(f"{BackgroundColors.RED}Invalid Amazon affiliate URL format: {copied_url}{Style.RESET_ALL}")  # Log invalid URL format when verbose enabled.
         return False  # Return failure when URL format is invalid.
 
