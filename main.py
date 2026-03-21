@@ -1416,6 +1416,27 @@ def ensure_history_file_exists(history_file_path: str) -> bool:
     return True  # Return True when file already exists or was created
 
 
+def read_history_for_day(day_str: str, history_file_path: str) -> dict:
+    """
+    Read and return the history dictionary for a given day from the JSON history file.
+
+    :param day_str: Day string in format "DD-MM-YYYY" to read history for.
+    :param history_file_path: Path to the JSON history file.
+    :return: Dictionary with the history for the requested day (empty dict when none).
+    """
+
+    if not ensure_history_file_exists(history_file_path):  # Verify the history file exists or was created
+        return {}  # Return empty dict when history file is unavailable
+
+    try:  # Try to read the JSON history file
+        with open(history_file_path, "r", encoding="utf-8") as f:  # Open the history file for reading
+            data = json.load(f)  # Load the JSON content into a Python object
+    except Exception:  # Handle JSON parsing or IO exceptions
+        data = {}  # Fallback to empty dict when reading fails
+
+    return data.get(day_str, {})  # Return the day's history or empty dict when not present
+
+
 def remove_url_line_from_input_file(url, local_html_path=None):
     """
     Removes a line containing the specified URL from the input file. If local_html_path is provided, it will only remove the line if it matches both the URL and the local HTML path.
