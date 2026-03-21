@@ -1971,6 +1971,48 @@ def find_timestamped_run_dirs(base_output_dir: str) -> List[str]:
     return run_dirs  # Return discovered run directories
 
 
+def collect_product_dirs_for_removal(run_dirs: List[str], keys_to_cleanup: List[Tuple[Tuple[str, str, str], str]]) -> List[str]:
+    """
+    Scan run directories and collect product directory paths that match cleanup keys.
+
+    :param run_dirs: List of timestamped run directory paths.
+    :param keys_to_cleanup: List of cleanup candidate keys with day markers.
+    :return: List of product directory paths to remove.
+    """
+
+    matched_dirs: List[str] = []  # Initialize list to collect matched product directories
+
+    for run_dir in run_dirs:  # Iterate each timestamped run directory
+        try:  # Guard scanning of each run directory to isolate failures
+            for prod_dir in os.listdir(run_dir):  # Iterate each product directory within the run
+                prod_full = os.path.join(run_dir, prod_dir)  # Build full path to product directory
+                if not os.path.isdir(prod_full):  # Only consider directory entries for matching
+                    continue  # Continue when entry is not a directory
+
+                desc_files = [f for f in os.listdir(prod_full) if f.endswith("_description.txt")]  # Find description files inside product directory
+                if not desc_files:  # Skip product directories without description files for verification
+                    continue  # Continue to next product directory when no description file is present
+
+                desc_path = os.path.join(prod_full, desc_files[0])  # Select the first description file as authoritative
+                try:  # Try reading description content for product matching
+                    with open(desc_path, "r", encoding="utf-8") as f:  # Open description file for reading
+                        content = f.read()  # Read file content for detection
+                except Exception:  # Ignore read errors and skip this product directory
+                    continue  # Continue to next product directory when reading fails
+
+                detected_name = detect_product_name(content)  # Detect product name from description content
+                detected_url = detect_product_url(content)  # Detect product URL from description content
+
+                for (platform_name, pname, aurl), day_marker in keys_to_cleanup:  # Iterate cleanup candidate keys to find matches
+                    if pname and detected_name and pname.strip() == detected_name.strip() and aurl and detected_url and aurl.strip() == detected_url.strip():  # Verify both product name and affiliate URL match exactly
+                        matched_dirs.append(prod_full)  # Append this product directory as a removal candidate upon match
+                        break  # Stop checking other keys for this product directory after a match
+        except Exception:  # Ignore unexpected errors scanning a run directory to continue other runs
+            continue  # Continue to next run directory when scanning errors occur
+
+    return matched_dirs  # Return collected product directories that matched cleanup keys
+
+
 def show_amazon_update_warning(has_amazon: bool, title: str) -> None:
     """
     Show a GUI warning when Amazon URLs were present in the run.
