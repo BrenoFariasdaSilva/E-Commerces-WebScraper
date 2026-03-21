@@ -2013,6 +2013,25 @@ def collect_product_dirs_for_removal(run_dirs: List[str], keys_to_cleanup: List[
     return matched_dirs  # Return collected product directories that matched cleanup keys
 
 
+def remove_directories(dir_paths: List[str]) -> List[str]:
+    """
+    Remove directories from disk and return the list of successfully removed paths.
+
+    :param dir_paths: List of absolute directory paths to remove.
+    :return: List of directory paths that were removed successfully.
+    """
+
+    removed: List[str] = []  # Initialize list to track removed directories
+    for p in dir_paths:  # Iterate candidate directory paths to remove
+        try:  # Attempt recursive removal for each candidate path
+            shutil.rmtree(p)  # Remove directory and its contents recursively
+            removed.append(p)  # Record path when removal succeeded
+        except Exception:  # Ignore removal failures to avoid interrupting batch cleanup
+            pass  # Continue with other removals even when one fails
+
+    return removed  # Return list of successfully removed directories
+
+
 def show_amazon_update_warning(has_amazon: bool, title: str) -> None:
     """
     Show a GUI warning when Amazon URLs were present in the run.
