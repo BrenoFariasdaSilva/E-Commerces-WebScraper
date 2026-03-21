@@ -2080,7 +2080,7 @@ def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, urls_fi
 
     success = update_urls_txt_with_new_amazon_url(current_url, copied_url, urls_file)  # Update urls.txt with new affiliate URL.
     if success:  # Verify if urls.txt was successfully updated.
-        verbose_output(f"{BackgroundColors.GREEN}Amazon URL successfully renewed to: {copied_url}{Style.RESET_ALL}")  # Log successful renewal completion when verbose enabled.
+        verbose_output(f"{BackgroundColors.GREEN}Amazon URL successfully renewed from {current_url} to {copied_url}{Style.RESET_ALL}")  # Log successful renewal completion when verbose enabled.
     return success  # Return the update result status.
 
 
