@@ -1648,6 +1648,7 @@ def process_urls_with_download_tracking(urls: List[str], tab_count: int, downloa
 
         if "amazon" in url.lower():  # Verify whether current URL is an Amazon URL before renewal attempt.
             urls_file = Path("urls.txt")  # Create Path object for urls.txt input file.
+            scroll_window_to_top_center()  # Scroll active window to top center to reveal the share button image.
             renewal_success = renew_amazon_affiliate_url(url, share_button_img, urls_file)  # Attempt Amazon affiliate URL renewal when URL is Amazon.
             if VERBOSE:  # Verify whether verbose logging is enabled for renewal status reporting.
                 if renewal_success:  # Verify whether renewal succeeded before logging success message.
@@ -1797,6 +1798,24 @@ def scroll_extension_tab_to_start_button(scroll_amount: int = -500) -> None:
 
     time.sleep(0.2)  # Wait briefly after scrolling to allow elements to become visible.
 
+
+def scroll_window_to_top_center(scroll_amount: int = 10000) -> None:
+    """
+    Scrolls the active window to the top center.
+
+    :param scroll_amount: Number of scroll units to attempt upward.
+    :return: None.
+    """
+
+    try:  # Guard against unexpected errors during UI automation
+        current_width, current_height = get_screen_dimensions()  # Retrieve current screen dimensions.
+        center_x, center_y = current_width // 2, current_height // 2  # Compute center coordinates for the active window.
+        pyautogui.moveTo(center_x, center_y, duration=0.12)  # Move cursor to center of screen to prepare for scrolling.
+        time.sleep(0.05)  # Wait briefly after moving cursor for UI stability.
+        pyautogui.scroll(scroll_amount)  # Scroll up by scroll_amount units to move content to top.
+        time.sleep(0.2)  # Wait after scrolling to allow UI elements to stabilize.
+    except Exception:  # Handle unexpected exceptions to avoid breaking main flow
+        pass  # Ignore exceptions to preserve execution flow when scrolling fails
 
 def click_download_button(download_img: Path) -> str:
     """
