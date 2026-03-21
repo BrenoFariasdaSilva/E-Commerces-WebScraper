@@ -2111,10 +2111,10 @@ def update_urls_txt_with_new_amazon_url(old_url: str, new_url: str, urls_file: P
             return False  # Return failure when no replacement was detected in the file.
 
         write_atomic_temp_file(urls_file, updated_lines)  # Write updated content atomically using helper function.
-        verbose_output(f"{BackgroundColors.GREEN}Updated Amazon URL in urls.txt{Style.RESET_ALL}")  # Log successful URL update when verbose enabled.
+        verbose_output(f"{BackgroundColors.GREEN}Updated Amazon URL in {BackgroundColors.CYAN}{urls_file.resolve()}{Style.RESET_ALL}")  # Log successful URL update when verbose enabled.
         return True  # Return success after atomic file replacement.
     except Exception as e:  # Handle file IO or replacement errors.
-        verbose_output(f"{BackgroundColors.RED}Failed to update Amazon URL in urls.txt: {e}{Style.RESET_ALL}")  # Log URL update failure when verbose enabled.
+        verbose_output(f"{BackgroundColors.RED}Failed to update Amazon URL in {BackgroundColors.CYAN}{urls_file.resolve()}{Style.RESET_ALL}: {e}")  # Log URL update failure when verbose enabled.
         return False  # Return failure when exception occurs.
 
 
