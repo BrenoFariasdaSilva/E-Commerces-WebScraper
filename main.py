@@ -2487,7 +2487,23 @@ def main():
     
     removed = remove_repeated_products_older_than(2, os.path.join(OUTPUT_DIRECTORY, "history.json"), OUTPUT_DIRECTORY)  # Remove repeated products older than 2 days and collect removed dirs
     if removed:  # If any directories were removed, emit verbose output for tracking
-        verbose_output(f"{BackgroundColors.YELLOW}Removed repeated old product directories: {BackgroundColors.CYAN}{len(removed)}{Style.RESET_ALL}")  # Output number of removed directories when verbose enabled
+        removed_details = []  # Initialize list to collect (name, url) details for removed directories
+        for rd in removed:  # Iterate each removed directory path to extract product info
+            try:  # Try to read description file from removed directory
+                desc_files = [f for f in os.listdir(rd) if f.endswith("_description.txt")]  # Find description files inside removed product dir
+                if not desc_files:  # If no description file is present, skip this directory
+                    continue  # Continue to next removed directory when description missing
+                desc_path = os.path.join(rd, desc_files[0])  # Build path to the chosen description file
+                with open(desc_path, "r", encoding="utf-8") as fh:  # Open the description file for reading
+                    content = fh.read()  # Read the description content for detection
+                pname = detect_product_name(content) or ""  # Detect product name from description content
+                aurl = detect_product_url(content) or ""  # Detect affiliate/product URL from description content
+                removed_details.append(f"{pname} -> {aurl}")  # Append formatted detail entry for reporting
+            except Exception:  # Ignore any errors while extracting details for a removed directory
+                continue  # Continue processing other removed directories on error
+
+        details_msg = ", ".join(removed_details) if removed_details else "(no description files found)"  # Build a single-line summary of removed product details
+        print(f"{BackgroundColors.YELLOW}Removed repeated old product directories: {BackgroundColors.CYAN}{len(removed)}{BackgroundColors.YELLOW} - {BackgroundColors.CYAN}{details_msg}{Style.RESET_ALL}")  # Output number and list of removed product names and URLs when verbose enabled
     
     print(f"{BackgroundColors.GREEN}Successfully processed: {BackgroundColors.CYAN}{successful_scrapes}/{total_urls}{BackgroundColors.GREEN} URLs{Style.RESET_ALL}\n")  # Output the number of successful operations
 
