@@ -1437,6 +1437,24 @@ def read_history_for_day(day_str: str, history_file_path: str) -> dict:
     return data.get(day_str, {})  # Return the day's history or empty dict when not present
 
 
+def save_history_file(history: dict, history_file_path: str) -> None:
+    """
+    Save the full history dictionary to the JSON history file on disk.
+
+    :param history: Full history dictionary to persist.
+    :param history_file_path: Path to the JSON history file.
+    :return: None
+    """
+
+    try:  # Try to write the history data to the JSON file
+        with open(history_file_path, "w", encoding="utf-8") as f:  # Open the history file for writing
+            json.dump(history, f, indent=2, ensure_ascii=False)  # Persist history with readable indentation
+    except Exception as e:  # Handle any exceptions during write
+        print(f"[ERROR] Failed to save history file: {e}")  # Log the error to stdout
+        return  # Return early on failure
+
+
+
 def remove_url_line_from_input_file(url, local_html_path=None):
     """
     Removes a line containing the specified URL from the input file. If local_html_path is provided, it will only remove the line if it matches both the URL and the local HTML path.
