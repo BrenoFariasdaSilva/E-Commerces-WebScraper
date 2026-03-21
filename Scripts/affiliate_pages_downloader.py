@@ -65,6 +65,7 @@ import shutil  # Move files between directories.
 import sys  # Access process-level runtime controls.
 import time  # Manage sleep and elapsed time operations.
 import tkinter as tk  # Import tkinter module.
+from Amazon import AFFILIATE_URL_PATTERN  # Import Amazon affiliate URL regex pattern from project Amazon module
 from colorama import Style  # Reset ANSI style output.
 from pathlib import Path  # Build and resolve filesystem paths.
 from tkinter import messagebox  # Import tkinter messagebox utility.
@@ -1652,10 +1653,10 @@ def process_urls_with_download_tracking(urls: List[str], tab_count: int, downloa
         add_method(completion_methods, confirmation_method, current_tab)  # Store completion method for report.
         add_method(close_methods, close_method, current_tab)  # Store close method for report.
 
-        if "amazon" in url.lower():  # Verify whether current URL is an Amazon URL before renewal attempt.
+        if re.search(AFFILIATE_URL_PATTERN, url):  # Verify whether current URL matches Amazon affiliate pattern before renewal attempt.
             urls_file = Path("urls.txt")  # Create Path object for urls.txt input file.
             scroll_window_to_top_center()  # Scroll active window to top center to reveal the share button image.
-            renewal_success = renew_amazon_affiliate_url(url, share_button_img, urls_file)  # Attempt Amazon affiliate URL renewal when URL is Amazon.
+            renewal_success = renew_amazon_affiliate_url(url, share_button_img, urls_file)  # Attempt Amazon affiliate URL renewal when URL matches pattern.
             if VERBOSE:  # Verify whether verbose logging is enabled for renewal status reporting.
                 if renewal_success:  # Verify whether renewal succeeded before logging success message.
                     print(f"{BackgroundColors.GREEN}✓ Amazon URL renewed successfully for tab {current_tab}{Style.RESET_ALL}")  # Log successful renewal with green background.
