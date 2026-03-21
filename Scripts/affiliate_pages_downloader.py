@@ -635,19 +635,28 @@ def prepare_dedicated_chrome_window_for_automation() -> bool:
 
     existing_windows = get_chrome_windows()  # Capture existing Chrome windows before opening the dedicated profile window.
     existing_hwnds = {int(getattr(window, "_hWnd", 0)) for window in existing_windows if int(getattr(window, "_hWnd", 0)) != 0}  # Capture existing Chrome window handles for delta detection.
+    launch_attempts = 1 if len(existing_windows) > 0 else 2  # Define profile-window launch count to avoid changing an existing user window.
+    launch_result = False  # Initialize aggregated launch result flag.
 
-    launch_result = open_chrome_with_profile(CHROME_PROFILE_DISPLAY_NAME)  # Open a dedicated Chrome window using the configured profile.
+    for _ in range(launch_attempts):  # Iterate configured launch attempts for dedicated-window preparation.
+        current_launch_result = open_chrome_with_profile(CHROME_PROFILE_DISPLAY_NAME)  # Open Chrome window with the configured profile.
+
+        if current_launch_result:  # Verify whether current launch attempt was dispatched successfully.
+            launch_result = True  # Persist successful launch status for post-launch selection flow.
 
     if launch_result:  # Verify whether profile-aware dedicated window launch succeeded.
         refreshed_windows = get_chrome_windows()  # Retrieve Chrome windows after dedicated profile launch.
         dedicated_window = None  # Initialize dedicated window reference for activation and handle capture.
+        new_windows = []  # Initialize collection for newly opened Chrome windows.
 
         for window in refreshed_windows:  # Iterate refreshed Chrome windows to find the newly opened profile window.
             window_hwnd = int(getattr(window, "_hWnd", 0))  # Retrieve current Chrome window handle.
 
             if window_hwnd != 0 and window_hwnd not in existing_hwnds:  # Verify whether current window handle belongs to a newly opened window.
-                dedicated_window = window  # Select the newly opened profile window as dedicated automation window.
-                break  # Stop iteration after selecting the first new Chrome window.
+                new_windows.append(window)  # Append newly opened Chrome window candidate.
+
+        if len(new_windows) > 0:  # Verify whether at least one newly opened Chrome window was found.
+            dedicated_window = max(new_windows, key=lambda window: int(getattr(window, "_hWnd", 0)))  # Select the newest launched Chrome window candidate by OS handle.
 
         if dedicated_window is None:  # Verify whether dedicated window was not found by handle delta.
             get_active_window = getattr(pyautogui, "getActiveWindow", None)  # Resolve optional active-window API for fallback selection.
