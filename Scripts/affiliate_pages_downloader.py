@@ -65,7 +65,6 @@ import shutil  # Move files between directories.
 import sys  # Access process-level runtime controls.
 import time  # Manage sleep and elapsed time operations.
 import tkinter as tk  # Import tkinter module.
-from Amazon import AFFILIATE_URL_PATTERN  # Import Amazon affiliate URL regex pattern from project Amazon module
 from colorama import Style  # Reset ANSI style output.
 from pathlib import Path  # Build and resolve filesystem paths.
 from tkinter import messagebox  # Import tkinter messagebox utility.
@@ -77,6 +76,7 @@ PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)  # Project root direc
 if PROJECT_ROOT not in sys.path:  # Ensure project root is in sys.path
     sys.path.insert(0, PROJECT_ROOT)  # Insert at the beginning
 from Logger import Logger  # For logging output to both terminal and file
+from Amazon import AFFILIATE_URL_PATTERN  # Import Amazon affiliate URL regex pattern from project Amazon module
 
 
 # Macros:
