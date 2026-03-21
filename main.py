@@ -1911,6 +1911,46 @@ def parse_history_occurrences(history: dict) -> Dict[Tuple[str, str, str], List[
     return occurrences  # Return the built occurrences mapping
 
 
+def determine_keys_to_cleanup(occurrences: Dict[Tuple[str, str, str], List[str]], days_threshold: int) -> List[Tuple[Tuple[str, str, str], str]]:
+    """
+    Determine which occurrence keys have older repeated entries beyond the threshold.
+
+    :param occurrences: Mapping from product key to list of day strings.
+    :param days_threshold: Threshold in days to consider an entry old.
+    :return: List of tuples ((platform, product_name, affiliate_url), day_string) to consider for cleanup.
+    """
+
+    keys_to_cleanup: List[Tuple[Tuple[str, str, str], str]] = []  # Initialize list of cleanup candidate keys
+    today = datetime.datetime.now()  # Capture current datetime for age comparison
+
+    for key, days in occurrences.items():  # Iterate grouped occurrences to find repeated entries
+        if len(days) <= 1:  # Skip keys that are not repeated across days
+            continue  # Continue to next key when only a single occurrence exists
+
+        parsed_dates: List[datetime.datetime] = []  # Prepare list for successfully parsed date objects
+        for d in days:  # Parse every day string for this key
+            try:  # Try DD-MM-YYYY format first
+                parsed = datetime.datetime.strptime(d, "%d-%m-%Y")  # Parse day string as DD-MM-YYYY
+            except Exception:  # Fallback when first format fails
+                try:  # Try alternate YYYY-MM-DD format
+                    parsed = datetime.datetime.strptime(d, "%Y-%m-%d")  # Parse day string as YYYY-MM-DD
+                except Exception:  # Skip unparseable date entries
+                    continue  # Continue to next day string when parsing fails
+            parsed_dates.append(parsed)  # Append successfully parsed date object
+
+        if not parsed_dates:  # Skip when no valid dates were parsed for this key
+            continue  # Continue to next key when parsing yields nothing
+
+        parsed_dates.sort()  # Sort parsed dates ascending to find older occurrences easily
+        for older in parsed_dates[:-1]:  # Consider all occurrences except the most recent one
+            age_days = (today - older).days  # Compute age in days for the older occurrence
+            if age_days < days_threshold:  # Skip when older occurrence is newer than threshold
+                continue  # Continue to next older occurrence when it's within threshold
+            keys_to_cleanup.append((key, older.strftime("%d-%m-%Y")))  # Mark this older occurrence for cleanup
+
+    return keys_to_cleanup  # Return the list of cleanup candidate keys
+
+
 def show_amazon_update_warning(has_amazon: bool, title: str) -> None:
     """
     Show a GUI warning when Amazon URLs were present in the run.
