@@ -103,7 +103,7 @@ DOWNLOADS_DIR = {
 CHROME_USER_DATA_DIR = os.path.join(os.path.expanduser("~"), "AppData", "Local", "Google", "Chrome", "User Data")  # Chrome User Data dir (Windows default)
 CHROME_PROFILE_DISPLAY_NAME = "Achadinhos Brasil Amanda"  # Profile display name to use
 CHROME_PROFILE_DIRECTORY: str | None = None  # Resolved profile folder name (e.g. "Profile 1")
-
+git add .\Scripts\affiliate_pages_downloader.py ; git commit -m "FIX: Force profile-scoped dedicated Chrome window creation in ./affiliate_pages_downloader.py" ; git push;
 pyautogui.FAILSAFE = True  # Enable fail-safe by moving cursor to the top-left corner.
 pyautogui.PAUSE = 0.05  # Apply default pause between pyautogui actions.
 
@@ -247,7 +247,7 @@ def open_chrome_by_os() -> bool:
 
     try:  # Attempt Chrome launch using operating-system specific command.
         if current_os == "windows":  # Verify whether the current operating system is Windows.
-            os.system("start chrome")  # Dispatch Windows command to open Chrome.
+            os.system("start \"\" chrome --new-window about:blank")  # Dispatch Windows command to open a new Chrome window.
         elif current_os == "darwin":  # Verify whether the current operating system is macOS.
             os.system("open -a 'Google Chrome'")  # Dispatch macOS command to open Chrome.
         elif current_os == "linux":  # Verify whether the current operating system is Linux.
@@ -282,14 +282,14 @@ def open_chrome_with_profile(display_name: str) -> bool:
         current_os = platform.system().lower()  # Retrieve normalized operating system name.
 
         if current_os == "windows":  # Verify whether the current operating system is Windows.
-            os.system(f'start chrome --user-data-dir="{user_data_dir}" --profile-directory="{profile_dir}"')  # Dispatch Windows start command to open Chrome with profile flags.
+            os.system(f'start "" chrome --new-window --user-data-dir="{user_data_dir}" --profile-directory="{profile_dir}" about:blank')  # Dispatch Windows start command to open a new Chrome window with profile flags.
         elif current_os == "darwin":  # Verify whether the current operating system is macOS.
-            os.system(f'open -a "Google Chrome" --args --user-data-dir="{user_data_dir}" --profile-directory="{profile_dir}"')  # Dispatch macOS open command with Chrome args to open specific profile.
+            os.system(f'open -a "Google Chrome" --args --new-window --user-data-dir="{user_data_dir}" --profile-directory="{profile_dir}" about:blank')  # Dispatch macOS open command with Chrome args to open a new specific-profile window.
         elif current_os == "linux":  # Verify whether the current operating system is Linux.
-            launch_code = os.system(f'google-chrome --user-data-dir="{user_data_dir}" --profile-directory="{profile_dir}" >/dev/null 2>&1 &')  # Dispatch Linux chrome command in background with profile flags.
+            launch_code = os.system(f'google-chrome --new-window --user-data-dir="{user_data_dir}" --profile-directory="{profile_dir}" about:blank >/dev/null 2>&1 &')  # Dispatch Linux chrome command in background with new-window profile flags.
 
             if launch_code != 0:  # Verify whether primary Linux Chrome command failed.
-                os.system(f'chromium-browser --user-data-dir="{user_data_dir}" --profile-directory="{profile_dir}" >/dev/null 2>&1 &')  # Dispatch Linux Chromium fallback command in background with profile flags.
+                os.system(f'chromium-browser --new-window --user-data-dir="{user_data_dir}" --profile-directory="{profile_dir}" about:blank >/dev/null 2>&1 &')  # Dispatch Linux Chromium fallback command in background with new-window profile flags.
         else:  # Handle unsupported operating systems.
             print(f"{BackgroundColors.YELLOW}[WARNING] Unsupported operating system for Chrome auto-launch: {current_os}{Style.RESET_ALL}")  # Log unsupported operating system warning.
             return False  # Return failure status for unsupported operating systems.
@@ -634,7 +634,43 @@ def prepare_dedicated_chrome_window_for_automation() -> bool:
 
     global DEDICATED_AUTOMATION_HWND  # Reference global dedicated automation window handle.
 
-    detach_result = detach_tab_to_new_window()  # Open and activate a dedicated Chrome window for automation.
+    existing_windows = get_chrome_windows()  # Capture existing Chrome windows before opening the dedicated profile window.
+    existing_hwnds = {int(getattr(window, "_hWnd", 0)) for window in existing_windows if int(getattr(window, "_hWnd", 0)) != 0}  # Capture existing Chrome window handles for delta detection.
+
+    launch_result = open_chrome_with_profile(CHROME_PROFILE_DISPLAY_NAME)  # Open a dedicated Chrome window using the configured profile.
+
+    if launch_result:  # Verify whether profile-aware dedicated window launch succeeded.
+        refreshed_windows = get_chrome_windows()  # Retrieve Chrome windows after dedicated profile launch.
+        dedicated_window = None  # Initialize dedicated window reference for activation and handle capture.
+
+        for window in refreshed_windows:  # Iterate refreshed Chrome windows to find the newly opened profile window.
+            window_hwnd = int(getattr(window, "_hWnd", 0))  # Retrieve current Chrome window handle.
+
+            if window_hwnd != 0 and window_hwnd not in existing_hwnds:  # Verify whether current window handle belongs to a newly opened window.
+                dedicated_window = window  # Select the newly opened profile window as dedicated automation window.
+                break  # Stop iteration after selecting the first new Chrome window.
+
+        if dedicated_window is None:  # Verify whether dedicated window was not found by handle delta.
+            get_active_window = getattr(pyautogui, "getActiveWindow", None)  # Resolve optional active-window API for fallback selection.
+            active_window = get_active_window() if callable(get_active_window) else None  # Retrieve active desktop window as fallback dedicated candidate.
+            active_title = str(getattr(active_window, "title", "")).lower() if active_window is not None else ""  # Retrieve and normalize active window title for Chrome validation.
+
+            if active_window is not None and "chrome" in active_title:  # Verify whether active window is a Chrome window for fallback dedicated selection.
+                dedicated_window = active_window  # Select active Chrome window as dedicated automation window.
+
+        if dedicated_window is not None:  # Verify whether dedicated profile window candidate is available for activation.
+            activation_result = activate_window_with_fallback(dedicated_window)  # Activate the dedicated profile window before storing its handle.
+
+            if activation_result:  # Verify whether dedicated profile window activation succeeded.
+                try:  # Attempt to capture dedicated profile window handle after activation.
+                    DEDICATED_AUTOMATION_HWND = int(getattr(dedicated_window, "_hWnd", 0))  # Persist dedicated automation OS window handle.
+                except Exception:  # Handle dedicated window handle capture exception.
+                    DEDICATED_AUTOMATION_HWND = 0  # Reset dedicated window handle when capture fails.
+
+                if DEDICATED_AUTOMATION_HWND != 0:  # Verify whether dedicated window handle was captured successfully.
+                    return True  # Return success after dedicated profile window preparation.
+
+    detach_result = detach_tab_to_new_window()  # Open and activate a dedicated Chrome window for automation as fallback path.
 
     if not detach_result:  # Verify whether dedicated Chrome window preparation failed.
         print(f"{BackgroundColors.RED}Failed to prepare dedicated Chrome window for automation. Aborting to preserve user tabs.{Style.RESET_ALL}")  # Log dedicated-window preparation failure.
