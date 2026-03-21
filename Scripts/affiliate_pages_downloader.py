@@ -1705,6 +1705,27 @@ def click_image_or_coords(image_path: Path, reference_x: float, reference_y: flo
     return "Coordinates"  # Return coordinates method label.
 
 
+def compute_extension_cursor_position() -> Tuple[int, int]:
+    """
+    Compute cursor position for extension tab scrolling.
+
+    :param: None.
+    :return: Tuple of X and Y coordinates to position the cursor for extension tab scrolling.
+    """
+
+    screen_width, screen_height = get_screen_dimensions()  # Retrieve current screen width and height from pyautogui.
+
+    ninth_segment_start = int(screen_width * 0.8)  # Compute start of the ninth decile of the screen width.
+
+    ninth_segment_end = int(screen_width * 0.9)  # Compute end of the ninth decile of the screen width.
+
+    target_x = int((ninth_segment_start + ninth_segment_end) / 2)  # Compute center X inside the ninth decile (85% of width).
+
+    target_y = int(screen_height / 2)  # Compute vertical center Y of the screen.
+
+    return target_x, target_y  # Return computed cursor coordinates for extension interactions.
+
+
 def click_download_button(download_img: Path) -> str:
     """
     Clicks the download button with retry fallback and scaled coordinates.
