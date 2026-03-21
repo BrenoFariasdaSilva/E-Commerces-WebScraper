@@ -2202,7 +2202,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
     confirmation_img = assets_dir / "ConfirmationFileDownloaded.png"  # Define confirmation image path.
     close_download_tab_img = assets_dir / "CloseDownloadTab.png"  # Define close download tab image path.
     mercado_livre_img = assets_dir / "MercadoLivre-GoToProduct.png"  # Define MercadoLivre go-to-product image path.
-    share_button_img = assets_dir / "Browser" / "ShareAffiliateURL-Amazon.png"  # Define ShareAffiliateURL button image path for Amazon URL renewal.
+    share_button_img = assets_dir / "ShareAffiliateURL-Amazon.png"  # Define ShareAffiliateURL button image path for Amazon URL renewal.
 
     print(f"{BackgroundColors.GREEN}Starting automation immediately and activating Chrome window.{Style.RESET_ALL}")  # Print immediate start message.
 
