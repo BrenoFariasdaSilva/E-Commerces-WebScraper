@@ -1973,6 +1973,38 @@ def update_urls_txt_with_new_amazon_url(old_url: str, new_url: str, urls_file: P
         return False  # Return failure when exception occurs.
 
 
+def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, urls_file: Path) -> bool:
+    """
+    Orchestrate complete Amazon affiliate URL renewal workflow.
+
+    :param current_url: Original Amazon URL to replace.
+    :param share_button_img: Path to ShareAffiliateURL-Amazon.png image.
+    :param urls_file: Path to the urls.txt file.
+    :return: True if renewal succeeded, False otherwise.
+    """
+
+    verbose_output(f"{BackgroundColors.GREEN}Initiating Amazon affiliate URL renewal for: {current_url}{Style.RESET_ALL}")  # Log renewal workflow start when verbose enabled.
+
+    click_method = click_share_affiliate_url_button(share_button_img)  # Click share affiliate URL button using image or fallback coordinates.
+    verbose_output(f"{BackgroundColors.YELLOW}Clicked share button using: {click_method}{Style.RESET_ALL}")  # Log which click method was used when verbose enabled.
+
+    time.sleep(1)  # Wait for menu to appear after button click.
+
+    copied_url = get_url_from_clipboard()  # Extract affiliate URL from clipboard after Ctrl+C.
+    if not copied_url:  # Verify if clipboard retrieval succeeded.
+        verbose_output(f"{BackgroundColors.RED}Failed to retrieve URL from clipboard{Style.RESET_ALL}")  # Log clipboard retrieval failure when verbose enabled.
+        return False  # Return failure when clipboard is empty.
+
+    if not validate_amazon_affiliate_url(copied_url):  # Verify if copied URL matches Amazon affiliate format.
+        verbose_output(f"{BackgroundColors.RED}Invalid Amazon affiliate URL format: {copied_url}{Style.RESET_ALL}")  # Log invalid URL format when verbose enabled.
+        return False  # Return failure when URL format is invalid.
+
+    success = update_urls_txt_with_new_amazon_url(current_url, copied_url, urls_file)  # Update urls.txt with new affiliate URL.
+    if success:  # Verify if urls.txt was successfully updated.
+        verbose_output(f"{BackgroundColors.GREEN}Amazon URL successfully renewed to: {copied_url}{Style.RESET_ALL}")  # Log successful renewal completion when verbose enabled.
+    return success  # Return the update result status.
+
+
 def build_report(ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]]) -> str:
     """
     Builds grouped execution report text.
