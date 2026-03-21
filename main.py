@@ -2485,6 +2485,10 @@ def main():
 
     run_final_output_integrity_verification(timestamped_output_dir, urls_to_process)  # Run final reliability verification after all URL processing has completed
     
+    removed = remove_repeated_products_older_than(2, os.path.join(OUTPUT_DIRECTORY, "history.json"), OUTPUT_DIRECTORY)  # Remove repeated products older than 2 days and collect removed dirs
+    if removed:  # If any directories were removed, emit verbose output for tracking
+        verbose_output(f"{BackgroundColors.YELLOW}Removed repeated old product directories: {BackgroundColors.CYAN}{len(removed)}{Style.RESET_ALL}")  # Output number of removed directories when verbose enabled
+    
     print(f"{BackgroundColors.GREEN}Successfully processed: {BackgroundColors.CYAN}{successful_scrapes}/{total_urls}{BackgroundColors.GREEN} URLs{Style.RESET_ALL}\n")  # Output the number of successful operations
 
     try:  # Clean up the staging directory if it's empty after processing all URLs
