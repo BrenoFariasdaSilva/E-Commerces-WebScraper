@@ -1656,6 +1656,7 @@ def process_urls_with_download_tracking(urls: List[str], tab_count: int, downloa
         if re.search(AFFILIATE_URL_PATTERN, url):  # Verify whether current URL matches Amazon affiliate pattern before renewal attempt.
             urls_file = Path("urls.txt")  # Create Path object for urls.txt input file.
             scroll_window_to_top_center()  # Scroll active window to top center to reveal the share button image.
+            time.sleep(1)  # Wait briefly after scrolling to allow UI to stabilize before attempting image search for renewal.
             renewal_success = renew_amazon_affiliate_url(url, share_button_img, urls_file)  # Attempt Amazon affiliate URL renewal when URL matches pattern.
             if VERBOSE:  # Verify whether verbose logging is enabled for renewal status reporting.
                 if renewal_success:  # Verify whether renewal succeeded before logging success message.
