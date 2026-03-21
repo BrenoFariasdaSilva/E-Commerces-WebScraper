@@ -1961,27 +1961,38 @@ def format_execution_time(total_seconds: int) -> str:
     return f"{h:02d}:{m:02d}:{s:02d} ({h}h {m}m {s}s)"  # Return formatted execution time.
 
 
-def click_share_affiliate_url_button(share_button_img: Path, reference_x: float = 1498.0, reference_y: float = 164.0) -> str:
+def click_share_affiliate_url_button(share_button_img: Path) -> str:
     """
     Locate and click the Share Affiliate URL button for Amazon product page.
 
     :param share_button_img: Path to the ShareAffiliateURL-Amazon.png image file.
-    :param reference_x: Reference X coordinate for fallback (1920x1080 basis).
-    :param reference_y: Reference Y coordinate for fallback (1920x1080 basis).
-    :return: String indicating which method was used (ImageSearch or Coordinates).
+    :return: String indicating which image was used or Not Found.
     """
 
-    box = locate_image(share_button_img)  # Attempt to locate share affiliate URL button image on screen.
+    window_active = activate_automation_window()  # Activate dedicated automation Chrome window before image search.
 
-    if box is not None:  # Verify if share affiliate URL button image was detected.
-        pyautogui.click(int(box.left), int(box.top))  # Click the top-left point of matched image box.
-        time.sleep(0.5)  # Wait briefly after image-based click.
-        return "ImageSearch"  # Return image search method label.
+    if not window_active:  # Verify whether Chrome window activation succeeded before searching share button images.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Unable to activate Chrome window before Share Affiliate URL button detection.{Style.RESET_ALL}")  # Log warning when Chrome activation fails before share-button search.
 
-    scaled_x, scaled_y = get_scaled_fallback_coords(reference_x, reference_y)  # Compute scaled fallback coordinates for button.
-    pyautogui.click(scaled_x, scaled_y)  # Click scaled fallback coordinates.
-    time.sleep(0.5)  # Wait briefly after coordinate-based click.
-    return "Coordinates"  # Return coordinates method label.
+    window_bounds = get_active_window_bounds()  # Retrieve active Chrome window bounds for region-constrained image search.
+    region_left = max(0, int(window_bounds.get("left", 0)))  # Resolve safe left coordinate for region-constrained image search.
+    region_top = max(0, int(window_bounds.get("top", 0)))  # Resolve safe top coordinate for region-constrained image search.
+    region_width = max(1, int(window_bounds.get("width", 0)))  # Resolve safe width for region-constrained image search.
+    region_height = max(1, int(window_bounds.get("height", 0)))  # Resolve safe height for region-constrained image search.
+    search_region = (region_left, region_top, region_width, region_height)  # Build active Chrome window region tuple for share-button image search.
+    max_verifications = 60  # Define maximum number of image-detection retries.
+
+    for _ in range(max_verifications):  # Iterate through share-button detection attempts.
+        box = locate_image_in_region(share_button_img, search_region)  # Attempt to locate share affiliate URL button image inside active window region.
+
+        if box is not None:  # Verify if share affiliate URL image was detected.
+            pyautogui.click(int(box.left), int(box.top))  # Click the top-left point of matched image box.
+            time.sleep(0.5)  # Wait briefly after image-based click.
+            verbose_output(f"{BackgroundColors.CYAN}Used image: {share_button_img.name}{Style.RESET_ALL}")  # Print name of used image.
+            return "ImageSearch"  # Return image search method label for image.
+
+    verbose_output(f"{BackgroundColors.YELLOW}Share affiliate URL button images not found: {share_button_img.name}{Style.RESET_ALL}")  # Print warning when neither image was detected.
+    return "Not Found"  # Return not found status when no image matched.
 
 
 def get_url_from_clipboard() -> str:
