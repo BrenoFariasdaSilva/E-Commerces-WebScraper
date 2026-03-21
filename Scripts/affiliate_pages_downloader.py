@@ -1613,6 +1613,9 @@ def process_urls_with_download_tracking(urls: List[str], tab_count: int, downloa
         scroll_extension_tab_to_start_button()  # Scroll at cursor position to reveal the Start download button on low-resolution screens.
         
         download_method = click_download_button(download_img)  # Execute download click action.
+        time.sleep(0.2)  # Wait briefly after clicking download to allow UI to settle.
+        scroll_extension_tab_to_start_button()  # Scroll extension tab down to reveal confirmation elements.
+        time.sleep(0.3)  # Wait after scrolling for UI elements to stabilize.
         confirmation_method = wait_for_download_confirmation(confirmation_img)  # Execute completion polling action.
         close_method = close_extension_download_tab(close_download_tab_img)  # Execute close extension tab action.
 
