@@ -1505,7 +1505,7 @@ def move_downloaded_archives(downloads_dirs: List[str], destination_dir: Path, u
             print(f"{BackgroundColors.YELLOW}[WARNING] Failed to move downloaded file: {source_path}{Style.RESET_ALL}")  # Log archive move failure warning.
 
 
-def process_urls_with_download_tracking(urls: List[str], tab_count: int, downloads_dirs: List[str], extension_img: Path, download_img: Path, confirmation_img: Path, close_download_tab_img: Path, mercado_livre_img: Path, ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]], chrome_download_settings_ready: bool) -> Tuple[int, Dict[str, str], bool]:
+def process_urls_with_download_tracking(urls: List[str], tab_count: int, downloads_dirs: List[str], extension_img: Path, download_img: Path, confirmation_img: Path, close_download_tab_img: Path, mercado_livre_img: Path, share_button_img: Path, ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]], chrome_download_settings_ready: bool) -> Tuple[int, Dict[str, str], bool]:
     """
     Processes URLs while tracking downloaded files by directory snapshots.
 
@@ -1517,6 +1517,7 @@ def process_urls_with_download_tracking(urls: List[str], tab_count: int, downloa
     :param confirmation_img: Path to download confirmation image.
     :param close_download_tab_img: Path to close extension tab image.
     :param mercado_livre_img: Path to MercadoLivre go-to-product image.
+    :param share_button_img: Path to ShareAffiliateURL button image for Amazon URL renewal.
     :param ext_methods: Grouped extension click methods dictionary.
     :param download_methods: Grouped download click methods dictionary.
     :param completion_methods: Grouped completion detection methods dictionary.
@@ -1601,6 +1602,15 @@ def process_urls_with_download_tracking(urls: List[str], tab_count: int, downloa
         add_method(download_methods, download_method, current_tab)  # Store download method for report.
         add_method(completion_methods, confirmation_method, current_tab)  # Store completion method for report.
         add_method(close_methods, close_method, current_tab)  # Store close method for report.
+
+        if "amazon" in url.lower():  # Verify whether current URL is an Amazon URL before renewal attempt.
+            urls_file = Path("urls.txt")  # Create Path object for urls.txt input file.
+            renewal_success = renew_amazon_affiliate_url(url, share_button_img, urls_file)  # Attempt Amazon affiliate URL renewal when URL is Amazon.
+            if VERBOSE:  # Verify whether verbose logging is enabled for renewal status reporting.
+                if renewal_success:  # Verify whether renewal succeeded before logging success message.
+                    print(f"{BackgroundColors.GREEN}✓ Amazon URL renewed successfully for tab {current_tab}{Style.RESET_ALL}")  # Log successful renewal with green background.
+                else:  # Otherwise renewal failed, log failure message.
+                    print(f"{BackgroundColors.RED}✗ Amazon URL renewal failed for tab {current_tab}{Style.RESET_ALL}")  # Log failed renewal with red background.
 
         if index != len(urls):  # Verify whether current URL is not the last one before closing the tab.
             close_current_tab()  # Close current product tab when not processing the final URL.
@@ -2104,6 +2114,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
     confirmation_img = assets_dir / "ConfirmationFileDownloaded.png"  # Define confirmation image path.
     close_download_tab_img = assets_dir / "CloseDownloadTab.png"  # Define close download tab image path.
     mercado_livre_img = assets_dir / "MercadoLivre-GoToProduct.png"  # Define MercadoLivre go-to-product image path.
+    share_button_img = assets_dir / "Browser" / "ShareAffiliateURL-Amazon.png"  # Define ShareAffiliateURL button image path for Amazon URL renewal.
 
     print(f"{BackgroundColors.GREEN}Starting automation immediately and activating Chrome window.{Style.RESET_ALL}")  # Print immediate start message.
 
@@ -2134,7 +2145,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
         processed_count = 0  # Initialize processed tab counter.
         start_tick = time.time()  # Capture workflow start timestamp.
         url_to_download: Dict[str, str] = {}  # Initialize URL to downloaded filename mapping dictionary.
-        processed_count, url_to_download, process_success = process_urls_with_download_tracking(urls, tab_count, downloads_dirs, extension_img, download_img, confirmation_img, close_download_tab_img, mercado_livre_img, ext_methods, download_methods, completion_methods, close_methods, chrome_download_settings_ready)  # Process URLs with download tracking and retrieve mapping details.
+        processed_count, url_to_download, process_success = process_urls_with_download_tracking(urls, tab_count, downloads_dirs, extension_img, download_img, confirmation_img, close_download_tab_img, mercado_livre_img, share_button_img, ext_methods, download_methods, completion_methods, close_methods, chrome_download_settings_ready)  # Process URLs with download tracking and retrieve mapping details.
 
         if not process_success:  # Verify if URL processing completed without activation failure.
             return 1  # Return failure exit code when URL processing fails.
