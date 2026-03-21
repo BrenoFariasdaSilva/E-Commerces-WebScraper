@@ -1556,11 +1556,12 @@ def move_downloaded_archives(downloads_dirs: List[str], destination_dir: Path, u
             print(f"{BackgroundColors.YELLOW}[WARNING] Failed to move downloaded file: {source_path}{Style.RESET_ALL}")  # Log archive move failure warning.
 
 
-def process_urls_with_download_tracking(urls: List[str], tab_count: int, downloads_dirs: List[str], extension_img: Path, download_img: Path, confirmation_img: Path, close_download_tab_img: Path, mercado_livre_img: Path, share_button_img: Path, ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]], chrome_download_settings_ready: bool) -> Tuple[int, Dict[str, str], bool]:
+def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_count: int, downloads_dirs: List[str], extension_img: Path, download_img: Path, confirmation_img: Path, close_download_tab_img: Path, mercado_livre_img: Path, share_button_img: Path, ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]], chrome_download_settings_ready: bool) -> Tuple[int, Dict[str, str], bool]:
     """
     Processes URLs while tracking downloaded files by directory snapshots.
 
     :param urls: URL list to process.
+    :param urls_file: Path to the file containing the URLs.
     :param tab_count: Number of URLs to process.
     :param downloads_dirs: Paths to monitored downloads directories.
     :param extension_img: Path to extension action image.
@@ -1655,10 +1656,9 @@ def process_urls_with_download_tracking(urls: List[str], tab_count: int, downloa
         add_method(close_methods, close_method, current_tab)  # Store close method for report.
 
         if re.search(AFFILIATE_URL_PATTERN, url):  # Verify whether current URL matches Amazon affiliate pattern before renewal attempt.
-            urls_file = Path("urls.txt")  # Create Path object for urls.txt input file.
             scroll_window_to_top_center()  # Scroll active window to top center to reveal the share button image.
             time.sleep(1)  # Wait briefly after scrolling to allow UI to stabilize before attempting image search for renewal.
-            renewal_success = renew_amazon_affiliate_url(url, share_button_img, urls_file)  # Attempt Amazon affiliate URL renewal when URL matches pattern.
+            renewal_success = renew_amazon_affiliate_url(url, share_button_img, Path(urls_file))  # Attempt Amazon affiliate URL renewal when URL matches pattern.
             if VERBOSE:  # Verify whether verbose logging is enabled for renewal status reporting.
                 if renewal_success:  # Verify whether renewal succeeded before logging success message.
                     print(f"{BackgroundColors.GREEN}✓ Amazon URL renewed successfully for tab {current_tab}{Style.RESET_ALL}")  # Log successful renewal with green background.
@@ -2291,7 +2291,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
         processed_count = 0  # Initialize processed tab counter.
         start_tick = time.time()  # Capture workflow start timestamp.
         url_to_download: Dict[str, str] = {}  # Initialize URL to downloaded filename mapping dictionary.
-        processed_count, url_to_download, process_success = process_urls_with_download_tracking(urls, tab_count, downloads_dirs, extension_img, download_img, confirmation_img, close_download_tab_img, mercado_livre_img, share_button_img, ext_methods, download_methods, completion_methods, close_methods, chrome_download_settings_ready)  # Process URLs with download tracking and retrieve mapping details.
+        processed_count, url_to_download, process_success = process_urls_with_download_tracking(urls, urls_file, tab_count, downloads_dirs, extension_img, download_img, confirmation_img, close_download_tab_img, mercado_livre_img, share_button_img, ext_methods, download_methods, completion_methods, close_methods, chrome_download_settings_ready)  # Process URLs with download tracking and retrieve mapping details.
 
         if not process_success:  # Verify if URL processing completed without activation failure.
             return 1  # Return failure exit code when URL processing fails.
