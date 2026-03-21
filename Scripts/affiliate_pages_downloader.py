@@ -2059,15 +2059,34 @@ def update_urls_txt_with_new_amazon_url(old_url: str, new_url: str, urls_file: P
         if not urls_file.exists():  # Verify urls.txt file exists before reading.
             return False  # Return failure when file does not exist.
 
-        content = urls_file.read_text(encoding="utf-8")  # Read complete urls.txt file content.
-        updated_content = content.replace(old_url, new_url)  # Replace old URL with new affiliate URL.
+        raw_text = urls_file.read_text(encoding="utf-8")  # Read the full urls.txt content into memory.
+        lines = raw_text.splitlines()  # Split the content into individual lines for processing.
 
-        if updated_content == content:  # Verify if replacement actually occurred.
-            return False  # Return failure when no replacement happened.
+        updated_lines: List[str] = []  # Initialize container for updated lines collected during processing.
+        replacement_occurred = False  # Initialize flag to indicate whether any replacement was performed.
 
-        urls_file.write_text(updated_content, encoding="utf-8")  # Write updated content back to urls.txt file.
+        for line in lines:  # Iterate each line to search for occurrences of the old URL.
+            tokens = line.split()  # Split the current line into whitespace-separated tokens.
+            if tokens and old_url in tokens[0]:  # Verify if the first token contains the old URL.
+                new_line = line.replace(tokens[0], new_url, 1)  # Replace only the URL token and preserve trailing text.
+                updated_lines.append(new_line)  # Append the modified line to the updated_lines container.
+                replacement_occurred = True  # Mark that a replacement occurred for later verification.
+            elif old_url in line:  # Verify if the old URL appears elsewhere in the line outside the first token.
+                new_line = line.replace(old_url, new_url)  # Replace any occurrence of the old URL in the line.
+                updated_lines.append(new_line)  # Append the modified line to the updated_lines container.
+                replacement_occurred = True  # Mark that a replacement occurred for later verification.
+            else:
+                updated_lines.append(line)  # Append the unchanged line when no URL match is found.
+
+        if not replacement_occurred:  # Verify whether any replacement actually took place.
+            return False  # Return failure when no replacement was detected in the file.
+
+        temp_path = urls_file.with_suffix(".tmp")  # Build a temporary file path adjacent to the original file.
+        temp_text = "\n".join(updated_lines) + "\n"  # Join updated lines and ensure the file ends with a newline.
+        temp_path.write_text(temp_text, encoding="utf-8")  # Persist the updated content to the temporary file atomically.
+        os.replace(str(temp_path), str(urls_file))  # Atomically replace the original urls.txt with the temporary file.
         verbose_output(f"{BackgroundColors.GREEN}Updated Amazon URL in urls.txt{Style.RESET_ALL}")  # Log successful URL update when verbose enabled.
-        return True  # Return success after file update.
+        return True  # Return success after atomic file replacement.
     except Exception as e:  # Handle file IO or replacement errors.
         verbose_output(f"{BackgroundColors.RED}Failed to update Amazon URL in urls.txt: {e}{Style.RESET_ALL}")  # Log URL update failure when verbose enabled.
         return False  # Return failure when exception occurs.
