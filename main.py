@@ -2264,6 +2264,24 @@ def main():
                     description_dir = os.path.dirname(description_file)  # Get directory of description file
                     template_file = os.path.join(description_dir, "Template.txt")  # Path to the generated template file
                     validate_and_fix_output_file(template_file)  # Validate and fix formatting issues in the output file
+                    try:  # Try to extract price fields and record history for this processed product
+                        tpl_content = read_template_content(Path(template_file))  # Read template content for price extraction
+                        current_price_val, old_price_val, _ = (detect_price_fields(tpl_content) if tpl_content else (None, None, []))  # Extract current and old price from template content
+                        discount_val = str(product_data.get("discount_percentage", "")).strip() if product_data else ""  # Get discount percentage from product_data when available
+                        if not discount_val and old_price_val and current_price_val:  # Compute discount percentage when missing but prices available
+                            try:  # Try numeric parse and compute discount when formats allow
+                                old_num = float(re.sub(r"[^0-9.,]", "", old_price_val).replace(",", "."))  # Parse old price numeric value from string
+                                cur_num = float(re.sub(r"[^0-9.,]", "", current_price_val).replace(",", "."))  # Parse current price numeric value from string
+                                if old_num > 0:  # Only compute percentage when old price is positive
+                                    discount_val = f"{round((old_num - cur_num) / old_num * 100, 2)}%"  # Compute discount percent with two decimals
+                            except Exception:  # If numeric parsing fails, leave discount as empty string
+                                discount_val = discount_val  # Preserve existing discount_val when computation fails
+
+                        day_key = datetime.datetime.now().strftime("%d-%m-%Y")  # Build day key in DD-MM-YYYY format for history grouping
+                        product_name_for_history = product_data.get("product_name", "") if product_data else ""  # Get product name for history entry
+                        append_processed_product_to_history(day_key, platform_name, product_name_for_history, url, old_price_val or "", current_price_val or "", discount_val or "", os.path.join(OUTPUT_DIRECTORY, "history.json"))  # Append processed product to history file
+                    except Exception:  # Ensure history append failures do not stop the pipeline
+                        pass  # Ignore history write errors and continue processing
                     
                     successful_scrapes += 1  # Increment successful scrapes counter
                     url_processed_successfully = True  # Mark URL as successfully processed for this index
