@@ -1901,6 +1901,32 @@ def click_share_affiliate_url_button(share_button_img: Path, reference_x: float 
     return "Coordinates"  # Return coordinates method label.
 
 
+def get_url_from_clipboard() -> str:
+    """
+    Extract affiliate URL from system clipboard after Ctrl+C copy operation.
+
+    :return: Clipboard content string or empty string if retrieval fails.
+    """
+
+    try:  # Attempt clipboard retrieval using cross-platform method.
+        clipboard_content = pyautogui.typewrite("", interval=0)  # Clear any pending input buffer.
+        pyautogui.hotkey("ctrl", "c")  # Trigger copy-to-clipboard hotkey.
+        time.sleep(0.3)  # Wait for clipboard operation to complete.
+        import subprocess  # Import subprocess for clipboard access.
+        result = subprocess.run(["xclip", "-selection", "clipboard", "-o"], capture_output=True, text=True)  # Read Windows/Linux clipboard via xclip.
+        return result.stdout.strip()  # Return trimmed clipboard content.
+    except Exception:  # Handle clipboard access failures gracefully.
+        try:  # Attempt Windows-specific clipboard access as fallback.
+            import tkinter  # Import tkinter for Windows clipboard.
+            root = tkinter.Tk()  # Create hidden root window.
+            root.withdraw()  # Hide the window from display.
+            clipboard_content = root.clipboard_get()  # Retrieve clipboard content via tkinter.
+            root.destroy()  # Destroy the hidden window.
+            return clipboard_content.strip()  # Return trimmed clipboard content.
+        except Exception:  # Handle all clipboard retrieval failures.
+            return ""  # Return empty string when clipboard cannot be accessed.
+
+
 def build_report(ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]]) -> str:
     """
     Builds grouped execution report text.
