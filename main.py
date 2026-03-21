@@ -1951,6 +1951,26 @@ def determine_keys_to_cleanup(occurrences: Dict[Tuple[str, str, str], List[str]]
     return keys_to_cleanup  # Return the list of cleanup candidate keys
 
 
+def find_timestamped_run_dirs(base_output_dir: str) -> List[str]:
+    """
+    List timestamped run directories under the base output directory.
+
+    :param base_output_dir: Base output directory path to scan for timestamped runs.
+    :return: List of absolute paths to timestamped run directories.
+    """
+
+    run_dirs: List[str] = []  # Initialize list to collect matching run directories
+    try:  # Try listing the base output directory to find timestamped runs
+        for item in os.listdir(base_output_dir):  # Iterate entries in base output directory
+            full = os.path.join(base_output_dir, item)  # Build full path for the entry
+            if os.path.isdir(full) and re.match(r"^\d+\. \d{4}-\d{2}-\d{2} - .+", item):  # Match timestamped run directory pattern
+                run_dirs.append(full)  # Append matching run directory path
+    except Exception:  # Ignore listing errors to avoid failing the caller
+        run_dirs = []  # Fallback to empty list when directory listing fails
+
+    return run_dirs  # Return discovered run directories
+
+
 def show_amazon_update_warning(has_amazon: bool, title: str) -> None:
     """
     Show a GUI warning when Amazon URLs were present in the run.
