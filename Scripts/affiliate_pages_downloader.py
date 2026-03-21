@@ -1819,6 +1819,8 @@ def scroll_window_to_top_center() -> None:
         center_x, center_y = current_width // 2, current_height // 2  # Compute center coordinates for the active window.
         pyautogui.moveTo(center_x, center_y, duration=0.12)  # Move cursor to center of screen to prepare for input.
         time.sleep(0.05)  # Wait briefly after moving cursor for UI stability.
+        pyautogui.click(center_x, center_y)  # Click center to activate the window before sending key events.
+        time.sleep(0.05)  # Wait briefly after click to allow window focus to settle.
         pyautogui.keyDown("home")  # Press and hold Home key to move content to top.
         time.sleep(3)  # Hold Home key for three seconds to ensure top alignment.
         pyautogui.keyUp("home")  # Release Home key after hold duration.
