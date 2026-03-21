@@ -2032,6 +2032,43 @@ def remove_directories(dir_paths: List[str]) -> List[str]:
     return removed  # Return list of successfully removed directories
 
 
+def remove_repeated_products_older_than(days_threshold: int, history_file_path: str, base_output_dir: str) -> List[str]:
+    """
+    Remove product output directories for products repeated and older than threshold days.
+
+    :param days_threshold: Number of days threshold to consider entries as old.
+    :param history_file_path: Path to the JSON history file containing processed records.
+    :param base_output_dir: Base outputs directory where run folders exist.
+    :return: List of removed directory paths.
+    """
+
+    removed_dirs: List[str] = []  # Initialize list to collect removed directories
+
+    if not ensure_history_file_exists(history_file_path):  # Verify history file exists before proceeding
+        return removed_dirs  # Return empty list when history file is missing or cannot be created
+
+    try:  # Try to load history content from disk
+        with open(history_file_path, "r", encoding="utf-8") as f:  # Open history file for reading
+            history = json.load(f)  # Parse JSON history into Python dict
+    except Exception:  # Handle JSON parsing or IO errors gracefully
+        history = {}  # Use empty history when file cannot be read
+
+    occurrences = parse_history_occurrences(history)  # Build occurrences mapping from loaded history
+
+    keys_to_cleanup = determine_keys_to_cleanup(occurrences, days_threshold)  # Determine which keys have old repeated occurrences
+
+    if not keys_to_cleanup:  # If nothing to clean, return early with empty list
+        return removed_dirs  # Return empty list when no candidates for cleanup were found
+
+    run_dirs = find_timestamped_run_dirs(base_output_dir)  # Discover timestamped run directories under base output dir
+
+    matched_dirs = collect_product_dirs_for_removal(run_dirs, keys_to_cleanup)  # Collect matching product directories for removal
+
+    removed_dirs = remove_directories(matched_dirs)  # Attempt to remove matched directories and collect removed paths
+
+    return removed_dirs  # Return list of removed directories for optional logging or tests
+
+
 def show_amazon_update_warning(has_amazon: bool, title: str) -> None:
     """
     Show a GUI warning when Amazon URLs were present in the run.
