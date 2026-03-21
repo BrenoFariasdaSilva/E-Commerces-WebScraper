@@ -1990,7 +1990,9 @@ def click_share_affiliate_url_button(share_button_img: Path) -> str:
         box = locate_image_in_region(share_button_img, search_region)  # Attempt to locate share affiliate URL button image inside active window region.
 
         if box is not None:  # Verify if share affiliate URL image was detected.
-            pyautogui.click(int(box.left), int(box.top))  # Click the top-left point of matched image box.
+            center_x = int(getattr(box, "left", 0) + (getattr(box, "width", 0) / 2))  # Compute horizontal center of matched box.
+            center_y = int(getattr(box, "top", 0) + (getattr(box, "height", 0) / 2))  # Compute vertical center of matched box.
+            pyautogui.click(center_x, center_y)  # Click center point of matched image box.
             time.sleep(0.5)  # Wait briefly after image-based click.
             verbose_output(f"{BackgroundColors.CYAN}Used image: {share_button_img.name}{Style.RESET_ALL}")  # Print name of used image.
             return "ImageSearch"  # Return image search method label for image.
