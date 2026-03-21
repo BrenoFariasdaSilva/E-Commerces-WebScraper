@@ -1726,6 +1726,19 @@ def compute_extension_cursor_position() -> Tuple[int, int]:
     return target_x, target_y  # Return computed cursor coordinates for extension interactions.
 
 
+def scroll_extension_tab_to_start_button(scroll_amount: int = -500) -> None:
+    """
+    Scrolls extension tab at computed cursor to reveal the Start download button.
+
+    :param scroll_amount: Number of scroll units (negative to scroll down).
+    :return: None.
+    """
+
+    pyautogui.scroll(scroll_amount)  # Scroll vertically from current cursor position to reveal hidden controls.
+
+    time.sleep(0.2)  # Wait briefly after scrolling to allow elements to become visible.
+
+
 def click_download_button(download_img: Path) -> str:
     """
     Clicks the download button with retry fallback and scaled coordinates.
