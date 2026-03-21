@@ -1878,6 +1878,29 @@ def format_execution_time(total_seconds: int) -> str:
     return f"{h:02d}:{m:02d}:{s:02d} ({h}h {m}m {s}s)"  # Return formatted execution time.
 
 
+def click_share_affiliate_url_button(share_button_img: Path, reference_x: float = 1498.0, reference_y: float = 164.0) -> str:
+    """
+    Locate and click the Share Affiliate URL button for Amazon product page.
+
+    :param share_button_img: Path to the ShareAffiliateURL-Amazon.png image file.
+    :param reference_x: Reference X coordinate for fallback (1920x1080 basis).
+    :param reference_y: Reference Y coordinate for fallback (1920x1080 basis).
+    :return: String indicating which method was used (ImageSearch or Coordinates).
+    """
+
+    box = locate_image(share_button_img)  # Attempt to locate share affiliate URL button image on screen.
+
+    if box is not None:  # Verify if share affiliate URL button image was detected.
+        pyautogui.click(int(box.left), int(box.top))  # Click the top-left point of matched image box.
+        time.sleep(0.5)  # Wait briefly after image-based click.
+        return "ImageSearch"  # Return image search method label.
+
+    scaled_x, scaled_y = get_scaled_fallback_coords(reference_x, reference_y)  # Compute scaled fallback coordinates for button.
+    pyautogui.click(scaled_x, scaled_y)  # Click scaled fallback coordinates.
+    time.sleep(0.5)  # Wait briefly after coordinate-based click.
+    return "Coordinates"  # Return coordinates method label.
+
+
 def build_report(ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]]) -> str:
     """
     Builds grouped execution report text.
