@@ -57,6 +57,7 @@ Assumptions & Notes:
 import atexit  # For playing a sound when the program finishes
 import datetime  # For getting the current date and time
 import hashlib  # For hashing image data
+import json  # For JSON history file handling
 import os  # For running a command in the terminal
 import platform  # For getting the operating system name
 import re # For regular expressions in text processing
@@ -1394,6 +1395,25 @@ def validate_template_file(template_path: Path) -> bool:
     verbose_output(f"{BackgroundColors.GREEN}Template validation successful{Style.RESET_ALL}")  # Output verbose success message when validation passes
 
     return True  # Return True when all validations passed
+
+
+def ensure_history_file_exists(history_file_path: str) -> bool:
+    """
+    Ensure the JSON history file exists and create it if missing.
+
+    :param history_file_path: Path to the JSON history file.
+    :return: True if the history file exists or was created successfully.
+    """
+
+    history_path = Path(history_file_path)  # Create a Path object for the history file
+    if not history_path.exists():  # Verify if the history file does not exist
+        try:  # Try to create an empty JSON file when missing
+            with history_path.open("w", encoding="utf-8") as f:  # Open the history file for writing
+                json.dump({}, f, indent=2, ensure_ascii=False)  # Initialize file with empty JSON object
+        except Exception as e:  # Handle any exception during file creation
+            print(f"[ERROR] Failed to create history file: {e}")  # Log the error to stdout
+            return False  # Return False when file creation failed
+    return True  # Return True when file already exists or was created
 
 
 def remove_url_line_from_input_file(url, local_html_path=None):
