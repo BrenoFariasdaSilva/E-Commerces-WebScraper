@@ -1905,8 +1905,11 @@ def click_go_to_product_button(mercado_livre_img: Path) -> str:
     box = locate_image(mercado_livre_img)  # Locate MercadoLivre image on screen.
 
     if box is not None:  # Verify image was found.
-        pyautogui.click(box.left, box.top)  # Click top-left point like AHK ImageSearch behavior.
-        time.sleep(5)  # Wait for page transition.
+        center_x = int(getattr(box, "left", 0) + (getattr(box, "width", 0) / 2))  # Compute horizontal center of matched box.
+        center_y = int(getattr(box, "top", 0) + (getattr(box, "height", 0) / 2))  # Compute vertical center of matched box.
+        pyautogui.click(center_x, center_y)  # Click center point of matched MercadoLivre image box.
+        time.sleep(5)  # Wait for page transition after clicking the product button.
+
         return "MercadoLivre Go To Product"  # Return action performed status.
 
     return "Not Found / Skipped"  # Return skipped status.
