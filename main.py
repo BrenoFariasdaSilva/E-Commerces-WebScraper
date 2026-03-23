@@ -144,7 +144,7 @@ RUN_FUNCTIONS = {
 
 # Delay Constants:
 DELAY_BETWEEN_REQUESTS = 5  # Seconds to wait between processing URLs to avoid rate limiting
-OUTPUT_DIRECTORY_RETRY_ATTEMPTS = 1  # Number of retries when the final product output directory is missing
+OUTPUT_DIRECTORY_RETRY_ATTEMPTS = 2   # Number of retries when the final product output directory is missing (2 retries -> 3 attempts total)
 
 # Gemini AI Constants:
 GEMINI_MARKETING_PROMPT_TEMPLATE = """Você é um especialista em marketing de e-commerce. Sua tarefa é transformar as informações do produto abaixo em um texto de marketing persuasivo, chamativo, direto e formatado.
