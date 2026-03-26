@@ -502,6 +502,37 @@ class Amazon:
         return "Unknown Product"  # Return default placeholder when name extraction fails
 
 
+    def normalize_brazilian_currency(self, price_text: str) -> Optional[Tuple[str, str]]:
+        """
+        Normalize Brazilian currency format: R$ + dots (thousands separators) + comma (decimal) + 2 digits.
+        
+        :param price_text: Raw price text to normalize (e.g., "R$2.299,08")
+        :return: Tuple of (integer_part, decimal_part) or None if format is invalid
+        """
+        
+        if not price_text:  # Check if price_text is empty or None
+            return None  # Return None for empty input
+        
+        normalized = price_text.strip()  # Strip leading/trailing whitespace
+        normalized = re.sub(r"[R$€£¥]", "", normalized)  # Remove currency symbols
+        normalized = normalized.replace("\u00A0", " ").strip()  # Remove non-breaking spaces
+        
+        match = re.search(r"([0-9.]+)[,.]([0-9]{2})", normalized)  # Match pattern: digits with dots + comma/dot + 2 digits
+        if not match:  # Check if pattern was found
+            return None  # Return None if no match found
+        
+        integer_part_str = match.group(1).replace(".", "").replace(",", "")  # Remove all separators from integer part
+        decimal_part = match.group(2)  # Extract decimal part
+        
+        if not integer_part_str or not integer_part_str.isdigit():  # Validate integer part is numeric
+            return None  # Return None if integer part is invalid
+        
+        if not decimal_part.isdigit() or len(decimal_part) != 2:  # Validate decimal part is exactly 2 digits
+            return None  # Return None if decimal part is invalid
+        
+        return integer_part_str, decimal_part  # Return normalized currency as tuple
+
+
     def detect_international(self, soup: BeautifulSoup) -> bool:
         """
         Detects if the product is from an international seller by checking for the foreign seller badge.
@@ -583,10 +614,9 @@ class Amazon:
             if price_container:  # Check if container was found
                 try:  # Attempt to extract price components
                     price_text = price_container.get_text(strip=True)  # Extract all text from container
-                    match = re.search(r"(\d+(?:[\.,]\d{3})*)[,\.]?(\d{2})", price_text)  # Match Brazilian price format: digits with optional thousands separators and required decimal
-                    if match:  # If price pattern found
-                        integer_part = match.group(1).replace('.', '').replace(',', '')  # Remove thousands separators
-                        decimal_part = match.group(2)  # Extract decimal part
+                    normalized = self.normalize_brazilian_currency(price_text)  # Normalize Brazilian currency format
+                    if normalized:  # Check if normalization was successful
+                        integer_part, decimal_part = normalized  # Unpack normalized tuple
                         verbose_output(  # Output found price
                             f"{BackgroundColors.GREEN}Current price found: {BackgroundColors.CYAN}R${integer_part},{decimal_part}{Style.RESET_ALL}"
                         )  # End of verbose output call
@@ -617,14 +647,12 @@ class Amazon:
             if price_container:  # Check if container was found
                 try:  # Attempt to extract price components
                     price_text = price_container.get_text(strip=True)  # Extract all text from container
-                    # Match Brazilian price format: digits with optional thousands separators and required decimal
-                    match = re.search(r"(\d+(?:[\.,]\d{3})*)[,\.]?(\d{2})", price_text)
-                    if match:  # If price pattern found
-                        integer_part = match.group(1).replace('.', '').replace(',', '')  # Remove thousands separators
-                        decimal_part = match.group(2)  # Extract decimal part
+                    normalized = self.normalize_brazilian_currency(price_text)  # Normalize Brazilian currency format
+                    if normalized:  # Check if normalization was successful
+                        integer_part, decimal_part = normalized  # Unpack normalized tuple
                         verbose_output(  # Output found old price
                             f"{BackgroundColors.GREEN}Old price found: {BackgroundColors.CYAN}R${integer_part},{decimal_part}{Style.RESET_ALL}"
-                        )
+                        )  # End of verbose output call
                         return integer_part, decimal_part  # Return price components as tuple
                 except Exception as e:  # Catch exceptions during extraction
                     continue  # Try next selector on error
