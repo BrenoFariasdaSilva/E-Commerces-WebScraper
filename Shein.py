@@ -77,7 +77,7 @@ from Logger import Logger  # For logging output to both terminal and file
 from pathlib import Path  # For handling file paths
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError  # For browser automation
 from product_utils import normalize_product_name  # Centralized product dir name normalization
-from typing import Optional, Any, List  # For type hints
+from typing import Optional, Any, List, Tuple  # For type hints
 from urllib.parse import urljoin, urlparse  # For URL manipulation
 
 # Macros:
@@ -414,6 +414,42 @@ class Shein:
         return "Unknown Product"  # Return default placeholder when name extraction fails
 
 
+    def normalize_brazilian_currency(self, price_text: str) -> Optional[Tuple[str, str]]:
+        """
+        Normalize Brazilian currency format to extract integer and decimal parts correctly.
+        Handles format: R$ + optional space + digits with dots (thousands) + comma (decimal) + 2 digits.
+        Example: "R$2.299,08" -> ("2299", "08").
+
+        :param price_text: Raw price text potentially containing currency symbol and formatting
+        :return: Tuple of (integer_part, decimal_part) or None if parsing fails
+        """
+
+        if not price_text:  # Validate that price text is not empty
+            return None  # Return None when input is empty
+        
+        normalized = price_text.strip()  # Remove leading and trailing whitespace
+        normalized = re.sub(r"[R$€£¥]", "", normalized)  # Remove common currency symbols from price string
+        normalized = normalized.replace("\u00A0", " ").strip()  # Replace NBSP with space and strip again
+        
+        match = re.search(r"([0-9.]+)[,.]([0-9]{2})", normalized)  # Search for Brazilian currency pattern with dots and comma
+        if not match:  # Verify if no price pattern was found
+            return None  # Return None when pattern doesn't match
+        
+        integer_part_str = match.group(1)  # Extract the integer part with potential dots
+        decimal_part = match.group(2)  # Extract the 2-digit decimal part
+        
+        integer_part_str = integer_part_str.replace(".", "")  # Remove all dot separators (assumed thousands separators in BR)
+        integer_part_str = integer_part_str.replace(",", "")  # Remove any remaining comma separators as failsafe
+        
+        if not integer_part_str or not integer_part_str.isdigit():  # Verify that integer part is valid digits only
+            return None  # Return None when integer part is invalid
+        
+        if not decimal_part.isdigit() or len(decimal_part) != 2:  # Verify decimal part is exactly 2 digits
+            return None  # Return None when decimal part is invalid
+        
+        return integer_part_str, decimal_part  # Return normalized price components
+
+
     def extract_current_price(self, soup=None):
         """
         Extracts the current price from the parsed HTML soup.
@@ -446,10 +482,9 @@ class Shein:
                         amount_with_symbol = promo_price.get("amountWithSymbol", "")
                         
                         if amount_with_symbol and isinstance(amount_with_symbol, str):
-                            match = re.search(r"(\d+)[,.](\d{2})", amount_with_symbol)
-                            if match:
-                                integer_part = match.group(1)
-                                decimal_part = match.group(2)
+                            normalized = self.normalize_brazilian_currency(amount_with_symbol)  # Normalize price to handle thousands separators and decimal format
+                            if normalized:  # Verify if normalization succeeded and returned a result
+                                integer_part, decimal_part = normalized  # Unpack normalized integer and decimal parts
                                 verbose_output(f"{BackgroundColors.GREEN}Current price from JSON: R${integer_part},{decimal_part}{Style.RESET_ALL}")
                                 return integer_part, decimal_part
                 
@@ -465,10 +500,9 @@ class Shein:
             price_element = soup.find(tag, attrs if attrs else None)  # Search for element matching current selector
             if price_element:  # Verify if matching element was found
                 price_text = price_element.get_text(strip=True)  # Extract and clean text content from element
-                match = re.search(r"(\d+)[,.](\d{2})", price_text)  # Search for price pattern with integer and decimal parts
-                if match:  # Verify if price pattern was found in text
-                    integer_part = match.group(1)  # Extract integer part of price
-                    decimal_part = match.group(2)  # Extract decimal part of price
+                normalized = self.normalize_brazilian_currency(price_text)  # Normalize price to handle thousands separators and decimal format
+                if normalized:  # Verify if normalization succeeded and returned a result
+                    integer_part, decimal_part = normalized  # Unpack normalized integer and decimal parts
                     verbose_output(f"{BackgroundColors.GREEN}Current price from HTML: R${integer_part},{decimal_part}{Style.RESET_ALL}")  # Log successfully extracted current price
                     return integer_part, decimal_part  # Return price components as tuple
         
@@ -539,10 +573,9 @@ class Shein:
                     amount_with_symbol = find_original_price(json_data)
                     
                     if amount_with_symbol:
-                        match = re.search(r"(\d+)[,.](\d{2})", amount_with_symbol)
-                        if match:
-                            integer_part = match.group(1)
-                            decimal_part = match.group(2)
+                        normalized = self.normalize_brazilian_currency(amount_with_symbol)  # Normalize price to handle thousands separators and decimal format
+                        if normalized:  # Verify if normalization succeeded and returned a result
+                            integer_part, decimal_part = normalized  # Unpack normalized integer and decimal parts
                             verbose_output(f"{BackgroundColors.GREEN}Old price from JSON: R${integer_part},{decimal_part}{Style.RESET_ALL}")
                             return integer_part, decimal_part
                 
@@ -559,10 +592,9 @@ class Shein:
             price_element = soup.find(tag, attrs if attrs else None)  # Search for element matching current selector
             if price_element:  # Verify if matching element was found
                 price_text = price_element.get_text(strip=True)  # Extract and clean text content from element
-                match = re.search(r"(\d+)[,.](\d{2})", price_text)  # Search for price pattern with integer and decimal parts
-                if match:  # Verify if price pattern was found in text
-                    integer_part = match.group(1)  # Extract integer part of price
-                    decimal_part = match.group(2)  # Extract decimal part of price
+                normalized = self.normalize_brazilian_currency(price_text)  # Normalize price to handle thousands separators and decimal format
+                if normalized:  # Verify if normalization succeeded and returned a result
+                    integer_part, decimal_part = normalized  # Unpack normalized integer and decimal parts
                     verbose_output(f"{BackgroundColors.GREEN}Old price from HTML: R${integer_part},{decimal_part}{Style.RESET_ALL}")  # Log successfully extracted old price
                     return integer_part, decimal_part  # Return price components as tuple
         
