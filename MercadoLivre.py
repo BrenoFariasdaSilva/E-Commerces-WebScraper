@@ -67,6 +67,7 @@ from colorama import Style  # For coloring the terminal
 from Logger import Logger  # For logging output to both terminal and file
 from pathlib import Path  # For handling file paths
 from product_utils import normalize_product_name  # Centralized product dir name normalization
+from typing import Optional, Tuple  # For type hints
 from urllib.parse import urlparse  # For URL manipulation
 
 
@@ -342,6 +343,37 @@ class MercadoLivre:
             pass
 
 
+    def normalize_brazilian_currency(self, price_text: str) -> Optional[Tuple[str, str]]:
+        """
+        Normalize Brazilian currency format: R$ + dots (thousands separators) + comma (decimal) + 2 digits.
+        
+        :param price_text: Raw price text to normalize (e.g., "R$2.299,08")
+        :return: Tuple of (integer_part, decimal_part) or None if format is invalid
+        """
+        
+        if not price_text:  # Check if price_text is empty or None
+            return None  # Return None for empty input
+        
+        normalized = price_text.strip()  # Strip leading/trailing whitespace
+        normalized = re.sub(r"[R$€£¥]", "", normalized)  # Remove currency symbols
+        normalized = normalized.replace("\u00A0", " ").strip()  # Remove non-breaking spaces
+        
+        match = re.search(r"([0-9.]+)[,.]([ 0-9]{2})", normalized)  # Match pattern: digits with dots + comma/dot + 2 digits
+        if not match:  # Check if pattern was found
+            return None  # Return None if no match found
+        
+        integer_part_str = match.group(1).replace(".", "").replace(",", "")  # Remove all separators from integer part
+        decimal_part = match.group(2).strip()  # Extract and strip decimal part
+        
+        if not integer_part_str or not integer_part_str.isdigit():  # Validate integer part is numeric
+            return None  # Return None if integer part is invalid
+        
+        if not decimal_part.isdigit() or len(decimal_part) != 2:  # Validate decimal part is exactly 2 digits
+            return None  # Return None if decimal part is invalid
+        
+        return integer_part_str, decimal_part  # Return normalized currency as tuple
+
+
     def extract_current_price(self, soup):
         """
         Extracts the current price from the parsed HTML soup.
@@ -364,13 +396,13 @@ class MercadoLivre:
         fraction_tag = price_container.find("span", **HTML_SELECTORS["price_fraction"])  # Find first fraction element inside price container
 
         if fraction_tag and isinstance(fraction_tag, Tag):  # Verify presence of a fraction tag for current price
-            integer_part = fraction_tag.get_text(strip=True)  # Extract integer portion of current price
-            parent = fraction_tag.find_parent(class_=re.compile(r"andes-money-amount"))  # Find parent element to locate cents
-            if parent and isinstance(parent, Tag):  # Verify parent is valid Tag
-                cents = parent.find(**HTML_SELECTORS["current_price_cents"])  # Find cents element using centralized selector
-                decimal_part = cents.get_text(strip=True) if cents and isinstance(cents, Tag) else "00"  # Extract decimal part or default
-            else:  # If parent is missing
-                decimal_part = "00"  # Default decimal part when not found
+            price_text = fraction_tag.get_text(strip=True)  # Extract raw price text
+            normalized = self.normalize_brazilian_currency(price_text)  # Normalize Brazilian currency format
+            if normalized:  # Check if normalization was successful
+                integer_part, decimal_part = normalized  # Unpack normalized tuple
+            else:  # If normalization failed
+                integer_part = "N/A"  # Default integer part when normalization fails
+                decimal_part = "N/A"  # Default decimal part when normalization fails
         else:  # If no fraction tag found
             integer_part = "N/A"  # Default integer part when not found
             decimal_part = "N/A"  # Default decimal part when not found
@@ -404,13 +436,13 @@ class MercadoLivre:
         old_fraction = discount_marker.find_previous("span", **HTML_SELECTORS["price_fraction"]) or discount_marker.find("span", **HTML_SELECTORS["price_fraction"])  # Attempt to find old price fraction near discount marker
 
         if old_fraction and isinstance(old_fraction, Tag):  # Verify if old fraction tag exists
-            integer_part = old_fraction.get_text(strip=True)  # Extract integer part of old price
-            parent = old_fraction.find_parent(class_=re.compile(r"andes-money-amount"))  # Find parent for cents extraction
-            if parent and isinstance(parent, Tag):  # Verify parent validity
-                cents = parent.find(**HTML_SELECTORS["current_price_cents"])  # Find cents element using centralized selector
-                decimal_part = cents.get_text(strip=True) if cents and isinstance(cents, Tag) else "00"  # Extract decimal part or default
-            else:  # If parent missing
-                decimal_part = "00"  # Default decimal part
+            price_text = old_fraction.get_text(strip=True)  # Extract raw price text
+            normalized = self.normalize_brazilian_currency(price_text)  # Normalize Brazilian currency format
+            if normalized:  # Check if normalization was successful
+                integer_part, decimal_part = normalized  # Unpack normalized tuple
+            else:  # If normalization failed
+                integer_part = "N/A"  # Default integer part when normalization fails
+                decimal_part = "N/A"  # Default decimal part when normalization fails
             verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Old price extracted: {integer_part}.{decimal_part}{Style.RESET_ALL}")  # Log extracted old price
             return integer_part, decimal_part  # Return detected old price parts
 
