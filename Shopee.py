@@ -679,6 +679,42 @@ class Shopee:
         return False
 
 
+    def normalize_brazilian_currency(self, price_text: str) -> Optional[Tuple[str, str]]:
+        """
+        Normalize Brazilian currency format to extract integer and decimal parts correctly.
+        Handles format: R$ + optional space + digits with dots (thousands) + comma (decimal) + 2 digits.
+        Example: "R$2.299,08" -> ("2299", "08").
+        
+        :param price_text: Raw price text potentially containing currency symbol and formatting
+        :return: Tuple of (integer_part, decimal_part) or None if parsing fails
+        """
+        
+        if not price_text:  # Validate that price text is not empty
+            return None  # Return None when input is empty
+        
+        normalized = price_text.strip()  # Remove leading and trailing whitespace
+        normalized = re.sub(r"[R$€£¥]", "", normalized)  # Remove common currency symbols from price string
+        normalized = normalized.replace("\u00A0", " ").strip()  # Replace NBSP with space and strip again
+        
+        match = re.search(r"([0-9.]+)[,.]([0-9]{2})", normalized)  # Search for Brazilian currency pattern with dots and comma
+        if not match:  # Verify if no price pattern was found
+            return None  # Return None when pattern doesn't match
+        
+        integer_part_str = match.group(1)  # Extract the integer part with potential dots
+        decimal_part = match.group(2)  # Extract the 2-digit decimal part
+        
+        integer_part_str = integer_part_str.replace(".", "")  # Remove all dot separators (assumed thousands separators in BR)
+        integer_part_str = integer_part_str.replace(",", "")  # Remove any remaining comma separators as failsafe
+        
+        if not integer_part_str or not integer_part_str.isdigit():  # Verify that integer part is valid digits only
+            return None  # Return None when integer part is invalid
+        
+        if not decimal_part.isdigit() or len(decimal_part) != 2:  # Verify decimal part is exactly 2 digits
+            return None  # Return None when decimal part is invalid
+        
+        return integer_part_str, decimal_part  # Return normalized price components
+
+
     def prefix_international_name(self, product_name: str) -> str:
         """
         Adds "International - " prefix to product name if not already present.
@@ -711,10 +747,9 @@ class Shopee:
             price_element = soup.find(tag, attrs if attrs else None)  # type: ignore[arg-type]  # Search for element matching current selector
             if price_element:  # Verify if matching element was found
                 price_text = price_element.get_text(strip=True)  # Extract and clean text content from element
-                match = re.search(r"(\d+)[,.](\d{2})", price_text)  # Search for price pattern with integer and decimal parts
-                if match:  # Verify if price pattern was found in text
-                    integer_part = match.group(1)  # Extract integer part of price
-                    decimal_part = match.group(2)  # Extract decimal part of price
+                normalized = self.normalize_brazilian_currency(price_text)  # Normalize price to handle thousands separators and decimal format
+                if normalized:  # Verify if normalization succeeded and returned a result
+                    integer_part, decimal_part = normalized  # Unpack normalized integer and decimal parts
                     verbose_output(  # Log successfully extracted current price
                         f"{BackgroundColors.GREEN}Current price: R${integer_part},{decimal_part}{Style.RESET_ALL}"
                     )  # End of verbose output call
@@ -738,10 +773,9 @@ class Shopee:
             price_element = soup.find(tag, attrs if attrs else None)  # type: ignore[arg-type]  # Search for element matching current selector
             if price_element:  # Verify if matching element was found
                 price_text = price_element.get_text(strip=True)  # Extract and clean text content from element
-                match = re.search(r"(\d+)[,.](\d{2})", price_text)  # Search for price pattern with integer and decimal parts
-                if match:  # Verify if price pattern was found in text
-                    integer_part = match.group(1)  # Extract integer part of price
-                    decimal_part = match.group(2)  # Extract decimal part of price
+                normalized = self.normalize_brazilian_currency(price_text)  # Normalize price to handle thousands separators and decimal format
+                if normalized:  # Verify if normalization succeeded and returned a result
+                    integer_part, decimal_part = normalized  # Unpack normalized integer and decimal parts
                     verbose_output(  # Log successfully extracted old price
                         f"{BackgroundColors.GREEN}Old price: R${integer_part},{decimal_part}{Style.RESET_ALL}"
                     )  # End of verbose output call
