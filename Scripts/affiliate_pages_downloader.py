@@ -92,6 +92,7 @@ class BackgroundColors:  # Colors for the terminal
 
 # Execution Constants:
 VERBOSE = False  # Set to True to output verbose messages
+RENEW_AMAZON_AFFILIATE_URL = False  # Set to True to enable Amazon affiliate URL renewal attempts (currently disabled for safety)
 
 ACTIVE_DOWNLOADS_DIRS = []  # Store the resolved active downloads directories path for reuse.
 
@@ -1658,7 +1659,9 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         if re.search(AFFILIATE_URL_PATTERN, url):  # Verify whether current URL matches Amazon affiliate pattern before renewal attempt.
             scroll_window_to_top_center()  # Scroll active window to top center to reveal the share button image.
             time.sleep(1)  # Wait briefly after scrolling to allow UI to stabilize before attempting image search for renewal.
-            renewal_success = renew_amazon_affiliate_url(url, share_button_img, Path(urls_file))  # Attempt Amazon affiliate URL renewal when URL matches pattern.
+            renewal_success = False  # Placeholder for Amazon URL renewal result since the actual renewal function is currently disabled.
+            if RENEW_AMAZON_AFFILIATE_URL:  # Verify whether Amazon affiliate URL renewal is enabled before attempting renewal, otherwise skip and log that renewal is disabled.
+                renewal_success = renew_amazon_affiliate_url(url, share_button_img, Path(urls_file))  # Attempt Amazon affiliate URL renewal when URL matches pattern.
             if VERBOSE:  # Verify whether verbose logging is enabled for renewal status reporting.
                 if renewal_success:  # Verify whether renewal succeeded before logging success message.
                     print(f"{BackgroundColors.GREEN}✓ Amazon URL renewed successfully for tab {current_tab}{Style.RESET_ALL}")  # Log successful renewal with green background.
