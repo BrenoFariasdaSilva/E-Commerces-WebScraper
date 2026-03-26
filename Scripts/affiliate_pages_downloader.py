@@ -1557,7 +1557,7 @@ def move_downloaded_archives(downloads_dirs: List[str], destination_dir: Path, u
             print(f"{BackgroundColors.YELLOW}[WARNING] Failed to move downloaded file: {source_path}{Style.RESET_ALL}")  # Log archive move failure warning.
 
 
-def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_count: int, downloads_dirs: List[str], extension_img: Path, download_img: Path, confirmation_img: Path, close_download_tab_img: Path, mercado_livre_img: Path, share_button_img: Path, ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]], chrome_download_settings_ready: bool) -> Tuple[int, Dict[str, str], bool]:
+def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_count: int, downloads_dirs: List[str], extension_img: Path, download_img: Path, confirmation_img: Path, close_download_tab_img: Path, mercado_livre_img: Path, share_button_img: Path, ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]], chrome_download_settings_ready: bool, renew_amazon_affiliate: bool = False) -> Tuple[int, Dict[str, str], bool]:
     """
     Processes URLs while tracking downloaded files by directory snapshots.
 
@@ -1660,7 +1660,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
             scroll_window_to_top_center()  # Scroll active window to top center to reveal the share button image.
             time.sleep(1)  # Wait briefly after scrolling to allow UI to stabilize before attempting image search for renewal.
             renewal_success = False  # Placeholder for Amazon URL renewal result since the actual renewal function is currently disabled.
-            if RENEW_AMAZON_AFFILIATE_URL:  # Verify whether Amazon affiliate URL renewal is enabled before attempting renewal, otherwise skip and log that renewal is disabled.
+            if renew_amazon_affiliate or RENEW_AMAZON_AFFILIATE_URL:  # Verify whether renewal is enabled via arg or global flag before attempting renewal.
                 renewal_success = renew_amazon_affiliate_url(url, share_button_img, Path(urls_file))  # Attempt Amazon affiliate URL renewal when URL matches pattern.
             if VERBOSE:  # Verify whether verbose logging is enabled for renewal status reporting.
                 if renewal_success:  # Verify whether renewal succeeded before logging success message.
@@ -2234,13 +2234,14 @@ def maybe_show_messagebox(title: str, message: str) -> None:
         pass  # Skip messagebox display on exception.
 
 
-def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bool = True) -> int:
+def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bool = True, renew_amazon_affiliate: bool = False) -> int:
     """
     Runs the affiliate pages automation workflow.
 
     :param tab_count: Number of tabs and URLs to process.
     :param urls_file: Path to URLs input file.
     :param assets_dir: Path to image assets directory.
+    :param renew_amazon_affiliate: Override global renewal flag when True.
     :param headerless: Whether to suppress GUI messagebox when True.
     :return: Exit code where 0 means success and 1 means failure.
     """
@@ -2294,7 +2295,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
         processed_count = 0  # Initialize processed tab counter.
         start_tick = time.time()  # Capture workflow start timestamp.
         url_to_download: Dict[str, str] = {}  # Initialize URL to downloaded filename mapping dictionary.
-        processed_count, url_to_download, process_success = process_urls_with_download_tracking(urls, urls_file, tab_count, downloads_dirs, extension_img, download_img, confirmation_img, close_download_tab_img, mercado_livre_img, share_button_img, ext_methods, download_methods, completion_methods, close_methods, chrome_download_settings_ready)  # Process URLs with download tracking and retrieve mapping details.
+        processed_count, url_to_download, process_success = process_urls_with_download_tracking(urls, urls_file, tab_count, downloads_dirs, extension_img, download_img, confirmation_img, close_download_tab_img, mercado_livre_img, share_button_img, ext_methods, download_methods, completion_methods, close_methods, chrome_download_settings_ready, renew_amazon_affiliate)  # Process URLs with download tracking and retrieve mapping details.
 
         if not process_success:  # Verify if URL processing completed without activation failure.
             return 1  # Return failure exit code when URL processing fails.
@@ -2455,12 +2456,13 @@ def main():
     parser.add_argument("--urls-file", type=Path, default=repo_root / "Inputs" / "urls.txt", help="Path to URLs input file")  # Register urls-file argument.
     parser.add_argument("--assets-dir", type=Path, default=repo_root / ".assets" / "Browser", help="Directory containing image assets")  # Register assets-dir argument.
     parser.add_argument("--headerless", type=lambda s: str(s).lower() in ("true", "1", "yes", "y"), default=True, help="Whether to suppress GUI messagebox (default: True)")  # Register headerless argument with boolean conversion
+    parser.add_argument("--renew-amazon-affiliate-url", action="store_true", default=False, help="Enable Amazon affiliate URL renewal attempts (default: False)")  # Register renewal override argument
 
     args = parser.parse_args()  # Parse command-line arguments.
     
     update_chrome_profile(CHROME_PROFILE_DISPLAY_NAME)  # Resolve and set CHROME_PROFILE_DIRECTORY using configured display name with Default fallback.
 
-    exit_code = run(args.tab_count, args.urls_file, args.assets_dir, args.headerless)  # Execute automation flow with headerless option
+    exit_code = run(args.tab_count, args.urls_file, args.assets_dir, args.headerless, args.renew_amazon_affiliate_url)  # Execute automation flow with headerless option and renewal override
 
     finish_time = datetime.datetime.now()  # Capture program finish timestamp.
     print(f"{BackgroundColors.GREEN}Start time: {BackgroundColors.CYAN}{start_time.strftime('%d/%m/%Y - %H:%M:%S')}\n{BackgroundColors.GREEN}Finish time: {BackgroundColors.CYAN}{finish_time.strftime('%d/%m/%Y - %H:%M:%S')}\n{BackgroundColors.GREEN}Execution time: {BackgroundColors.CYAN}{calculate_execution_time(start_time, finish_time)}{Style.RESET_ALL}")  # Print execution timing summary.
