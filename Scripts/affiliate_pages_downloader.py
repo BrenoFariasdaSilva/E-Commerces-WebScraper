@@ -2178,6 +2178,76 @@ def write_atomic_temp_file(urls_file: Path, updated_lines: List[str]) -> None:
     os.replace(str(temp_path), str(urls_file))  # Atomically replace the original urls.txt with the temporary file.
 
 
+def read_file_lines(filepath: str) -> list:
+    """
+    Read file lines into a list.
+
+    :param filepath: Path string to the file to read.
+    :return: List of file lines or empty list on error.
+    """
+
+    try:  # Attempt to read the file into memory.
+        path_obj = Path(filepath)  # Create Path object from the provided filepath string.
+        text = path_obj.read_text(encoding="utf-8", errors="ignore")  # Read full file text using safe encoding.
+        lines = text.splitlines()  # Split the file text into separate lines.
+        return lines  # Return the list of lines read from the file.
+    except Exception as e:  # Handle file IO exceptions gracefully.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to read file {filepath}: {e}{Style.RESET_ALL}")  # Log read failure with warning style.
+        return []  # Return empty list when reading fails.
+
+
+def url_exists_in_file(filepath: str, url: str) -> bool:
+    """
+    Verify whether a URL string exists inside a file.
+
+    :param filepath: Path string to the file to search.
+    :param url: URL string to search for within the file.
+    :return: True when the URL appears in the file, otherwise False.
+    """
+
+    lines = read_file_lines(filepath)  # Read file lines using helper function.
+    for line in lines:  # Iterate each line to search for the URL.
+        if url in line:  # Verify whether the URL substring appears in the current line.
+            return True  # Return True immediately when a match is found.
+    return False  # Return False when no matching line is found.
+
+
+def validate_url_update(old_url: str, new_url: str, filepaths: list) -> bool:
+    """
+    Validate that the new URL is present in all target files and the old URL is removed.
+
+    :param old_url: Original URL that was replaced.
+    :param new_url: Newly generated affiliate URL expected to be present.
+    :param filepaths: List of file path strings to validate against.
+    :return: True when validation passes for all files, otherwise False.
+    """
+
+    all_ok = True  # Initialize aggregated validation flag assuming success.
+    for fp in filepaths:  # Iterate each file path to validate presence and absence of URLs.
+        exists_new = url_exists_in_file(fp, new_url)  # Verify new URL presence in the file.
+        if not exists_new:  # Verify whether new URL is missing in the current file.
+            print(f"{BackgroundColors.YELLOW}[WARNING] New URL not found in {BackgroundColors.CYAN}{fp}{Style.RESET_ALL}")  # Log missing new URL.
+            all_ok = False  # Mark aggregated flag as failed when missing new URL.
+        exists_old = url_exists_in_file(fp, old_url)  # Verify old URL presence in the file.
+        if exists_old:  # Verify whether old URL is still present in the current file.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Old URL still present in {BackgroundColors.CYAN}{fp}{Style.RESET_ALL}")  # Log lingering old URL.
+            all_ok = False  # Mark aggregated flag as failed when old URL remains.
+    return all_ok  # Return aggregated validation result.
+
+
+def print_url_update(old_url: str, new_url: str) -> None:
+    """
+    Print colored terminal lines showing the old and new URLs.
+
+    :param old_url: Original URL string to display.
+    :param new_url: Renewed URL string to display.
+    :return: None.
+    """
+
+    verbose_output(f"{BackgroundColors.RED}[OLD]{BackgroundColors.CYAN} {old_url}")  # Print OLD URL label in red and URL in cyan.
+    verbose_output(f"{BackgroundColors.GREEN}[NEW]{BackgroundColors.CYAN} {new_url}{Style.RESET_ALL}")  # Print NEW URL label in green and URL in cyan then reset style.
+
+
 def update_urls_txt_with_new_amazon_url(old_url: str, new_url: str, urls_file: Path) -> bool:
     """
     Update urls.txt file by replacing old Amazon URL with newly copied affiliate URL.
@@ -2252,7 +2322,13 @@ def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, urls_fi
         success = update_urls_txt_with_new_amazon_url(current_url, copied_url, backup_urls_file)  # Update urls.txt with new affiliate URL.
     
         verbose_output(f"{BackgroundColors.GREEN}Amazon URL successfully renewed from {current_url} to {copied_url}{Style.RESET_ALL}")  # Log successful renewal completion when verbose enabled.
-        
+
+        print_url_update(current_url, copied_url)  # Print colored OLD and NEW URL output to terminal for visibility.
+        files_to_validate = [str(urls_file.resolve()), str(backup_urls_file.resolve())]  # Build list of file paths to validate presence of new URL.
+        if not validate_url_update(current_url, copied_url, files_to_validate):  # Verify new URL presence and old URL absence across files.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Affiliate URL validation failed after renewal for: {BackgroundColors.CYAN}{current_url}{Style.RESET_ALL}")  # Log validation failure warning when validation does not pass.
+            return False  # Return failure when validation does not pass to avoid continuing silently.
+
     return success  # Return the update result status.
 
 
