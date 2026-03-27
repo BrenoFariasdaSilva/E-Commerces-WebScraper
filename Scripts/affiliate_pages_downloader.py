@@ -93,6 +93,7 @@ class BackgroundColors:  # Colors for the terminal
 # Execution Constants:
 VERBOSE = False  # Set to True to output verbose messages
 RENEW_AMAZON_AFFILIATE_URL = True  # Set to True to enable Amazon affiliate URL renewal attempts (currently disabled for safety)
+ONLY_RENEW_AMAZON_AFFILIATE_URLS = False  # Control mode to only renew Amazon affiliate URLs without downloading content
 
 ACTIVE_DOWNLOADS_DIRS = []  # Store the resolved active downloads directories path for reuse.
 
@@ -1557,7 +1558,7 @@ def move_downloaded_archives(downloads_dirs: List[str], destination_dir: Path, u
             print(f"{BackgroundColors.YELLOW}[WARNING] Failed to move downloaded file: {source_path}{Style.RESET_ALL}")  # Log archive move failure warning.
 
 
-def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_count: int, downloads_dirs: List[str], extension_img: Path, download_img: Path, confirmation_img: Path, close_download_tab_img: Path, mercado_livre_img: Path, share_button_img: Path, ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]], chrome_download_settings_ready: bool, renew_amazon_affiliate: bool = False) -> Tuple[int, Dict[str, str], bool]:
+def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_count: int, downloads_dirs: List[str], extension_img: Path, download_img: Path, confirmation_img: Path, close_download_tab_img: Path, mercado_livre_img: Path, share_button_img: Path, ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]], chrome_download_settings_ready: bool, renew_amazon_affiliate: bool = False, only_renew_amazon_urls: bool = False) -> Tuple[int, Dict[str, str], bool]:
     """
     Processes URLs while tracking downloaded files by directory snapshots.
 
@@ -1576,6 +1577,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
     :param completion_methods: Grouped completion detection methods dictionary.
     :param close_methods: Grouped close extension tab methods dictionary.
     :param chrome_download_settings_ready: Whether Chrome downloads settings were verified successfully before URL processing.
+    :param only_renew_amazon_urls: Whether to execute only Amazon URL renewal flow without downloads.
     :return: Processed count, URL mapping dictionary, and success status.
     """
 
@@ -1596,6 +1598,41 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
     )  # Combine ANSI-colored segments into a single tqdm bar format string
 
     for index, url in enumerate(tqdm(urls, total=len(urls), desc="Processing URLs", bar_format=bar_format), start=1):  # Initialize tqdm with custom colored bar_format and enumerate indexing
+        if only_renew_amazon_urls:  # Verify whether only-renew mode is active for Amazon URLs.
+            if not activate_automation_window():  # Verify if automation window activation succeeds before URL navigation.
+                return processed_count, url_to_download, False  # Return failure state when activation fails.
+
+            pyautogui.hotkey("ctrl", "t")  # Open new browser tab.
+            time.sleep(0.2)  # Wait after opening tab.
+            pyautogui.hotkey("ctrl", "l")  # Focus browser address bar.
+            time.sleep(0.08)  # Wait after focusing address bar.
+            pyautogui.hotkey("ctrl", "a")  # Select any previous address-bar text.
+            time.sleep(0.05)  # Wait after selecting address text.
+            pyautogui.press("backspace")  # Clear selected address text.
+            time.sleep(0.05)  # Wait after clearing address text.
+            pyautogui.typewrite(url, interval=0.0)  # Type URL into address bar.
+            time.sleep(0.1)  # Wait after typing URL.
+            pyautogui.press("enter")  # Navigate to URL.
+            time.sleep(7)  # Wait for page loading.
+
+            current_tab = index  # Store current tab index.
+
+            if re.search(AFFILIATE_URL_PATTERN, url):  # Verify whether current URL matches Amazon affiliate pattern.
+                scroll_window_to_top_center()  # Scroll active window to top center to reveal the share button image.
+                time.sleep(1)  # Wait briefly after scrolling to allow UI to stabilize before renewal attempt.
+                renewal_success = renew_amazon_affiliate_url(url, share_button_img, Path(urls_file))  # Attempt Amazon affiliate URL renewal for current URL.
+                if VERBOSE:  # Verify whether verbose logging is enabled for renewal status reporting.
+                    if renewal_success:  # Verify whether renewal succeeded before logging success message.
+                        print(f"{BackgroundColors.GREEN}✓ Amazon URL renewed successfully for tab {current_tab}{Style.RESET_ALL}")  # Log successful renewal with green background.
+                    else:  # Otherwise renewal failed, log failure message.
+                        print(f"{BackgroundColors.RED}✗ Amazon URL renewal failed for tab {current_tab}{Style.RESET_ALL}")  # Log failed renewal with red background.
+
+            if index != len(urls):  # Verify whether current URL is not the last one before closing the tab.
+                close_current_tab()  # Close current product tab when not processing the final URL.
+
+            processed_count += 1  # Increment processed counter.
+            continue  # Continue loop without executing download-specific workflow.
+
         pre_download_snapshots = snapshot_download_directories(downloads_dirs)  # Capture downloads directory snapshots before URL processing.
 
         if not activate_automation_window():  # Verify if automation window activation succeeds before URL navigation.
@@ -2286,6 +2323,64 @@ def update_urls_txt_with_new_amazon_url(old_url: str, new_url: str, urls_file: P
         return False  # Return failure when exception occurs.
 
 
+def resolve_outputs_directory() -> Path:
+    """
+    Resolve Outputs directory path from project root.
+
+    :param: None.
+    :return: Resolved Outputs directory path.
+    """
+
+    outputs_dir = Path(PROJECT_ROOT) / "Outputs"  # Build Outputs path from project root.
+    return outputs_dir.resolve()  # Return resolved Outputs directory path.
+
+
+def replace_url_in_file(filepath: Path, old_url: str, new_url: str) -> None:
+    """
+    Replace URL occurrences inside a single file when content is text-readable.
+
+    :param filepath: Path to the file to process.
+    :param old_url: Original URL to replace.
+    :param new_url: New URL to persist.
+    :return: None.
+    """
+
+    try:  # Attempt to read file text safely before replacement.
+        original_text = filepath.read_text(encoding="utf-8", errors="ignore")  # Read current file content with tolerant decoding.
+    except Exception as e:  # Handle file read failures gracefully.
+        verbose_output(f"{BackgroundColors.YELLOW}[WARNING] Failed to read Outputs file: {BackgroundColors.CYAN}{filepath}{Style.RESET_ALL} - {e}")  # Log Outputs file read failure when verbose enabled.
+        return  # Return early when file cannot be read.
+
+    updated_text = original_text.replace(old_url, new_url)  # Replace all occurrences of old URL with new URL.
+
+    if updated_text == original_text:  # Verify whether content changed after replacement attempt.
+        return  # Return early when no replacement occurred.
+
+    try:  # Attempt to persist modified file content.
+        filepath.write_text(updated_text, encoding="utf-8")  # Write updated content back to the file.
+    except Exception as e:  # Handle file write failures gracefully.
+        verbose_output(f"{BackgroundColors.YELLOW}[WARNING] Failed to write Outputs file: {BackgroundColors.CYAN}{filepath}{Style.RESET_ALL} - {e}")  # Log Outputs file write failure when verbose enabled.
+
+
+def replace_url_recursively(base_path: Path, old_url: str, new_url: str) -> None:
+    """
+    Replace URL occurrences recursively for all files inside a base directory.
+
+    :param base_path: Root directory to traverse recursively.
+    :param old_url: Original URL to replace.
+    :param new_url: New URL to persist.
+    :return: None.
+    """
+
+    if not base_path.exists():  # Verify whether Outputs base directory exists.
+        verbose_output(f"{BackgroundColors.YELLOW}[WARNING] Outputs directory not found for recursive URL replacement: {BackgroundColors.CYAN}{base_path}{Style.RESET_ALL}")  # Log missing Outputs directory when verbose enabled.
+        return  # Return early when Outputs directory is unavailable.
+
+    for filepath in base_path.rglob("*"):  # Traverse all filesystem entries under Outputs recursively.
+        if filepath.is_file():  # Verify whether current entry is a regular file.
+            replace_url_in_file(filepath, old_url, new_url)  # Replace URL occurrences in current file.
+
+
 def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, urls_file: Path) -> bool:
     """
     Orchestrate complete Amazon affiliate URL renewal workflow.
@@ -2319,7 +2414,10 @@ def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, urls_fi
     success = update_urls_txt_with_new_amazon_url(current_url, copied_url, urls_file)  # Update urls.txt with new affiliate URL.
     if success:  # Verify if urls.txt was successfully updated.
         backup_urls_file = urls_file.with_name(urls_file.stem + "-backup" + urls_file.suffix)  # Create backup file path by adding -backup suffix before the extension.
-        success = update_urls_txt_with_new_amazon_url(current_url, copied_url, backup_urls_file)  # Update urls.txt with new affiliate URL.
+        success = update_urls_txt_with_new_amazon_url(current_url, copied_url, backup_urls_file)  # Update urls-backup.txt with new affiliate URL.
+
+        outputs_dir = resolve_outputs_directory()  # Resolve Outputs directory path from project root.
+        replace_url_recursively(outputs_dir, current_url, copied_url)  # Replace renewed Amazon URL recursively inside Outputs files.
     
         verbose_output(f"{BackgroundColors.GREEN}Amazon URL successfully renewed from {current_url} to {copied_url}{Style.RESET_ALL}")  # Log successful renewal completion when verbose enabled.
 
@@ -2402,15 +2500,16 @@ def maybe_show_messagebox(title: str, message: str) -> None:
         pass  # Skip messagebox display on exception.
 
 
-def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bool = True, renew_amazon_affiliate: bool = False) -> int:
+def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bool = True, renew_amazon_affiliate: bool = False, only_renew_amazon_urls: bool = False) -> int:
     """
     Runs the affiliate pages automation workflow.
 
     :param tab_count: Number of tabs and URLs to process.
     :param urls_file: Path to URLs input file.
     :param assets_dir: Path to image assets directory.
-    :param renew_amazon_affiliate: Override global renewal flag when True.
     :param headerless: Whether to suppress GUI messagebox when True.
+    :param renew_amazon_affiliate: Override global renewal flag when True.
+    :param only_renew_amazon_urls: Override global only-renew mode when True.
     :return: Exit code where 0 means success and 1 means failure.
     """
 
@@ -2420,6 +2519,10 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
 
     if tab_count is None or tab_count <= 0:  # Verify tab count validity.
         tab_count = len(urls)  # Use full URL list length when tab count is not positive.
+
+    if only_renew_amazon_urls:  # Verify whether only-renew mode is enabled before processing URLs.
+        urls = [url for url in urls if re.search(AFFILIATE_URL_PATTERN, url)]  # Filter input URLs to keep only Amazon affiliate URLs.
+        tab_count = len(urls)  # Update tab count to the filtered Amazon URL count.
 
     if tab_count <= 0:  # Verify there are URLs to process.
         print(f"{BackgroundColors.RED}Error: The file {BackgroundColors.CYAN}{urls_file}{BackgroundColors.RED} is empty or contains no valid URLs.{Style.RESET_ALL}")  # Print empty URLs error.
@@ -2450,10 +2553,13 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
         pyautogui.hotkey("ctrl", "t")  # Open a constant empty tab in the dedicated window for settings navigation.
         time.sleep(0.2)  # Wait after opening the constant empty tab.
 
-        chrome_download_settings_ready = verify_and_correct_chrome_download_settings(assets_dir, open_in_new_tab=False)  # Verify Chrome downloads settings in the current tab before processing product URLs.
+        chrome_download_settings_ready = True  # Initialize downloads settings readiness as true for only-renew mode.
 
-        if not chrome_download_settings_ready:  # Verify whether Chrome downloads settings could not be verified or corrected automatically.
-            print(f"{BackgroundColors.YELLOW}[WARNING] Chrome downloads settings could not be verified or corrected automatically. Continuing execution.{Style.RESET_ALL}")  # Log non-blocking downloads settings verification warning.
+        if not only_renew_amazon_urls:  # Verify whether normal mode requires downloads settings validation.
+            chrome_download_settings_ready = verify_and_correct_chrome_download_settings(assets_dir, open_in_new_tab=False)  # Verify Chrome downloads settings in the current tab before processing product URLs.
+
+            if not chrome_download_settings_ready:  # Verify whether Chrome downloads settings could not be verified or corrected automatically.
+                print(f"{BackgroundColors.YELLOW}[WARNING] Chrome downloads settings could not be verified or corrected automatically. Continuing execution.{Style.RESET_ALL}")  # Log non-blocking downloads settings verification warning.
 
         ext_methods: Dict[str, List[int]] = {}  # Initialize extension method map.
         download_methods: Dict[str, List[int]] = {}  # Initialize download method map.
@@ -2463,7 +2569,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
         processed_count = 0  # Initialize processed tab counter.
         start_tick = time.time()  # Capture workflow start timestamp.
         url_to_download: Dict[str, str] = {}  # Initialize URL to downloaded filename mapping dictionary.
-        processed_count, url_to_download, process_success = process_urls_with_download_tracking(urls, urls_file, tab_count, downloads_dirs, extension_img, download_img, confirmation_img, close_download_tab_img, mercado_livre_img, share_button_img, ext_methods, download_methods, completion_methods, close_methods, chrome_download_settings_ready, renew_amazon_affiliate)  # Process URLs with download tracking and retrieve mapping details.
+        processed_count, url_to_download, process_success = process_urls_with_download_tracking(urls, urls_file, tab_count, downloads_dirs, extension_img, download_img, confirmation_img, close_download_tab_img, mercado_livre_img, share_button_img, ext_methods, download_methods, completion_methods, close_methods, chrome_download_settings_ready, renew_amazon_affiliate, only_renew_amazon_urls)  # Process URLs with download tracking and retrieve mapping details.
 
         if not process_success:  # Verify if URL processing completed without activation failure.
             return 1  # Return failure exit code when URL processing fails.
@@ -2474,8 +2580,9 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
             report = build_report(ext_methods, download_methods, completion_methods, close_methods)  # Build consolidated report text.
             final_report = f"{BackgroundColors.GREEN}Execution Time: {BackgroundColors.CYAN}{formatted}{BackgroundColors.GREEN}\n\n{report}{Style.RESET_ALL}"  # Compose final report output.
 
-            update_urls_file(urls_file, url_to_download)  # Rewrite URLs file with URL to downloaded filename mapping.
-            move_downloaded_archives(downloads_dirs, urls_file.resolve().parent, url_to_download)  # Move downloaded archives into URLs file directory.
+            if not only_renew_amazon_urls:  # Verify whether normal mode requires urls-to-download mapping updates.
+                update_urls_file(urls_file, url_to_download)  # Rewrite URLs file with URL to downloaded filename mapping.
+                move_downloaded_archives(downloads_dirs, urls_file.resolve().parent, url_to_download)  # Move downloaded archives into URLs file directory.
 
             print(f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Automation Finished{Style.RESET_ALL}\n")  # Print automation completion message.
             print(f"{final_report}")  # Print final report details.
@@ -2625,12 +2732,21 @@ def main():
     parser.add_argument("--assets-dir", type=Path, default=repo_root / ".assets" / "Browser", help="Directory containing image assets")  # Register assets-dir argument.
     parser.add_argument("--headerless", type=lambda s: str(s).lower() in ("true", "1", "yes", "y"), default=True, help="Whether to suppress GUI messagebox (default: True)")  # Register headerless argument with boolean conversion
     parser.add_argument("--renew-amazon-affiliate-url", action="store_true", default=False, help="Enable Amazon affiliate URL renewal attempts (default: False)")  # Register renewal override argument
+    parser.add_argument("--only-renew-amazon-urls", nargs="?", const="true", default=None, help="Enable mode that only renews Amazon affiliate URLs without downloading content")  # Register only-renew mode argument with optional truthy value.
 
     args = parser.parse_args()  # Parse command-line arguments.
+
+    global ONLY_RENEW_AMAZON_AFFILIATE_URLS  # Reference global only-renew mode constant for CLI override.
+    argv_only_renew = next((arg.split("=", 1)[1] if "=" in arg else "true" for arg in sys.argv[1:] if arg.lower().startswith("--only-renew-amazon-urls")), "")  # Resolve only-renew argument raw value from sys.argv.
+    if str(argv_only_renew).lower() in ("true", "1"):  # Verify whether sys.argv includes truthy only-renew value.
+        ONLY_RENEW_AMAZON_AFFILIATE_URLS = True  # Enable global only-renew mode when sys.argv override is truthy.
+
+    if args.only_renew_amazon_urls is not None and str(args.only_renew_amazon_urls).lower() in ("true", "1"):  # Verify whether argparse includes truthy only-renew value.
+        ONLY_RENEW_AMAZON_AFFILIATE_URLS = True  # Enable global only-renew mode when argparse value is truthy.
     
     update_chrome_profile(CHROME_PROFILE_DISPLAY_NAME)  # Resolve and set CHROME_PROFILE_DIRECTORY using configured display name with Default fallback.
 
-    exit_code = run(args.tab_count, args.urls_file, args.assets_dir, args.headerless, args.renew_amazon_affiliate_url)  # Execute automation flow with headerless option and renewal override
+    exit_code = run(args.tab_count, args.urls_file, args.assets_dir, args.headerless, args.renew_amazon_affiliate_url, ONLY_RENEW_AMAZON_AFFILIATE_URLS)  # Execute automation flow with headerless option, renewal override, and only-renew mode.
 
     finish_time = datetime.datetime.now()  # Capture program finish timestamp.
     print(f"{BackgroundColors.GREEN}Start time: {BackgroundColors.CYAN}{start_time.strftime('%d/%m/%Y - %H:%M:%S')}\n{BackgroundColors.GREEN}Finish time: {BackgroundColors.CYAN}{finish_time.strftime('%d/%m/%Y - %H:%M:%S')}\n{BackgroundColors.GREEN}Execution time: {BackgroundColors.CYAN}{calculate_execution_time(start_time, finish_time)}{Style.RESET_ALL}")  # Print execution timing summary.
