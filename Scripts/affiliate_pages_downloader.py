@@ -92,7 +92,7 @@ class BackgroundColors:  # Colors for the terminal
 
 # Execution Constants:
 VERBOSE = False  # Set to True to output verbose messages
-RENEW_AMAZON_AFFILIATE_URL = False  # Set to True to enable Amazon affiliate URL renewal attempts (currently disabled for safety)
+RENEW_AMAZON_AFFILIATE_URL = True  # Set to True to enable Amazon affiliate URL renewal attempts (currently disabled for safety)
 
 ACTIVE_DOWNLOADS_DIRS = []  # Store the resolved active downloads directories path for reuse.
 
@@ -1616,6 +1616,18 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
 
         current_tab = index  # Store current tab index.
 
+        if re.search(AFFILIATE_URL_PATTERN, url):  # Verify whether current URL matches Amazon affiliate pattern before renewal attempt.
+            scroll_window_to_top_center()  # Scroll active window to top center to reveal the share button image.
+            time.sleep(1)  # Wait briefly after scrolling to allow UI to stabilize before attempting image search for renewal.
+            renewal_success = False  # Placeholder for Amazon URL renewal result since the actual renewal function is currently disabled.
+            if renew_amazon_affiliate or RENEW_AMAZON_AFFILIATE_URL:  # Verify whether renewal is enabled via arg or global flag before attempting renewal.
+                renewal_success = renew_amazon_affiliate_url(url, share_button_img, Path(urls_file))  # Attempt Amazon affiliate URL renewal when URL matches pattern.
+            if VERBOSE:  # Verify whether verbose logging is enabled for renewal status reporting.
+                if renewal_success:  # Verify whether renewal succeeded before logging success message.
+                    print(f"{BackgroundColors.GREEN}✓ Amazon URL renewed successfully for tab {current_tab}{Style.RESET_ALL}")  # Log successful renewal with green background.
+                else:  # Otherwise renewal failed, log failure message.
+                    print(f"{BackgroundColors.RED}✗ Amazon URL renewal failed for tab {current_tab}{Style.RESET_ALL}")  # Log failed renewal with red background.
+
         click_go_to_product_button(mercado_livre_img)  # Execute MercadoLivre button action when available.
 
         extension_method = click_image_or_coords(extension_img, EXTENSION_X_REF, EXTENSION_Y_REF)  # Execute extension click action with scaled fallback coordinates.
@@ -1655,18 +1667,6 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         add_method(download_methods, download_method, current_tab)  # Store download method for report.
         add_method(completion_methods, confirmation_method, current_tab)  # Store completion method for report.
         add_method(close_methods, close_method, current_tab)  # Store close method for report.
-
-        if re.search(AFFILIATE_URL_PATTERN, url):  # Verify whether current URL matches Amazon affiliate pattern before renewal attempt.
-            scroll_window_to_top_center()  # Scroll active window to top center to reveal the share button image.
-            time.sleep(1)  # Wait briefly after scrolling to allow UI to stabilize before attempting image search for renewal.
-            renewal_success = False  # Placeholder for Amazon URL renewal result since the actual renewal function is currently disabled.
-            if renew_amazon_affiliate or RENEW_AMAZON_AFFILIATE_URL:  # Verify whether renewal is enabled via arg or global flag before attempting renewal.
-                renewal_success = renew_amazon_affiliate_url(url, share_button_img, Path(urls_file))  # Attempt Amazon affiliate URL renewal when URL matches pattern.
-            if VERBOSE:  # Verify whether verbose logging is enabled for renewal status reporting.
-                if renewal_success:  # Verify whether renewal succeeded before logging success message.
-                    print(f"{BackgroundColors.GREEN}✓ Amazon URL renewed successfully for tab {current_tab}{Style.RESET_ALL}")  # Log successful renewal with green background.
-                else:  # Otherwise renewal failed, log failure message.
-                    print(f"{BackgroundColors.RED}✗ Amazon URL renewal failed for tab {current_tab}{Style.RESET_ALL}")  # Log failed renewal with red background.
 
         if index != len(urls):  # Verify whether current URL is not the last one before closing the tab.
             close_current_tab()  # Close current product tab when not processing the final URL.
@@ -2011,23 +2011,116 @@ def get_url_from_clipboard() -> str:
     :return: Clipboard content string or empty string if retrieval fails.
     """
 
-    try:  # Attempt clipboard retrieval using cross-platform method.
-        clipboard_content = pyautogui.typewrite("", interval=0)  # Clear any pending input buffer.
-        pyautogui.hotkey("ctrl", "c")  # Trigger copy-to-clipboard hotkey.
-        time.sleep(0.3)  # Wait for clipboard operation to complete.
-        import subprocess  # Import subprocess for clipboard access.
-        result = subprocess.run(["xclip", "-selection", "clipboard", "-o"], capture_output=True, text=True)  # Read Windows/Linux clipboard via xclip.
-        return result.stdout.strip()  # Return trimmed clipboard content.
-    except Exception:  # Handle clipboard access failures gracefully.
-        try:  # Attempt Windows-specific clipboard access as fallback.
-            import tkinter  # Import tkinter for Windows clipboard.
-            root = tkinter.Tk()  # Create hidden root window.
-            root.withdraw()  # Hide the window from display.
-            clipboard_content = root.clipboard_get()  # Retrieve clipboard content via tkinter.
-            root.destroy()  # Destroy the hidden window.
-            return clipboard_content.strip()  # Return trimmed clipboard content.
-        except Exception:  # Handle all clipboard retrieval failures.
-            return ""  # Return empty string when clipboard cannot be accessed.
+    pyautogui.hotkey("ctrl", "c")  # Trigger copy-to-clipboard hotkey.
+    time.sleep(0.3)  # Wait for clipboard operation to complete.
+    return normalize_affiliate_url(get_clipboard_text())  # Return normalized clipboard URL after copy operation.
+
+
+def get_clipboard_text() -> str:
+    """
+    Retrieve clipboard content using available platform backends.
+
+    :param: None.
+    :return: Raw clipboard content string or empty string on failure.
+    """
+
+    try:  # Attempt clipboard retrieval using tkinter backend.
+        root = tk.Tk()  # Create hidden tkinter root instance for clipboard access.
+        root.withdraw()  # Hide tkinter root window from display.
+        clipboard_content = root.clipboard_get()  # Retrieve clipboard content from active system clipboard.
+        root.destroy()  # Destroy tkinter root window after retrieval.
+        return str(clipboard_content)  # Return clipboard content converted to string.
+    except Exception:  # Handle tkinter clipboard retrieval failures.
+        pass  # Continue execution with subprocess-based fallback.
+
+    try:  # Attempt clipboard retrieval using PowerShell backend.
+        import subprocess  # Import subprocess module for shell clipboard command execution.
+        result = subprocess.run(["powershell", "-NoProfile", "-Command", "Get-Clipboard"], capture_output=True, text=True)  # Execute PowerShell clipboard command.
+        return str(result.stdout)  # Return clipboard content from PowerShell output.
+    except Exception:  # Handle subprocess clipboard retrieval failures.
+        return ""  # Return empty string when all clipboard retrieval methods fail.
+
+
+def normalize_affiliate_url(url: str) -> str:
+    """
+    Normalize affiliate URL text before validation and usage.
+
+    :param url: URL text to normalize.
+    :return: Normalized URL string.
+    """
+
+    return str(url).strip() if isinstance(url, str) else ""  # Return stripped URL when input is string, otherwise return empty string.
+
+
+def is_valid_affiliate_url(url: str) -> bool:
+    """
+    Validate strict Amazon affiliate URL requirements.
+
+    :param url: URL text to validate.
+    :return: True when URL matches strict affiliate constraints, otherwise False.
+    """
+
+    normalized_url = normalize_affiliate_url(url)  # Normalize URL text before strict validation.
+
+    if normalized_url == "":  # Verify whether URL is empty after normalization.
+        return False  # Return validation failure when URL is empty.
+
+    lower_url = normalized_url.lower()  # Convert URL text to lowercase for case-insensitive verification.
+
+    if "amazon." not in lower_url and "amzn.to" not in lower_url:  # Verify whether Amazon domain marker exists in URL.
+        return False  # Return validation failure when Amazon domain marker is missing.
+
+    has_product_path = "/dp/" in lower_url or "/gp/product/" in lower_url  # Resolve whether URL includes full Amazon product path markers.
+    has_short_domain = "amzn.to" in lower_url  # Resolve whether URL uses Amazon short-link domain format.
+
+    if not has_product_path and not has_short_domain:  # Verify whether URL contains supported full-product path or short-link domain.
+        return False  # Return validation failure when supported path/domain markers are missing.
+
+    if "tag=" not in lower_url and not has_short_domain:  # Verify whether affiliate tag parameter exists in full Amazon URLs.
+        return False  # Return validation failure when affiliate tag parameter is missing.
+
+    if normalized_url != url.strip():  # Verify whether normalized URL differs from stripped source representation.
+        return False  # Return validation failure when normalization reveals whitespace anomalies.
+
+    return True  # Return validation success when all strict affiliate constraints pass.
+
+
+def wait_for_valid_affiliate_url(previous_url: str, timeout: int) -> str:
+    """
+    Wait for a valid renewed affiliate URL that differs from previous URL.
+
+    :param previous_url: Previously known URL used for difference verification.
+    :param timeout: Maximum wait duration in seconds for valid clipboard URL.
+    :return: Valid normalized affiliate URL or empty string when timeout expires.
+    """
+
+    start_time = time.time()  # Capture start time for timeout guard.
+    normalized_previous_url = normalize_affiliate_url(previous_url)  # Normalize previous URL for equality verification.
+
+    while time.time() - start_time < max(1, int(timeout)):  # Iterate until timeout expires while reading clipboard content.
+        pyautogui.hotkey("ctrl", "c")  # Trigger copy action to refresh clipboard with current affiliate URL.
+        time.sleep(0.3)  # Wait briefly to allow clipboard propagation.
+        clipboard_url = normalize_affiliate_url(get_clipboard_text())  # Retrieve and normalize current clipboard URL candidate.
+
+        if clipboard_url == "":  # Verify whether clipboard URL candidate is empty.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Clipboard URL is empty while waiting for renewed Amazon affiliate URL.{Style.RESET_ALL}")  # Log warning for empty clipboard candidate.
+            time.sleep(0.25)  # Wait briefly before retrying clipboard retrieval.
+            continue  # Continue retry loop after empty clipboard candidate.
+
+        if not validate_amazon_affiliate_url(clipboard_url):  # Verify whether clipboard candidate satisfies project affiliate URL validation.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Clipboard URL failed strict Amazon affiliate validation: {BackgroundColors.CYAN}{clipboard_url}{Style.RESET_ALL}")  # Log warning for invalid clipboard candidate.
+            time.sleep(0.25)  # Wait briefly before retrying invalid clipboard candidate.
+            continue  # Continue retry loop after invalid clipboard candidate.
+
+        if normalized_previous_url != "" and clipboard_url == normalized_previous_url:  # Verify whether renewed URL differs from previous URL when previous URL exists.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Clipboard URL matches previous Amazon URL and will be retried.{Style.RESET_ALL}")  # Log warning for unchanged clipboard candidate.
+            time.sleep(0.25)  # Wait briefly before retrying unchanged clipboard candidate.
+            continue  # Continue retry loop after unchanged clipboard candidate.
+
+        return clipboard_url  # Return valid renewed affiliate URL when strict validation succeeds.
+
+    print(f"{BackgroundColors.YELLOW}[WARNING] Timed out waiting for a valid renewed Amazon affiliate URL from clipboard.{Style.RESET_ALL}")  # Log warning when timeout expires without valid URL.
+    return ""  # Return empty string when timeout expires without valid renewed URL.
 
 
 def validate_amazon_affiliate_url(url: str) -> bool:
@@ -2038,12 +2131,15 @@ def validate_amazon_affiliate_url(url: str) -> bool:
     :return: True if URL matches Amazon affiliate pattern, False otherwise.
     """
 
-    try:  # Attempt URL validation using pattern matching.
-        amazon_patterns = [r"https?://(?:www\.)?amazon(?:\.com|\.co\.uk|\.de|\.fr|\.es|\.it|\.com\.br).*[/?&]tag=", r"https?://amzn\.to/"]  # Define valid Amazon affiliate URL patterns.
-        for pattern in amazon_patterns:  # Iterate each Amazon affiliate pattern.
-            if re.search(pattern, url, re.IGNORECASE):  # Verify if URL matches current pattern (case-insensitive).
-                return True  # Return validation success when pattern matched.
-        return False  # Return validation failure when no patterns matched.
+    normalized_url = normalize_affiliate_url(url)  # Normalize URL before validation flow.
+
+    if not is_valid_affiliate_url(normalized_url):  # Verify strict affiliate URL constraints before pattern matching.
+        return False  # Return validation failure when strict constraints are not satisfied.
+
+    try:  # Attempt URL validation using project affiliate pattern.
+        if isinstance(AFFILIATE_URL_PATTERN, str):  # Verify whether AFFILIATE_URL_PATTERN is string regex.
+            return bool(re.search(AFFILIATE_URL_PATTERN, normalized_url, re.IGNORECASE))  # Return validation result from string pattern matching.
+        return bool(AFFILIATE_URL_PATTERN.search(normalized_url))  # Return validation result from compiled pattern matching.
     except Exception:  # Handle regex or parsing failures.
         return False  # Return validation failure on exception.
 
@@ -2138,21 +2234,18 @@ def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, urls_fi
 
     time.sleep(1)  # Wait for menu to appear after button click.
 
-    copied_url = get_url_from_clipboard()  # Extract affiliate URL from clipboard after Ctrl+C.
+    copied_url = wait_for_valid_affiliate_url(current_url, 8)  # Wait for a valid renewed affiliate URL from clipboard.
     if not copied_url:  # Verify if clipboard retrieval succeeded.
-        verbose_output(f"{BackgroundColors.RED}Failed to retrieve URL from clipboard{Style.RESET_ALL}")  # Log clipboard retrieval failure when verbose enabled.
+        verbose_output(f"{BackgroundColors.RED}Failed to retrieve valid renewed URL from clipboard{Style.RESET_ALL}")  # Log clipboard retrieval failure when verbose enabled.
         return False  # Return failure when clipboard is empty.
-    try:  # Attempt to validate copied URL using AFFILIATE_URL_PATTERN from Amazon module.
-        if isinstance(AFFILIATE_URL_PATTERN, str):  # Verify if AFFILIATE_URL_PATTERN is a string pattern.
-            matched = bool(re.search(AFFILIATE_URL_PATTERN, copied_url, re.IGNORECASE))  # Search using string pattern with ignore-case.
-        else:  # Handle compiled pattern objects when AFFILIATE_URL_PATTERN is a compiled regex.
-            matched = bool(AFFILIATE_URL_PATTERN.search(copied_url))  # Use compiled pattern search method for matching.
-    except Exception:  # Handle unexpected errors during pattern matching.
-        matched = False  # Fallback to False when pattern matching raises an exception.
 
-    if not matched:  # Verify if copied URL matches affiliate pattern.
+    if not validate_amazon_affiliate_url(copied_url):  # Verify if copied URL matches strict and project affiliate validation.
         verbose_output(f"{BackgroundColors.RED}Invalid Amazon affiliate URL format: {copied_url}{Style.RESET_ALL}")  # Log invalid URL format when verbose enabled.
         return False  # Return failure when URL format is invalid.
+
+    if normalize_affiliate_url(copied_url) == normalize_affiliate_url(current_url):  # Verify whether renewed URL differs from original URL.
+        verbose_output(f"{BackgroundColors.RED}Renewed Amazon URL is identical to original URL: {copied_url}{Style.RESET_ALL}")  # Log unchanged URL failure when verbose enabled.
+        return False  # Return failure when renewed URL matches the original URL.
 
     success = update_urls_txt_with_new_amazon_url(current_url, copied_url, urls_file)  # Update urls.txt with new affiliate URL.
     if success:  # Verify if urls.txt was successfully updated.
