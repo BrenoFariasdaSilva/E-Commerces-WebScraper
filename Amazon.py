@@ -632,30 +632,126 @@ class Amazon:
 
     def extract_old_price(self, soup: BeautifulSoup) -> Tuple[str, str]:
         """
-        Extracts the old price from the parsed HTML soup.
-        
-        :param soup: BeautifulSoup object containing the parsed HTML
-        :return: Tuple of (integer_part, decimal_part) for old price
+        Extract old price using contextual and fallback strategies.
+
+        :param soup: Parsed HTML.
+        :return: Old price tuple.
         """
 
-        real_discount_element = soup.find("span", **HTML_SELECTORS["real_discount"])  # Locate the real Amazon discount element before old price extraction
-        if not real_discount_element:  # Verify if the real discount element is missing
-            return "N/A", "N/A"  # Return N/A old price when no real discount element exists
-        
-        for tag, attrs in HTML_SELECTORS["old_price"]:  # Iterate through prioritized selectors
-            price_container = soup.find(tag, attrs)  # Search for old price container element
-            if price_container:  # Check if container was found
-                try:  # Attempt to extract price components
-                    price_text = price_container.get_text(strip=True)  # Extract all text from container
-                    normalized = self.normalize_brazilian_currency(price_text)  # Normalize Brazilian currency format
-                    if normalized:  # Check if normalization was successful
-                        integer_part, decimal_part = normalized  # Unpack normalized tuple
-                        verbose_output(  # Output found old price
-                            f"{BackgroundColors.GREEN}Old price found: {BackgroundColors.CYAN}R${integer_part},{decimal_part}{Style.RESET_ALL}"
-                        )  # End of verbose output call
-                        return integer_part, decimal_part  # Return price components as tuple
-                except Exception as e:  # Catch exceptions during extraction
-                    continue  # Try next selector on error
+        def extract_text_from_container(price_container: Tag) -> str:  # Define local helper to extract raw price text from one container.
+            offscreen_element = price_container.find("span", class_="a-offscreen")  # Prefer dedicated offscreen value for clean currency text.
+            if offscreen_element and isinstance(offscreen_element, Tag):  # Verify offscreen node is present and valid.
+                return offscreen_element.get_text(strip=True)  # Return cleaned offscreen text when available.
+            return price_container.get_text(strip=True)  # Return visible container text as fallback extraction path.
+
+        def is_current_price_container(price_container: Tag) -> bool:  # Define helper to ignore containers used by current price markup.
+            class_tokens = cast(List[str], price_container.get("class", [])) if price_container.has_attr("class") else []  # Resolve class token list for the candidate container.
+            class_text = " ".join(class_tokens)  # Build normalized class string for token matching.
+            return bool(re.search(r"priceToPay|reinventPricePriceToPayMargin|aok-align-center", class_text, re.IGNORECASE))  # Return whether class tokens match current-price patterns.
+
+        def is_old_price_container(price_container: Tag) -> bool:  # Define helper to keep only containers that look like old/list price markup.
+            class_tokens = cast(List[str], price_container.get("class", [])) if price_container.has_attr("class") else []  # Resolve class token list for candidate filtering.
+            class_text = " ".join(class_tokens)  # Build normalized class string for class-based filtering.
+            if re.search(r"a-text-price|basisPrice|apex-basisprice-value", class_text, re.IGNORECASE):  # Verify class string contains allowed old-price tokens.
+                return True  # Return acceptance when class token criteria are satisfied.
+            container_text = extract_text_from_container(price_container)  # Resolve candidate text for textual fallback filtering.
+            return "R$" in container_text and bool(re.search(r"De:|List Price|Preço", container_text, re.IGNORECASE))  # Return acceptance for textual old-price signals.
+
+        current_price_container = None  # Initialize reference to current-price container.
+        for current_tag, current_attrs in HTML_SELECTORS["current_price"]:  # Iterate through current-price selectors in priority order.
+            current_price_container = soup.find(current_tag, current_attrs)  # Find first current-price container globally.
+            if current_price_container:  # Verify a current-price container was found.
+                break  # Exit selector loop on first valid current-price container.
+
+        contextual_nodes: List[Tag] = []  # Initialize nearby nodes list for contextual old-price scanning.
+        if current_price_container and isinstance(current_price_container, Tag):  # Verify current-price container is present for contextual traversal.
+            anchor_node: Optional[Tag] = current_price_container  # Initialize anchor node for upward traversal.
+            while anchor_node and isinstance(anchor_node, Tag) and len(contextual_nodes) < 6:  # Traverse limited parent chain to preserve locality.
+                contextual_nodes.append(anchor_node)  # Register anchor node as contextual search root.
+                if isinstance(anchor_node.previous_sibling, Tag):  # Verify previous sibling exists and is a tag.
+                    contextual_nodes.append(cast(Tag, anchor_node.previous_sibling))  # Register previous sibling to search nearby left branch.
+                if isinstance(anchor_node.next_sibling, Tag):  # Verify next sibling exists and is a tag.
+                    contextual_nodes.append(cast(Tag, anchor_node.next_sibling))  # Register next sibling to search nearby right branch.
+                anchor_node = anchor_node.parent if isinstance(anchor_node.parent, Tag) else None  # Move upward to broader contextual container.
+
+        contextual_old_selectors = list(HTML_SELECTORS["old_price"]) + [("span", {"class": "a-price a-text-price apex-basisprice-value"}), ("span", {"class": re.compile(r".*basisPrice.*", re.IGNORECASE)})]  # Extend selector set with apex and basisPrice support.
+        old_price_tuple: Optional[Tuple[str, str]] = None  # Initialize old-price tuple placeholder.
+
+        for context_node in contextual_nodes:  # Iterate through contextual nodes from closest to farthest.
+            for old_tag, old_attrs in contextual_old_selectors:  # Iterate through prioritized old-price selectors for current context.
+                contextual_candidates = context_node.find_all(old_tag, old_attrs)  # Collect contextual candidates for the active selector.
+                for candidate in contextual_candidates:  # Iterate through all contextual candidates in DOM order.
+                    if not isinstance(candidate, Tag):  # Verify candidate type before processing.
+                        continue  # Skip invalid candidate nodes.
+                    if is_current_price_container(candidate):  # Verify candidate is not current-price markup.
+                        continue  # Skip candidates matching current-price class patterns.
+                    if not is_old_price_container(candidate):  # Verify candidate satisfies old-price markers.
+                        continue  # Skip candidates that do not match old-price criteria.
+                    candidate_text = extract_text_from_container(candidate)  # Extract candidate text using offscreen-first strategy.
+                    normalized_candidate = self.normalize_brazilian_currency(candidate_text)  # Normalize candidate text into Brazilian currency tuple.
+                    if normalized_candidate:  # Verify normalization produced a valid tuple.
+                        old_price_tuple = normalized_candidate  # Store first valid contextual old-price tuple.
+                        break  # Exit candidate loop once valid contextual old price is found.
+                if old_price_tuple:  # Verify old-price tuple was resolved for active selector.
+                    break  # Exit selector loop once contextual extraction succeeds.
+            if old_price_tuple:  # Verify old-price tuple was resolved for active context node.
+                break  # Exit contextual loop on first valid nearby old price.
+
+        if not old_price_tuple:  # Trigger global fallback only when contextual strategy does not resolve old price.
+            fallback_candidates = soup.find_all("span")  # Collect all span nodes for broad fallback filtering.
+            for candidate in fallback_candidates:  # Iterate through all global span candidates.
+                if not isinstance(candidate, Tag):  # Verify candidate is a valid tag node.
+                    continue  # Skip invalid candidate nodes.
+                if is_current_price_container(candidate):  # Verify candidate is not current-price markup.
+                    continue  # Skip current-price candidates during old-price fallback.
+                if not is_old_price_container(candidate):  # Verify fallback candidate carries old-price semantics.
+                    continue  # Skip fallback candidates without old-price markers.
+                candidate_text = extract_text_from_container(candidate)  # Extract fallback text with offscreen preference.
+                if "R$" not in candidate_text:  # Verify fallback candidate text carries BRL marker.
+                    continue  # Skip fallback candidates without Brazilian currency marker.
+                normalized_candidate = self.normalize_brazilian_currency(candidate_text)  # Normalize fallback candidate into Brazilian currency tuple.
+                if normalized_candidate:  # Verify fallback normalization succeeded.
+                    old_price_tuple = normalized_candidate  # Store first valid global fallback old-price tuple.
+                    break  # Exit fallback loop after first valid old-price candidate.
+
+        if old_price_tuple:  # Verify old price was successfully extracted before discount validation.
+            integer_part, decimal_part = old_price_tuple  # Unpack extracted old-price tuple.
+            verbose_output(  # Output found old price
+                f"{BackgroundColors.GREEN}Old price found: {BackgroundColors.CYAN}R${integer_part},{decimal_part}{Style.RESET_ALL}"
+            )  # End of verbose output call
+
+            try:  # Attempt discount validation and correction using extracted old/current prices.
+                current_price_tuple = self.extract_current_price(soup)  # Resolve current-price tuple for discount computation.
+                if current_price_tuple[0] != "N/A":  # Verify current price is available for arithmetic validation.
+                    old_value = float(f"{integer_part}.{decimal_part}")  # Convert old-price tuple to float for percentage computation.
+                    current_value = float(f"{current_price_tuple[0]}.{current_price_tuple[1]}")  # Convert current-price tuple to float for percentage computation.
+                    if old_value > 0 and 0 <= current_value <= old_value:  # Verify numeric bounds before discount calculation.
+                        computed_discount = ((old_value - current_value) / old_value) * 100.0  # Compute expected discount from old/current prices.
+                        computed_discount_text = f"{int(round(computed_discount))}%"  # Build rounded computed discount string.
+                        real_discount_element = soup.find("span", **HTML_SELECTORS["real_discount"])  # Resolve existing real-discount element from DOM.
+                        extracted_discount_value: Optional[float] = None  # Initialize extracted discount numeric placeholder.
+                        if real_discount_element and isinstance(real_discount_element, Tag):  # Verify scraped discount element exists in DOM.
+                            extracted_discount_text = real_discount_element.get_text(strip=True)  # Extract raw scraped discount text.
+                            extracted_discount_match = re.search(r"(\d+(?:[\.,]\d+)?)", extracted_discount_text)  # Parse numeric component from scraped discount text.
+                            if extracted_discount_match:  # Verify numeric component exists in scraped discount text.
+                                extracted_discount_value = float(extracted_discount_match.group(1).replace(",", "."))  # Convert scraped discount number to float.
+                        if extracted_discount_value is None:  # Verify scraped discount is unavailable for reliable output.
+                            if real_discount_element and isinstance(real_discount_element, Tag):  # Verify a real-discount node already exists.
+                                real_discount_element.string = computed_discount_text  # Override existing discount text with computed value.
+                            else:  # Handle absence of real-discount node in DOM.
+                                synthetic_discount = soup.new_tag("span")  # Create synthetic discount node for downstream extraction.
+                                synthetic_discount["class"] = HTML_SELECTORS["real_discount"]["class"].split()  # Assign expected class tokens for selector compatibility.
+                                synthetic_discount.string = computed_discount_text  # Set synthetic node text to computed discount.
+                                attach_root = soup.body if soup.body else soup  # Resolve best available attach root for synthetic node.
+                                attach_root.append(synthetic_discount)  # Attach synthetic discount node to DOM tree.
+                        elif abs(computed_discount - extracted_discount_value) > 2.0:  # Verify mismatch exceeds tolerance threshold.
+                            print(f"{BackgroundColors.YELLOW}Warning: Discount mismatch detected (computed {computed_discount:.2f}% vs extracted {extracted_discount_value:.2f}%). Using computed value.{Style.RESET_ALL}")  # Log mismatch warning with replacement decision.
+                            if real_discount_element and isinstance(real_discount_element, Tag):  # Verify scraped discount element exists for in-place override.
+                                real_discount_element.string = computed_discount_text  # Replace scraped discount text with computed value.
+            except Exception as e:  # Catch discount validation exceptions to keep extraction resilient.
+                verbose_output(false_string=f"{BackgroundColors.YELLOW}Warning during old price discount validation: {e}{Style.RESET_ALL}")  # Log non-blocking validation warning.
+
+            return integer_part, decimal_part  # Return extracted old-price tuple when extraction succeeds.
         
         verbose_output(  # Output not found message
             f"{BackgroundColors.YELLOW}Old price not found.{Style.RESET_ALL}"
