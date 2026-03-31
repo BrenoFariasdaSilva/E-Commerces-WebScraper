@@ -2552,9 +2552,12 @@ def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, urls_fi
         verbose_output(f"{BackgroundColors.GREEN}Amazon URL successfully renewed from {current_url} to {copied_url}{Style.RESET_ALL}")  # Log successful renewal completion when verbose enabled.
 
         print_url_update(current_url, copied_url)  # Print colored OLD and NEW URL output to terminal for visibility.
-        files_to_validate = [str(urls_file.resolve()), str(backup_urls_file.resolve())]  # Build list of file paths to validate presence of new URL.
-        if not validate_url_update(current_url, copied_url, files_to_validate):  # Verify new URL presence and old URL absence across files.
-            print(f"{BackgroundColors.YELLOW}[WARNING] Affiliate URL validation failed after renewal for: {BackgroundColors.CYAN}{current_url}{Style.RESET_ALL}")  # Log validation failure warning when validation does not pass.
+        if ONLY_RENEW_AMAZON_AFFILIATE_URLS:  # Verify if running in renew-only mode.
+            files_to_validate = [str(urls_file.resolve()), str(backup_urls_file.resolve())]  # Include both urls.txt and urls-backup.txt for validation when enabled.
+        else:  # Verify if running in normal mode.
+            files_to_validate = [str(urls_file.resolve())]  # Include only urls.txt for validation in default mode.
+        if not validate_url_update(current_url, copied_url, files_to_validate):  # Verify new URL presence and old URL absence across selected files.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Affiliate URL validation failed for files: {BackgroundColors.CYAN}{files_to_validate}{Style.RESET_ALL}")  # Log validation failure and mention only the files actually validated.
             return False  # Return failure when validation does not pass to avoid continuing silently.
 
     return success  # Return the update result status.
