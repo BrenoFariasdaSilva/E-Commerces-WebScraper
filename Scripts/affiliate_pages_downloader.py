@@ -94,6 +94,7 @@ class BackgroundColors:  # Colors for the terminal
 VERBOSE = False  # Set to True to output verbose messages
 RENEW_AMAZON_AFFILIATE_URL = True  # Set to True to enable Amazon affiliate URL renewal attempts (currently disabled for safety)
 ONLY_RENEW_AMAZON_AFFILIATE_URLS = False  # Control mode to only renew Amazon affiliate URLs without downloading content
+RENEWED_URL_MAP: Dict[str, str] = {}  # Store renewed Amazon URL pairs as original-to-renewed mapping.
 
 ACTIVE_DOWNLOADS_DIRS = []  # Store the resolved active downloads directories path for reuse.
 
@@ -1237,6 +1238,117 @@ def read_urls_file(urls_file: Path) -> List[str]:
     return read_urls(urls_file)  # Return URL entries parsed from the URLs file.
 
 
+def is_file_empty(filepath: str) -> bool:
+    """
+    Verifies whether a file is empty.
+
+    :param filepath: Path string to the file that must be evaluated.
+    :return: True when file is missing, unreadable, or empty, otherwise False.
+    """
+
+    path_obj = Path(filepath)  # Build Path instance from the provided filepath string.
+
+    if not path_obj.exists():  # Verify whether the target file exists before size evaluation.
+        print(f"{BackgroundColors.YELLOW}[WARNING] File not found: {BackgroundColors.CYAN}{path_obj}{Style.RESET_ALL}")  # Print missing-file warning for validation visibility.
+        return True  # Return True when the file is missing to keep fallback flow safe.
+
+    try:  # Attempt to evaluate file size metadata safely.
+        return int(path_obj.stat().st_size) == 0  # Return True when file byte size is zero.
+    except Exception as e:  # Handle file metadata access failures safely.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to read file size for {BackgroundColors.CYAN}{path_obj}{Style.RESET_ALL}: {e}")  # Print unreadable-file warning for validation visibility.
+        return True  # Return True when file metadata cannot be read.
+
+
+def extract_amazon_urls_from_file(filepath: str, pattern: str) -> list:
+    """
+    Extracts valid Amazon affiliate URLs from a text file.
+
+    :param filepath: Path string to the file to scan for URLs.
+    :param pattern: Regex pattern string or compiled object used for extraction.
+    :return: List of unique valid Amazon affiliate URLs found in the file.
+    """
+
+    extracted_urls: list = []  # Initialize extracted URL list preserving source order.
+    path_obj = Path(filepath)  # Build Path instance from provided filepath string.
+
+    if not path_obj.exists():  # Verify whether target file exists before content read.
+        return extracted_urls  # Return empty list when target file is missing.
+
+    try:  # Attempt to read file content safely using tolerant decoding.
+        raw_text = path_obj.read_text(encoding="utf-8", errors="ignore")  # Read full file text using utf-8 with ignored decode errors.
+    except Exception as e:  # Handle file read failures without interrupting flow.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to read file for URL extraction: {BackgroundColors.CYAN}{path_obj}{Style.RESET_ALL} - {e}")  # Print unreadable-file warning for extraction visibility.
+        return extracted_urls  # Return empty list when file content cannot be read.
+
+    compiled_pattern = re.compile(pattern) if isinstance(pattern, str) else pattern  # Resolve extraction pattern as compiled regex for iteration.
+
+    try:  # Attempt regex iteration across file content for URL extraction.
+        for match in compiled_pattern.finditer(raw_text):  # Iterate regex matches across file content.
+            candidate_url = normalize_affiliate_url(match.group(0))  # Normalize matched URL text before strict validation.
+
+            if not validate_amazon_affiliate_url(candidate_url):  # Verify whether matched URL satisfies strict Amazon affiliate constraints.
+                continue  # Continue iteration when matched URL is invalid.
+
+            if candidate_url in extracted_urls:  # Verify whether matched URL is already collected for de-duplication.
+                continue  # Continue iteration when URL is already present.
+
+            extracted_urls.append(candidate_url)  # Append valid unique Amazon affiliate URL to extraction list.
+    except Exception as e:  # Handle regex processing failures safely.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed during URL extraction for file: {BackgroundColors.CYAN}{path_obj}{Style.RESET_ALL} - {e}")  # Print regex processing warning for extraction visibility.
+
+    return extracted_urls  # Return extracted URL list after scan completion.
+
+
+def scan_outputs_for_amazon_urls(base_path: str, pattern: str) -> dict:
+    """
+    Scans Outputs recursively and maps valid Amazon URLs to source files.
+
+    :param base_path: Base directory path string used for recursive traversal.
+    :param pattern: Regex pattern string or compiled object used for extraction.
+    :return: Dictionary mapping URL strings to lists of file paths where they appear.
+    """
+
+    url_map: dict = {}  # Initialize URL-to-filepaths mapping dictionary.
+    outputs_path = Path(base_path)  # Build Outputs base Path instance from provided string.
+
+    if not outputs_path.exists():  # Verify whether Outputs directory exists before recursive traversal.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Outputs directory not found for fallback scan: {BackgroundColors.CYAN}{outputs_path}{Style.RESET_ALL}")  # Print missing Outputs warning for fallback visibility.
+        return url_map  # Return empty mapping when Outputs directory is unavailable.
+
+    if not outputs_path.is_dir():  # Verify whether provided Outputs path points to a directory.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Outputs fallback path is not a directory: {BackgroundColors.CYAN}{outputs_path}{Style.RESET_ALL}")  # Print invalid Outputs path warning for fallback visibility.
+        return url_map  # Return empty mapping when Outputs path is invalid.
+
+    history_json_path = (outputs_path / "history.json").resolve()  # Resolve excluded Outputs history.json absolute path.
+
+    for filepath in outputs_path.rglob("*"):  # Traverse Outputs filesystem entries recursively.
+        if not filepath.is_file():  # Verify whether current traversal entry is a regular file.
+            continue  # Continue traversal when entry is not a regular file.
+
+        resolved_file = filepath.resolve()  # Resolve current file path for canonical comparison and storage.
+
+        if resolved_file == history_json_path:  # Verify whether current file is excluded Outputs history.json.
+            continue  # Continue traversal while skipping excluded history file.
+
+        extracted_urls = extract_amazon_urls_from_file(str(resolved_file), pattern)  # Extract valid Amazon URLs from current Outputs file.
+
+        if len(extracted_urls) == 0:  # Verify whether current Outputs file produced any valid URL entries.
+            continue  # Continue traversal when no valid URL entries were extracted.
+
+        normalized_filepath = str(resolved_file)  # Normalize resolved file path to string for map storage.
+
+        for extracted_url in extracted_urls:  # Iterate extracted URLs to build grouped URL mapping.
+            if extracted_url not in url_map:  # Verify whether URL key already exists in mapping dictionary.
+                url_map[extracted_url] = []  # Initialize filepath list for first URL occurrence.
+
+            if normalized_filepath in url_map[extracted_url]:  # Verify whether filepath is already listed for current URL key.
+                continue  # Continue iteration when filepath is already mapped.
+
+            url_map[extracted_url].append(normalized_filepath)  # Append unique filepath to current URL mapping list.
+
+    return url_map  # Return completed URL-to-filepaths mapping dictionary.
+
+
 def snapshot_download_directory(downloads_dir: Path) -> Dict[str, float]:
     """
     Captures file snapshot metadata from the downloads directory.
@@ -2335,20 +2447,22 @@ def resolve_outputs_directory() -> Path:
     return outputs_dir.resolve()  # Return resolved Outputs directory path.
 
 
-def replace_url_in_file(filepath: Path, old_url: str, new_url: str) -> None:
+def replace_url_in_file(filepath: str, old_url: str, new_url: str) -> None:
     """
     Replace URL occurrences inside a single file when content is text-readable.
 
-    :param filepath: Path to the file to process.
+    :param filepath: Path string to the file to process.
     :param old_url: Original URL to replace.
     :param new_url: New URL to persist.
     :return: None.
     """
 
+    filepath_obj = Path(filepath)  # Build Path object from filepath string for text operations.
+
     try:  # Attempt to read file text safely before replacement.
-        original_text = filepath.read_text(encoding="utf-8", errors="ignore")  # Read current file content with tolerant decoding.
+        original_text = filepath_obj.read_text(encoding="utf-8", errors="ignore")  # Read current file content with tolerant decoding.
     except Exception as e:  # Handle file read failures gracefully.
-        verbose_output(f"{BackgroundColors.YELLOW}[WARNING] Failed to read Outputs file: {BackgroundColors.CYAN}{filepath}{Style.RESET_ALL} - {e}")  # Log Outputs file read failure when verbose enabled.
+        verbose_output(f"{BackgroundColors.YELLOW}[WARNING] Failed to read Outputs file: {BackgroundColors.CYAN}{filepath_obj}{Style.RESET_ALL} - {e}")  # Log Outputs file read failure when verbose enabled.
         return  # Return early when file cannot be read.
 
     updated_text = original_text.replace(old_url, new_url)  # Replace all occurrences of old URL with new URL.
@@ -2357,9 +2471,9 @@ def replace_url_in_file(filepath: Path, old_url: str, new_url: str) -> None:
         return  # Return early when no replacement occurred.
 
     try:  # Attempt to persist modified file content.
-        filepath.write_text(updated_text, encoding="utf-8")  # Write updated content back to the file.
+        filepath_obj.write_text(updated_text, encoding="utf-8")  # Write updated content back to the file.
     except Exception as e:  # Handle file write failures gracefully.
-        verbose_output(f"{BackgroundColors.YELLOW}[WARNING] Failed to write Outputs file: {BackgroundColors.CYAN}{filepath}{Style.RESET_ALL} - {e}")  # Log Outputs file write failure when verbose enabled.
+        verbose_output(f"{BackgroundColors.YELLOW}[WARNING] Failed to write Outputs file: {BackgroundColors.CYAN}{filepath_obj}{Style.RESET_ALL} - {e}")  # Log Outputs file write failure when verbose enabled.
 
 
 def replace_url_recursively(base_path: Path, old_url: str, new_url: str) -> None:
@@ -2378,7 +2492,7 @@ def replace_url_recursively(base_path: Path, old_url: str, new_url: str) -> None
 
     for filepath in base_path.rglob("*"):  # Traverse all filesystem entries under Outputs recursively.
         if filepath.is_file():  # Verify whether current entry is a regular file.
-            replace_url_in_file(filepath, old_url, new_url)  # Replace URL occurrences in current file.
+            replace_url_in_file(str(filepath), old_url, new_url)  # Replace URL occurrences in current file.
 
 
 def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, urls_file: Path) -> bool:
@@ -2413,6 +2527,7 @@ def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, urls_fi
 
     success = update_urls_txt_with_new_amazon_url(current_url, copied_url, urls_file)  # Update urls.txt with new affiliate URL.
     if success:  # Verify if urls.txt was successfully updated.
+        RENEWED_URL_MAP[current_url] = copied_url  # Store successful renewal mapping for downstream mapped-file replacements.
         backup_urls_file = urls_file.with_name(urls_file.stem + "-backup" + urls_file.suffix)  # Create backup file path by adding -backup suffix before the extension.
         success = update_urls_txt_with_new_amazon_url(current_url, copied_url, backup_urls_file)  # Update urls-backup.txt with new affiliate URL.
 
@@ -2520,9 +2635,52 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
     if tab_count is None or tab_count <= 0:  # Verify tab count validity.
         tab_count = len(urls)  # Use full URL list length when tab count is not positive.
 
+    fallback_outputs_url_map: Dict[str, List[str]] = {}  # Initialize Outputs fallback URL mapping dictionary.
+    fallback_outputs_mode = False  # Initialize Outputs fallback mode status flag.
+
     if only_renew_amazon_urls:  # Verify whether only-renew mode is enabled before processing URLs.
-        urls = [url for url in urls if re.search(AFFILIATE_URL_PATTERN, url)]  # Filter input URLs to keep only Amazon affiliate URLs.
-        tab_count = len(urls)  # Update tab count to the filtered Amazon URL count.
+        primary_urls_file = urls_file.resolve()  # Resolve primary urls.txt absolute path for validation and extraction.
+        backup_urls_file = primary_urls_file.with_name(primary_urls_file.stem + "-backup" + primary_urls_file.suffix)  # Resolve backup urls file absolute path for validation and extraction.
+        primary_is_empty = is_file_empty(str(primary_urls_file))  # Evaluate whether primary URLs file is empty.
+        backup_is_empty = is_file_empty(str(backup_urls_file))  # Evaluate whether backup URLs file is empty.
+
+        if primary_is_empty:  # Verify whether primary URLs file is empty for dedicated warning message.
+            print(f"{BackgroundColors.YELLOW}[WARNING] {primary_urls_file.name} is empty{Style.RESET_ALL}")  # Print dedicated empty-file warning for primary URLs file.
+
+        if backup_is_empty:  # Verify whether backup URLs file is empty for dedicated warning message.
+            print(f"{BackgroundColors.YELLOW}[WARNING] {backup_urls_file.name} is empty{Style.RESET_ALL}")  # Print dedicated empty-file warning for backup URLs file.
+
+        primary_valid_urls = [] if primary_is_empty else extract_amazon_urls_from_file(str(primary_urls_file), AFFILIATE_URL_PATTERN)  # Extract valid Amazon URLs from primary file when non-empty.
+        backup_valid_urls = [] if backup_is_empty else extract_amazon_urls_from_file(str(backup_urls_file), AFFILIATE_URL_PATTERN)  # Extract valid Amazon URLs from backup file when non-empty.
+
+        if not primary_is_empty and len(primary_valid_urls) == 0:  # Verify whether primary file has content but no valid Amazon URLs.
+            print(f"{BackgroundColors.YELLOW}[WARNING] {primary_urls_file.name} contains no valid Amazon URLs{Style.RESET_ALL}")  # Print dedicated no-valid-URL warning for primary file.
+
+        if not backup_is_empty and len(backup_valid_urls) == 0:  # Verify whether backup file has content but no valid Amazon URLs.
+            print(f"{BackgroundColors.YELLOW}[WARNING] {backup_urls_file.name} contains no valid Amazon URLs{Style.RESET_ALL}")  # Print dedicated no-valid-URL warning for backup file.
+
+        unique_urls: List[str] = []  # Initialize ordered unique URL list from primary and backup files.
+        seen_urls: set[str] = set()  # Initialize deduplication set for merged primary and backup URLs.
+
+        for candidate_url in primary_valid_urls + backup_valid_urls:  # Iterate merged URL candidates preserving source order.
+            if candidate_url in seen_urls:  # Verify whether current candidate URL was already collected.
+                continue  # Continue iteration when URL already exists in deduplicated list.
+
+            seen_urls.add(candidate_url)  # Register current candidate URL in deduplication set.
+            unique_urls.append(candidate_url)  # Append unique URL to ordered processing list.
+
+        urls = unique_urls  # Persist deduplicated URL list as only-renew processing source.
+
+        if len(urls) == 0:  # Verify whether both URL files produced zero valid Amazon URLs.
+            fallback_outputs_mode = True  # Enable Outputs fallback mode when both URL files have no valid Amazon URLs.
+            outputs_dir = resolve_outputs_directory()  # Resolve Outputs base directory for recursive fallback scan.
+            fallback_outputs_url_map = scan_outputs_for_amazon_urls(str(outputs_dir), AFFILIATE_URL_PATTERN)  # Build URL-to-filepaths mapping from Outputs fallback scan.
+            urls = sorted(fallback_outputs_url_map.keys())  # Build deterministic URL list from Outputs fallback mapping keys.
+
+            if len(urls) == 0:  # Verify whether Outputs fallback scan produced no valid URLs.
+                print(f"{BackgroundColors.YELLOW}[WARNING] No valid Amazon URLs found in Outputs fallback scan.{Style.RESET_ALL}")  # Print fallback warning when Outputs scan yields zero valid URLs.
+
+        tab_count = len(urls)  # Update tab count to the final only-renew URL list length.
 
     if tab_count <= 0:  # Verify there are URLs to process.
         print(f"{BackgroundColors.RED}Error: The file {BackgroundColors.CYAN}{urls_file}{BackgroundColors.RED} is empty or contains no valid URLs.{Style.RESET_ALL}")  # Print empty URLs error.
@@ -2580,12 +2738,21 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
             report = build_report(ext_methods, download_methods, completion_methods, close_methods)  # Build consolidated report text.
             final_report = f"{BackgroundColors.GREEN}Execution Time: {BackgroundColors.CYAN}{formatted}{BackgroundColors.GREEN}\n\n{report}{Style.RESET_ALL}"  # Compose final report output.
 
+            if only_renew_amazon_urls and fallback_outputs_mode:  # Verify whether Outputs fallback mapped replacements must execute after renewal processing.
+                for old_url, mapped_filepaths in fallback_outputs_url_map.items():  # Iterate Outputs fallback URL map for mapped-file replacements.
+                    renewed_url = RENEWED_URL_MAP.get(old_url, "")  # Resolve renewed URL from successful renewal mapping store.
+
+                    if renewed_url == "":  # Verify whether renewal mapping exists for current fallback URL.
+                        continue  # Continue iteration when no renewed URL mapping is available.
+
+                    for mapped_filepath in mapped_filepaths:  # Iterate mapped filepaths associated with current fallback URL.
+                        replace_url_in_file(str(mapped_filepath), old_url, renewed_url)  # Replace old URL with renewed URL in mapped file.
+
             if not only_renew_amazon_urls:  # Verify whether normal mode requires urls-to-download mapping updates.
                 update_urls_file(urls_file, url_to_download)  # Rewrite URLs file with URL to downloaded filename mapping.
                 move_downloaded_archives(downloads_dirs, urls_file.resolve().parent, url_to_download)  # Move downloaded archives into URLs file directory.
 
             print(f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Automation Finished{Style.RESET_ALL}\n")  # Print automation completion message.
-            print(f"{final_report}")  # Print final report details.
 
             if not headerless:  # Verify if headerless flag is disabled before showing GUI messagebox
                 maybe_show_messagebox("Automation Finished", final_report)  # Display optional messagebox report when allowed
