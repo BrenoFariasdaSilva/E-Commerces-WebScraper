@@ -2449,31 +2449,45 @@ def resolve_outputs_directory() -> Path:
 
 def replace_url_in_file(filepath: str, old_url: str, new_url: str) -> None:
     """
-    Replace URL occurrences inside a single file when content is text-readable.
+    Replace old URL with new URL inside file.
 
-    :param filepath: Path string to the file to process.
-    :param old_url: Original URL to replace.
-    :param new_url: New URL to persist.
+    :param filepath: File path.
+    :param old_url: Old URL string.
+    :param new_url: New URL string.
     :return: None.
     """
 
     filepath_obj = Path(filepath)  # Build Path object from filepath string for text operations.
 
     try:  # Attempt to read file text safely before replacement.
-        original_text = filepath_obj.read_text(encoding="utf-8", errors="ignore")  # Read current file content with tolerant decoding.
+        text = filepath_obj.read_text(encoding="utf-8", errors="ignore")  # Read current file content using safe tolerant decoding.
     except Exception as e:  # Handle file read failures gracefully.
-        verbose_output(f"{BackgroundColors.YELLOW}[WARNING] Failed to read Outputs file: {BackgroundColors.CYAN}{filepath_obj}{Style.RESET_ALL} - {e}")  # Log Outputs file read failure when verbose enabled.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to read file for URL replacement: {BackgroundColors.CYAN}{filepath_obj}{Style.RESET_ALL} - {e}")  # Print replacement read failure warning.
         return  # Return early when file cannot be read.
 
-    updated_text = original_text.replace(old_url, new_url)  # Replace all occurrences of old URL with new URL.
+    updated_text = text.replace(old_url, new_url)  # Replace all occurrences of old URL with new URL.
 
-    if updated_text == original_text:  # Verify whether content changed after replacement attempt.
+    if updated_text == text:  # Verify whether content changed after replacement attempt.
+        print(f"{BackgroundColors.YELLOW}[WARNING] No URL replacement needed in file: {BackgroundColors.CYAN}{filepath_obj}{Style.RESET_ALL}")  # Print no-change replacement warning.
         return  # Return early when no replacement occurred.
 
     try:  # Attempt to persist modified file content.
         filepath_obj.write_text(updated_text, encoding="utf-8")  # Write updated content back to the file.
     except Exception as e:  # Handle file write failures gracefully.
-        verbose_output(f"{BackgroundColors.YELLOW}[WARNING] Failed to write Outputs file: {BackgroundColors.CYAN}{filepath_obj}{Style.RESET_ALL} - {e}")  # Log Outputs file write failure when verbose enabled.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to write file for URL replacement: {BackgroundColors.CYAN}{filepath_obj}{Style.RESET_ALL} - {e}")  # Print replacement write failure warning.
+        return  # Return early when replacement write operation fails.
+
+    try:  # Attempt to re-read file content for replacement validation.
+        persisted_text = filepath_obj.read_text(encoding="utf-8", errors="ignore")  # Re-read file content after write for validation.
+    except Exception as e:  # Handle validation read failures safely.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to validate URL replacement in file: {BackgroundColors.CYAN}{filepath_obj}{Style.RESET_ALL} - {e}")  # Print replacement validation read failure warning.
+        return  # Return early when validation read operation fails.
+
+    if new_url in persisted_text and old_url not in persisted_text:  # Verify replacement persisted with new URL present and old URL removed.
+        verbose_output(f"{BackgroundColors.GREEN}Updated URL replacements in file: {BackgroundColors.CYAN}{filepath_obj}{Style.RESET_ALL}")  # Print successful replacement update message.
+        return  # Return after successful replacement validation.
+
+    print(f"{BackgroundColors.YELLOW}[WARNING] URL replacement validation failed in file: {BackgroundColors.CYAN}{filepath_obj}{Style.RESET_ALL}")  # Print replacement validation failure warning.
 
 
 def replace_url_recursively(base_path: Path, old_url: str, new_url: str) -> None:
@@ -2525,9 +2539,10 @@ def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, urls_fi
         verbose_output(f"{BackgroundColors.RED}Renewed Amazon URL is identical to original URL: {copied_url}{Style.RESET_ALL}")  # Log unchanged URL failure when verbose enabled.
         return False  # Return failure when renewed URL matches the original URL.
 
+    RENEWED_URL_MAP[current_url] = copied_url  # Store successful renewal mapping for fallback mapped-file replacements.
+
     success = update_urls_txt_with_new_amazon_url(current_url, copied_url, urls_file)  # Update urls.txt with new affiliate URL.
     if success:  # Verify if urls.txt was successfully updated.
-        RENEWED_URL_MAP[current_url] = copied_url  # Store successful renewal mapping for downstream mapped-file replacements.
         backup_urls_file = urls_file.with_name(urls_file.stem + "-backup" + urls_file.suffix)  # Create backup file path by adding -backup suffix before the extension.
         success = update_urls_txt_with_new_amazon_url(current_url, copied_url, backup_urls_file)  # Update urls-backup.txt with new affiliate URL.
 
