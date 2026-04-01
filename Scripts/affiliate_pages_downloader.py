@@ -1697,6 +1697,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
     processed_count = 0  # Initialize processed URL counter.
     initial_consecutive_download_failures = 0  # Initialize consecutive download-failure counter for the first processed URLs when Chrome downloads settings are unresolved.
     downloads_dirs[:] = [str(Path(downloads_dir).resolve()) for downloads_dir in downloads_dirs]  # Resolve and normalize monitored downloads directory paths.
+    opened_tabs = 0  # Track number of tabs opened by this processing loop to avoid closing the base tab.
 
     if tab_count > 0:  # Verify if there are URLs to process.
         if not activate_automation_window():  # Verify if automation window activation succeeds before opening separator tab.
@@ -1715,6 +1716,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
                 return processed_count, url_to_download, False  # Return failure state when activation fails.
 
             pyautogui.hotkey("ctrl", "t")  # Open new browser tab.
+            opened_tabs += 1  # Increment opened tabs counter after opening a new tab.
             time.sleep(0.2)  # Wait after opening tab.
             pyautogui.hotkey("ctrl", "l")  # Focus browser address bar.
             time.sleep(0.08)  # Wait after focusing address bar.
@@ -1739,8 +1741,15 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
                     else:  # Otherwise renewal failed, log failure message.
                         print(f"{BackgroundColors.RED}✗ Amazon URL renewal failed for tab {current_tab}{Style.RESET_ALL}")  # Log failed renewal with red background.
 
-            if index != len(urls):  # Verify whether current URL is not the last one before closing the tab.
-                close_current_tab()  # Close current product tab when not processing the final URL.
+            try:  # Attempt safe tab closure and focus restoration in only-renew mode.
+                if opened_tabs > 0:  # Verify that a tab opened by this loop exists before closing.
+                    close_current_tab()  # Close the current product tab that was opened earlier.
+                    opened_tabs -= 1  # Decrement opened tabs counter after successful closure.
+                    time.sleep(0.2)  # Wait briefly to stabilize focus after closing the tab.
+                else:  # When no opened tabs tracked, skip closure to avoid closing base tab.
+                    print(f"{BackgroundColors.YELLOW}[DEBUG] No opened tab to close; skipping to preserve main tab{Style.RESET_ALL}")  # Log skipping closure.
+            except Exception as e:  # Handle unexpected exceptions during closure.
+                print(f"{BackgroundColors.YELLOW}[WARNING] Failed to close browser tab: {e}{Style.RESET_ALL}")  # Log warning on failure.
 
             processed_count += 1  # Increment processed counter.
             continue  # Continue loop without executing download-specific workflow.
@@ -1751,6 +1760,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
             return processed_count, url_to_download, False  # Return failure state when activation fails.
 
         pyautogui.hotkey("ctrl", "t")  # Open new browser tab.
+        opened_tabs += 1  # Increment opened tabs counter after opening a new tab.
         time.sleep(0.2)  # Wait after opening tab.
         pyautogui.hotkey("ctrl", "l")  # Focus browser address bar.
         time.sleep(0.08)  # Wait after focusing address bar.
@@ -1817,8 +1827,15 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         add_method(completion_methods, confirmation_method, current_tab)  # Store completion method for report.
         add_method(close_methods, close_method, current_tab)  # Store close method for report.
 
-        if index != len(urls):  # Verify whether current URL is not the last one before closing the tab.
-            close_current_tab()  # Close current product tab when not processing the final URL.
+        try:  # Attempt safe tab closure and focus restoration for download flow.
+            if opened_tabs > 0:  # Verify that a tab opened by this loop exists before closing.
+                close_current_tab()  # Close the current product tab that was opened earlier.
+                opened_tabs -= 1  # Decrement opened tabs counter after successful closure.
+                time.sleep(0.2)  # Wait briefly to stabilize focus after closing the tab.
+            else:  # When no opened tabs tracked, skip closure to avoid closing base tab.
+                print(f"{BackgroundColors.YELLOW}[DEBUG] No opened tab to close; skipping to preserve main tab{Style.RESET_ALL}")  # Log skipping closure.
+        except Exception as e:  # Handle unexpected exceptions during closure.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Failed to close browser tab: {e}{Style.RESET_ALL}")  # Log warning on failure.
 
         processed_count += 1  # Increment processed counter.
 
@@ -2074,8 +2091,12 @@ def close_current_tab() -> None:
     :return: None
     """
 
-    pyautogui.hotkey("ctrl", "w")  # Trigger close-tab hotkey.
-    time.sleep(1)  # Wait after closing the tab.
+    try:  # Attempt to close the current browser tab with graceful handling.
+        pyautogui.hotkey("ctrl", "w")  # Trigger close-tab hotkey.
+        time.sleep(0.4)  # Wait after closing the tab to allow focus stabilization.
+        print(f"{BackgroundColors.GREEN}[DEBUG] Closed browser tab after processing URL{Style.RESET_ALL}")  # Log debug success message.
+    except Exception as e:  # Handle failures to close the tab without crashing.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to close browser tab: {e}{Style.RESET_ALL}")  # Log warning when closure fails.
 
 
 def add_method(methods: Dict[str, List[int]], method: str, tab_index: int) -> None:
