@@ -102,6 +102,28 @@ def verbose_output(true_string="", false_string=""):
         print(false_string)  # Output the false statement string
 
 
+def create_backup(input_dir: Path, urls_path: Path, sanitized_lines: list) -> bool:
+    """
+    Create a backup file containing sanitized URL lines.
+
+    :param input_dir: Path to the input directory.
+    :param urls_path: Path to the urls file to back up (original path retained for metadata).
+    :param sanitized_lines: List of cleaned URL strings to write into the backup file.
+    :return: True if backup was created successfully, False otherwise.
+    """
+
+    backup_path = input_dir / "urls-backup.txt"  # Build path for the backup file next to urls.txt
+
+    try:  # Attempt to write sanitized lines to the backup file before modifying the original file
+        with open(backup_path, "w", encoding="utf-8") as fh:  # Open the backup file for writing with UTF-8 encoding
+            fh.write("\n".join(sanitized_lines) + ("\n" if sanitized_lines else ""))  # Write sanitized lines preserving final newline when present
+    except Exception as e:  # Catch any exceptions raised during the backup write operation
+        print(f"{BackgroundColors.RED}Error creating backup {BackgroundColors.CYAN}{backup_path}{BackgroundColors.RED}: {e}{Style.RESET_ALL}")  # Report backup creation failure and details
+        return False  # Return False to indicate backup failure
+
+    return True  # Return True to indicate backup success
+
+
 def validate_affiliate_urls(urls: list, tag: str) -> bool:
     """
     Validate each URL using project's affiliate URL validator.
