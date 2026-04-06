@@ -114,3 +114,16 @@ def remove_dash_prefixes(input_urls: list[str]) -> list[str]:
         updated.append(url)  # Append URL unchanged if no matching prefix is found
 
     return updated  # Return the processed list of URLs
+
+
+def sort_urls(input_urls: list[str]) -> list[str]:
+    """
+    Return an alphabetically sorted copy of the list.
+
+    :param input_urls: List of URL strings.
+    :return: New sorted list.
+    """
+    
+    verbose_output(f"{BackgroundColors.GREEN}Sorting {BackgroundColors.CYAN}{len(input_urls)}{BackgroundColors.GREEN} URLs...{Style.RESET_ALL}")  # Log the start of URL sorting
+
+    return sorted(input_urls)  # Return a new list sorted in alphabetical order without modifying the original list
