@@ -177,3 +177,44 @@ def load_urls_to_process(input_file) -> list[str]:
         print(f"{BackgroundColors.RED}Error reading input file {input_file}: {e}{Style.RESET_ALL}")  # Report read errors
 
     return url_list  # Return the collected URL lines as strings
+
+
+def write_urls_to_file(input_file, urls_to_write):
+    """
+    Write a list of URLs (with optional local paths) to the specified input file.
+
+    Each item in `urls_to_write` must be a tuple (url, local_html_path)
+    where `local_html_path` may be None. The file is replaced atomically
+    using a temporary sibling file.
+
+    Returns True on success, False otherwise.
+    """
+
+    tmp_path = None  # Temporary path reference, defined here to ensure it's always bound
+    try:
+        input_path = Path(input_file)  # Construct Path object for the target input file
+        if not input_path.parent.exists():  # Ensure parent directory exists before writing
+            input_path.parent.mkdir(parents=True, exist_ok=True)  # Create parent directories as needed
+
+        tmp_path = input_path.with_suffix(input_path.suffix + ".tmp")  # Create a sibling temporary filename
+        written = 0  # Counter for written entries
+        with open(tmp_path, "w", encoding="utf-8") as fh:  # Open temporary file for atomic write
+            for url, local in urls_to_write:  # Iterate over tuples to write
+                if not url:  # Skip entries with empty URL
+                    continue  # Continue to next tuple when URL is falsy
+                line = url if not local else f"{url} {local}"  # Compose line with optional local path
+                fh.write(line.rstrip() + "\n")  # Write the composed line and ensure newline
+                written += 1  # Increment written counter
+
+        os.replace(str(tmp_path), str(input_path))  # Atomically replace original file with temporary file
+        verbose_output(f"{BackgroundColors.GREEN}Wrote {written} entries to {BackgroundColors.CYAN}{input_file}{Style.RESET_ALL}")  # Verbose log of success
+        return True  # Success
+
+    except Exception as e:
+        print(f"{BackgroundColors.RED}Failed to write input file {input_file}: {e}{Style.RESET_ALL}")  # Report failure
+        try:
+            if tmp_path and tmp_path.exists():  # Guard tmp_path access to avoid unbound-variable issues
+                tmp_path.unlink()  # Attempt to remove temporary file on failure
+        except Exception:
+            pass  # Ignore cleanup errors
+        return False  # Indicate failure
