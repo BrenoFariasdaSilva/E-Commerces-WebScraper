@@ -102,6 +102,28 @@ def verbose_output(true_string="", false_string=""):
         print(false_string)  # Output the false statement string
 
 
+def sanitize_urls_lines(urls: list) -> list:
+    """
+    Remove trailing ZIP filenames and whitespace from each line.
+
+    :param urls: List of raw lines from the urls file.
+    :param: None
+    :return: List of cleaned URL strings.
+    """
+
+    sanitized = []  # Initialize list to hold sanitized URL strings
+
+    for ln in urls:  # Iterate through each raw line
+        if not ln:  # Skip empty lines defensively
+            continue  # Continue to next iteration when line is empty
+
+        parts = ln.split()  # Split line by whitespace to separate URL from ZIP if present
+        url_only = parts[0]  # Take the first token as the URL portion
+        sanitized.append(url_only)  # Append the cleaned URL to the sanitized list
+
+    return sanitized  # Return the list of sanitized URL strings
+
+
 def create_backup(input_dir: Path, urls_path: Path, sanitized_lines: list) -> bool:
     """
     Create a backup file containing sanitized URL lines.
