@@ -142,8 +142,9 @@ def preprocess_urls(urls: list[str]) -> list[str]:
 
     cleaned = strip_whitespace_and_filter(urls)  # Remove leading/trailing whitespace and filter out empty strings
     without_prefixes = remove_dash_prefixes(cleaned)  # Remove any leading "-- " or "- " prefixes from the URLs
+    sorted_urls = sort_urls(without_prefixes)  # Sort the URLs in alphabetical order
     
-    return sort_urls(without_prefixes)  # Return the URLs sorted in alphabetical order
+    return sorted_urls  # Return the URLs sorted in alphabetical order
 
 
 def load_urls_to_process(input_file) -> list[str]:
