@@ -46,7 +46,6 @@ from colorama import Style  # For coloring the terminal
 from Logger import Logger  # For logging output to both terminal and file
 from main import verify_affiliate_url_format  # Import affiliate URL validator from main.py
 from pathlib import Path  # For handling file paths
-from typing import Optional  # For optional return type annotations
 
 
 # Macros:
