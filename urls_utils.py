@@ -103,11 +103,11 @@ def remove_dash_prefixes(input_urls: list[str]) -> list[str]:
     updated: list[str] = []  # Initialize an empty list to hold the updated URLs after prefix removal
     
     for url in input_urls:  # Iterate over each URL in the input list
-        if re.match(r"^\s*--\s+", url):  # Check if line starts with optional whitespace followed by '-- ' prefix
+        if re.match(r"^\s*--\s+", url):  # Verify if line starts with optional whitespace followed by '-- ' prefix
             updated.append(re.sub(r"^\s*--\s+", "", url))  # Remove '-- ' or ' -- ' prefix (including leading whitespace) and append result
             continue  # Move to next URL after handling double-dash case
 
-        if re.match(r"^\s*-\s+", url):  # Check if line starts with optional whitespace followed by '- ' prefix
+        if re.match(r"^\s*-\s+", url):  # Verify if line starts with optional whitespace followed by '- ' prefix
             updated.append(re.sub(r"^\s*-\s+", "", url))  # Remove '- ' or ' - ' prefix (including leading whitespace) and append result
             continue  # Move to next URL after handling single-dash case
 
@@ -165,7 +165,7 @@ def load_urls_to_process(input_file) -> list[str]:
     url_list: list[str] = []  # Initialize list to collect URL strings from the input file
 
     try:  # Attempt to read the input file
-        if os.path.exists(input_file):  # Check that the input file exists before attempting to read
+        if os.path.exists(input_file):  # Verify that the input file exists before attempting to read
             with open(input_file, "r", encoding="utf-8") as fh:  # Open input file for reading with UTF-8 encoding
                 for line in fh:  # Iterate over each line in the input file
                     line = line.strip()  # Trim leading/trailing whitespace from the line
