@@ -2209,7 +2209,7 @@ def main():
 
     raw_lines = load_urls_to_process(INPUT_FILE)  # Load raw trimmed input lines from file
     processed_lines = preprocess_urls(raw_lines)  # Preprocess lines (strip, remove prefixes, sort)
-    write_urls_to_file(processed_lines, INPUT_FILE)  # Write preprocessed lines back to input file for deterministic retries and user reference
+    write_urls_to_file(processed_lines, INPUT_FILE, True)  # Write preprocessed lines back to input file for deterministic retries and user reference
     
     urls_to_process = []  # Prepare list of tuples (url, local_html_path)
     for line in processed_lines:  # Iterate preprocessed lines
