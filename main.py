@@ -81,6 +81,7 @@ from tkinter import Tk, messagebox  # For showing GUI warnings
 from tqdm import tqdm  # Progress bar for URL processing
 from typing import Dict, List, Optional, Set, Tuple  # For type-annotated containers used by final verification functions
 from urllib.parse import urlparse  # For parsing URL hostnames
+from urls_utils import load_urls_to_process, preprocess_urls, write_urls_to_file  # URL helpers
 
 
 # Macros:
@@ -612,48 +613,6 @@ def exclude_small_images(product_directory, base_output_dir=OUTPUT_DIRECTORY, mi
                 verbose_output(f"{BackgroundColors.YELLOW}Removed small image (<{min_size_bytes} bytes): {BackgroundColors.CYAN}{img_path}{Style.RESET_ALL}")
         except Exception as e:  # If an error occurs while verify/removing the image
             print(f"{BackgroundColors.RED}Error verify/removing image {BackgroundColors.CYAN}{img_path}{BackgroundColors.RED}: {BackgroundColors.YELLOW}{e}{Style.RESET_ALL}")
-
-def load_urls_to_process(test_urls, input_file):
-    """
-    Determine and return the list of URLs and optional local HTML paths to process.
-
-    Priority:
-        1) Non-empty entries in `test_urls` (keeps order and strips whitespace).
-        2) If none present, read one URL per line from `input_file` (ignore blank lines).
-           Each line can be either:
-           - Just a URL (for online scraping)
-           - URL local_html_path (space-separated, for offline scraping)
-
-    Args:
-        test_urls (list): list of test URL strings (may contain empty/blank entries).
-        input_file (str): path to the input file to read fallback URLs from.
-
-    Returns:
-        list: list of tuples (url, local_html_path) where local_html_path may be None.
-    """
-
-    urls_from_test = [u.strip() for u in (test_urls or []) if u and u.strip()]  # Normalize and filter non-empty test URLs first
-    if urls_from_test:  # If any valid test URLs found
-        return [(url, None) for url in urls_from_test]  # Return test URLs as tuples with None for local_html_path
-
-    url_data = []  # List to store URL tuples (url, local_html_path)
-    
-    try:  # Try to read URLs from input file
-        if verify_filepath_exists(input_file):  # If the input file exists
-            with open(input_file, "r", encoding="utf-8") as fh:  # Open the input file with UTF-8 encoding
-                for line in fh:  # Read each line in the file
-                    line = line.strip()  # Strip whitespace
-                    if line:  # If the line is not empty
-                        parts = line.split(maxsplit=1)  # Split by first space to separate URL and local_html_path
-                        url = parts[0]  # First part is always the URL
-                        local_html_path = parts[1] if len(parts) > 1 else None  # Second part is optional local_html_path
-                        url_data.append((url, local_html_path))  # Add tuple to the list
-        else:  # If the input file does not exist
-            print(f"{BackgroundColors.YELLOW}Input file not found: {input_file}{Style.RESET_ALL}")
-    except Exception as e:  # If an error occurs while reading the file
-        print(f"{BackgroundColors.RED}Error reading input file {input_file}: {e}{Style.RESET_ALL}")
-
-    return url_data  # Return the list of URL tuples
 
 
 def get_next_run_index(base_output_dir, today_str):
@@ -2248,9 +2207,18 @@ def main():
     successful_scrapes = 0  # Counter for successful operations
     has_amazon = False  # Initialize flag to detect presence of Amazon URLs during processing
 
-    urls_to_process = load_urls_to_process(TEST_URLs, INPUT_FILE)  # Load URLs to process (returns list of tuples)
+    raw_lines = load_urls_to_process(INPUT_FILE)  # Load raw trimmed input lines from file
+    processed_lines = preprocess_urls(raw_lines)  # Preprocess lines (strip, remove prefixes, sort)
+    write_urls_to_file(INPUT_FILE, processed_lines)  # Write preprocessed lines back to input file for deterministic retries and user reference
     
-    total_urls = len(urls_to_process)  # Total number of URLs to process
+    urls_to_process = []  # Prepare list of tuples (url, local_html_path)
+    for line in processed_lines:  # Iterate preprocessed lines
+        parts = line.split(maxsplit=1)  # Separate URL and optional local path
+        url = parts[0]  # First token is URL
+        local_html = parts[1] if len(parts) > 1 else None  # Optional local HTML path
+        urls_to_process.append((url, local_html))  # Append tuple to processing list
+
+    total_urls = len(urls_to_process)  # Total number of URLs to process after preprocessing
 
     if total_urls == 0:  # If there are no URLs to process, output a message and skip the processing loop
         print(f"{BackgroundColors.YELLOW}No URLs to process.{Style.RESET_ALL}")
