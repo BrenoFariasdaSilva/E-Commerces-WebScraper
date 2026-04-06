@@ -117,46 +117,6 @@ def verify_filepath_exists(filepath):
     return os.path.exists(filepath)  # Return True if the file or folder exists, False otherwise
 
 
-def verify_dot_env_file():
-    """
-    Verifies if the .env file exists in the current directory.
-
-    :return: True if the .env file exists, False otherwise
-    """
-
-    env_path = Path(__file__).parent / ".env"  # Path to the .env file
-    
-    if not verify_filepath_exists(env_path):  # If the .env file does not exist
-        print(f"{BackgroundColors.CYAN}.env{BackgroundColors.YELLOW} file not found at {BackgroundColors.CYAN}{env_path}{BackgroundColors.YELLOW}.{Style.RESET_ALL}")
-        return False  # Return False
-
-    return True  # Return True if the .env file exists
-
-
-def setup_telegram_bot():
-    """
-    Sets up the Telegram bot for progress messages.
-
-    :return: None
-    """
-    
-    verbose_output(
-        f"{BackgroundColors.GREEN}Setting up Telegram bot for messages...{Style.RESET_ALL}"
-    )  # Output the verbose message
-
-    verify_dot_env_file()  # Verify if the .env file exists
-
-    global TELEGRAM_BOT  # Declare the module-global telegram_bot variable
-
-    try:  # Try to initialize the Telegram bot
-        TELEGRAM_BOT = TelegramBot()  # Initialize Telegram bot for progress messages
-        telegram_module.TELEGRAM_DEVICE_INFO = f"{telegram_module.get_local_ip()} - {platform.system()}"
-        telegram_module.RUNNING_CODE = os.path.basename(__file__)
-    except Exception as e:
-        print(f"{BackgroundColors.RED}Failed to initialize Telegram bot: {e}{Style.RESET_ALL}")
-        TELEGRAM_BOT = None  # Set to None if initialization fails
-
-
 def to_seconds(obj):
     """
     Converts various time-like objects to seconds.
