@@ -87,3 +87,30 @@ def strip_whitespace_and_filter(input_urls: list[str]) -> list[str]:
             cleaned.append(cleaned_url)  # Add the cleaned URL to the list of cleaned URLs
         
     return cleaned  # Return the list of cleaned URLs
+
+
+def remove_dash_prefixes(input_urls: list[str]) -> list[str]:
+    """
+    Remove both '- ' or ' - ' and '-- ' or ' -- ' prefixes from the start of lines (before the urls).
+
+    The order matters: remove the longer prefix first so "-- " isn't
+    partially consumed by the shorter prefix removal.
+    
+    :param input_urls: List of URL strings to process.
+    :return: List of URLs with specified prefixes removed.
+    """
+
+    updated: list[str] = []  # Initialize an empty list to hold the updated URLs after prefix removal
+    
+    for url in input_urls:  # Iterate over each URL in the input list
+        if re.match(r"^\s*--\s+", url):  # Check if line starts with optional whitespace followed by '-- ' prefix
+            updated.append(re.sub(r"^\s*--\s+", "", url))  # Remove '-- ' or ' -- ' prefix (including leading whitespace) and append result
+            continue  # Move to next URL after handling double-dash case
+
+        if re.match(r"^\s*-\s+", url):  # Check if line starts with optional whitespace followed by '- ' prefix
+            updated.append(re.sub(r"^\s*-\s+", "", url))  # Remove '- ' or ' - ' prefix (including leading whitespace) and append result
+            continue  # Move to next URL after handling single-dash case
+
+        updated.append(url)  # Append URL unchanged if no matching prefix is found
+
+    return updated  # Return the processed list of URLs
