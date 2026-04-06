@@ -127,3 +127,20 @@ def sort_urls(input_urls: list[str]) -> list[str]:
     verbose_output(f"{BackgroundColors.GREEN}Sorting {BackgroundColors.CYAN}{len(input_urls)}{BackgroundColors.GREEN} URLs...{Style.RESET_ALL}")  # Log the start of URL sorting
 
     return sorted(input_urls)  # Return a new list sorted in alphabetical order without modifying the original list
+
+
+def preprocess_urls(urls: list[str]) -> list[str]:
+    """
+    Preprocesses a list of URLs by stripping whitespace and removing empty entries.
+    Also, it calls two functions. One for detecting "- " and "-- " at the start of the line of the urls.txt file and another for sorting the urls in alphabetical order.
+
+    :param urls: A list of URL strings to preprocess.
+    :return: A new list of preprocessed URL strings.
+    """
+    
+    verbose_output(f"{BackgroundColors.GREEN}Preprocessing {BackgroundColors.CYAN}{len(urls)}{BackgroundColors.GREEN}URLs...{Style.RESET_ALL}")  # Log the start of URL preprocessing
+
+    cleaned = strip_whitespace_and_filter(urls)  # Remove leading/trailing whitespace and filter out empty strings
+    without_prefixes = remove_dash_prefixes(cleaned)  # Remove any leading "-- " or "- " prefixes from the URLs
+    
+    return sort_urls(without_prefixes)  # Return the URLs sorted in alphabetical order
