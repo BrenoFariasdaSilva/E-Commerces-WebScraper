@@ -46,6 +46,7 @@ from colorama import Style  # For coloring the terminal
 from Logger import Logger  # For logging output to both terminal and file
 from main import verify_affiliate_url_format  # Import affiliate URL validator from main.py
 from pathlib import Path  # For handling file paths
+from urls_utils import load_urls_to_process, write_urls_to_file  # Reused URL I/O utilities
 
 
 # Macros:
@@ -348,7 +349,7 @@ def main():
     if urls_path is None:  # Verify result from path resolution
         return  # Exit when path resolution failed
 
-    urls = load_urls_from_file(urls_path, "utf-8")  # Load URLs from the file with UTF-8 encoding
+    urls = load_urls_to_process(urls_path)  # Load URLs from the file using shared utility
 
     if urls is None:  # Verify that URLs loaded successfully
         return  # Exit when loading URLs failed
@@ -363,8 +364,7 @@ def main():
 
     new_lines = generate_numbered_lines(sanitized_lines, input_dir)  # Generate numbered ZIP assignments and warnings using sanitized URLs
 
-    if not write_updated_urls_file(urls_path, new_lines) :  # Write the updated urls file back to disk
-        return  # Exit when writing the updated file failed
+    write_urls_to_file(new_lines, urls_path)  # Write the updated urls file back to disk using shared utility
 
     finish_time = datetime.datetime.now()  # Get the finish time of the program
     print(
