@@ -2452,7 +2452,7 @@ def replace_url_in_file(filepath: str, old_url: str, new_url: str) -> None:
     updated_text = text.replace(old_url, new_url)  # Replace all occurrences of old URL with new URL.
 
     if updated_text == text:  # Verify whether content changed after replacement attempt.
-        print(f"{BackgroundColors.YELLOW}[WARNING] No URL replacement needed in file: {BackgroundColors.CYAN}{filepath_obj}{Style.RESET_ALL}")  # Print no-change replacement warning.
+        verbose_output(f"{BackgroundColors.YELLOW}[WARNING] No URL replacement needed in file: {BackgroundColors.CYAN}{filepath_obj}{Style.RESET_ALL}")  # Print no-change replacement warning.
         return  # Return early when no replacement occurred.
 
     try:  # Attempt to persist modified file content.
