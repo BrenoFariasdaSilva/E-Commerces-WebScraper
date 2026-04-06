@@ -102,6 +102,23 @@ def verbose_output(true_string="", false_string=""):
         print(false_string)  # Output the false statement string
 
 
+def validate_affiliate_urls(urls: list, tag: str) -> bool:
+    """
+    Validate each URL using project's affiliate URL validator.
+
+    :param urls: List of URL strings to validate.
+    :param tag: Arbitrary tag parameter to satisfy signature requirements.
+    :return: True when all URLs validate, False otherwise.
+    """
+
+    for url in urls:  # Iterate through URLs to validate formats
+        if not verify_affiliate_url_format(url):  # Verify each URL using imported validator
+            print(f"{BackgroundColors.YELLOW}WARNING: Invalid affiliate URL detected: {BackgroundColors.CYAN}{url}{Style.RESET_ALL}")  # Print invalid URL warning
+            return False  # Return False to indicate validation failure
+
+    return True  # Return True when all URLs validate
+
+
 def generate_numbered_lines(urls: list, input_dir: Path) -> list:
     """
     Generate two-digit ZIP assignments for each URL and report ZIP availability warnings.
