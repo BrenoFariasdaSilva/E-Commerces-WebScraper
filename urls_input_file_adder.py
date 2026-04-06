@@ -102,6 +102,36 @@ def verbose_output(true_string="", false_string=""):
         print(false_string)  # Output the false statement string
 
 
+def generate_numbered_lines(urls: list, input_dir: Path) -> list:
+    """
+    Generate two-digit ZIP assignments for each URL and report ZIP availability warnings.
+
+    :param urls: List of URL strings to assign ZIP filenames.
+    :param input_dir: Path to the input directory where ZIPs are located.
+    :return: List of transformed lines as strings.
+    """
+
+    zip_files = [p for p in input_dir.iterdir() if p.is_file() and p.suffix.lower() == ".zip"]  # List ZIP files in input directory
+
+    zip_count = len(zip_files)  # Count available ZIP files
+
+    url_count = len(urls)  # Count URLs to process
+
+    if url_count > zip_count:  # If URLs exceed ZIPs available
+        print(f"{BackgroundColors.YELLOW}WARNING: The number of URLs ({url_count}) exceeds the number of ZIP files available ({zip_count}).{Style.RESET_ALL}")  # Print warning about mismatch
+
+    new_lines = []  # Prepare list to hold updated lines
+
+    for idx, url in enumerate(urls, start=1):  # Iterate and assign numbered ZIP names
+        zip_name = f"{str(idx).zfill(2)}.zip"  # Build zero-padded two-digit zip filename
+        assigned_zip_path = input_dir / zip_name  # Path to the assigned zip file
+        if not assigned_zip_path.exists():  # Verify if the assigned ZIP exists
+            print(f"{BackgroundColors.YELLOW}WARNING: Assigned ZIP file {BackgroundColors.CYAN}{zip_name}{BackgroundColors.YELLOW} does not exist in {BackgroundColors.CYAN}{INPUT_DIRECTORY}{BackgroundColors.YELLOW}.{Style.RESET_ALL}")  # Print missing assigned zip warning
+        new_lines.append(f"{url} {zip_name}")  # Append the transformed line to the new content
+
+    return new_lines  # Return the updated lines
+
+
 def write_updated_urls_file(urls_path: Path, new_lines: list) -> bool:
     """
     Write the updated URL lines back to the urls file.
