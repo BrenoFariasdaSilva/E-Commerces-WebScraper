@@ -229,24 +229,41 @@ def main():
     """
 
     print(
-        f"{BackgroundColors.CLEAR_TERMINAL}{BackgroundColors.BOLD}{BackgroundColors.GREEN}Welcome to the {BackgroundColors.CYAN}Main Template Python{BackgroundColors.GREEN} program!{Style.RESET_ALL}",
-        end="\n\n",
+        f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Welcome to the {BackgroundColors.CYAN}URLs Input File Adder{BackgroundColors.GREEN} program!{Style.RESET_ALL}",
+        end="\n",
     )  # Output the welcome message
     start_time = datetime.datetime.now()  # Get the start time of the program
     
-    # Implement logic here
+    input_dir, urls_path = resolve_input_paths(INPUT_DIRECTORY, URLS_FILENAME)  # Resolve input directory and urls path
 
-    send_telegram_message(TELEGRAM_BOT, [f"Starting the Main Template Python program at {start_time.strftime('%d/%m/%Y - %H:%M:%S')}"])  # Send start message to Telegram
+    if urls_path is None:  # Verify result from path resolution
+        return  # Exit when path resolution failed
+
+    urls = load_urls_from_file(urls_path, "utf-8")  # Load URLs from the file with UTF-8 encoding
+
+    if urls is None:  # Verify that URLs loaded successfully
+        return  # Exit when loading URLs failed
+    
+    sanitized_lines = sanitize_urls_lines(urls)  # Sanitize the loaded URL lines by removing trailing ZIP filenames and whitespace
+
+    if not create_backup(input_dir, urls_path, sanitized_lines):  # Create a backup from the sanitized lines and abort on failure
+        return  # Abort execution if backup creation fails to avoid data loss
+
+    if not validate_affiliate_urls(sanitized_lines, "validator") :  # Validate all affiliate URLs using project validator
+        return  # Exit when any URL fails validation
+
+    new_lines = generate_numbered_lines(sanitized_lines, input_dir)  # Generate numbered ZIP assignments and warnings using sanitized URLs
+
+    if not write_updated_urls_file(urls_path, new_lines) :  # Write the updated urls file back to disk
+        return  # Exit when writing the updated file failed
 
     finish_time = datetime.datetime.now()  # Get the finish time of the program
     print(
         f"{BackgroundColors.GREEN}Start time: {BackgroundColors.CYAN}{start_time.strftime('%d/%m/%Y - %H:%M:%S')}\n{BackgroundColors.GREEN}Finish time: {BackgroundColors.CYAN}{finish_time.strftime('%d/%m/%Y - %H:%M:%S')}\n{BackgroundColors.GREEN}Execution time: {BackgroundColors.CYAN}{calculate_execution_time(start_time, finish_time)}{Style.RESET_ALL}"
     )  # Output the start and finish times
     print(
-        f"\n{BackgroundColors.BOLD}{BackgroundColors.GREEN}Program finished.{Style.RESET_ALL}"
+        f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Program finished.{Style.RESET_ALL}"
     )  # Output the end of the program message
-    
-    send_telegram_message(TELEGRAM_BOT, [f"Finished the Main Template Python program at {finish_time.strftime('%d/%m/%Y - %H:%M:%S')} with execution time {calculate_execution_time(start_time, finish_time)}"])  # Send finish message to Telegram
 
     (
         atexit.register(play_sound) if RUN_FUNCTIONS["Play Sound"] else None
