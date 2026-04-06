@@ -180,42 +180,27 @@ def load_urls_to_process(input_file) -> list[str]:
     return url_list  # Return the collected URL lines as strings
 
 
-def write_urls_to_file(input_file, urls_to_write):
+def write_urls_to_file(urls_to_write: list, input_file_path: str) -> None:
     """
-    Write a list of URLs (with optional local paths) to the specified input file.
+    Write URLs to input file, supporting optional local HTML paths.
 
-    Each item in `urls_to_write` must be a tuple (url, local_html_path)
-    where `local_html_path` may be None. The file is replaced atomically
-    using a temporary sibling file.
-
-    Returns True on success, False otherwise.
+    :param urls_to_write: List of URLs or tuples (url, local_html_path).
+    :param input_file_path: Path to the input file.
+    :return: None.
     """
 
-    tmp_path = None  # Temporary path reference, defined here to ensure it's always bound
-    try:
-        input_path = Path(input_file)  # Construct Path object for the target input file
-        if not input_path.parent.exists():  # Ensure parent directory exists before writing
-            input_path.parent.mkdir(parents=True, exist_ok=True)  # Create parent directories as needed
-
-        tmp_path = input_path.with_suffix(input_path.suffix + ".tmp")  # Create a sibling temporary filename
-        written = 0  # Counter for written entries
-        with open(tmp_path, "w", encoding="utf-8") as fh:  # Open temporary file for atomic write
-            for url, local in urls_to_write:  # Iterate over tuples to write
-                if not url:  # Skip entries with empty URL
-                    continue  # Continue to next tuple when URL is falsy
-                line = url if not local else f"{url} {local}"  # Compose line with optional local path
-                fh.write(line.rstrip() + "\n")  # Write the composed line and ensure newline
-                written += 1  # Increment written counter
-
-        os.replace(str(tmp_path), str(input_path))  # Atomically replace original file with temporary file
-        verbose_output(f"{BackgroundColors.GREEN}Wrote {written} entries to {BackgroundColors.CYAN}{input_file}{Style.RESET_ALL}")  # Verbose log of success
-        return True  # Success
-
-    except Exception as e:
-        print(f"{BackgroundColors.RED}Failed to write input file {input_file}: {e}{Style.RESET_ALL}")  # Report failure
-        try:
-            if tmp_path and tmp_path.exists():  # Guard tmp_path access to avoid unbound-variable issues
-                tmp_path.unlink()  # Attempt to remove temporary file on failure
-        except Exception:
-            pass  # Ignore cleanup errors
-        return False  # Indicate failure
+    try:  # Attempt to write URLs to the input file
+        with open(input_file_path, "w", encoding="utf-8") as file:  # Open the file in write mode with UTF-8 encoding
+            for item in urls_to_write:  # Iterate over each item in the URLs list
+                if isinstance(item, tuple):  # Verify if the item is a tuple
+                    url = item[0]  # Extract the URL from the first position of the tuple
+                    local_html_path = item[1] if len(item) > 1 else None  # Extract optional local HTML path if present
+                else:  # Handle case where item is not a tuple
+                    url = item  # Treat the item directly as URL
+                    local_html_path = None  # Set local HTML path as None when not provided
+                if local_html_path:  # Verify if local HTML path exists
+                    file.write(f"{url} -> {local_html_path}\n")  # Write URL with local HTML path mapping
+                else:  # Handle case where local HTML path is not provided
+                    file.write(f"{url}\n")  # Write only the URL
+    except Exception as e:  # Handle any exception during file writing
+        print(f"{BackgroundColors.RED}Error writing to file {input_file_path}: {e}{Style.RESET_ALL}")  # Report write errors
