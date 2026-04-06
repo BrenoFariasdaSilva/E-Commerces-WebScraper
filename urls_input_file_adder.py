@@ -122,25 +122,6 @@ def resolve_input_paths(input_directory: str, urls_filename: str) -> tuple:
     return input_dir, urls_path  # Return resolved paths
 
 
-def load_urls_from_file(urls_path: Path, encoding: str) -> Optional[list]:
-    """
-    Load and clean URL lines from the urls file.
-
-    :param urls_path: Path to the urls file.
-    :param encoding: File encoding to use when reading.
-    :return: List of cleaned URL strings or None on error.
-    """
-
-    try:  # Try to read the urls file
-        with open(urls_path, "r", encoding=encoding) as fh:  # Open urls file for reading
-            raw_lines = [ln.strip() for ln in fh.readlines() if ln.strip()]  # Read lines and strip whitespace
-    except Exception as e:  # If reading fails
-        print(f"{BackgroundColors.RED}Error reading {BackgroundColors.CYAN}{urls_path}{BackgroundColors.RED}: {e}{Style.RESET_ALL}")  # Print read error
-        return None  # Return None to indicate failure
-
-    return raw_lines  # Return cleaned URL list
-
-
 def sanitize_urls_lines(urls: list) -> list:
     """
     Remove trailing ZIP filenames and whitespace from each line.
