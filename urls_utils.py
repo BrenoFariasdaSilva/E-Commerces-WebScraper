@@ -144,3 +144,36 @@ def preprocess_urls(urls: list[str]) -> list[str]:
     without_prefixes = remove_dash_prefixes(cleaned)  # Remove any leading "-- " or "- " prefixes from the URLs
     
     return sort_urls(without_prefixes)  # Return the URLs sorted in alphabetical order
+
+
+def load_urls_to_process(input_file) -> list[str]:
+    """
+    Load the input file and return a list of non-empty trimmed lines.
+
+    Each returned list item is the raw trimmed line from the file. The
+    caller is responsible for splitting URL and optional local path if
+    needed.
+
+    Args:
+        input_file (str): path to the input file to read.
+
+    Returns:
+        list[str]: list of non-empty, trimmed lines from the file.
+    """
+
+    url_list: list[str] = []  # Initialize list to collect URL strings from the input file
+
+    try:  # Attempt to read the input file
+        if os.path.exists(input_file):  # Check that the input file exists before attempting to read
+            with open(input_file, "r", encoding="utf-8") as fh:  # Open input file for reading with UTF-8 encoding
+                for line in fh:  # Iterate over each line in the input file
+                    line = line.strip()  # Trim leading/trailing whitespace from the line
+                    if not line:  # Skip blank/empty lines
+                        continue  # Continue to next file line when current is empty
+                    url_list.append(line)  # Append the raw line (URL or 'URL local_path') to the list
+        else:
+            print(f"{BackgroundColors.YELLOW}Input file not found: {input_file}{Style.RESET_ALL}")  # Warn when input file is missing
+    except Exception as e:  # Catch and report any IO/OS errors
+        print(f"{BackgroundColors.RED}Error reading input file {input_file}: {e}{Style.RESET_ALL}")  # Report read errors
+
+    return url_list  # Return the collected URL lines as strings
