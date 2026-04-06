@@ -77,6 +77,7 @@ if PROJECT_ROOT not in sys.path:  # Ensure project root is in sys.path
     sys.path.insert(0, PROJECT_ROOT)  # Insert at the beginning
 from Logger import Logger  # For logging output to both terminal and file
 from Amazon import AFFILIATE_URL_PATTERN  # Import Amazon affiliate URL regex pattern from project Amazon module
+from urls_utils import load_urls_to_process, preprocess_urls, write_urls_to_file  # Centralized URL helpers
 
 
 # Macros:
@@ -1198,44 +1199,6 @@ def handle_initial_chrome_download_failures(chrome_download_settings_ready: bool
             return initial_consecutive_download_failures, (processed_count, url_to_download, False)  # Return abort tuple to stop processing remaining URLs
 
     return initial_consecutive_download_failures, None  # Return updated failures count and no abort when continuing
-
-
-def read_urls(urls_file: Path) -> List[str]:
-    """
-    Reads URLs from the specified file.
-
-    :param urls_file: Path to the URLs input file.
-    :return: List of cleaned URLs.
-    """
-
-    urls: List[str] = []  # Initialize URL list.
-
-    if not urls_file.exists():  # Verify URLs file existence.
-        return urls  # Return empty list when file does not exist.
-
-    for raw in urls_file.read_text(encoding="utf-8", errors="ignore").splitlines():  # Iterate over file lines.
-        line = raw.strip()  # Remove leading and trailing whitespace.
-
-        if not line:  # Verify line has content.
-            continue  # Skip empty lines.
-
-        clean = line.split()[0].strip()  # Extract first token from the line.
-
-        if clean:  # Verify extracted token has content.
-            urls.append(clean)  # Append cleaned URL to list.
-
-    return urls  # Return collected URLs.
-
-
-def read_urls_file(urls_file: Path) -> List[str]:
-    """
-    Reads URL entries from the URLs file.
-
-    :param urls_file: Path to the URLs input file.
-    :return: List of cleaned URLs.
-    """
-
-    return read_urls(urls_file)  # Return URL entries parsed from the URLs file.
 
 
 def is_file_empty(filepath: str) -> bool:
@@ -2667,7 +2630,10 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
     :return: Exit code where 0 means success and 1 means failure.
     """
 
-    urls = read_urls_file(urls_file)  # Read URLs from input file.
+    raw_lines = load_urls_to_process(str(urls_file))  # Read raw trimmed lines from input file using centralized helper
+    preprocessed_urls = preprocess_urls(raw_lines)  # Preprocess lines (strip, remove dash prefixes, sort)
+    write_urls_to_file(str(urls_file), preprocessed_urls)  # Write preprocessed lines back to the file for consistency and potential manual review.
+    urls = [url.split()[0] for url in preprocessed_urls]  # Keep only the URL token (first token) per previous behavior
 
     downloads_dirs = ACTIVE_DOWNLOADS_DIRS if ACTIVE_DOWNLOADS_DIRS else prepare_active_downloads_directory()  # Use cached downloads directories or resolve if cache is empty.
 
