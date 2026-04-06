@@ -70,3 +70,20 @@ def verbose_output(true_string="", false_string=""):
     elif false_string != "":  # If a false_string was provided
         print(false_string)  # Output the false statement string
 
+
+def strip_whitespace_and_filter(input_urls: list[str]) -> list[str]:
+    """
+    Strip leading/trailing whitespace and remove empty strings.
+
+    :param input_urls: List of URL strings to clean.
+    :return: Cleaned list with no empty entries.
+    """
+
+    cleaned: list[str] = []  # Initialize an empty list to hold the cleaned URLs
+    
+    for url in input_urls:  # Iterate over each URL in the input list
+        cleaned_url = url.strip()  # Remove leading and trailing whitespace from the URL
+        if cleaned_url:  # If the resulting string is not empty after stripping
+            cleaned.append(cleaned_url)  # Add the cleaned URL to the list of cleaned URLs
+        
+    return cleaned  # Return the list of cleaned URLs
