@@ -180,12 +180,13 @@ def load_urls_to_process(input_file) -> list[str]:
     return url_list  # Return the collected URL lines as strings
 
 
-def write_urls_to_file(urls_to_write: list, input_file_path: str) -> None:
+def write_urls_to_file(urls_to_write: list, input_file_path: str, recursive: bool = False) -> None:
     """
     Write URLs to input file, supporting optional local HTML paths.
 
     :param urls_to_write: List of URLs or tuples (url, local_html_path).
     :param input_file_path: Path to the input file.
+    :param recursive: Optional; when True also write a "-backup" copy. Defaults to False.
     :return: None.
     """
 
@@ -202,5 +203,7 @@ def write_urls_to_file(urls_to_write: list, input_file_path: str) -> None:
                     file.write(f"{url} -> {local_html_path}\n")  # Write URL with local HTML path mapping
                 else:  # Handle case where local HTML path is not provided
                     file.write(f"{url}\n")  # Write only the URL
+        if recursive and os.path.exists(input_file_path.replace(".txt", "-backup.txt")):  # If recursive flag is True and backup file exists
+            write_urls_to_file(urls_to_write, input_file_path.replace(".txt", "-backup.txt"), False)  # Recursively write to backup file if recursive flag is True
     except Exception as e:  # Handle any exception during file writing
         print(f"{BackgroundColors.RED}Error writing to file {input_file_path}: {e}{Style.RESET_ALL}")  # Report write errors
