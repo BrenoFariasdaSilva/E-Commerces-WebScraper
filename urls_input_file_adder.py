@@ -42,11 +42,11 @@ import datetime  # For getting the current date and time
 import os  # For running a command in the terminal
 import platform  # For getting the operating system name
 import sys  # For system-specific parameters and functions
-import telegram_bot as telegram_module  # For setting Telegram prefix and device info
 from colorama import Style  # For coloring the terminal
 from Logger import Logger  # For logging output to both terminal and file
+from main import verify_affiliate_url_format  # Import affiliate URL validator from main.py
 from pathlib import Path  # For handling file paths
-from telegram_bot import TelegramBot, send_telegram_message  # For sending progress messages to Telegram
+from typing import Optional  # For optional return type annotations
 
 
 # Macros:
