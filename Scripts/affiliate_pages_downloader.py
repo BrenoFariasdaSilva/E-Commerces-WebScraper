@@ -2003,7 +2003,9 @@ def click_enable_permission(enable_img: Path) -> str:
         box = locate_image(enable_img)  # Locate enable-permission image on screen.
 
         if box is not None:  # Verify image was found before clicking.
-            pyautogui.click(box.left, box.top)  # Click top-left point like AHK ImageSearch behavior.
+            center_x = int(getattr(box, "left", 0) + (getattr(box, "width", 0) / 2))  # Compute horizontal center of matched box.
+            center_y = int(getattr(box, "top", 0) + (getattr(box, "height", 0) / 2))  # Compute vertical center of matched box.
+            pyautogui.click(center_x, center_y)  # Click center point of matched box.
             return "ImageSearch"  # Return image search method label when clicked.
 
         time.sleep(0.1)  # Wait before retrying image search when not found.
