@@ -1633,7 +1633,7 @@ def move_downloaded_archives(downloads_dirs: List[str], destination_dir: Path, u
             print(f"{BackgroundColors.YELLOW}[WARNING] Failed to move downloaded file: {source_path}{Style.RESET_ALL}")  # Log archive move failure warning.
 
 
-def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_count: int, downloads_dirs: List[str], extension_img: Path, download_img: Path, confirmation_img: Path, close_download_tab_img: Path, mercado_livre_img: Path, share_button_img: Path, ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]], chrome_download_settings_ready: bool, renew_amazon_affiliate: bool = False, only_renew_amazon_urls: bool = False) -> Tuple[int, Dict[str, str], bool]:
+def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_count: int, downloads_dirs: List[str], extension_img: Path, download_img: Path, enable_permission_img: Path, confirmation_img: Path, close_download_tab_img: Path, mercado_livre_img: Path, share_button_img: Path, ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]], chrome_download_settings_ready: bool, renew_amazon_affiliate: bool = False, only_renew_amazon_urls: bool = False) -> Tuple[int, Dict[str, str], bool]:
     """
     Processes URLs while tracking downloaded files by directory snapshots.
 
@@ -1643,6 +1643,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
     :param downloads_dirs: Paths to monitored downloads directories.
     :param extension_img: Path to extension action image.
     :param download_img: Path to download button image.
+    :param enable_permission_img: Path to optional extension enable-permission image.
     :param confirmation_img: Path to download confirmation image.
     :param close_download_tab_img: Path to close extension tab image.
     :param mercado_livre_img: Path to MercadoLivre go-to-product image.
@@ -1759,6 +1760,10 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         time.sleep(0.05)  # Wait briefly after moving cursor to allow UI to stabilize before scrolling.
         scroll_extension_tab_to_start_button()  # Scroll at cursor position to reveal the Start download button on low-resolution screens.
         
+        enable_permission_method = click_enable_permission(enable_permission_img)  # Attempt to click optional extension enable permission button using passed asset variable.
+        
+        verbose_output(f"{BackgroundColors.CYAN}Enable permission action: {enable_permission_method}{Style.RESET_ALL}")  # Log enable-permission action when verbose.
+
         download_method = click_download_button(download_img)  # Execute download click action.
         confirmation_method = wait_for_download_confirmation(confirmation_img)  # Execute completion polling action.
         close_method = close_extension_download_tab(close_download_tab_img)  # Execute close extension tab action.
@@ -1982,6 +1987,28 @@ def click_download_button(download_img: Path) -> str:
     scaled_x, scaled_y = get_scaled_fallback_coords(DOWNLOAD_BUTTON_X_REF, DOWNLOAD_BUTTON_Y_REF)  # Compute scaled download button fallback coordinates.
     pyautogui.click(scaled_x, scaled_y)  # Click scaled download button coordinates.
     return "Coordinates"  # Return coordinates method label.
+
+
+def click_enable_permission(enable_img: Path) -> str:
+    """
+    Clicks the extension enable permission button when present.
+
+    :param enable_img: Path to the extension enable-permission image.
+    :return: Method name used for the click.
+    """
+
+    start = time.time()  # Store start timestamp for optional retry window.
+
+    while time.time() - start <= 1.2:  # Repeat until timeout window expires.
+        box = locate_image(enable_img)  # Locate enable-permission image on screen.
+
+        if box is not None:  # Verify image was found before clicking.
+            pyautogui.click(box.left, box.top)  # Click top-left point like AHK ImageSearch behavior.
+            return "ImageSearch"  # Return image search method label when clicked.
+
+        time.sleep(0.1)  # Wait before retrying image search when not found.
+
+    return "NotFound"  # Return NotFound when no enable-permission image was detected.
 
 
 def wait_for_download_confirmation(confirmation_img: Path) -> str:
@@ -2695,6 +2722,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
 
     extension_img = assets_dir / "Extension.png"  # Define extension image path.
     download_img = assets_dir / "DownloadButton.png"  # Define download button image path.
+    enable_permission_img = assets_dir / "Extension Enable Permission.png"  # Define optional extension enable-permission image path.
     confirmation_img = assets_dir / "ConfirmationFileDownloaded.png"  # Define confirmation image path.
     close_download_tab_img = assets_dir / "CloseDownloadTab.png"  # Define close download tab image path.
     mercado_livre_img = assets_dir / "MercadoLivre-GoToProduct.png"  # Define MercadoLivre go-to-product image path.
@@ -2732,7 +2760,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
         processed_count = 0  # Initialize processed tab counter.
         start_tick = time.time()  # Capture workflow start timestamp.
         url_to_download: Dict[str, str] = {}  # Initialize URL to downloaded filename mapping dictionary.
-        processed_count, url_to_download, process_success = process_urls_with_download_tracking(urls, urls_file, tab_count, downloads_dirs, extension_img, download_img, confirmation_img, close_download_tab_img, mercado_livre_img, share_button_img, ext_methods, download_methods, completion_methods, close_methods, chrome_download_settings_ready, renew_amazon_affiliate, only_renew_amazon_urls)  # Process URLs with download tracking and retrieve mapping details.
+        processed_count, url_to_download, process_success = process_urls_with_download_tracking(urls, urls_file, tab_count, downloads_dirs, extension_img, download_img, enable_permission_img, confirmation_img, close_download_tab_img, mercado_livre_img, share_button_img, ext_methods, download_methods, completion_methods, close_methods, chrome_download_settings_ready, renew_amazon_affiliate, only_renew_amazon_urls)  # Process URLs with download tracking and retrieve mapping details.
 
         if not process_success:  # Verify if URL processing completed without activation failure.
             return 1  # Return failure exit code when URL processing fails.
