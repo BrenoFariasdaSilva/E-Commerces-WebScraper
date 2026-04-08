@@ -54,6 +54,7 @@ Assumptions & Notes:
 """
 
 
+import argparse  # Parse command-line arguments.
 import atexit  # For playing a sound when the program finishes
 import datetime  # For getting the current date and time
 import hashlib  # For hashing image data
@@ -2169,6 +2170,11 @@ def main():
         end="\n",
     )  # Output the welcome message
     start_time = datetime.datetime.now()  # Get the start time of the program
+    
+    repo_root = Path(__file__).resolve().parent.parent  # Resolve repository root path
+    parser = argparse.ArgumentParser(description="E-Commerces WebScraper")  # Initialize argument parser
+    parser.add_argument("--headerless", type=lambda s: str(s).lower() in ("true", "1", "yes", "y"), default=False, help="Whether to suppress GUI messagebox (default: False)")  # Register headerless argument with boolean conversion
+    args = parser.parse_args()  # Parse command-line arguments
     
     if not verify_dot_env_file():  # Verify if the .env file exists
         print(f"{BackgroundColors.RED}Environment setup failed. Exiting...{Style.RESET_ALL}")
