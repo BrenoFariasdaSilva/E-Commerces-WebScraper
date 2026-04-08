@@ -2613,9 +2613,10 @@ def main():
         details_msg = ", ".join(removed_details) if removed_details else "(no description files found)"  # Build a single-line summary of removed product details
         print(f"{BackgroundColors.YELLOW}Removed repeated old product directories: {BackgroundColors.CYAN}{len(removed)}{BackgroundColors.YELLOW} - {BackgroundColors.CYAN}{details_msg}{Style.RESET_ALL}")  # Output number and list of removed product names and URLs when verbose enabled
 
-    if timestamped_output_dir and os.path.isdir(timestamped_output_dir):  # Only attempt final sorting and normalization if the main output directory exists
-        sorted_output_directories = sort_output_directories_by_platform_and_product_name(timestamped_output_dir)  # Compute sorted directory order ignoring existing index prefixes.
-        normalize_output_directory_indexes(sorted_output_directories)  # Apply deterministic directory and internal index normalization.
+    if sort_products_by_product_name:  # Verify if product sorting by name is enabled
+        if timestamped_output_dir and os.path.isdir(timestamped_output_dir):  # Only attempt final sorting and normalization if the main output directory exists
+            sorted_output_directories = sort_output_directories_by_platform_and_product_name(timestamped_output_dir)  # Compute sorted directory order ignoring existing index prefixes.
+            normalize_output_directory_indexes(sorted_output_directories)  # Apply deterministic directory and internal index normalization.
     
     print(f"{BackgroundColors.GREEN}Successfully processed: {BackgroundColors.CYAN}{successful_scrapes}/{total_urls}{BackgroundColors.GREEN} URLs{Style.RESET_ALL}\n")  # Output the number of successful operations
 
