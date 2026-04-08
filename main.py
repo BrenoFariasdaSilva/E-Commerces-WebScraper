@@ -1850,6 +1850,138 @@ def run_final_output_integrity_verification(timestamped_output_dir: Optional[str
     remove_duplicate_directories_with_highest_index(timestamped_output_dir, duplicate_records)  # Remove higher-index directories for duplicate product names
 
 
+def sort_output_directories_by_platform_and_product_name(base_output_dir: str) -> List[Tuple[str, str]]:
+    """
+    Sort output directories by "{platform_name} - {product_name}" while ignoring index prefixes.
+
+    :param base_output_dir: Directory path that contains indexed product directories.
+    :return: List of tuples containing (original_directory_path, extracted_name_without_index).
+    """
+
+    sorted_directories: List[Tuple[str, str]] = []  # Initialize the collected directory tuples.
+
+    if not base_output_dir or not os.path.isdir(base_output_dir):  # Validate that the base directory is available.
+        return sorted_directories  # Return an empty list when the base directory is unavailable.
+
+    for entry_name in os.listdir(base_output_dir):  # Iterate every entry from the base directory.
+        entry_path = os.path.join(base_output_dir, entry_name)  # Build the absolute path for the current entry.
+        if not os.path.isdir(entry_path):  # Skip entries that are not directories.
+            continue  # Continue to the next entry when current entry is not a directory.
+
+        split_parts = entry_name.split(". ", 1)  # Split once to isolate the index prefix from the display name.
+        if len(split_parts) != 2:  # Ignore directory names that do not follow the indexed naming pattern.
+            continue  # Continue to the next entry when naming pattern is not indexed.
+
+        extracted_name_without_index = split_parts[1].strip()  # Extract and trim the "platform - product" segment.
+        if not extracted_name_without_index:  # Ignore malformed names with empty extracted segments.
+            continue  # Continue to the next entry when extracted segment is empty.
+
+        sorted_directories.append((entry_path, extracted_name_without_index))  # Append tuple with original path and sortable label.
+
+    sorted_directories.sort(key=lambda item: item[1].lower())  # Sort tuples ascending by extracted label with lowercase normalization.
+
+    return sorted_directories  # Return sorted tuples for downstream renaming operations.
+
+
+def normalize_output_directory_indexes(sorted_directories: List[Tuple[str, str]]) -> List[str]:
+    """
+    Normalize output directory indexes and internal numeric artifacts using a safe two-phase rename.
+
+    :param sorted_directories: Sorted tuples from sort_output_directories_by_platform_and_product_name.
+    :return: List of final normalized directory paths.
+    """
+
+    final_directory_paths: List[str] = []  # Initialize list with resulting normalized directory paths.
+
+    if not sorted_directories:  # Validate whether there are directories to rename.
+        return final_directory_paths  # Return empty list when there is nothing to rename.
+
+    temporary_records: List[Tuple[str, str, str, str]] = []  # Store temporary rename records as (temp_path, extracted_name, old_index, new_index).
+
+    for position, (original_path, extracted_name_without_index) in enumerate(sorted_directories, 1):  # Iterate sorted directories preserving deterministic position.
+        if not os.path.isdir(original_path):  # Ignore entries that no longer exist as directories.
+            continue  # Continue when the original directory path is unavailable.
+
+        parent_directory = os.path.dirname(original_path)  # Resolve parent directory for renaming operations.
+        original_directory_name = os.path.basename(original_path)  # Resolve original directory name for index extraction.
+        split_parts = original_directory_name.split(". ", 1)  # Split once to isolate original index prefix.
+        old_index = split_parts[0].strip() if len(split_parts) == 2 else ""  # Resolve original index text when pattern is valid.
+        temporary_base_name = f"__tmp__{position:04d}"  # Build deterministic temporary base name for first-phase rename.
+        temporary_name = temporary_base_name  # Initialize temporary name candidate.
+        temporary_path = os.path.join(parent_directory, temporary_name)  # Build temporary path candidate.
+        temporary_suffix = 1  # Initialize suffix used when a temporary name already exists.
+
+        while os.path.exists(temporary_path):  # Avoid conflicts by searching for a free temporary path.
+            temporary_name = f"{temporary_base_name}_{temporary_suffix}"  # Build a suffixed temporary name candidate.
+            temporary_path = os.path.join(parent_directory, temporary_name)  # Build a new temporary path candidate.
+            temporary_suffix += 1  # Increment suffix for the next collision cycle.
+
+        os.rename(original_path, temporary_path)  # Rename original directory to temporary path in phase one.
+        new_index = f"{position:02d}"  # Build normalized two-digit index from sorted position.
+        temporary_records.append((temporary_path, extracted_name_without_index, old_index, new_index))  # Store temporary record for phase-two rename.
+
+    for temporary_path, extracted_name_without_index, old_index, new_index in temporary_records:  # Iterate temporary records for final naming and internal normalization.
+        parent_directory = os.path.dirname(temporary_path)  # Resolve parent directory from temporary path.
+        final_directory_name = f"{new_index}. {extracted_name_without_index}"  # Build final directory name with normalized index.
+        final_directory_path = os.path.join(parent_directory, final_directory_name)  # Build final directory absolute path.
+
+        if os.path.exists(final_directory_path):  # Avoid overwriting any pre-existing directory path.
+            collision_suffix = 1  # Initialize collision suffix for final path fallback naming.
+            collision_path = os.path.join(parent_directory, f"{final_directory_name} ({collision_suffix})")  # Build first fallback path candidate.
+            while os.path.exists(collision_path):  # Search for an available fallback path when collisions persist.
+                collision_suffix += 1  # Increment suffix for the next fallback candidate.
+                collision_path = os.path.join(parent_directory, f"{final_directory_name} ({collision_suffix})")  # Build next fallback path candidate.
+            final_directory_path = collision_path  # Use collision-safe final path when original target is occupied.
+
+        os.rename(temporary_path, final_directory_path)  # Rename temporary directory to the final normalized path in phase two.
+
+        if os.path.isdir(final_directory_path):  # Continue internal normalization only when final directory exists.
+            current_entries = os.listdir(final_directory_path)  # List current entries inside the normalized directory.
+            numeric_directories = [entry for entry in current_entries if os.path.isdir(os.path.join(final_directory_path, entry)) and re.fullmatch(r"\d+", entry)]  # Collect child directories with numeric-only names.
+            normalized_old_index = f"{int(old_index):02d}" if old_index.isdigit() else ""  # Normalize old index to two digits when possible.
+            source_internal_directory = None  # Initialize source numeric child directory to rename.
+
+            if normalized_old_index and normalized_old_index in numeric_directories:  # Prefer exact match with normalized old index name.
+                source_internal_directory = normalized_old_index  # Select normalized old index directory as source.
+            elif old_index and old_index in numeric_directories:  # Fallback to raw old index name when present.
+                source_internal_directory = old_index  # Select raw old index directory as source.
+            elif numeric_directories and new_index not in numeric_directories:  # Fallback to first numeric directory when target does not already exist.
+                sorted_numeric_directories = sorted(numeric_directories, key=lambda value: int(value))  # Sort numeric directories in ascending numeric order.
+                source_internal_directory = sorted_numeric_directories[0]  # Select the first numeric directory as source.
+
+            target_internal_directory = new_index  # Build target child directory name from new normalized index.
+            if source_internal_directory and source_internal_directory != target_internal_directory:  # Continue child directory rename only when source and target differ.
+                source_internal_path = os.path.join(final_directory_path, source_internal_directory)  # Build source child directory absolute path.
+                target_internal_path = os.path.join(final_directory_path, target_internal_directory)  # Build target child directory absolute path.
+                if not os.path.exists(target_internal_path):  # Avoid overwriting existing target child directory.
+                    os.rename(source_internal_path, target_internal_path)  # Rename numeric child directory to normalized index name.
+
+            current_entries = os.listdir(final_directory_path)  # Refresh directory listing after optional child directory rename.
+            numeric_zip_files = [entry for entry in current_entries if os.path.isfile(os.path.join(final_directory_path, entry)) and re.fullmatch(r"\d+\.zip", entry)]  # Collect zip files that use numeric names.
+            source_zip_file = None  # Initialize source zip filename to rename.
+            normalized_old_zip = f"{normalized_old_index}.zip" if normalized_old_index else ""  # Build normalized old zip filename candidate.
+            raw_old_zip = f"{old_index}.zip" if old_index else ""  # Build raw old zip filename candidate.
+
+            if normalized_old_zip and normalized_old_zip in numeric_zip_files:  # Prefer normalized old zip filename when present.
+                source_zip_file = normalized_old_zip  # Select normalized old zip as source.
+            elif raw_old_zip and raw_old_zip in numeric_zip_files:  # Fallback to raw old zip filename when present.
+                source_zip_file = raw_old_zip  # Select raw old zip as source.
+            elif numeric_zip_files and f"{new_index}.zip" not in numeric_zip_files:  # Fallback to first numeric zip when target zip does not exist.
+                sorted_numeric_zip_files = sorted(numeric_zip_files, key=lambda value: int(value[:-4]))  # Sort numeric zip files by numeric prefix.
+                source_zip_file = sorted_numeric_zip_files[0]  # Select the first numeric zip file as source.
+
+            target_zip_file = f"{new_index}.zip"  # Build target zip filename from normalized index.
+            if source_zip_file and source_zip_file != target_zip_file:  # Continue zip rename only when source and target differ.
+                source_zip_path = os.path.join(final_directory_path, source_zip_file)  # Build source zip absolute path.
+                target_zip_path = os.path.join(final_directory_path, target_zip_file)  # Build target zip absolute path.
+                if not os.path.exists(target_zip_path):  # Avoid overwriting existing target zip file.
+                    os.rename(source_zip_path, target_zip_path)  # Rename numeric zip file to normalized index name.
+
+        final_directory_paths.append(final_directory_path)  # Append resulting normalized directory path to return list.
+
+    return final_directory_paths  # Return all normalized directory paths.
+
+
 def parse_history_occurrences(history: dict) -> Dict[Tuple[str, str, str], List[str]]:
     """
     Parse the history dictionary into occurrences grouped by platform, product name and affiliate URL.
@@ -2478,6 +2610,10 @@ def main():
 
         details_msg = ", ".join(removed_details) if removed_details else "(no description files found)"  # Build a single-line summary of removed product details
         print(f"{BackgroundColors.YELLOW}Removed repeated old product directories: {BackgroundColors.CYAN}{len(removed)}{BackgroundColors.YELLOW} - {BackgroundColors.CYAN}{details_msg}{Style.RESET_ALL}")  # Output number and list of removed product names and URLs when verbose enabled
+
+    if timestamped_output_dir and os.path.isdir(timestamped_output_dir):  # Only attempt final sorting and normalization if the main output directory exists
+        sorted_output_directories = sort_output_directories_by_platform_and_product_name(timestamped_output_dir)  # Compute sorted directory order ignoring existing index prefixes.
+        normalize_output_directory_indexes(sorted_output_directories)  # Apply deterministic directory and internal index normalization.
     
     print(f"{BackgroundColors.GREEN}Successfully processed: {BackgroundColors.CYAN}{successful_scrapes}/{total_urls}{BackgroundColors.GREEN} URLs{Style.RESET_ALL}\n")  # Output the number of successful operations
 
