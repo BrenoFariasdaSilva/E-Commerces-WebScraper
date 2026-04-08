@@ -2306,8 +2306,10 @@ def main():
     repo_root = Path(__file__).resolve().parent.parent  # Resolve repository root path
     parser = argparse.ArgumentParser(description="E-Commerces WebScraper")  # Initialize argument parser
     parser.add_argument("--headerless", type=lambda s: str(s).lower() in ("true", "1", "yes", "y"), default=False, help="Whether to suppress GUI messagebox (default: False)")  # Register headerless argument with boolean conversion
+    parser.add_argument("--sort_products_by_product_name", type=lambda s: str(s).lower() in ("true", "1", "yes", "y"), default=False, help="Whether to sort and normalize product output directories by product name (default: False)")  # Register sort_products_by_product_name argument with boolean conversion
     args = parser.parse_args()  # Parse command-line arguments
-    
+    sort_products_by_product_name = args.sort_products_by_product_name  # Resolve sort_products_by_product_name flag from parsed arguments
+
     if not verify_dot_env_file():  # Verify if the .env file exists
         print(f"{BackgroundColors.RED}Environment setup failed. Exiting...{Style.RESET_ALL}")
         return
