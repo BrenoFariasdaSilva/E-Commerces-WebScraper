@@ -2495,7 +2495,8 @@ def main():
     print(
         f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Program finished.{Style.RESET_ALL}"
     )  # Output the end of the program message
-    show_amazon_update_warning(has_amazon, "Amazon URLs Expire in 24h")  # Show GUI warning when Amazon URLs were present in input
+    if not args.headerless:  # Verify if headerless mode is disabled
+        show_amazon_update_warning(has_amazon, "Amazon URLs Expire in 24h")  # Display the Amazon update warning when headerless mode is disabled
 
     (
         atexit.register(play_sound) if RUN_FUNCTIONS["Play Sound"] else None
