@@ -2630,9 +2630,11 @@ def main():
         if timestamped_output_dir and os.path.isdir(timestamped_output_dir):  # Only attempt final sorting and normalization if the main output directory exists.
             rename_plan = sort_output_directories_by_platform_and_product_name(timestamped_output_dir)  # Build deterministic full rename plan before any filesystem mutation.
             for plan_row in rename_plan:  # Iterate planned mappings to display deterministic assignment before renaming.
-                print(f"{plan_row['new_index']} -> {plan_row['old_path']} => {plan_row['normalized_name']}")  # Emit required mapping format for review before rename execution.
+                verbose_output(
+                    f"{BackgroundColors.GREEN}{plan_row['new_index']}{BackgroundColors.GREEN} -> {BackgroundColors.CYAN}{plan_row['old_path']}{BackgroundColors.GREEN} => {BackgroundColors.CYAN}{plan_row['normalized_name']}{Style.RESET_ALL}"
+                )  # Emit required mapping format for review before rename execution.
             normalize_output_directory_indexes(rename_plan)  # Apply deterministic two-phase renaming using only the frozen plan mapping.
-            print("Sorting and index normalization completed.")  # Confirm completion after all renames and internal updates finish.
+            verbose_output(f"{BackgroundColors.GREEN}Sorting and index normalization completed.{Style.RESET_ALL}")  # Confirm completion after all renames and internal updates finish.
     
     print(f"{BackgroundColors.GREEN}Successfully processed: {BackgroundColors.CYAN}{successful_scrapes}/{total_urls}{BackgroundColors.GREEN} URLs{Style.RESET_ALL}\n")  # Output the number of successful operations
 
