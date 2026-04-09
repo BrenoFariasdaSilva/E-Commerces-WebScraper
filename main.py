@@ -1850,20 +1850,21 @@ def run_final_output_integrity_verification(timestamped_output_dir: Optional[str
     remove_duplicate_directories_with_highest_index(timestamped_output_dir, duplicate_records)  # Remove higher-index directories for duplicate product names
 
 
-def sort_output_directories_by_platform_and_product_name(base_output_dir: str) -> List[Tuple[str, str]]:
+def sort_output_directories_by_platform_and_product_name(base_output_dir: str) -> List[Dict[str, str]]:
     """
-    Sort output directories by "{platform_name} - {product_name}" while ignoring index prefixes.
+    Build a deterministic rename plan sorted by "{platform_name} - {product_name}".
 
     :param base_output_dir: Directory path that contains indexed product directories.
-    :return: List of tuples containing (original_directory_path, extracted_name_without_index).
+    :return: List of dictionaries containing old_path, old_index, new_index and normalized_name.
     """
 
-    sorted_directories: List[Tuple[str, str]] = []  # Initialize the collected directory tuples.
+    sortable_entries: List[Tuple[str, str, str]] = []  # Initialize sortable tuples as (old_path, old_index, normalized_name).
+    rename_plan: List[Dict[str, str]] = []  # Initialize deterministic rename plan records.
 
     if not base_output_dir or not os.path.isdir(base_output_dir):  # Validate that the base directory is available.
-        return sorted_directories  # Return an empty list when the base directory is unavailable.
+        return rename_plan  # Return an empty plan when the base directory is unavailable.
 
-    for entry_name in os.listdir(base_output_dir):  # Iterate every entry from the base directory.
+    for entry_name in sorted(os.listdir(base_output_dir)):  # Iterate entries in deterministic lexical order before normalized-name sorting.
         entry_path = os.path.join(base_output_dir, entry_name)  # Build the absolute path for the current entry.
         if not os.path.isdir(entry_path):  # Skip entries that are not directories.
             continue  # Continue to the next entry when current entry is not a directory.
@@ -1876,37 +1877,46 @@ def sort_output_directories_by_platform_and_product_name(base_output_dir: str) -
         if not extracted_name_without_index:  # Ignore malformed names with empty extracted segments.
             continue  # Continue to the next entry when extracted segment is empty.
 
-        sorted_directories.append((entry_path, extracted_name_without_index))  # Append tuple with original path and sortable label.
+        old_index = split_parts[0].strip()  # Extract and trim original index text for internal artifact remapping.
+        sortable_entries.append((entry_path, old_index, extracted_name_without_index))  # Append sortable tuple preserving old path and normalized name.
 
-    sorted_directories.sort(key=lambda item: item[1].lower())  # Sort tuples ascending by extracted label with lowercase normalization.
+    sortable_entries.sort(key=lambda item: item[2].lower())  # Sort tuples ascending by normalized name with lowercase normalization.
 
-    return sorted_directories  # Return sorted tuples for downstream renaming operations.
+    for position, (old_path, old_index, normalized_name) in enumerate(sortable_entries, 1):  # Assign deterministic sequential indexes after full sorting.
+        new_index = f"{position:02d}"  # Build unique sequential two-digit index from sorted position.
+        rename_plan.append({"old_path": old_path, "old_index": old_index, "new_index": new_index, "normalized_name": normalized_name})  # Append stable mapping record used by all rename phases.
+
+    return rename_plan  # Return deterministic full rename plan for downstream execution.
 
 
-def normalize_output_directory_indexes(sorted_directories: List[Tuple[str, str]]) -> List[str]:
+def normalize_output_directory_indexes(rename_plan: List[Dict[str, str]]) -> List[str]:
     """
     Normalize output directory indexes and internal numeric artifacts using a safe two-phase rename.
 
-    :param sorted_directories: Sorted tuples from sort_output_directories_by_platform_and_product_name.
+    :param rename_plan: Full deterministic rename plan from sort_output_directories_by_platform_and_product_name.
     :return: List of final normalized directory paths.
     """
 
     final_directory_paths: List[str] = []  # Initialize list with resulting normalized directory paths.
 
-    if not sorted_directories:  # Validate whether there are directories to rename.
+    if not rename_plan:  # Validate whether there are directories to rename.
         return final_directory_paths  # Return empty list when there is nothing to rename.
 
-    temporary_records: List[Tuple[str, str, str, str]] = []  # Store temporary rename records as (temp_path, extracted_name, old_index, new_index).
+    temporary_records: List[Tuple[str, str, str, str, str]] = []  # Store temporary rename records as (old_path, temp_path, normalized_name, old_index, new_index).
 
-    for position, (original_path, extracted_name_without_index) in enumerate(sorted_directories, 1):  # Iterate sorted directories preserving deterministic position.
-        if not os.path.isdir(original_path):  # Ignore entries that no longer exist as directories.
+    for plan_record in rename_plan:  # Iterate each planned mapping to derive unique temporary targets.
+        original_path = plan_record.get("old_path", "")  # Resolve original directory path from the plan record.
+        if not original_path or not os.path.isdir(original_path):  # Ignore planned entries that are unavailable on disk.
             continue  # Continue when the original directory path is unavailable.
 
+        normalized_name = plan_record.get("normalized_name", "").strip()  # Resolve normalized display name from plan record.
+        old_index = plan_record.get("old_index", "").strip()  # Resolve old index from plan record for internal artifact updates.
+        new_index = plan_record.get("new_index", "").strip()  # Resolve new index from plan record for deterministic final naming.
+        if not normalized_name or not new_index:  # Ignore malformed plan records without deterministic naming fields.
+            continue  # Continue when required plan fields are missing.
+
         parent_directory = os.path.dirname(original_path)  # Resolve parent directory for renaming operations.
-        original_directory_name = os.path.basename(original_path)  # Resolve original directory name for index extraction.
-        split_parts = original_directory_name.split(". ", 1)  # Split once to isolate original index prefix.
-        old_index = split_parts[0].strip() if len(split_parts) == 2 else ""  # Resolve original index text when pattern is valid.
-        temporary_base_name = f"__tmp__{position:04d}"  # Build deterministic temporary base name for first-phase rename.
+        temporary_base_name = f"__tmp__{new_index}"  # Build deterministic temporary base name from planned final index.
         temporary_name = temporary_base_name  # Initialize temporary name candidate.
         temporary_path = os.path.join(parent_directory, temporary_name)  # Build temporary path candidate.
         temporary_suffix = 1  # Initialize suffix used when a temporary name already exists.
@@ -1916,13 +1926,16 @@ def normalize_output_directory_indexes(sorted_directories: List[Tuple[str, str]]
             temporary_path = os.path.join(parent_directory, temporary_name)  # Build a new temporary path candidate.
             temporary_suffix += 1  # Increment suffix for the next collision cycle.
 
-        os.rename(original_path, temporary_path)  # Rename original directory to temporary path in phase one.
-        new_index = f"{position:02d}"  # Build normalized two-digit index from sorted position.
-        temporary_records.append((temporary_path, extracted_name_without_index, old_index, new_index))  # Store temporary record for phase-two rename.
+        temporary_records.append((original_path, temporary_path, normalized_name, old_index, new_index))  # Append temporary mapping without touching filesystem yet.
 
-    for temporary_path, extracted_name_without_index, old_index, new_index in temporary_records:  # Iterate temporary records for final naming and internal normalization.
+    for old_path, temporary_path, normalized_name, old_index, new_index in temporary_records:  # Iterate derived temporary mappings to execute phase-one renames.
+        if not old_path or not os.path.isdir(old_path):  # Ignore stale plan rows whose source directory no longer exists.
+            continue  # Continue when original directory cannot be renamed in phase one.
+        os.rename(old_path, temporary_path)  # Rename original directory to temporary path in phase one.
+
+    for _, temporary_path, normalized_name, old_index, new_index in temporary_records:  # Iterate temporary records for final naming and internal normalization.
         parent_directory = os.path.dirname(temporary_path)  # Resolve parent directory from temporary path.
-        final_directory_name = f"{new_index}. {extracted_name_without_index}"  # Build final directory name with normalized index.
+        final_directory_name = f"{new_index}. {normalized_name}"  # Build final directory name with normalized index.
         final_directory_path = os.path.join(parent_directory, final_directory_name)  # Build final directory absolute path.
 
         if os.path.exists(final_directory_path):  # Avoid overwriting any pre-existing directory path.
@@ -2613,10 +2626,13 @@ def main():
         details_msg = ", ".join(removed_details) if removed_details else "(no description files found)"  # Build a single-line summary of removed product details
         print(f"{BackgroundColors.YELLOW}Removed repeated old product directories: {BackgroundColors.CYAN}{len(removed)}{BackgroundColors.YELLOW} - {BackgroundColors.CYAN}{details_msg}{Style.RESET_ALL}")  # Output number and list of removed product names and URLs when verbose enabled
 
-    if sort_products_by_product_name:  # Verify if product sorting by name is enabled
-        if timestamped_output_dir and os.path.isdir(timestamped_output_dir):  # Only attempt final sorting and normalization if the main output directory exists
-            sorted_output_directories = sort_output_directories_by_platform_and_product_name(timestamped_output_dir)  # Compute sorted directory order ignoring existing index prefixes.
-            normalize_output_directory_indexes(sorted_output_directories)  # Apply deterministic directory and internal index normalization.
+    if sort_products_by_product_name:  # Verify if product sorting by name is enabled.
+        if timestamped_output_dir and os.path.isdir(timestamped_output_dir):  # Only attempt final sorting and normalization if the main output directory exists.
+            rename_plan = sort_output_directories_by_platform_and_product_name(timestamped_output_dir)  # Build deterministic full rename plan before any filesystem mutation.
+            for plan_row in rename_plan:  # Iterate planned mappings to display deterministic assignment before renaming.
+                print(f"{plan_row['new_index']} -> {plan_row['old_path']} => {plan_row['normalized_name']}")  # Emit required mapping format for review before rename execution.
+            normalize_output_directory_indexes(rename_plan)  # Apply deterministic two-phase renaming using only the frozen plan mapping.
+            print("Sorting and index normalization completed.")  # Confirm completion after all renames and internal updates finish.
     
     print(f"{BackgroundColors.GREEN}Successfully processed: {BackgroundColors.CYAN}{successful_scrapes}/{total_urls}{BackgroundColors.GREEN} URLs{Style.RESET_ALL}\n")  # Output the number of successful operations
 
