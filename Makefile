@@ -79,6 +79,11 @@ sort_latest_products: dependencies
 	$(CLEAR_CMD)
 	$(call RUN_AND_LOG, ./main.py --sort_products_by_product_name True --output_dir Default)
 
+merge_output_dirs: dependencies
+	$(ENSURE_LOG_DIR)
+	$(CLEAR_CMD)
+	$(call RUN_AND_LOG, ./main.py --merge_output_dirs True)
+
 compressed_archives_renamer: dependencies
 	$(ENSURE_LOG_DIR)
 	$(CLEAR_CMD)
@@ -126,4 +131,4 @@ clean:
 	find . -type f -name '*.pyc' -delete || del /S /Q *.pyc 2>nul
 	find . -type d -name '__pycache__' -delete || rmdir /S /Q __pycache__ 2>nul
 
-.PHONY: all run local main sort_products sort_latest_products compressed_archives_renamer urls_input_file_adder affiliate_pages_downloader affiliate_pages_downloader_only_renew_amazon_urls update_and_run clean dependencies generate_requirements
+.PHONY: all run local main sort_products sort_latest_products merge_output_dirs compressed_archives_renamer urls_input_file_adder affiliate_pages_downloader affiliate_pages_downloader_only_renew_amazon_urls update_and_run clean dependencies generate_requirements
