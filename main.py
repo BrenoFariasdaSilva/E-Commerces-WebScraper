@@ -664,6 +664,120 @@ def create_timestamped_output_directory(base_output_dir):
     return timestamped_dir  # Return path to created timestamped directory
 
 
+def discover_valid_output_directories(base_output_dir: str) -> List[str]:
+    """
+    Discovers all directories in base_output_dir that match the required timestamped run format.
+
+    :param base_output_dir: The base output directory path to scan for matching directories.
+    :return: List of full paths to valid matching directories.
+    """
+
+    valid_dirs: List[str] = []  # Initialize list to collect full paths of matching directories
+    if not os.path.isdir(base_output_dir):  # Verify if the base output directory exists
+        return valid_dirs  # Return empty list when base directory does not exist
+
+    pattern = re.compile(r'^\d+\. \d{4}-\d{2}-\d{2} - \d{2}h\d{2}m\d{2}s$')  # Regex matching "{index}. YYYY-MM-DD - HHhMMmSSs"
+
+    for item in os.listdir(base_output_dir):  # Iterate through all items in the base output directory
+        item_path = os.path.join(base_output_dir, item)  # Build full path for the current item
+        if not os.path.isdir(item_path):  # Skip non-directory items such as files or hidden entries
+            continue  # Continue to next item when current item is not a directory
+        if pattern.match(item):  # Verify if the directory name matches the required timestamped format
+            valid_dirs.append(item_path)  # Append matching directory path to result list
+
+    return valid_dirs  # Return list of full paths to valid matching directories
+
+
+def create_merged_output_directory(base_output_dir: str) -> str:
+    """
+    Creates a new merged output directory with a fixed index of 1 and the current execution timestamp.
+
+    :param base_output_dir: The base output directory path (e.g., "./Outputs/").
+    :return: Full path to the created merged output directory.
+    """
+
+    now = datetime.datetime.now()  # Get current date and time for unique directory naming
+    today_str = now.strftime("%Y-%m-%d")  # Format date as YYYY-MM-DD string
+    time_str = now.strftime("%Hh%Mm%Ss")  # Format time as HHhMMmSSs string
+
+    dir_name = f"1. {today_str} - {time_str}"  # Construct directory name with fixed index 1, date, and time
+    merged_dir = os.path.join(base_output_dir, dir_name)  # Construct full path to the merged output directory
+
+    os.makedirs(merged_dir, exist_ok=True)  # Create merged directory including any missing parent directories
+
+    return merged_dir  # Return full path to the newly created merged output directory
+
+
+def merge_product_directories_into(source_dirs: List[str], target_dir: str) -> None:
+    """
+    Moves all product subdirectories from each source directory into the target directory.
+
+    :param source_dirs: List of full paths to source directories to merge content from.
+    :param target_dir: Full path to the target directory to receive all moved product directories.
+    :return: None
+    """
+
+    for source_dir in source_dirs:  # Iterate each source directory to move its product subdirectories
+        verbose_output(f"{BackgroundColors.GREEN}Moving contents from {BackgroundColors.CYAN}{source_dir}{Style.RESET_ALL}")  # Log merge progress for current source directory
+        try:  # Try to move all product subdirectories from this source directory into the target
+            for item in os.listdir(source_dir):  # Iterate all items in the current source directory
+                item_path = os.path.join(source_dir, item)  # Build full path to the current item
+                if not os.path.isdir(item_path):  # Skip non-directory items to preserve only product directories
+                    continue  # Continue to next item when current item is not a directory
+                dest_path = os.path.join(target_dir, item)  # Build destination path inside the target directory
+                if os.path.exists(dest_path):  # Verify if destination path is already occupied
+                    verbose_output(f"{BackgroundColors.YELLOW}Destination already exists, skipping: {BackgroundColors.CYAN}{dest_path}{Style.RESET_ALL}")  # Warn about occupied destination to avoid silent data loss
+                    continue  # Skip this item when the destination is already occupied
+                shutil.move(item_path, dest_path)  # Move product directory from source to target preserving its name
+        except Exception as e:  # Handle unexpected errors during merge operation for this source
+            print(f"{BackgroundColors.RED}Error merging contents from {BackgroundColors.CYAN}{source_dir}{BackgroundColors.RED}: {e}{Style.RESET_ALL}")  # Report merge error without stopping the pipeline
+
+
+def delete_merged_source_directories(source_dirs: List[str]) -> None:
+    """
+    Deletes all source directories that were successfully merged into the target directory.
+
+    :param source_dirs: List of full paths to source directories to delete after merge.
+    :return: None
+    """
+
+    for source_dir in source_dirs:  # Iterate each source directory for deletion after successful merge
+        try:  # Try to delete the source directory recursively
+            shutil.rmtree(source_dir)  # Remove source directory and all its remaining contents recursively
+            dir_name = os.path.basename(source_dir)  # Extract directory name from full path for logging
+            verbose_output(f"{BackgroundColors.GREEN}Deleted merged source directory: {BackgroundColors.CYAN}{dir_name}{Style.RESET_ALL}")  # Log successful deletion of this source directory
+        except Exception as e:  # Handle errors during deletion of this source directory
+            print(f"{BackgroundColors.RED}Error deleting merged source directory {BackgroundColors.CYAN}{source_dir}{BackgroundColors.RED}: {e}{Style.RESET_ALL}")  # Report deletion error without stopping the pipeline
+
+
+def run_merge_output_directories(base_output_dir: str) -> Optional[str]:
+    """
+    Orchestrates the merge of all timestamped output directories inside base_output_dir into a single new directory.
+
+    :param base_output_dir: The base output directory path containing all timestamped run directories.
+    :return: Full path to the newly created merged directory, or None when merge did not proceed.
+    """
+
+    print(f"{BackgroundColors.GREEN}Running in merge output directories mode.{Style.RESET_ALL}")  # Log merge mode activation at start of operation
+
+    valid_dirs = discover_valid_output_directories(base_output_dir)  # Discover all directories matching the required timestamped format
+    print(f"{BackgroundColors.GREEN}Found valid output directories: {BackgroundColors.CYAN}{[os.path.basename(d) for d in valid_dirs]}{Style.RESET_ALL}")  # Log the list of discovered valid directory names
+
+    if len(valid_dirs) < 2:  # Verify if at least 2 valid directories exist before proceeding with merge
+        print(f"{BackgroundColors.YELLOW}Not enough valid output directories to merge (found {BackgroundColors.CYAN}{len(valid_dirs)}{BackgroundColors.YELLOW}, minimum 2 required). Skipping merge.{Style.RESET_ALL}")  # Log warning when fewer than 2 matching directories are found
+        return None  # Return None to indicate merge did not proceed due to insufficient directories
+
+    merged_dir = create_merged_output_directory(base_output_dir)  # Create new merged output directory with index 1 and current timestamp
+    merged_dir_name = os.path.basename(merged_dir)  # Extract directory name from full path for logging
+    print(f"{BackgroundColors.GREEN}Created merged output directory: {BackgroundColors.CYAN}{merged_dir_name}{Style.RESET_ALL}")  # Log successful creation of merged directory
+
+    merge_product_directories_into(valid_dirs, merged_dir)  # Move all product subdirectories from source directories into merged directory
+
+    delete_merged_source_directories(valid_dirs)  # Delete all source directories that were merged into the new directory
+
+    return merged_dir  # Return full path to the new merged directory for downstream sorting
+
+
 def resolve_latest_output_directory(base_output_dir: str) -> Optional[str]:
     """
     Scans base_output_dir for timestamped run directories and returns the most recent one.
@@ -2369,9 +2483,24 @@ def main():
     parser.add_argument("--headerless", type=lambda s: str(s).lower() in ("true", "1", "yes", "y"), default=False, help="Whether to suppress GUI messagebox (default: False)")  # Register headerless argument with boolean conversion
     parser.add_argument("--sort_products_by_product_name", type=lambda s: str(s).lower() in ("true", "1", "yes", "y"), default=False, help="Whether to sort and normalize product output directories by product name (default: False)")  # Register sort_products_by_product_name argument with boolean conversion
     parser.add_argument("--output_dir", type=str, default=None, help="Explicit path to output directory for sorting (optional)")  # Register output_dir argument for sorting-only mode
+    parser.add_argument("--merge_output_dirs", type=lambda s: str(s).lower() in ("true", "1", "yes", "y"), default=False, help="Whether to merge all timestamped output directories into a single new directory (default: False)")  # Register merge_output_dirs argument with boolean conversion
     args = parser.parse_args()  # Parse command-line arguments
     sort_products_by_product_name = args.sort_products_by_product_name  # Resolve sort_products_by_product_name flag from parsed arguments
     output_dir_arg = args.output_dir  # Resolve output_dir argument from parsed arguments
+    merge_output_dirs = args.merge_output_dirs  # Resolve merge_output_dirs flag from parsed arguments
+
+    if merge_output_dirs:  # Verify if merge output directories mode is requested
+        create_directory(os.path.abspath(OUTPUT_DIRECTORY), OUTPUT_DIRECTORY.replace(".", ""))  # Ensure the base output directory exists before merge operations
+        merged_dir = run_merge_output_directories(OUTPUT_DIRECTORY)  # Execute merge operation and get the resulting merged directory path
+        if merged_dir and os.path.isdir(merged_dir):  # Verify if merge produced a valid merged directory for sorting
+            verbose_output(f"{BackgroundColors.GREEN}Sorting merged output directory by product name.{Style.RESET_ALL}")  # Log sorting stage activation after successful merge
+            rename_plan = sort_output_directories_by_platform_and_product_name(merged_dir)  # Build deterministic full rename plan for the merged directory
+            normalize_output_directory_indexes(rename_plan)  # Apply deterministic two-phase renaming using the frozen plan mapping
+            print(f"{BackgroundColors.GREEN}Merge and sort operation completed successfully.{Style.RESET_ALL}")  # Log completion of merge and sort pipeline
+        finish_time = datetime.datetime.now()  # Get finish time after merge and sort operation
+        print(f"{BackgroundColors.GREEN}Execution time: {BackgroundColors.CYAN}{calculate_execution_time(start_time, finish_time)}{Style.RESET_ALL}")  # Output execution time for the merge run
+        print(f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Program finished.{Style.RESET_ALL}")  # Output program end message
+        return  # Exit main function before normal execution flow to preserve independence
 
     if not verify_dot_env_file():  # Verify if the .env file exists
         print(f"{BackgroundColors.RED}Environment setup failed. Exiting...{Style.RESET_ALL}")
