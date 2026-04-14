@@ -59,6 +59,21 @@ main: dependencies
 	$(CLEAR_CMD)
 	$(call RUN_AND_LOG, ./main.py)
 
+sort_products: dependencies
+	$(ENSURE_LOG_DIR)
+	$(CLEAR_CMD)
+ifeq ($(OS), Windows)
+	@if not defined OUTPUT_DIR ( \
+		echo ERROR: OUTPUT_DIR variable must be set. Example: make sort_products OUTPUT_DIR=Outputs/1. 2026-04-14 - 07h31m39s && exit 1 \
+	)
+else
+	@if [ "$(OUTPUT_DIR)" = "" ]; then \
+		echo "ERROR: OUTPUT_DIR variable must be set. Example: make sort_products OUTPUT_DIR=Outputs/1.\ 2026-04-14\ -\ 07h31m39s"; \
+		exit 1; \
+	fi
+endif
+	$(call RUN_AND_LOG, ./main.py --sort_products_by_product_name True --output_dir "$(OUTPUT_DIR)")
+
 compressed_archives_renamer: dependencies
 	$(ENSURE_LOG_DIR)
 	$(CLEAR_CMD)
@@ -106,4 +121,4 @@ clean:
 	find . -type f -name '*.pyc' -delete || del /S /Q *.pyc 2>nul
 	find . -type d -name '__pycache__' -delete || rmdir /S /Q __pycache__ 2>nul
 
-.PHONY: all run local main compressed_archives_renamer urls_input_file_adder affiliate_pages_downloader affiliate_pages_downloader_only_renew_amazon_urls update_and_run clean dependencies generate_requirements
+.PHONY: all run local main sort_products compressed_archives_renamer urls_input_file_adder affiliate_pages_downloader affiliate_pages_downloader_only_renew_amazon_urls update_and_run clean dependencies generate_requirements
