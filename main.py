@@ -2318,10 +2318,13 @@ def main():
     
     repo_root = Path(__file__).resolve().parent.parent  # Resolve repository root path
     parser = argparse.ArgumentParser(description="E-Commerces WebScraper")  # Initialize argument parser
+
     parser.add_argument("--headerless", type=lambda s: str(s).lower() in ("true", "1", "yes", "y"), default=False, help="Whether to suppress GUI messagebox (default: False)")  # Register headerless argument with boolean conversion
     parser.add_argument("--sort_products_by_product_name", type=lambda s: str(s).lower() in ("true", "1", "yes", "y"), default=False, help="Whether to sort and normalize product output directories by product name (default: False)")  # Register sort_products_by_product_name argument with boolean conversion
+    parser.add_argument("--output_dir", type=str, default=None, help="Explicit path to output directory for sorting (optional)")  # Register output_dir argument for sorting-only mode
     args = parser.parse_args()  # Parse command-line arguments
     sort_products_by_product_name = args.sort_products_by_product_name  # Resolve sort_products_by_product_name flag from parsed arguments
+    output_dir_arg = args.output_dir  # Resolve output_dir argument from parsed arguments
 
     if not verify_dot_env_file():  # Verify if the .env file exists
         print(f"{BackgroundColors.RED}Environment setup failed. Exiting...{Style.RESET_ALL}")
@@ -2363,7 +2366,7 @@ def main():
     raw_lines = load_urls_to_process(INPUT_FILE)  # Load raw trimmed input lines from file
     processed_lines = preprocess_urls(raw_lines)  # Preprocess lines (strip, remove prefixes, sort)
     write_urls_to_file(processed_lines, INPUT_FILE, True)  # Write preprocessed lines back to input file for deterministic retries and user reference
-    
+
     urls_to_process = []  # Prepare list of tuples (url, local_html_path)
     for line in processed_lines:  # Iterate preprocessed lines
         parts = line.split(maxsplit=1)  # Separate URL and optional local path
@@ -2373,8 +2376,18 @@ def main():
 
     total_urls = len(urls_to_process)  # Total number of URLs to process after preprocessing
 
-    if total_urls == 0:  # If there are no URLs to process, output a message and skip the processing loop
-        print(f"{BackgroundColors.YELLOW}No URLs to process.{Style.RESET_ALL}")
+    timestamped_output_dir_for_sorting = None  # Initialize variable for output directory to sort
+
+    if total_urls == 0:  # Verify if there are no URLs to process
+        print(f"{BackgroundColors.YELLOW}No URLs to process.{Style.RESET_ALL}")  # Output message when no URLs are present
+
+        if sort_products_by_product_name and output_dir_arg:  # Verify if sorting is requested and output_dir is provided
+            if os.path.isdir(output_dir_arg):  # Verify if provided output_dir exists as a directory
+                timestamped_output_dir_for_sorting = output_dir_arg  # Assign provided output_dir for sorting
+            else:  # If provided output_dir does not exist
+                print(f"{BackgroundColors.RED}Provided output_dir does not exist or is not a directory: {output_dir_arg}{Style.RESET_ALL}")  # Output error message for invalid directory
+                return  # Exit early if output_dir is invalid
+        # No else: preserve existing fallback logic
     else:  # If there are URLs to process, proceed with the processing loop
         pbar = tqdm(
             urls_to_process,
@@ -2605,18 +2618,18 @@ def main():
                 time.sleep(DELAY_BETWEEN_REQUESTS)  # Sleep to avoid rate limiting between online requests
 
     run_final_output_integrity_verification(timestamped_output_dir, urls_to_process)  # Run final reliability verification after all URL processing has completed
-    
+
     removed = remove_repeated_products_older_than(2, os.path.join(OUTPUT_DIRECTORY, "history.json"), OUTPUT_DIRECTORY)  # Remove repeated products older than 2 days and collect removed dirs
     if removed:  # If any directories were removed, emit verbose output for tracking
         removed_details = []  # Initialize list to collect (name, url) details for removed directories
         for rd in removed:  # Iterate each removed directory path to extract product info
             try:  # Try to read description file from removed directory
                 desc_files = [f for f in os.listdir(rd) if f.endswith("_description.txt")]  # Find description files inside removed product dir
-                if not desc_files:  # If no description file is present, skip this directory
-                    continue  # Continue to next removed directory when description missing
+                if not desc_files:  # Verify if no description files are found
+                    continue  # Continue to next directory if none found
                 desc_path = os.path.join(rd, desc_files[0])  # Build path to the chosen description file
-                with open(desc_path, "r", encoding="utf-8") as fh:  # Open the description file for reading
-                    content = fh.read()  # Read the description content for detection
+                with open(desc_path, "r", encoding="utf-8") as fh:  # Open the description file with UTF-8 encoding
+                    content = fh.read()  # Read the content of the description file
                 pname = detect_product_name(content) or ""  # Detect product name from description content
                 aurl = detect_product_url(content) or ""  # Detect affiliate/product URL from description content
                 removed_details.append(f"{pname} -> {aurl}")  # Append formatted detail entry for reporting
@@ -2626,22 +2639,28 @@ def main():
         details_msg = ", ".join(removed_details) if removed_details else "(no description files found)"  # Build a single-line summary of removed product details
         print(f"{BackgroundColors.YELLOW}Removed repeated old product directories: {BackgroundColors.CYAN}{len(removed)}{BackgroundColors.YELLOW} - {BackgroundColors.CYAN}{details_msg}{Style.RESET_ALL}")  # Output number and list of removed product names and URLs when verbose enabled
 
-    if sort_products_by_product_name:  # Verify if product sorting by name is enabled.
-        if timestamped_output_dir and os.path.isdir(timestamped_output_dir):  # Only attempt final sorting and normalization if the main output directory exists.
-            rename_plan = sort_output_directories_by_platform_and_product_name(timestamped_output_dir)  # Build deterministic full rename plan before any filesystem mutation.
-            for plan_row in rename_plan:  # Iterate planned mappings to display deterministic assignment before renaming.
+    sorting_target_dir = None  # Initialize sorting target directory variable
+    if sort_products_by_product_name:  # Verify if product sorting by name is enabled
+        if timestamped_output_dir_for_sorting and os.path.isdir(timestamped_output_dir_for_sorting):  # Verify if explicit output_dir is provided and exists
+            sorting_target_dir = timestamped_output_dir_for_sorting  # Assign explicit output_dir as sorting target
+        elif timestamped_output_dir and os.path.isdir(timestamped_output_dir):  # Fallback to previous logic if output_dir not provided
+            sorting_target_dir = timestamped_output_dir  # Assign last run output directory as sorting target
+
+        if sorting_target_dir:  # Verify if a valid sorting target directory is available
+            rename_plan = sort_output_directories_by_platform_and_product_name(sorting_target_dir)  # Build deterministic full rename plan before any filesystem mutation
+            for plan_row in rename_plan:  # Iterate planned mappings to display deterministic assignment before renaming
                 verbose_output(
                     f"{BackgroundColors.GREEN}{plan_row['new_index']}{BackgroundColors.GREEN} -> {BackgroundColors.CYAN}{plan_row['old_path']}{BackgroundColors.GREEN} => {BackgroundColors.CYAN}{plan_row['normalized_name']}{Style.RESET_ALL}"
-                )  # Emit required mapping format for review before rename execution.
-            normalize_output_directory_indexes(rename_plan)  # Apply deterministic two-phase renaming using only the frozen plan mapping.
-            verbose_output(f"{BackgroundColors.GREEN}Sorting and index normalization completed.{Style.RESET_ALL}")  # Confirm completion after all renames and internal updates finish.
-    
+                )  # Emit required mapping format for review before rename execution
+            normalize_output_directory_indexes(rename_plan)  # Apply deterministic two-phase renaming using only the frozen plan mapping
+            verbose_output(f"{BackgroundColors.GREEN}Sorting and index normalization completed.{Style.RESET_ALL}")  # Confirm completion after all renames and internal updates finish
+
     print(f"{BackgroundColors.GREEN}Successfully processed: {BackgroundColors.CYAN}{successful_scrapes}/{total_urls}{BackgroundColors.GREEN} URLs{Style.RESET_ALL}\n")  # Output the number of successful operations
 
     try:  # Clean up the staging directory if it's empty after processing all URLs
         if os.path.exists(staging_output_dir) and not os.listdir(staging_output_dir):  # If staging directory exists and is empty
             shutil.rmtree(staging_output_dir)  # Remove the empty staging directory
-            verbose_output(f"{BackgroundColors.GREEN}Removed empty staging directory: {BackgroundColors.CYAN}{staging_output_dir}{Style.RESET_ALL}")
+            verbose_output(f"{BackgroundColors.GREEN}Removed empty staging directory: {BackgroundColors.CYAN}{staging_output_dir}{Style.RESET_ALL}")  # Output removal of empty staging directory
     except Exception:  # If an error occurs during cleanup, ignore it
         pass  # Best effort cleanup, ignore errors
 
