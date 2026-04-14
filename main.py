@@ -2378,16 +2378,19 @@ def main():
 
     timestamped_output_dir_for_sorting = None  # Initialize variable for output directory to sort
 
-    if total_urls == 0:  # Verify if there are no URLs to process
-        print(f"{BackgroundColors.YELLOW}No URLs to process.{Style.RESET_ALL}")  # Output message when no URLs are present
+    sorting_only_mode = False  # Initialize flag for sorting-only mode
 
+    if total_urls == 0:  # Verify if there are no URLs to process
         if sort_products_by_product_name and output_dir_arg:  # Verify if sorting is requested and output_dir is provided
             if os.path.isdir(output_dir_arg):  # Verify if provided output_dir exists as a directory
                 timestamped_output_dir_for_sorting = output_dir_arg  # Assign provided output_dir for sorting
+                sorting_only_mode = True  # Set sorting-only mode flag
             else:  # If provided output_dir does not exist
                 print(f"{BackgroundColors.RED}Provided output_dir does not exist or is not a directory: {output_dir_arg}{Style.RESET_ALL}")  # Output error message for invalid directory
                 return  # Exit early if output_dir is invalid
         # No else: preserve existing fallback logic
+        if not sorting_only_mode:  # Verify if not in sorting-only mode
+            print(f"{BackgroundColors.YELLOW}No URLs to process.{Style.RESET_ALL}")  # Output message when no URLs are present
     else:  # If there are URLs to process, proceed with the processing loop
         pbar = tqdm(
             urls_to_process,
@@ -2639,6 +2642,7 @@ def main():
         details_msg = ", ".join(removed_details) if removed_details else "(no description files found)"  # Build a single-line summary of removed product details
         print(f"{BackgroundColors.YELLOW}Removed repeated old product directories: {BackgroundColors.CYAN}{len(removed)}{BackgroundColors.YELLOW} - {BackgroundColors.CYAN}{details_msg}{Style.RESET_ALL}")  # Output number and list of removed product names and URLs when verbose enabled
 
+
     sorting_target_dir = None  # Initialize sorting target directory variable
     if sort_products_by_product_name:  # Verify if product sorting by name is enabled
         if timestamped_output_dir_for_sorting and os.path.isdir(timestamped_output_dir_for_sorting):  # Verify if explicit output_dir is provided and exists
@@ -2647,15 +2651,22 @@ def main():
             sorting_target_dir = timestamped_output_dir  # Assign last run output directory as sorting target
 
         if sorting_target_dir:  # Verify if a valid sorting target directory is available
+            if sorting_only_mode:  # Verify if running in sorting-only mode
+                print(f"{BackgroundColors.CYAN}Running in sorting-only mode.{Style.RESET_ALL}")  # Log sorting-only mode info
+                print(f"{BackgroundColors.CYAN}Sorting product directories by product name.{Style.RESET_ALL}")  # Log sorting action
+                print(f"{BackgroundColors.CYAN}Target output directory: {sorting_target_dir}{Style.RESET_ALL}")  # Log target directory
             rename_plan = sort_output_directories_by_platform_and_product_name(sorting_target_dir)  # Build deterministic full rename plan before any filesystem mutation
             for plan_row in rename_plan:  # Iterate planned mappings to display deterministic assignment before renaming
                 verbose_output(
                     f"{BackgroundColors.GREEN}{plan_row['new_index']}{BackgroundColors.GREEN} -> {BackgroundColors.CYAN}{plan_row['old_path']}{BackgroundColors.GREEN} => {BackgroundColors.CYAN}{plan_row['normalized_name']}{Style.RESET_ALL}"
                 )  # Emit required mapping format for review before rename execution
             normalize_output_directory_indexes(rename_plan)  # Apply deterministic two-phase renaming using only the frozen plan mapping
+            if sorting_only_mode:  # Verify if running in sorting-only mode
+                print(f"{BackgroundColors.CYAN}Product directories in {BackgroundColors.GREEN}{sorting_target_dir}{BackgroundColors.CYAN} sorted successfully.{Style.RESET_ALL}")  # Log sorting success
             verbose_output(f"{BackgroundColors.GREEN}Sorting and index normalization completed.{Style.RESET_ALL}")  # Confirm completion after all renames and internal updates finish
 
-    print(f"{BackgroundColors.GREEN}Successfully processed: {BackgroundColors.CYAN}{successful_scrapes}/{total_urls}{BackgroundColors.GREEN} URLs{Style.RESET_ALL}\n")  # Output the number of successful operations
+    if not sorting_only_mode:  # Verify if not in sorting-only mode
+        print(f"{BackgroundColors.GREEN}Successfully processed: {BackgroundColors.CYAN}{successful_scrapes}/{total_urls}{BackgroundColors.GREEN} URLs{Style.RESET_ALL}\n")  # Output the number of successful operations
 
     try:  # Clean up the staging directory if it's empty after processing all URLs
         if os.path.exists(staging_output_dir) and not os.listdir(staging_output_dir):  # If staging directory exists and is empty
