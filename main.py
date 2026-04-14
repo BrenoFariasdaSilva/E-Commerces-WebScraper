@@ -664,6 +664,53 @@ def create_timestamped_output_directory(base_output_dir):
     return timestamped_dir  # Return path to created timestamped directory
 
 
+def resolve_latest_output_directory(base_output_dir: str) -> Optional[str]:
+    """
+    Scans base_output_dir for timestamped run directories and returns the most recent one.
+
+    :param base_output_dir: The base output directory path to scan for run directories.
+    :return: Full path to the most recent matching directory, or None if none found.
+    """
+
+    print(f"{BackgroundColors.GREEN}Resolving latest output directory using default pattern.{Style.RESET_ALL}")  # Log default resolution intent
+
+    if not os.path.isdir(base_output_dir):  # Verify if base output directory exists
+        return None  # Return None when base directory does not exist
+
+    pattern = re.compile(r'^(\d+)\. (\d{4}-\d{2}-\d{2}) - (\d{2}h\d{2}m\d{2}s)$')  # Regex matching "{index}. YYYY-MM-DD - HHhMMmSSs"
+    candidates: List[Tuple[datetime.datetime, str]] = []  # Initialize typed list for (datetime, path) candidate tuples
+
+    for item in os.listdir(base_output_dir):  # Iterate through all items in the base output directory
+        item_path = os.path.join(base_output_dir, item)  # Build full path for current item
+        if not os.path.isdir(item_path):  # Verify if current item is a directory
+            continue  # Continue to next item when current item is not a directory
+        match = pattern.match(item)  # Attempt to match item name against timestamped directory pattern
+        if not match:  # Verify if item name matches the expected naming pattern
+            continue  # Continue to next item when name does not match pattern
+        try:  # Attempt to parse embedded timestamp for accurate temporal ordering
+            date_str = match.group(2)  # Extract YYYY-MM-DD date string from second capture group
+            time_str = match.group(3)  # Extract HHhMMmSSs time string from third capture group
+            time_normalized = time_str.replace("h", ":").replace("m", ":").replace("s", "")  # Normalize time string from HHhMMmSSs to HH:MM:SS format
+            dt = datetime.datetime.strptime(f"{date_str} {time_normalized}", "%Y-%m-%d %H:%M:%S")  # Parse full datetime from normalized date and time strings
+            candidates.append((dt, item_path))  # Append datetime-path tuple for temporal ordering
+        except ValueError:  # Skip directories where timestamp parsing fails
+            continue  # Continue to next item on timestamp parsing failure
+
+    if not candidates:  # Verify if no matching candidate directories were found
+        return None  # Return None when no candidates exist
+
+    print(f"{BackgroundColors.GREEN}Found candidate output directories: {BackgroundColors.CYAN}{[os.path.basename(c[1]) for c in candidates]}{Style.RESET_ALL}")  # Log all discovered candidate directory names
+
+    candidates.sort(key=lambda x: x[0], reverse=True)  # Sort candidates descending by datetime to bring most recent first
+
+    latest_path = candidates[0][1]  # Select most recent directory as first element after descending sort
+    latest_name = os.path.basename(latest_path)  # Extract directory name from full path for logging
+
+    print(f"{BackgroundColors.GREEN}Selected output directory: {BackgroundColors.CYAN}{latest_name}{Style.RESET_ALL}")  # Log the selected directory name
+
+    return latest_path  # Return full path to the most recent matching directory
+
+
 def detect_platform(url):
     """
     Detects the e-commerce platform from a given URL by verifying domain names.
@@ -2382,7 +2429,14 @@ def main():
 
     if total_urls == 0:  # Verify if there are no URLs to process
         if sort_products_by_product_name and output_dir_arg:  # Verify if sorting is requested and output_dir is provided
-            if os.path.isdir(output_dir_arg):  # Verify if provided output_dir exists as a directory
+            if output_dir_arg == "Default":  # Verify if automatic directory discovery is requested via sentinel value
+                resolved_dir = resolve_latest_output_directory(OUTPUT_DIRECTORY)  # Resolve most recent timestamped directory automatically
+                if resolved_dir is None:  # Verify if no valid candidate directory was found
+                    print(f"{BackgroundColors.YELLOW}No valid output directories found for automatic selection.{Style.RESET_ALL}")  # Log warning for missing candidates
+                else:  # Valid candidate was found
+                    timestamped_output_dir_for_sorting = resolved_dir  # Assign automatically resolved directory as sorting target
+                    sorting_only_mode = True  # Set sorting-only mode flag for automatic resolution path
+            elif os.path.isdir(output_dir_arg):  # Verify if provided output_dir exists as a directory
                 timestamped_output_dir_for_sorting = output_dir_arg  # Assign provided output_dir for sorting
                 sorting_only_mode = True  # Set sorting-only mode flag
             else:  # If provided output_dir does not exist
