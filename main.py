@@ -2463,81 +2463,124 @@ def play_sound():
         )
 
 
-def main():
+def parse_arguments() -> argparse.Namespace:
     """
-    Main function.
+    Parse and return command-line arguments for the E-Commerces WebScraper.
 
     :param: None
-    :return: None
+    :return: Parsed argument namespace containing all CLI flags.
     """
 
-    print(
-        f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Welcome to the {BackgroundColors.CYAN}E-Commerces WebScraper{BackgroundColors.GREEN} program!{Style.RESET_ALL}",
-        end="\n",
-    )  # Output the welcome message
-    start_time = datetime.datetime.now()  # Get the start time of the program
-    
-    repo_root = Path(__file__).resolve().parent.parent  # Resolve repository root path
     parser = argparse.ArgumentParser(description="E-Commerces WebScraper")  # Initialize argument parser
 
     parser.add_argument("--headerless", type=lambda s: str(s).lower() in ("true", "1", "yes", "y"), default=False, help="Whether to suppress GUI messagebox (default: False)")  # Register headerless argument with boolean conversion
     parser.add_argument("--sort_products_by_product_name", type=lambda s: str(s).lower() in ("true", "1", "yes", "y"), default=False, help="Whether to sort and normalize product output directories by product name (default: False)")  # Register sort_products_by_product_name argument with boolean conversion
     parser.add_argument("--output_dir", type=str, default=None, help="Explicit path to output directory for sorting (optional)")  # Register output_dir argument for sorting-only mode
     parser.add_argument("--merge_output_dirs", type=lambda s: str(s).lower() in ("true", "1", "yes", "y"), default=False, help="Whether to merge all timestamped output directories into a single new directory (default: False)")  # Register merge_output_dirs argument with boolean conversion
+
     args = parser.parse_args()  # Parse command-line arguments
-    sort_products_by_product_name = args.sort_products_by_product_name  # Resolve sort_products_by_product_name flag from parsed arguments
-    output_dir_arg = args.output_dir  # Resolve output_dir argument from parsed arguments
+
+    return args  # Return parsed argument namespace
+
+
+def handle_merge_mode(args: argparse.Namespace, start_time: datetime.datetime) -> bool:
+    """
+    Execute merge output directories mode and return whether it was activated.
+
+    :param args: Parsed command-line arguments namespace.
+    :param start_time: Program start timestamp for execution time calculation.
+    :return: True if merge mode was executed and main should exit early, False otherwise.
+    """
+
     merge_output_dirs = args.merge_output_dirs  # Resolve merge_output_dirs flag from parsed arguments
 
-    if merge_output_dirs:  # Verify if merge output directories mode is requested
-        create_directory(os.path.abspath(OUTPUT_DIRECTORY), OUTPUT_DIRECTORY.replace(".", ""))  # Ensure the base output directory exists before merge operations
-        merged_dir = run_merge_output_directories(OUTPUT_DIRECTORY)  # Execute merge operation and get the resulting merged directory path
-        if merged_dir and os.path.isdir(merged_dir):  # Verify if merge produced a valid merged directory for sorting
-            verbose_output(f"{BackgroundColors.GREEN}Sorting merged output directory by product name.{Style.RESET_ALL}")  # Log sorting stage activation after successful merge
-            rename_plan = sort_output_directories_by_platform_and_product_name(merged_dir)  # Build deterministic full rename plan for the merged directory
-            normalize_output_directory_indexes(rename_plan)  # Apply deterministic two-phase renaming using the frozen plan mapping
-            print(f"{BackgroundColors.GREEN}Merge and sort operation completed successfully.{Style.RESET_ALL}")  # Log completion of merge and sort pipeline
-        finish_time = datetime.datetime.now()  # Get finish time after merge and sort operation
-        print(f"{BackgroundColors.GREEN}Execution time: {BackgroundColors.CYAN}{calculate_execution_time(start_time, finish_time)}{Style.RESET_ALL}")  # Output execution time for the merge run
-        print(f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Program finished.{Style.RESET_ALL}")  # Output program end message
-        return  # Exit main function before normal execution flow to preserve independence
+    if not merge_output_dirs:  # Verify if merge output directories mode is not requested
+        return False  # Return False to indicate merge mode was not activated
+
+    create_directory(os.path.abspath(OUTPUT_DIRECTORY), OUTPUT_DIRECTORY.replace(".", ""))  # Ensure the base output directory exists before merge operations
+    merged_dir = run_merge_output_directories(OUTPUT_DIRECTORY)  # Execute merge operation and get the resulting merged directory path
+    if merged_dir and os.path.isdir(merged_dir):  # Verify if merge produced a valid merged directory for sorting
+        verbose_output(f"{BackgroundColors.GREEN}Sorting merged output directory by product name.{Style.RESET_ALL}")  # Log sorting stage activation after successful merge
+        rename_plan = sort_output_directories_by_platform_and_product_name(merged_dir)  # Build deterministic full rename plan for the merged directory
+        normalize_output_directory_indexes(rename_plan)  # Apply deterministic two-phase renaming using the frozen plan mapping
+        print(f"{BackgroundColors.GREEN}Merge and sort operation completed successfully.{Style.RESET_ALL}")  # Log completion of merge and sort pipeline
+
+    finish_time = datetime.datetime.now()  # Get finish time after merge and sort operation
+    print(f"{BackgroundColors.GREEN}Execution time: {BackgroundColors.CYAN}{calculate_execution_time(start_time, finish_time)}{Style.RESET_ALL}")  # Output execution time for the merge run
+    print(f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Program finished.{Style.RESET_ALL}")  # Output program end message
+
+    return True  # Return True to indicate merge mode was executed and main should exit early
+
+
+def setup_environment() -> bool:
+    """
+    Validate and load environment configuration from .env file.
+
+    :param: None
+    :return: True if environment setup succeeded, False otherwise.
+    """
 
     if not verify_dot_env_file():  # Verify if the .env file exists
         print(f"{BackgroundColors.RED}Environment setup failed. Exiting...{Style.RESET_ALL}")
-        return
-    
+        return False  # Return False to signal environment setup failure
+
     load_dotenv(ENV_PATH)  # Load environment variables
-    
+
     if not verify_env_variables():  # Verify if the required environment variables are set
         print(f"{BackgroundColors.RED}Environment variables missing. Exiting...{Style.RESET_ALL}")
-        return
+        return False  # Return False to signal missing environment variables
+
+    return True  # Return True to signal successful environment setup
+
+
+def load_api_keys() -> list:
+    """
+    Load and validate Gemini API keys from environment variables.
+
+    :param: None
+    :return: List of non-empty API key strings, or empty list if none configured.
+    """
 
     api_keys_raw = os.getenv(ENV_VARIABLES["GEMINI"], "")  # Get Gemini API key(s) from environment variables.
     api_keys = [key.strip() for key in api_keys_raw.split(",") if key.strip()]  # Split and normalize non-empty keys.
+
     if not api_keys:  # Verify if at least one Gemini API key exists before processing URLs.
         print(f"{BackgroundColors.RED}Error: No Gemini API keys configured in .env file.{Style.RESET_ALL}")  # Report missing API key configuration.
-        return  # Exit early when no keys are available.
-    
+
+    return api_keys  # Return list of validated API keys
+
+
+def initialize_directories() -> str:
+    """
+    Create required input, output, and staging directories.
+
+    :param: None
+    :return: Absolute path to the staging output directory.
+    """
+
     create_directory(
         os.path.abspath(INPUT_DIRECTORY), INPUT_DIRECTORY.replace(".", "")
     )  # Create the input directory
 
-    if not ensure_input_file_exists():  # Ensure the input file exists, and if not, create it with instructions
-        return  # Exit if unable to ensure input file
-    
-    ensure_ffmpef_is_installed()  # Check if ffmpeg is installed and install it if not
-    
+    ensure_ffmpef_is_installed()  # Verify if ffmpeg is installed and install it if not
+
     create_directory(
         os.path.abspath(OUTPUT_DIRECTORY), OUTPUT_DIRECTORY.replace(".", "")
     )  # Create the base output directory
-    
+
     staging_output_dir = os.path.join(OUTPUT_DIRECTORY, ".staging")  # Staging area for interim outputs
     create_directory(os.path.abspath(staging_output_dir), "Outputs/.staging")  # Ensure staging exists
 
-    timestamped_output_dir = None  # Will be created lazily on first successful scrape
-    
-    successful_scrapes = 0  # Counter for successful operations
-    has_amazon = False  # Initialize flag to detect presence of Amazon URLs during processing
+    return staging_output_dir  # Return the staging output directory path
+
+
+def prepare_input_urls() -> tuple:
+    """
+    Load, preprocess, and parse input URLs into processing tuples.
+
+    :param: None
+    :return: Tuple of (urls_to_process list, total_urls count).
+    """
 
     raw_lines = load_urls_to_process(INPUT_FILE)  # Load raw trimmed input lines from file
     processed_lines = preprocess_urls(raw_lines)  # Preprocess lines (strip, remove prefixes, sort)
@@ -2552,256 +2595,482 @@ def main():
 
     total_urls = len(urls_to_process)  # Total number of URLs to process after preprocessing
 
-    timestamped_output_dir_for_sorting = None  # Initialize variable for output directory to sort
+    return urls_to_process, total_urls  # Return parsed URL tuples and total count
 
-    sorting_only_mode = False  # Initialize flag for sorting-only mode
+
+def initialize_processing_context(staging_output_dir: str) -> dict:
+    """
+    Initialize shared runtime state dictionary for URL processing pipeline.
+
+    :param staging_output_dir: Absolute path to the staging output directory.
+    :return: Dictionary containing mutable processing state fields.
+    """
+
+    context = {
+        "staging_output_dir": staging_output_dir,  # Staging area path for interim outputs
+        "timestamped_output_dir": None,  # Will be created lazily on first successful scrape
+        "successful_scrapes": 0,  # Counter for successful operations
+        "has_amazon": False,  # Initialize flag to detect presence of Amazon URLs during processing
+        "timestamped_output_dir_for_sorting": None,  # Initialize variable for output directory to sort
+        "sorting_only_mode": False,  # Initialize flag for sorting-only mode
+    }  # Build mutable context dictionary for pipeline state
+
+    return context  # Return initialized processing context
+
+
+def resolve_sorting_only_mode(args: argparse.Namespace, total_urls: int, context: dict) -> bool:
+    """
+    Resolve sorting-only mode when no URLs are present and sorting is requested.
+
+    :param args: Parsed command-line arguments namespace.
+    :param total_urls: Total number of URLs after preprocessing.
+    :param context: Mutable processing context dictionary.
+    :return: True if main should exit early due to invalid output_dir, False otherwise.
+    """
+
+    sort_products_by_product_name = args.sort_products_by_product_name  # Resolve sort_products_by_product_name flag from parsed arguments
+    output_dir_arg = args.output_dir  # Resolve output_dir argument from parsed arguments
+
+    if total_urls != 0:  # Verify if there are URLs to process
+        return False  # Return False to indicate no early exit needed
+
+    if sort_products_by_product_name and output_dir_arg:  # Verify if sorting is requested and output_dir is provided
+        if output_dir_arg == "Default":  # Verify if automatic directory discovery is requested via sentinel value
+            resolved_dir = resolve_latest_output_directory(OUTPUT_DIRECTORY)  # Resolve most recent timestamped directory automatically
+            if resolved_dir is None:  # Verify if no valid candidate directory was found
+                print(f"{BackgroundColors.YELLOW}No valid output directories found for automatic selection.{Style.RESET_ALL}")  # Log warning for missing candidates
+            else:  # Valid candidate was found
+                context["timestamped_output_dir_for_sorting"] = resolved_dir  # Assign automatically resolved directory as sorting target
+                context["sorting_only_mode"] = True  # Set sorting-only mode flag for automatic resolution path
+        elif os.path.isdir(output_dir_arg):  # Verify if provided output_dir exists as a directory
+            context["timestamped_output_dir_for_sorting"] = output_dir_arg  # Assign provided output_dir for sorting
+            context["sorting_only_mode"] = True  # Set sorting-only mode flag
+        else:  # If provided output_dir does not exist
+            print(f"{BackgroundColors.RED}Provided output_dir does not exist or is not a directory: {output_dir_arg}{Style.RESET_ALL}")  # Output error message for invalid directory
+            return True  # Return True to signal early exit due to invalid output_dir
+
+    if not context["sorting_only_mode"]:  # Verify if not in sorting-only mode
+        print(f"{BackgroundColors.YELLOW}No URLs to process.{Style.RESET_ALL}")  # Output message when no URLs are present
+
+    return False  # Return False to indicate no early exit needed
+
+
+def handle_scraping(url: str, staging_output_dir: str, local_html_path, index: int, retry_attempt: int) -> tuple:
+    """
+    Execute product scraping and return scrape result with retry signal.
+
+    :param url: Product URL to scrape.
+    :param staging_output_dir: Path to the staging output directory.
+    :param local_html_path: Optional local HTML file path for offline mode.
+    :param index: Current URL index in the processing queue.
+    :param retry_attempt: Current retry attempt number.
+    :return: Tuple of (scrape_result, should_retry, should_break) controlling retry flow.
+    """
+
+    verbose_output(f"{BackgroundColors.CYAN}Step 1{BackgroundColors.GREEN}: Scraping the product information{Style.RESET_ALL}")  # Step 1: Scrape the product information
+    scrape_result = scrape_product(url, staging_output_dir, local_html_path)  # Scrape the product writing into staging
+
+    if not scrape_result or len(scrape_result) != 6:  # If scraping failed or returned invalid result
+        print(f"{BackgroundColors.RED}Skipping {BackgroundColors.CYAN}{url}{BackgroundColors.RED} due to scraping failure.{Style.RESET_ALL}\n")  # Notify user about skip
+        try:  # Attempt to clean any partial staging output for this URL
+            tmp_product_name = None  # Initialize temporary product name variable
+            if isinstance(scrape_result, tuple) and scrape_result[2]:  # Verify tuple shape and product dir field
+                tmp_product_name = scrape_result[2]  # Extract product directory name from scrape_result
+            if tmp_product_name:  # Only proceed if we found a temporary product directory name
+                tmp_path = os.path.join(staging_output_dir, tmp_product_name)  # Build staging path for that product
+                if os.path.exists(tmp_path):  # Verify if the staging path exists on disk
+                    shutil.rmtree(tmp_path)  # Remove the partial staging directory to keep staging clean
+        except Exception:  # Catch and ignore any errors during staging cleanup
+            pass  # Ignore cleanup errors and continue
+
+        if retry_attempt < OUTPUT_DIRECTORY_RETRY_ATTEMPTS:  # Verify if another retry attempt is still allowed
+            print(f"{BackgroundColors.YELLOW}[WARNING] Output directory missing after processing URL index {index}. Retrying processing.{Style.RESET_ALL}")  # Warn and retry same URL position
+            return None, True, False  # Return retry signal
+
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to generate output directory after retry for URL index {index}.{Style.RESET_ALL}")  # Report definitive failure after retry exhaustion
+        return None, False, True  # Return break signal
+
+    product_data = scrape_result[0]  # Extract product_data from scrape result for validation
+
+    if not product_data:  # If scraping failed unexpectedly  # Validate product_data presence
+        print(f"{BackgroundColors.RED}Skipping {BackgroundColors.CYAN}{url}{BackgroundColors.RED} due to scraping failure.{Style.RESET_ALL}\n")  # Inform about unexpected failure
+
+        if retry_attempt < OUTPUT_DIRECTORY_RETRY_ATTEMPTS:  # Verify if another retry attempt is still allowed
+            print(f"{BackgroundColors.YELLOW}[WARNING] Output directory missing after processing URL index {index}. Retrying processing.{Style.RESET_ALL}")  # Warn and retry same URL position
+            return None, True, False  # Return retry signal
+
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to generate output directory after retry for URL index {index}.{Style.RESET_ALL}")  # Report definitive failure after retry exhaustion
+        return None, False, True  # Return break signal
+
+    return scrape_result, False, False  # Return successful scrape result with no retry or break signals
+
+
+def handle_staging_to_final_move(scrape_result: tuple, index: int, context: dict) -> tuple:
+    """
+    Move product output from staging to final timestamped run directory.
+
+    :param scrape_result: Tuple of six elements returned by scrape_product.
+    :param index: Current URL index in the processing queue.
+    :param context: Mutable processing context dictionary.
+    :return: Tuple of (product_data, description_file, product_directory, html_path_for_assets, zip_path_to_cleanup, extracted_dir_to_cleanup, final_product_directory_path).
+    """
+
+    product_data, description_file, product_directory, html_path_for_assets, zip_path_to_cleanup, extracted_dir_to_cleanup = scrape_result  # Unpack the scrape result  # Destructure returned tuple
+    timestamped_output_dir = context["timestamped_output_dir"]  # Retrieve current timestamped output directory from context
+    staging_output_dir = context["staging_output_dir"]  # Retrieve staging output directory from context
+
+    if timestamped_output_dir is None:  # Lazily create run directory on first success
+        timestamped_output_dir = create_timestamped_output_directory(OUTPUT_DIRECTORY)  # Create timestamped run dir
+        clean_unknown_product_directories(timestamped_output_dir)  # Clean up any "Unknown Product" dirs inside this run  # Remove old placeholders
+        context["timestamped_output_dir"] = timestamped_output_dir  # Persist timestamped output directory into context
+
+    indexed_product_directory = f"{index}. {product_directory}"  # Prefix final directory with source row index from urls.txt
+
+    try:  # Attempt to move product output from staging to final run dir
+        src_dir = os.path.join(staging_output_dir, product_directory)  # Path to product in staging
+        dest_dir = os.path.join(timestamped_output_dir, indexed_product_directory)  # Target path inside final run dir with row index prefix
+        if os.path.exists(dest_dir):  # If destination exists, remove it first to replace  # Ensure replace semantics
+            shutil.rmtree(dest_dir)  # Remove existing destination to avoid conflicts
+        if os.path.exists(src_dir):  # Only move if staging source exists
+            shutil.move(src_dir, dest_dir)  # Move staging product to final run
+        product_name_safe = product_data.get("product_name_safe", "")  # Get canonical directory name from scraper
+        description_file = os.path.join(dest_dir, f"{product_name_safe}_description.txt")  # Update description file path to final location using canonical name
+        product_directory = indexed_product_directory  # Use indexed final directory name for downstream steps
+    except Exception as e:  # Handle move errors
+        print(f"{BackgroundColors.YELLOW}Warning: Could not move staging output to final run directory: {e}{Style.RESET_ALL}")  # Warn user but continue
+
+    final_product_directory_path = os.path.join(timestamped_output_dir, product_directory) if timestamped_output_dir and product_directory else None  # Build absolute path to expected final directory
+
+    return product_data, description_file, product_directory, html_path_for_assets, zip_path_to_cleanup, extracted_dir_to_cleanup, final_product_directory_path  # Return all resolved values for downstream pipeline steps
+
+
+def handle_cleanup(product_directory: str, timestamped_output_dir: str, html_path_for_assets, local_html_path, extracted_dir_to_cleanup, zip_path_to_cleanup) -> None:
+    """
+    Execute image deduplication, small image removal, input copy, and local file cleanup.
+
+    :param product_directory: Indexed product directory name inside the timestamped run dir.
+    :param timestamped_output_dir: Absolute path to the timestamped run directory.
+    :param html_path_for_assets: HTML path used for asset extraction, or None.
+    :param local_html_path: Optional local HTML file path from input.
+    :param extracted_dir_to_cleanup: Path to extracted directory for cleanup, or None.
+    :param zip_path_to_cleanup: Path to zip file for cleanup, or None.
+    :return: None
+    """
+
+    if product_directory and isinstance(product_directory, str):  # Only run image cleanup for valid product dirs
+        clean_duplicate_images(product_directory, timestamped_output_dir)  # Deduplicate images in final location
+        exclude_small_images(product_directory, timestamped_output_dir)  # Remove extremely small images
+
+    input_source = html_path_for_assets or local_html_path  # Determine original input source to copy
+    copy_original_input_to_output(input_source, product_directory, base_output_dir=timestamped_output_dir)  # Copy original input into final product folder
+
+    if DELETE_LOCAL_HTML_FILE:  # Only perform deletions when configured
+        if extracted_dir_to_cleanup and os.path.exists(extracted_dir_to_cleanup):  # Remove extracted directory if present
+            try:  # Attempt deletion
+                shutil.rmtree(extracted_dir_to_cleanup)  # Delete extracted dir
+            except Exception:  # Ignore failures during deletion
+                pass  # Continue silently on failure
+        if zip_path_to_cleanup and os.path.exists(zip_path_to_cleanup):  # Remove original zip if present
+            try:  # Attempt deletion
+                os.remove(zip_path_to_cleanup)  # Delete zip file
+            except Exception:  # Ignore failures during deletion
+                pass  # Continue silently on failure
+
+
+def handle_description_loading(description_file: str, url: str, index: int, retry_attempt: int) -> tuple:
+    """
+    Read product description from file and return content with retry signals.
+
+    :param description_file: Absolute path to the product description file.
+    :param url: Product URL being processed.
+    :param index: Current URL index in the processing queue.
+    :param retry_attempt: Current retry attempt number.
+    :return: Tuple of (product_description, should_retry, should_break).
+    """
+
+    try:  # Read the product description from the file
+        with open(str(description_file), "r", encoding="utf-8") as f:  # Open the description file with UTF-8 encoding
+            product_description = f.read()  # Read the product description
+    except Exception as e:  # If reading the file fails
+        print(f"{BackgroundColors.RED}Error reading description file: {e}{Style.RESET_ALL}")
+
+        if retry_attempt < OUTPUT_DIRECTORY_RETRY_ATTEMPTS:  # Verify if another retry attempt is still allowed
+            print(f"{BackgroundColors.YELLOW}[WARNING] Output directory missing after processing URL index {index}. Retrying processing.{Style.RESET_ALL}")  # Warn and retry same URL position
+            return None, True, False  # Return retry signal
+
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to generate output directory after retry for URL index {index}.{Style.RESET_ALL}")  # Report definitive failure after retry exhaustion
+        return None, False, True  # Return break signal
+
+    return product_description, False, False  # Return loaded description with no retry or break signals
+
+
+def handle_validation(product_data: dict, product_directory: str, description_file: str, url: str) -> bool:
+    """
+    Validate product information and return whether data is valid for Gemini processing.
+
+    :param product_data: Dictionary of scraped product data fields.
+    :param product_directory: Product directory name for validation context.
+    :param description_file: Path to the product description file.
+    :param url: Product URL being processed.
+    :return: True if product data is valid, False otherwise.
+    """
+
+    valid, invalid_reasons = validate_product_information(product_data, product_directory, description_file)  # Validate the product information
+
+    if not valid:  # If the product information is not valid, skip Gemini formatting and output the reasons
+        print(
+            f"{BackgroundColors.RED}Skipping Step 2: Gemini formatting due to invalid product information for URL: {BackgroundColors.CYAN}{url}{BackgroundColors.RED}.{Style.RESET_ALL}"
+        )
+        return False  # Return False to signal invalid product data
+
+    return True  # Return True to signal valid product data
+
+
+def handle_gemini_processing(product_description: str, description_file: str, product_data: dict, url: str, api_keys: list) -> bool:
+    """
+    Execute Gemini AI marketing text generation with key rotation and quota retry logic.
+
+    :param product_description: Full product description text content.
+    :param description_file: Path to the product description file for output.
+    :param product_data: Dictionary of scraped product data fields.
+    :param url: Product URL being processed.
+    :param api_keys: List of Gemini API key strings.
+    :return: True if Gemini generation succeeded, False otherwise.
+    """
+
+    verbose_output(f"{BackgroundColors.CYAN}Step 2{BackgroundColors.GREEN}: Formatting with Gemini AI{Style.RESET_ALL}")  # Step 2: Format the product description with Gemini AI
+
+    success = False  # Initialize Gemini formatting success flag for this URL.
+    exhausted_key_indices = set()  # Track exhausted key indices during the current rotation cycle.
+    exhausted_cycles = 0  # Track how many full exhausted cycles happened for this URL.
+    total_keys = len(api_keys)  # Compute total available keys for this URL attempt.
+
+    global GEMINI_LAST_KEY_INDEX  # Reuse module-level key index to preserve deterministic rotation across URLs.
+    current_idx = GEMINI_LAST_KEY_INDEX % total_keys if total_keys > 0 else 0  # Start from last successful key index.
+
+    while True:  # Keep retrying same product request until success or maximum exhausted cycles reached.
+        key_index = current_idx + 1  # Convert zero-based key index to one-based display index.
+        api_key = api_keys[current_idx]  # Select API key for this iteration.
+
+        try:  # Try processing the same product with current key.
+            success = generate_marketing_text(  # Execute single-key Gemini generation attempt.
+                product_description,  # Reuse same product description for deterministic retry behavior.
+                description_file,  # Reuse same description file destination for deterministic retry behavior.
+                product_data,  # Reuse same product data context across retries.
+                url,  # Reuse same product URL across retries.
+                api_key=api_key,  # Pass current key only and let main handle rotations.
+                key_index=key_index,  # Pass one-based key index for logging and exception metadata.
+                total_keys=total_keys,  # Pass total key count for contextual logging.
+            )  # End single-key generation call.
+
+            if success:  # Verify whether generation succeeded for this key.
+                GEMINI_LAST_KEY_INDEX = current_idx  # Persist last successful key for next URL.
+                break  # Exit retry loop and continue URL pipeline.
+
+            current_idx = (current_idx + 1) % total_keys  # Rotate to next key on non-quota failure to maximize resilience.
+            if current_idx == 0:  # Verify if a full key round has been completed.
+                break  # Stop loop after one full non-quota rotation and keep failure result.
+        except QuotaExceededError as quota_error:  # Handle controlled quota exhaustion signal.
+            exhausted_key_index = quota_error.key_index if quota_error.key_index else key_index  # Resolve exhausted key index from exception metadata.
+            exhausted_key_indices.add(exhausted_key_index)  # Mark current key as exhausted for this cycle.
+            current_idx = (current_idx + 1) % total_keys  # Rotate to next key for same URL and same prompt.
+
+            if len(exhausted_key_indices) >= total_keys:  # Verify if all keys are exhausted in current cycle.
+                exhausted_cycles += 1  # Increment all-keys-exhausted cycle counter.
+                if exhausted_cycles > GEMINI_MAX_ALL_KEYS_EXHAUSTED_CYCLES:  # Verify if maximum cycle retries reached.
+                    print(f"{BackgroundColors.RED}All API keys remained exhausted after {GEMINI_MAX_ALL_KEYS_EXHAUSTED_CYCLES} cycle(s) for URL: {BackgroundColors.CYAN}{url}{Style.RESET_ALL}")  # Report final exhaustion failure for current URL.
+                    break  # Stop retrying this URL after configured exhausted cycles.
+                print(f"{BackgroundColors.YELLOW}[WARNING] All API keys exhausted. Waiting {GEMINI_ALL_KEYS_EXHAUSTED_WAIT_SECONDS}s before retrying the same URL.{Style.RESET_ALL}")  # Report cooldown before restarting key rotation.
+                time.sleep(GEMINI_ALL_KEYS_EXHAUSTED_WAIT_SECONDS)  # Wait before restarting rotation to allow quota reset windows.
+                exhausted_key_indices.clear()  # Reset exhausted key tracking for next cycle.
+                current_idx = 0  # Restart rotation from first key after cooldown.
+
+            continue  # Continue retry loop for same URL.
+
+    return success  # Return whether Gemini generation succeeded
+
+
+def handle_success_tracking(success: bool, final_product_directory_path: str, description_file: str, product_data: dict, platform_name: str, url: str, original_local_html_path, context: dict) -> bool:
+    """
+    Record successful processing, update history, and clear input file entry.
+
+    :param success: Whether Gemini generation succeeded.
+    :param final_product_directory_path: Absolute path to the final product output directory.
+    :param description_file: Path to the product description file.
+    :param product_data: Dictionary of scraped product data fields.
+    :param platform_name: Human-friendly platform name string.
+    :param url: Product URL that was processed.
+    :param original_local_html_path: Original local path token from input file.
+    :param context: Mutable processing context dictionary.
+    :return: True if URL was successfully processed and verified, False otherwise.
+    """
+
+    if not (success and os.path.isdir(final_product_directory_path)):  # Verify if formatting did not succeed or final directory is missing
+        return False  # Return False to signal unsuccessful processing
+
+    description_dir = os.path.dirname(description_file)  # Get directory of description file
+    template_file = os.path.join(description_dir, "Template.txt")  # Path to the generated template file
+    validate_and_fix_output_file(template_file)  # Validate and fix formatting issues in the output file
+
+    try:  # Try to extract price fields and record history for this processed product
+        tpl_content = read_template_content(Path(template_file))  # Read template content for price extraction
+        current_price_val, old_price_val, _ = (detect_price_fields(tpl_content) if tpl_content else (None, None, []))  # Extract current and old price from template content
+        discount_val = str(product_data.get("discount_percentage", "")).strip() if product_data else ""  # Get discount percentage from product_data when available
+        if not discount_val and old_price_val and current_price_val:  # Compute discount percentage when missing but prices available
+            try:  # Try numeric parse and compute discount when formats allow
+                old_num = float(re.sub(r"[^0-9.,]", "", old_price_val).replace(",", "."))  # Parse old price numeric value from string
+                cur_num = float(re.sub(r"[^0-9.,]", "", current_price_val).replace(",", "."))  # Parse current price numeric value from string
+                if old_num > 0:  # Only compute percentage when old price is positive
+                    discount_val = f"{round((old_num - cur_num) / old_num * 100, 2)}%"  # Compute discount percent with two decimals
+            except Exception:  # If numeric parsing fails, leave discount as empty string
+                discount_val = discount_val  # Preserve existing discount_val when computation fails
+
+        day_key = datetime.datetime.now().strftime("%d-%m-%Y")  # Build day key in DD-MM-YYYY format for history grouping
+        product_name_for_history = product_data.get("product_name", "") if product_data else ""  # Get product name for history entry
+        append_processed_product_to_history(day_key, platform_name, product_name_for_history, url, old_price_val or "", current_price_val or "", discount_val or "", os.path.join(OUTPUT_DIRECTORY, "history.json"))  # Append processed product to history file
+    except Exception:  # Ensure history append failures do not stop the pipeline
+        pass  # Ignore history write errors and continue processing
+
+    context["successful_scrapes"] += 1  # Increment successful scrapes counter
+
+    if CLEAR_INPUT_FILE:  # Only clear input lines when configured
+        removed = remove_url_line_from_input_file(url, original_local_html_path)  # Attempt to remove the successful URL line from INPUT_FILE
+        verbose_output(f"{BackgroundColors.GREEN}Removed input line: {BackgroundColors.CYAN}{url}{BackgroundColors.GREEN} -> {removed}{Style.RESET_ALL}")  # Verbose result of removal
+
+    return True  # Return True to signal successful and verified processing
+
+
+def process_single_url(url: str, local_html_path, index: int, total_urls: int, api_keys: list, platform_name: str, context: dict) -> bool:
+    """
+    Process a single URL through the full scrape-format-verify pipeline with retries.
+
+    :param url: Product URL to process.
+    :param local_html_path: Optional local HTML file path from input.
+    :param index: Current URL index in the processing queue.
+    :param total_urls: Total number of URLs to process.
+    :param api_keys: List of Gemini API key strings.
+    :param platform_name: Human-friendly platform name string.
+    :param context: Mutable processing context dictionary.
+    :return: True if URL was successfully processed and verified, False otherwise.
+    """
+
+    original_local_html_path = local_html_path  # Preserve original local path token from input file for deterministic retries and input clearing
+    resolved_local_html_path = local_html_path  # Keep resolved local path value reused by retry attempts
+    url_processed_successfully = False  # Track whether this URL finished with verified output directory and successful formatting
+
+    verify_affiliate_url_format(url)  # Verify affiliate-format URL for supported platforms
+
+    for retry_attempt in range(OUTPUT_DIRECTORY_RETRY_ATTEMPTS + 1):  # Retry URL processing only when output directory is not generated
+        local_html_path = resolved_local_html_path  # Reuse resolved local path by default for deterministic retries
+
+        if retry_attempt == 0 and local_html_path:  # Resolve local path only once in the first attempt
+            local_html_path = resolve_local_html_path(local_html_path)  # Resolve path with fallback variations
+            resolved_local_html_path = local_html_path  # Persist resolved path for retry attempts
+            verbose_output(f"{BackgroundColors.GREEN}Using local HTML file: {BackgroundColors.CYAN}{local_html_path}{Style.RESET_ALL}")  # Inform user about offline mode
+
+        scrape_result, should_retry, should_break = handle_scraping(url, context["staging_output_dir"], local_html_path, index, retry_attempt)  # Execute product scraping with retry flow control
+
+        if should_retry:  # Verify if retry signal was returned from scraping
+            continue  # Retry processing the same URL immediately
+
+        if should_break:  # Verify if break signal was returned from scraping
+            break  # Stop retry loop and keep URL as unsuccessful
+
+        product_data, description_file, product_directory, html_path_for_assets, zip_path_to_cleanup, extracted_dir_to_cleanup, final_product_directory_path = handle_staging_to_final_move(scrape_result, index, context)  # Move product output from staging to final run directory
+
+        timestamped_output_dir = context["timestamped_output_dir"]  # Retrieve current timestamped output directory from context
+
+        if not final_product_directory_path or not os.path.isdir(final_product_directory_path):  # Verify final directory exists before continuing pipeline
+            if retry_attempt < OUTPUT_DIRECTORY_RETRY_ATTEMPTS:  # Verify if another retry attempt is still allowed
+                print(f"{BackgroundColors.YELLOW}[WARNING] Output directory missing after processing URL index {index}. Retrying processing.{Style.RESET_ALL}")  # Warn and retry same URL position
+                continue  # Retry processing the same URL immediately
+
+            print(f"{BackgroundColors.YELLOW}[WARNING] Failed to generate output directory after retry for URL index {index}.{Style.RESET_ALL}")  # Report definitive failure after retry exhaustion
+            break  # Stop retry loop and keep URL as unsuccessful
+
+        handle_cleanup(product_directory, timestamped_output_dir, html_path_for_assets, local_html_path, extracted_dir_to_cleanup, zip_path_to_cleanup)  # Execute image deduplication, input copy, and local file cleanup
+
+        product_description, should_retry, should_break = handle_description_loading(description_file, url, index, retry_attempt)  # Read product description from file with retry signals
+
+        if should_retry:  # Verify if retry signal was returned from description loading
+            continue  # Retry processing the same URL immediately
+
+        if should_break:  # Verify if break signal was returned from description loading
+            break  # Stop retry loop and keep URL as unsuccessful
+
+        if not handle_validation(product_data, product_directory, description_file, url):  # Validate product information before Gemini processing
+            break  # Stop retry loop because data is invalid and retrying directory creation is not meaningful
+
+        success = handle_gemini_processing(product_description, description_file, product_data, url, api_keys)  # Execute Gemini AI marketing text generation with key rotation
+
+        if success and os.path.isdir(final_product_directory_path):  # Count URL as successful only when formatting succeeded and final directory exists
+            url_processed_successfully = handle_success_tracking(success, final_product_directory_path, description_file, product_data, platform_name, url, original_local_html_path, context)  # Record successful processing and update history
+        elif success and not os.path.isdir(final_product_directory_path):  # Guard against impossible success-without-directory scenarios
+            if retry_attempt < OUTPUT_DIRECTORY_RETRY_ATTEMPTS:  # Verify if another retry attempt is still allowed
+                print(f"{BackgroundColors.YELLOW}[WARNING] Output directory missing after processing URL index {index}. Retrying processing.{Style.RESET_ALL}")  # Warn and retry same URL position
+                continue  # Retry processing the same URL immediately
+
+            print(f"{BackgroundColors.YELLOW}[WARNING] Failed to generate output directory after retry for URL index {index}.{Style.RESET_ALL}")  # Report definitive failure after retry exhaustion
+
+        if url_processed_successfully:  # Exit retry loop immediately after successful and verified processing
+            break  # Stop retry loop for current URL
+
+    if not url_processed_successfully:  # Ensure failures are explicit when URL did not complete with verified directory
+        print(f"{BackgroundColors.YELLOW}[WARNING] URL index {index} finished without a verified output directory and was not counted as success.{Style.RESET_ALL}")  # Emit final warning for this URL
+
+    return url_processed_successfully  # Return whether this URL was successfully processed
+
+
+def process_urls_pipeline(args: argparse.Namespace, urls_to_process: list, total_urls: int, api_keys: list, context: dict) -> None:
+    """
+    Execute the full URL processing pipeline with progress bar and per-URL dispatch.
+
+    :param args: Parsed command-line arguments namespace.
+    :param urls_to_process: List of (url, local_html_path) tuples to process.
+    :param total_urls: Total number of URLs to process.
+    :param api_keys: List of Gemini API key strings.
+    :param context: Mutable processing context dictionary.
+    :return: None
+    """
 
     if total_urls == 0:  # Verify if there are no URLs to process
-        if sort_products_by_product_name and output_dir_arg:  # Verify if sorting is requested and output_dir is provided
-            if output_dir_arg == "Default":  # Verify if automatic directory discovery is requested via sentinel value
-                resolved_dir = resolve_latest_output_directory(OUTPUT_DIRECTORY)  # Resolve most recent timestamped directory automatically
-                if resolved_dir is None:  # Verify if no valid candidate directory was found
-                    print(f"{BackgroundColors.YELLOW}No valid output directories found for automatic selection.{Style.RESET_ALL}")  # Log warning for missing candidates
-                else:  # Valid candidate was found
-                    timestamped_output_dir_for_sorting = resolved_dir  # Assign automatically resolved directory as sorting target
-                    sorting_only_mode = True  # Set sorting-only mode flag for automatic resolution path
-            elif os.path.isdir(output_dir_arg):  # Verify if provided output_dir exists as a directory
-                timestamped_output_dir_for_sorting = output_dir_arg  # Assign provided output_dir for sorting
-                sorting_only_mode = True  # Set sorting-only mode flag
-            else:  # If provided output_dir does not exist
-                print(f"{BackgroundColors.RED}Provided output_dir does not exist or is not a directory: {output_dir_arg}{Style.RESET_ALL}")  # Output error message for invalid directory
-                return  # Exit early if output_dir is invalid
-        # No else: preserve existing fallback logic
-        if not sorting_only_mode:  # Verify if not in sorting-only mode
-            print(f"{BackgroundColors.YELLOW}No URLs to process.{Style.RESET_ALL}")  # Output message when no URLs are present
-    else:  # If there are URLs to process, proceed with the processing loop
-        pbar = tqdm(
-            urls_to_process,
-            desc=f"{BackgroundColors.GREEN}Processing URLs{Style.RESET_ALL}",
-            unit="url",
-            ncols=100,
-            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]",
-            file=sys.__stdout__,
-        )
-        for index, (url, local_html_path) in enumerate(pbar, 1):  # Iterate through all URLs with optional local HTML paths
-            platform_id = detect_platform(url) or ""  # Detect platform for current URL
-            if platform_id == "amazon":  # Verify if current platform is Amazon
-                has_amazon = True  # Mark presence of Amazon URL for later GUI warning
-            platform_name = ({v: k for k, v in PLATFORMS_MAP.items()}).get(platform_id, platform_id if platform_id else "Unknown")  # Derive reverse mapping from PLATFORMS_MAP and get human-friendly platform name
-            desc = (
-                f"{BackgroundColors.GREEN}Processing {BackgroundColors.CYAN}{index}{BackgroundColors.GREEN}/{BackgroundColors.CYAN}{total_urls}{BackgroundColors.GREEN} - {BackgroundColors.CYAN}{platform_name}{BackgroundColors.GREEN}"
-            )  # Build colored description with platform
-            pbar.set_description(desc)  # Update the progress bar description
+        return  # Return early when no URLs are present
 
-            original_local_html_path = local_html_path  # Preserve original local path token from input file for deterministic retries and input clearing
-            resolved_local_html_path = local_html_path  # Keep resolved local path value reused by retry attempts
-            url_processed_successfully = False  # Track whether this URL finished with verified output directory and successful formatting
+    pbar = tqdm(
+        urls_to_process,
+        desc=f"{BackgroundColors.GREEN}Processing URLs{Style.RESET_ALL}",
+        unit="url",
+        ncols=100,
+        bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]",
+        file=sys.__stdout__,
+    )
 
-            verify_affiliate_url_format(url)  # Verify affiliate-format URL for supported platforms
+    for index, (url, local_html_path) in enumerate(pbar, 1):  # Iterate through all URLs with optional local HTML paths
+        platform_id = detect_platform(url) or ""  # Detect platform for current URL
+        if platform_id == "amazon":  # Verify if current platform is Amazon
+            context["has_amazon"] = True  # Mark presence of Amazon URL for later GUI warning
+        platform_name = ({v: k for k, v in PLATFORMS_MAP.items()}).get(platform_id, platform_id if platform_id else "Unknown")  # Derive reverse mapping from PLATFORMS_MAP and get human-friendly platform name
+        desc = (
+            f"{BackgroundColors.GREEN}Processing {BackgroundColors.CYAN}{index}{BackgroundColors.GREEN}/{BackgroundColors.CYAN}{total_urls}{BackgroundColors.GREEN} - {BackgroundColors.CYAN}{platform_name}{BackgroundColors.GREEN}"
+        )  # Build colored description with platform
+        pbar.set_description(desc)  # Update the progress bar description
 
-            for retry_attempt in range(OUTPUT_DIRECTORY_RETRY_ATTEMPTS + 1):  # Retry URL processing only when output directory is not generated
-                local_html_path = resolved_local_html_path  # Reuse resolved local path by default for deterministic retries
+        process_single_url(url, local_html_path, index, total_urls, api_keys, platform_name, context)  # Process current URL through the full pipeline
 
-                if retry_attempt == 0 and local_html_path:  # Resolve local path only once in the first attempt
-                    local_html_path = resolve_local_html_path(local_html_path)  # Resolve path with fallback variations
-                    resolved_local_html_path = local_html_path  # Persist resolved path for retry attempts
-                    verbose_output(f"{BackgroundColors.GREEN}Using local HTML file: {BackgroundColors.CYAN}{local_html_path}{Style.RESET_ALL}")  # Inform user about offline mode
+        if index < total_urls and not local_html_path:  # Add delay only for online requests (skip for local HTML inputs)
+            time.sleep(DELAY_BETWEEN_REQUESTS)  # Sleep to avoid rate limiting between online requests
 
-                verbose_output(f"{BackgroundColors.CYAN}Step 1{BackgroundColors.GREEN}: Scraping the product information{Style.RESET_ALL}")  # Step 1: Scrape the product information
-                scrape_result = scrape_product(url, staging_output_dir, local_html_path)  # Scrape the product writing into staging
 
-                if not scrape_result or len(scrape_result) != 6:  # If scraping failed or returned invalid result
-                    print(f"{BackgroundColors.RED}Skipping {BackgroundColors.CYAN}{url}{BackgroundColors.RED} due to scraping failure.{Style.RESET_ALL}\n")  # Notify user about skip
-                    try:  # Attempt to clean any partial staging output for this URL
-                        tmp_product_name = None  # Initialize temporary product name variable
-                        if isinstance(scrape_result, tuple) and scrape_result[2]:  # Verify tuple shape and product dir field
-                            tmp_product_name = scrape_result[2]  # Extract product directory name from scrape_result
-                        if tmp_product_name:  # Only proceed if we found a temporary product directory name
-                            tmp_path = os.path.join(staging_output_dir, tmp_product_name)  # Build staging path for that product
-                            if os.path.exists(tmp_path):  # Verify if the staging path exists on disk
-                                shutil.rmtree(tmp_path)  # Remove the partial staging directory to keep staging clean
-                    except Exception:  # Catch and ignore any errors during staging cleanup
-                        pass  # Ignore cleanup errors and continue
+def run_post_processing(context: dict, urls_to_process: list) -> None:
+    """
+    Execute final integrity verification and remove repeated old product directories.
 
-                    if retry_attempt < OUTPUT_DIRECTORY_RETRY_ATTEMPTS:  # Verify if another retry attempt is still allowed
-                        print(f"{BackgroundColors.YELLOW}[WARNING] Output directory missing after processing URL index {index}. Retrying processing.{Style.RESET_ALL}")  # Warn and retry same URL position
-                        continue  # Retry processing the same URL immediately
+    :param context: Mutable processing context dictionary.
+    :param urls_to_process: List of (url, local_html_path) tuples that were processed.
+    :return: None
+    """
 
-                    print(f"{BackgroundColors.YELLOW}[WARNING] Failed to generate output directory after retry for URL index {index}.{Style.RESET_ALL}")  # Report definitive failure after retry exhaustion
-                    break  # Stop retry loop and keep URL as unsuccessful
-
-                product_data, description_file, product_directory, html_path_for_assets, zip_path_to_cleanup, extracted_dir_to_cleanup = scrape_result  # Unpack the scrape result  # Destructure returned tuple
-
-                if not product_data:  # If scraping failed unexpectedly  # Validate product_data presence
-                    print(f"{BackgroundColors.RED}Skipping {BackgroundColors.CYAN}{url}{BackgroundColors.RED} due to scraping failure.{Style.RESET_ALL}\n")  # Inform about unexpected failure
-
-                    if retry_attempt < OUTPUT_DIRECTORY_RETRY_ATTEMPTS:  # Verify if another retry attempt is still allowed
-                        print(f"{BackgroundColors.YELLOW}[WARNING] Output directory missing after processing URL index {index}. Retrying processing.{Style.RESET_ALL}")  # Warn and retry same URL position
-                        continue  # Retry processing the same URL immediately
-
-                    print(f"{BackgroundColors.YELLOW}[WARNING] Failed to generate output directory after retry for URL index {index}.{Style.RESET_ALL}")  # Report definitive failure after retry exhaustion
-                    break  # Stop retry loop and keep URL as unsuccessful
-
-                if timestamped_output_dir is None:  # Lazily create run directory on first success
-                    timestamped_output_dir = create_timestamped_output_directory(OUTPUT_DIRECTORY)  # Create timestamped run dir
-                    clean_unknown_product_directories(timestamped_output_dir)  # Clean up any "Unknown Product" dirs inside this run  # Remove old placeholders
-
-                indexed_product_directory = f"{index}. {product_directory}"  # Prefix final directory with source row index from urls.txt
-
-                try:  # Attempt to move product output from staging to final run dir
-                    src_dir = os.path.join(staging_output_dir, product_directory)  # Path to product in staging
-                    dest_dir = os.path.join(timestamped_output_dir, indexed_product_directory)  # Target path inside final run dir with row index prefix
-                    if os.path.exists(dest_dir):  # If destination exists, remove it first to replace  # Ensure replace semantics
-                        shutil.rmtree(dest_dir)  # Remove existing destination to avoid conflicts
-                    if os.path.exists(src_dir):  # Only move if staging source exists
-                        shutil.move(src_dir, dest_dir)  # Move staging product to final run
-                    product_name_safe = product_data.get("product_name_safe", "")  # Get canonical directory name from scraper
-                    description_file = os.path.join(dest_dir, f"{product_name_safe}_description.txt")  # Update description file path to final location using canonical name
-                    product_directory = indexed_product_directory  # Use indexed final directory name for downstream steps
-                except Exception as e:  # Handle move errors
-                    print(f"{BackgroundColors.YELLOW}Warning: Could not move staging output to final run directory: {e}{Style.RESET_ALL}")  # Warn user but continue
-
-                final_product_directory_path = os.path.join(timestamped_output_dir, product_directory) if timestamped_output_dir and product_directory else None  # Build absolute path to expected final directory
-                if not final_product_directory_path or not os.path.isdir(final_product_directory_path):  # Verify final directory exists before continuing pipeline
-                    if retry_attempt < OUTPUT_DIRECTORY_RETRY_ATTEMPTS:  # Verify if another retry attempt is still allowed
-                        print(f"{BackgroundColors.YELLOW}[WARNING] Output directory missing after processing URL index {index}. Retrying processing.{Style.RESET_ALL}")  # Warn and retry same URL position
-                        continue  # Retry processing the same URL immediately
-
-                    print(f"{BackgroundColors.YELLOW}[WARNING] Failed to generate output directory after retry for URL index {index}.{Style.RESET_ALL}")  # Report definitive failure after retry exhaustion
-                    break  # Stop retry loop and keep URL as unsuccessful
-
-                if product_directory and isinstance(product_directory, str):  # Only run image cleanup for valid product dirs
-                    clean_duplicate_images(product_directory, timestamped_output_dir)  # Deduplicate images in final location
-                    exclude_small_images(product_directory, timestamped_output_dir)  # Remove extremely small images
-
-                input_source = html_path_for_assets or local_html_path  # Determine original input source to copy
-                copy_original_input_to_output(input_source, product_directory, base_output_dir=timestamped_output_dir)  # Copy original input into final product folder
-
-                if DELETE_LOCAL_HTML_FILE:  # Only perform deletions when configured
-                    if extracted_dir_to_cleanup and os.path.exists(extracted_dir_to_cleanup):  # Remove extracted directory if present
-                        try:  # Attempt deletion
-                            shutil.rmtree(extracted_dir_to_cleanup)  # Delete extracted dir
-                        except Exception:  # Ignore failures during deletion
-                            pass  # Continue silently on failure
-                    if zip_path_to_cleanup and os.path.exists(zip_path_to_cleanup):  # Remove original zip if present
-                        try:  # Attempt deletion
-                            os.remove(zip_path_to_cleanup)  # Delete zip file
-                        except Exception:  # Ignore failures during deletion
-                            pass  # Continue silently on failure
-                
-                try:  # Read the product description from the file
-                    with open(str(description_file), "r", encoding="utf-8") as f:  # Open the description file with UTF-8 encoding
-                        product_description = f.read()  # Read the product description
-                except Exception as e:  # If reading the file fails
-                    print(f"{BackgroundColors.RED}Error reading description file: {e}{Style.RESET_ALL}")
-
-                    if retry_attempt < OUTPUT_DIRECTORY_RETRY_ATTEMPTS:  # Verify if another retry attempt is still allowed
-                        print(f"{BackgroundColors.YELLOW}[WARNING] Output directory missing after processing URL index {index}. Retrying processing.{Style.RESET_ALL}")  # Warn and retry same URL position
-                        continue  # Retry processing the same URL immediately
-
-                    print(f"{BackgroundColors.YELLOW}[WARNING] Failed to generate output directory after retry for URL index {index}.{Style.RESET_ALL}")  # Report definitive failure after retry exhaustion
-                    break  # Stop retry loop and keep URL as unsuccessful
-                
-                valid, invalid_reasons = validate_product_information(product_data, product_directory, description_file)  # Validate the product information
-
-                if not valid:  # If the product information is not valid, skip Gemini formatting and output the reasons
-                    print(
-                        f"{BackgroundColors.RED}Skipping Step 2: Gemini formatting due to invalid product information for URL: {BackgroundColors.CYAN}{url}{BackgroundColors.RED}.{Style.RESET_ALL}"
-                    )
-                    break  # Stop retry loop because data is invalid and retrying directory creation is not meaningful
-
-                verbose_output(f"{BackgroundColors.CYAN}Step 2{BackgroundColors.GREEN}: Formatting with Gemini AI{Style.RESET_ALL}")  # Step 2: Format the product description with Gemini AI
-                
-                success = False  # Initialize Gemini formatting success flag for this URL.
-                exhausted_key_indices = set()  # Track exhausted key indices during the current rotation cycle.
-                exhausted_cycles = 0  # Track how many full exhausted cycles happened for this URL.
-                total_keys = len(api_keys)  # Compute total available keys for this URL attempt.
-
-                global GEMINI_LAST_KEY_INDEX  # Reuse module-level key index to preserve deterministic rotation across URLs.
-                current_idx = GEMINI_LAST_KEY_INDEX % total_keys if total_keys > 0 else 0  # Start from last successful key index.
-
-                while True:  # Keep retrying same product request until success or maximum exhausted cycles reached.
-                    key_index = current_idx + 1  # Convert zero-based key index to one-based display index.
-                    api_key = api_keys[current_idx]  # Select API key for this iteration.
-
-                    try:  # Try processing the same product with current key.
-                        success = generate_marketing_text(  # Execute single-key Gemini generation attempt.
-                            product_description,  # Reuse same product description for deterministic retry behavior.
-                            description_file,  # Reuse same description file destination for deterministic retry behavior.
-                            product_data,  # Reuse same product data context across retries.
-                            url,  # Reuse same product URL across retries.
-                            api_key=api_key,  # Pass current key only and let main handle rotations.
-                            key_index=key_index,  # Pass one-based key index for logging and exception metadata.
-                            total_keys=total_keys,  # Pass total key count for contextual logging.
-                        )  # End single-key generation call.
-
-                        if success:  # Verify whether generation succeeded for this key.
-                            GEMINI_LAST_KEY_INDEX = current_idx  # Persist last successful key for next URL.
-                            break  # Exit retry loop and continue URL pipeline.
-
-                        current_idx = (current_idx + 1) % total_keys  # Rotate to next key on non-quota failure to maximize resilience.
-                        if current_idx == 0:  # Verify if a full key round has been completed.
-                            break  # Stop loop after one full non-quota rotation and keep failure result.
-                    except QuotaExceededError as quota_error:  # Handle controlled quota exhaustion signal.
-                        exhausted_key_index = quota_error.key_index if quota_error.key_index else key_index  # Resolve exhausted key index from exception metadata.
-                        exhausted_key_indices.add(exhausted_key_index)  # Mark current key as exhausted for this cycle.
-                        current_idx = (current_idx + 1) % total_keys  # Rotate to next key for same URL and same prompt.
-
-                        if len(exhausted_key_indices) >= total_keys:  # Verify if all keys are exhausted in current cycle.
-                            exhausted_cycles += 1  # Increment all-keys-exhausted cycle counter.
-                            if exhausted_cycles > GEMINI_MAX_ALL_KEYS_EXHAUSTED_CYCLES:  # Verify if maximum cycle retries reached.
-                                print(f"{BackgroundColors.RED}All API keys remained exhausted after {GEMINI_MAX_ALL_KEYS_EXHAUSTED_CYCLES} cycle(s) for URL: {BackgroundColors.CYAN}{url}{Style.RESET_ALL}")  # Report final exhaustion failure for current URL.
-                                break  # Stop retrying this URL after configured exhausted cycles.
-                            print(f"{BackgroundColors.YELLOW}[WARNING] All API keys exhausted. Waiting {GEMINI_ALL_KEYS_EXHAUSTED_WAIT_SECONDS}s before retrying the same URL.{Style.RESET_ALL}")  # Report cooldown before restarting key rotation.
-                            time.sleep(GEMINI_ALL_KEYS_EXHAUSTED_WAIT_SECONDS)  # Wait before restarting rotation to allow quota reset windows.
-                            exhausted_key_indices.clear()  # Reset exhausted key tracking for next cycle.
-                            current_idx = 0  # Restart rotation from first key after cooldown.
-
-                        continue  # Continue retry loop for same URL.
-                
-                if success and os.path.isdir(final_product_directory_path):  # Count URL as successful only when formatting succeeded and final directory exists
-                    description_dir = os.path.dirname(description_file)  # Get directory of description file
-                    template_file = os.path.join(description_dir, "Template.txt")  # Path to the generated template file
-                    validate_and_fix_output_file(template_file)  # Validate and fix formatting issues in the output file
-                    try:  # Try to extract price fields and record history for this processed product
-                        tpl_content = read_template_content(Path(template_file))  # Read template content for price extraction
-                        current_price_val, old_price_val, _ = (detect_price_fields(tpl_content) if tpl_content else (None, None, []))  # Extract current and old price from template content
-                        discount_val = str(product_data.get("discount_percentage", "")).strip() if product_data else ""  # Get discount percentage from product_data when available
-                        if not discount_val and old_price_val and current_price_val:  # Compute discount percentage when missing but prices available
-                            try:  # Try numeric parse and compute discount when formats allow
-                                old_num = float(re.sub(r"[^0-9.,]", "", old_price_val).replace(",", "."))  # Parse old price numeric value from string
-                                cur_num = float(re.sub(r"[^0-9.,]", "", current_price_val).replace(",", "."))  # Parse current price numeric value from string
-                                if old_num > 0:  # Only compute percentage when old price is positive
-                                    discount_val = f"{round((old_num - cur_num) / old_num * 100, 2)}%"  # Compute discount percent with two decimals
-                            except Exception:  # If numeric parsing fails, leave discount as empty string
-                                discount_val = discount_val  # Preserve existing discount_val when computation fails
-
-                        day_key = datetime.datetime.now().strftime("%d-%m-%Y")  # Build day key in DD-MM-YYYY format for history grouping
-                        product_name_for_history = product_data.get("product_name", "") if product_data else ""  # Get product name for history entry
-                        append_processed_product_to_history(day_key, platform_name, product_name_for_history, url, old_price_val or "", current_price_val or "", discount_val or "", os.path.join(OUTPUT_DIRECTORY, "history.json"))  # Append processed product to history file
-                    except Exception:  # Ensure history append failures do not stop the pipeline
-                        pass  # Ignore history write errors and continue processing
-                    
-                    successful_scrapes += 1  # Increment successful scrapes counter
-                    url_processed_successfully = True  # Mark URL as successfully processed for this index
-                    if CLEAR_INPUT_FILE:  # Only clear input lines when configured
-                        removed = remove_url_line_from_input_file(url, original_local_html_path)  # Attempt to remove the successful URL line from INPUT_FILE
-                        verbose_output(f"{BackgroundColors.GREEN}Removed input line: {BackgroundColors.CYAN}{url}{BackgroundColors.GREEN} -> {removed}{Style.RESET_ALL}")  # Verbose result of removal
-                elif success and not os.path.isdir(final_product_directory_path):  # Guard against impossible success-without-directory scenarios
-                    if retry_attempt < OUTPUT_DIRECTORY_RETRY_ATTEMPTS:  # Verify if another retry attempt is still allowed
-                        print(f"{BackgroundColors.YELLOW}[WARNING] Output directory missing after processing URL index {index}. Retrying processing.{Style.RESET_ALL}")  # Warn and retry same URL position
-                        continue  # Retry processing the same URL immediately
-
-                    print(f"{BackgroundColors.YELLOW}[WARNING] Failed to generate output directory after retry for URL index {index}.{Style.RESET_ALL}")  # Report definitive failure after retry exhaustion
-
-                if url_processed_successfully:  # Exit retry loop immediately after successful and verified processing
-                    break  # Stop retry loop for current URL
-
-            if not url_processed_successfully:  # Ensure failures are explicit when URL did not complete with verified directory
-                print(f"{BackgroundColors.YELLOW}[WARNING] URL index {index} finished without a verified output directory and was not counted as success.{Style.RESET_ALL}")  # Emit final warning for this URL
-            
-            if index < total_urls and not local_html_path:  # Add delay only for online requests (skip for local HTML inputs)
-                time.sleep(DELAY_BETWEEN_REQUESTS)  # Sleep to avoid rate limiting between online requests
+    timestamped_output_dir = context["timestamped_output_dir"]  # Retrieve timestamped output directory from context
 
     run_final_output_integrity_verification(timestamped_output_dir, urls_to_process)  # Run final reliability verification after all URL processing has completed
 
@@ -2826,6 +3095,20 @@ def main():
         print(f"{BackgroundColors.YELLOW}Removed repeated old product directories: {BackgroundColors.CYAN}{len(removed)}{BackgroundColors.YELLOW} - {BackgroundColors.CYAN}{details_msg}{Style.RESET_ALL}")  # Output number and list of removed product names and URLs when verbose enabled
 
 
+def handle_sorting_phase(args: argparse.Namespace, context: dict) -> None:
+    """
+    Execute product directory sorting by platform and product name when enabled.
+
+    :param args: Parsed command-line arguments namespace.
+    :param context: Mutable processing context dictionary.
+    :return: None
+    """
+
+    sort_products_by_product_name = args.sort_products_by_product_name  # Resolve sort_products_by_product_name flag from parsed arguments
+    timestamped_output_dir_for_sorting = context["timestamped_output_dir_for_sorting"]  # Retrieve explicit sorting target directory from context
+    timestamped_output_dir = context["timestamped_output_dir"]  # Retrieve timestamped output directory from context
+    sorting_only_mode = context["sorting_only_mode"]  # Retrieve sorting-only mode flag from context
+
     sorting_target_dir = None  # Initialize sorting target directory variable
     if sort_products_by_product_name:  # Verify if product sorting by name is enabled
         if timestamped_output_dir_for_sorting and os.path.isdir(timestamped_output_dir_for_sorting):  # Verify if explicit output_dir is provided and exists
@@ -2847,6 +3130,23 @@ def main():
             if sorting_only_mode:  # Verify if running in sorting-only mode
                 print(f"{BackgroundColors.CYAN}Product directories in {BackgroundColors.GREEN}{sorting_target_dir}{BackgroundColors.CYAN} sorted successfully.{Style.RESET_ALL}")  # Log sorting success
             verbose_output(f"{BackgroundColors.GREEN}Sorting and index normalization completed.{Style.RESET_ALL}")  # Confirm completion after all renames and internal updates finish
+
+
+def finalize_execution(start_time: datetime.datetime, args: argparse.Namespace, context: dict, total_urls: int) -> None:
+    """
+    Print execution summary, timing, cleanup staging, and register exit handlers.
+
+    :param start_time: Program start timestamp for execution time calculation.
+    :param args: Parsed command-line arguments namespace.
+    :param context: Mutable processing context dictionary.
+    :param total_urls: Total number of URLs that were processed.
+    :return: None
+    """
+
+    sorting_only_mode = context["sorting_only_mode"]  # Retrieve sorting-only mode flag from context
+    successful_scrapes = context["successful_scrapes"]  # Retrieve successful scrapes counter from context
+    staging_output_dir = context["staging_output_dir"]  # Retrieve staging output directory from context
+    has_amazon = context["has_amazon"]  # Retrieve Amazon URL presence flag from context
 
     if not sorting_only_mode:  # Verify if not in sorting-only mode
         print(f"{BackgroundColors.GREEN}Successfully processed: {BackgroundColors.CYAN}{successful_scrapes}/{total_urls}{BackgroundColors.GREEN} URLs{Style.RESET_ALL}\n")  # Output the number of successful operations
@@ -2871,6 +3171,54 @@ def main():
     (
         atexit.register(play_sound) if RUN_FUNCTIONS["Play Sound"] else None
     )  # Register the play_sound function to be called when the program finishes
+
+
+def main():
+    """
+    Main function.
+
+    :param: None
+    :return: None
+    """
+
+    print(
+        f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Welcome to the {BackgroundColors.CYAN}E-Commerces WebScraper{BackgroundColors.GREEN} program!{Style.RESET_ALL}",
+        end="\n",
+    )  # Output the welcome message
+    start_time = datetime.datetime.now()  # Get the start time of the program
+
+    args = parse_arguments()  # Parse command-line arguments
+
+    if handle_merge_mode(args, start_time):  # Execute merge-only mode and early exit if applicable
+        return  # Exit early if merge mode executed
+
+    if not setup_environment():  # Validate and load environment configuration
+        return  # Exit on environment setup failure
+
+    api_keys = load_api_keys()  # Load and validate Gemini API keys
+    if not api_keys:  # Verify if at least one API key is available
+        return  # Exit early when no keys are available
+
+    if not ensure_input_file_exists():  # Ensure the input file exists, and if not, create it with instructions
+        return  # Exit if unable to ensure input file
+
+    staging_output_dir = initialize_directories()  # Create required input, output, and staging directories
+
+    urls_to_process, total_urls = prepare_input_urls()  # Load and preprocess input URLs
+
+    context = initialize_processing_context(staging_output_dir)  # Initialize shared runtime state
+
+    should_exit = resolve_sorting_only_mode(args, total_urls, context)  # Resolve sorting-only mode when no URLs are present
+    if should_exit:  # Verify if early exit was signaled due to invalid output_dir
+        return  # Exit early if output_dir is invalid
+
+    process_urls_pipeline(args, urls_to_process, total_urls, api_keys, context)  # Execute full URL processing pipeline
+
+    run_post_processing(context, urls_to_process)  # Execute integrity verification and old product removal
+
+    handle_sorting_phase(args, context)  # Execute sorting logic when enabled
+
+    finalize_execution(start_time, args, context, total_urls)  # Print summary, timing, and finalize
 
 
 if __name__ == "__main__":
