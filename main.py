@@ -763,8 +763,8 @@ def run_merge_output_directories(base_output_dir: str) -> Optional[str]:
     valid_dirs = discover_valid_output_directories(base_output_dir)  # Discover all directories matching the required timestamped format
     print(f"{BackgroundColors.GREEN}Found valid output directories: {BackgroundColors.CYAN}{[os.path.basename(d) for d in valid_dirs]}{Style.RESET_ALL}")  # Log the list of discovered valid directory names
 
-    if len(valid_dirs) < 2:  # Verify if at least 2 valid directories exist before proceeding with merge
-        print(f"{BackgroundColors.YELLOW}Not enough valid output directories to merge (found {BackgroundColors.CYAN}{len(valid_dirs)}{BackgroundColors.YELLOW}, minimum 2 required). Skipping merge.{Style.RESET_ALL}")  # Log warning when fewer than 2 matching directories are found
+    if len(valid_dirs) < 1:  # Verify if at least 1 valid directory exists before proceeding with merge
+        print(f"{BackgroundColors.YELLOW}Not enough valid output directories to merge (found {BackgroundColors.CYAN}{len(valid_dirs)}{BackgroundColors.YELLOW}, minimum 1 required). Skipping merge.{Style.RESET_ALL}")  # Log warning when fewer than 1 matching directories are found
         return None  # Return None to indicate merge did not proceed due to insufficient directories
 
     merged_dir = create_merged_output_directory(base_output_dir)  # Create new merged output directory with index 1 and current timestamp
