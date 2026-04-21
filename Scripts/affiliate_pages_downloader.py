@@ -1404,7 +1404,14 @@ def is_compressed_file(filename: str) -> bool:
 
     lower = filename.lower()  # Normalize filename for suffix comparison.
     compressed_suffixes = (".zip", ".rar", ".7z", ".tar.gz", ".tgz", ".tar", ".gz")  # Define common compressed archive suffixes.
-    return any(lower.endswith(suf) for suf in compressed_suffixes)  # Return True when any suffix matches.
+
+    if any(lower.endswith(suf) for suf in compressed_suffixes):  # Verify whether filename ends with any of the common compressed archive suffixes.
+        return True  # Return True when filename ends with any common compressed archive suffix.
+
+    if re.search(r"\.z\d{2}$", lower):  # Match .z followed by exactly two digits at the end of the filename.
+        return True  # Return True when filename matches the .zNN compressed archive pattern.
+
+    return False  # Return False when filename does not match any known compressed archive patterns.
 
 
 def find_filename_by_marketplace(filenames: List[str], keywords: List[str]) -> str | None:
