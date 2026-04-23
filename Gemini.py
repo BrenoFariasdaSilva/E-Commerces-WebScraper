@@ -79,7 +79,7 @@ class BackgroundColors:  # Colors for the terminal
 
 # Execution Constants:
 VERBOSE = False  # Set to True to output verbose messages
-MAX_RETRIES = 5  # Maximum number of retry rounds for retryable Gemini API failures
+MAX_RETRIES = 3  # Maximum number of retry rounds for retryable Gemini API failures
 RETRY_BASE_DELAY_SECONDS = 15  # Base delay in seconds used for exponential backoff
 RETRYABLE_API_ERROR_KEYWORDS = (
     "503",
