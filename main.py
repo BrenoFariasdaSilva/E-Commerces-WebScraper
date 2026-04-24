@@ -2543,6 +2543,65 @@ def generate_and_validate_template_for_product(description_file: str, api_keys: 
     return True  # Return success after generation and validation complete
 
 
+def generate_template_files_from_local(outputs_dir: str, api_keys: list) -> None:
+    """
+    Traverse all timestamped output directories and generate missing Template.txt files.
+
+    :param outputs_dir: Path to the base outputs directory to scan for timestamped run directories.
+    :param api_keys: List of Gemini API key strings for generation.
+    :return: None
+    """
+
+    print(f"{BackgroundColors.GREEN}Running in generate_template_files_from_local mode.{Style.RESET_ALL}")  # Log mode activation at start of traversal
+
+    if not os.path.isdir(outputs_dir):  # Verify if the base outputs directory exists before traversal
+        print(f"{BackgroundColors.RED}Outputs directory not found: {BackgroundColors.CYAN}{outputs_dir}{Style.RESET_ALL}")  # Report missing base directory
+        return  # Return early when base directory does not exist
+
+    timestamp_pattern = re.compile(r'^\d+\. \d{4}-\d{2}-\d{2} - \d{2}h\d{2}m\d{2}s$')  # Regex matching the "{index}. YYYY-MM-DD - HHhMMmSSs" format for timestamped directories
+
+    for timestamp_dir_name in sorted(os.listdir(outputs_dir)):  # Iterate timestamp directories in sorted order for deterministic processing
+        timestamp_dir_path = os.path.join(outputs_dir, timestamp_dir_name)  # Build full path to the current timestamp directory
+
+        if not os.path.isdir(timestamp_dir_path):  # Skip non-directory entries inside outputs directory
+            continue  # Continue to next entry when not a directory
+
+        if not timestamp_pattern.match(timestamp_dir_name):  # Skip directories that do not match the required timestamp format
+            continue  # Continue to next entry when naming format does not match
+
+        verbose_output(f"{BackgroundColors.GREEN}Traversing timestamp directory: {BackgroundColors.CYAN}{timestamp_dir_name}{Style.RESET_ALL}")  # Log traversal of current timestamp directory for verbose mode
+
+        for product_dir_name in sorted(os.listdir(timestamp_dir_path)):  # Iterate product directories inside this timestamp directory in sorted order
+            product_dir_path = os.path.join(timestamp_dir_path, product_dir_name)  # Build full path to the current product directory
+
+            if not os.path.isdir(product_dir_path):  # Skip non-directory entries inside timestamp directory
+                continue  # Continue to next entry when not a directory
+
+            description_files = [  # Collect description files matching the expected naming convention
+                f for f in os.listdir(product_dir_path) if f.endswith("_description.txt")
+            ]  # Filter directory entries for files ending with _description.txt
+
+            if not description_files:  # Verify if at least one description file exists in this product directory
+                verbose_output(f"{BackgroundColors.YELLOW}No description file found in: {BackgroundColors.CYAN}{product_dir_name}{BackgroundColors.YELLOW}. Skipping.{Style.RESET_ALL}")  # Log missing description file for verbose mode
+                continue  # Continue to next product directory when no description file is present
+
+            description_file = os.path.join(product_dir_path, description_files[0])  # Select the first description file as the authoritative source
+            template_file = os.path.join(product_dir_path, "Template.txt")  # Build expected Template.txt path for existence verification
+
+            if os.path.exists(template_file):  # Verify if Template.txt already exists for this product
+                print(f"{BackgroundColors.CYAN}[DEBUG] Template.txt already exists for: {BackgroundColors.GREEN}{product_dir_name}{BackgroundColors.CYAN}. Skipping generation.{Style.RESET_ALL}")  # Log skip when template is already present
+                continue  # Continue to next product directory when template already exists
+
+            print(f"{BackgroundColors.GREEN}Generating Template.txt for: {BackgroundColors.CYAN}{product_dir_name}{Style.RESET_ALL}")  # Log template generation start for this product directory
+
+            success = generate_and_validate_template_for_product(description_file, api_keys)  # Generate and validate Template.txt using the extracted reusable function
+
+            if success:  # Verify if generation and validation succeeded
+                print(f"{BackgroundColors.GREEN}Successfully generated and validated Template.txt for: {BackgroundColors.CYAN}{product_dir_name}{Style.RESET_ALL}")  # Log successful generation and validation
+            else:  # If generation or validation failed
+                print(f"{BackgroundColors.RED}Failed to generate Template.txt for: {BackgroundColors.CYAN}{product_dir_name}{Style.RESET_ALL}")  # Log generation failure for this product
+
+
 def setup_environment() -> bool:
     """
     Validate and load environment configuration from .env file.
