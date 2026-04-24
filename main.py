@@ -2513,6 +2513,31 @@ def handle_merge_mode(args: argparse.Namespace, start_time: datetime.datetime) -
     return True  # Return True to indicate merge mode was executed and main should exit early
 
 
+def load_product_data(product_dir: str) -> Optional[dict]:
+    """
+    Load product_data.json from the specified product directory.
+
+    :param product_dir: Absolute path to the product output directory.
+    :return: Loaded product data dictionary or None when file is missing or unreadable.
+    """
+
+    json_path = os.path.join(product_dir, "product_data.json")  # Build full path to the product data JSON file
+    product_name = os.path.basename(product_dir)  # Use directory name as product identifier for logging
+
+    if not os.path.isfile(json_path):  # Verify if product_data.json exists before attempting to load
+        print(f"{BackgroundColors.CYAN}[DEBUG] product_data.json not found for: {BackgroundColors.CYAN}{product_name}{Style.RESET_ALL}")  # Log missing JSON file
+        return None  # Return None when file does not exist
+
+    try:  # Try to read and parse the product data JSON file
+        with open(json_path, "r", encoding="utf-8") as f:  # Open JSON file for reading with UTF-8 encoding
+            product_data = json.load(f)  # Parse JSON content into dictionary
+        print(f"{BackgroundColors.GREEN}[DEBUG] Loaded product_data.json for: {BackgroundColors.CYAN}{product_name}{Style.RESET_ALL}")  # Log successful JSON load
+        return product_data  # Return loaded product data dictionary
+    except Exception as e:  # If reading or parsing the JSON file fails
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to load product_data.json for: {BackgroundColors.CYAN}{product_name}{BackgroundColors.YELLOW}: {e}{Style.RESET_ALL}")  # Report load failure
+        return None  # Return None when product data could not be loaded
+
+
 def generate_and_validate_template_for_product(description_file: str, api_keys: list) -> bool:
     """
     Generate and validate Template.txt for a product using its existing description file.
@@ -2531,12 +2556,14 @@ def generate_and_validate_template_for_product(description_file: str, api_keys: 
 
     product_url = detect_product_url(product_description) or ""  # Detect product URL from description content for platform-specific generation instructions
 
-    success = handle_gemini_processing(product_description, description_file, None, product_url, api_keys)  # Generate Template.txt using the existing Gemini processing pipeline
+    description_dir = os.path.dirname(str(description_file))  # Derive directory containing the description file for product_data loading
+    product_data = load_product_data(description_dir)  # Load persisted product data from product directory for Gemini context
+
+    success = handle_gemini_processing(product_description, description_file, product_data, product_url, api_keys)
 
     if not success:  # Verify if Gemini generation did not succeed
         return False  # Return failure when generation did not produce output
 
-    description_dir = os.path.dirname(str(description_file))  # Derive directory containing the description file
     template_file = os.path.join(description_dir, "Template.txt")  # Build path to the generated Template.txt file
     validate_and_fix_output_file(template_file)  # Validate and fix formatting issues in the generated template
 
