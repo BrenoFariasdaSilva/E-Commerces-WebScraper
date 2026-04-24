@@ -2948,6 +2948,28 @@ def handle_validation(product_data: dict, product_directory: str, description_fi
     return True  # Return True to signal valid product data
 
 
+def save_product_data_json(product_data: dict, product_dir: str) -> bool:
+    """
+    Save the product data dictionary as product_data.json in the product directory.
+
+    :param product_data: Dictionary of scraped product data fields to persist.
+    :param product_dir: Absolute path to the product output directory.
+    :return: True if file was saved successfully, False otherwise.
+    """
+
+    json_path = os.path.join(product_dir, "product_data.json")  # Build full path to the product data JSON file
+    product_name = product_data.get("product_name_safe", product_data.get("product_name", "unknown"))  # Resolve product name for logging
+
+    try:  # Try to write product data as JSON to the product directory
+        with open(json_path, "w", encoding="utf-8") as f:  # Open JSON file for writing with UTF-8 encoding
+            json.dump(product_data, f, ensure_ascii=False, indent=2)  # Write product data as formatted JSON with non-ASCII support
+        print(f"{BackgroundColors.GREEN}[DEBUG] Saving product_data.json for: {BackgroundColors.CYAN}{product_name}{Style.RESET_ALL}")  # Log successful JSON save
+        return True  # Return True when product data was written successfully
+    except Exception as e:  # If writing the JSON file fails
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to save product_data.json for: {BackgroundColors.CYAN}{product_name}{BackgroundColors.YELLOW}: {e}{Style.RESET_ALL}")  # Report write failure
+        return False  # Return False when product data could not be saved
+
+
 def handle_gemini_processing(product_description: str, description_file: str, product_data: dict, url: str, api_keys: list) -> bool:
     """
     Execute Gemini AI marketing text generation with key rotation and quota retry logic.
@@ -3122,6 +3144,8 @@ def process_single_url(url: str, local_html_path, index: int, total_urls: int, a
 
         if not handle_validation(product_data, product_directory, description_file, url):  # Validate product information before Gemini processing
             break  # Stop retry loop because data is invalid and retrying directory creation is not meaningful
+
+        save_product_data_json(product_data, final_product_directory_path)  # Persist product data to JSON for future local mode regeneration
 
         success = handle_gemini_processing(product_description, description_file, product_data, url, api_keys)  # Execute Gemini AI marketing text generation with key rotation
 
