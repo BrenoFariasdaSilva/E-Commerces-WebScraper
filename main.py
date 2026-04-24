@@ -2513,6 +2513,36 @@ def handle_merge_mode(args: argparse.Namespace, start_time: datetime.datetime) -
     return True  # Return True to indicate merge mode was executed and main should exit early
 
 
+def generate_and_validate_template_for_product(description_file: str, api_keys: list) -> bool:
+    """
+    Generate and validate Template.txt for a product using its existing description file.
+
+    :param description_file: Absolute path to the product description file.
+    :param api_keys: List of Gemini API key strings.
+    :return: True if generation and validation succeeded, False otherwise.
+    """
+
+    try:  # Try to read the description file content for Gemini generation
+        with open(str(description_file), "r", encoding="utf-8") as f:  # Open description file with UTF-8 encoding
+            product_description = f.read()  # Read full description content as generation input
+    except Exception as e:  # If reading the description file fails
+        print(f"{BackgroundColors.RED}Error reading description file {BackgroundColors.CYAN}{description_file}{BackgroundColors.RED}: {e}{Style.RESET_ALL}")  # Report error reading description file
+        return False  # Return failure when description file cannot be read
+
+    product_url = detect_product_url(product_description) or ""  # Detect product URL from description content for platform-specific generation instructions
+
+    success = handle_gemini_processing(product_description, description_file, None, product_url, api_keys)  # Generate Template.txt using the existing Gemini processing pipeline
+
+    if not success:  # Verify if Gemini generation did not succeed
+        return False  # Return failure when generation did not produce output
+
+    description_dir = os.path.dirname(str(description_file))  # Derive directory containing the description file
+    template_file = os.path.join(description_dir, "Template.txt")  # Build path to the generated Template.txt file
+    validate_and_fix_output_file(template_file)  # Validate and fix formatting issues in the generated template
+
+    return True  # Return success after generation and validation complete
+
+
 def setup_environment() -> bool:
     """
     Validate and load environment configuration from .env file.
