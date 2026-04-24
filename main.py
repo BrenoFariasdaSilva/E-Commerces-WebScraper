@@ -2477,6 +2477,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--sort_products_by_product_name", type=lambda s: str(s).lower() in ("true", "1", "yes", "y"), default=False, help="Whether to sort and normalize product output directories by product name (default: False)")  # Register sort_products_by_product_name argument with boolean conversion
     parser.add_argument("--output_dir", type=str, default=None, help="Explicit path to output directory for sorting (optional)")  # Register output_dir argument for sorting-only mode
     parser.add_argument("--merge_output_dirs", type=lambda s: str(s).lower() in ("true", "1", "yes", "y"), default=False, help="Whether to merge all timestamped output directories into a single new directory (default: False)")  # Register merge_output_dirs argument with boolean conversion
+    parser.add_argument("--generate_template_files_from_local", type=lambda s: str(s).lower() in ("true", "1", "yes", "y"), default=False, help="Whether to generate missing Template.txt files from local description files (default: False)")  # Register generate_template_files_from_local argument with boolean conversion
 
     args = parser.parse_args()  # Parse command-line arguments
 
