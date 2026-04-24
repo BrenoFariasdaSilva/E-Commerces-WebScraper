@@ -2652,7 +2652,9 @@ def handle_generate_template_files_from_local_mode(args: argparse.Namespace, sta
 
     create_directory(os.path.abspath(OUTPUT_DIRECTORY), OUTPUT_DIRECTORY.replace(".", ""))  # Ensure the base output directory exists before traversal
 
-    generate_template_files_from_local(OUTPUT_DIRECTORY, api_keys)  # Execute template generation traversal for all product directories missing Template.txt
+    reversed_api_keys = list(reversed(api_keys))  # Reverse API keys to use them in a different order for generation compared to scraping runs
+
+    generate_template_files_from_local(OUTPUT_DIRECTORY, reversed_api_keys)  # Execute template generation traversal for all product directories missing Template.txt
 
     finish_time = datetime.datetime.now()  # Get finish time after generate operation completes
     print(f"{BackgroundColors.GREEN}Execution time: {BackgroundColors.CYAN}{calculate_execution_time(start_time, finish_time)}{Style.RESET_ALL}")  # Output execution time for the generate run
