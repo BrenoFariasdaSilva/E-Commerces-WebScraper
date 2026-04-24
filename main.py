@@ -2970,13 +2970,13 @@ def save_product_data_json(product_data: dict, product_dir: str) -> bool:
         return False  # Return False when product data could not be saved
 
 
-def handle_gemini_processing(product_description: str, description_file: str, product_data: dict, url: str, api_keys: list) -> bool:
+def handle_gemini_processing(product_description: str, description_file: str, product_data: Optional[dict], url: str, api_keys: list) -> bool:
     """
     Execute Gemini AI marketing text generation with key rotation and quota retry logic.
 
     :param product_description: Full product description text content.
     :param description_file: Path to the product description file for output.
-    :param product_data: Dictionary of scraped product data fields.
+    :param product_data: Optional dictionary of scraped product data fields.
     :param url: Product URL being processed.
     :param api_keys: List of Gemini API key strings.
     :return: True if Gemini generation succeeded, False otherwise.
