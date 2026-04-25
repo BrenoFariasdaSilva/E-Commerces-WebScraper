@@ -247,6 +247,19 @@ class Gemini:
         self.client = genai.Client(api_key=api_key)  # Create the Gemini client.
         self.model = "gemma-3-27b-it"  # Default model; can be overridden in method calls if needed. Read: https://aistudio.google.com/rate-limit?timeRange=last-28-days for current rate limits and available models.
         self.chat = None  # Placeholder for chat session.
+        self.quota_exhausted = False  # Track if quota is exhausted for this API key.
+    
+    
+    def verify_api_quota_state(self) -> tuple:
+        """
+        Verifies if quota is available and if retry is allowed.
+
+        :return: Tuple (quota_available, retry_allowed)
+
+        """
+        if self.quota_exhausted:  # If quota is already exhausted
+            return (False, False)  # Return quota unavailable, retry not allowed
+        return (True, True)  # Return quota available, retry allowed
 
 
     def read_input_file(self, file_path=INPUT_FILE):
@@ -323,17 +336,25 @@ class Gemini:
         :return: The API response object if successful.
         """
 
+        quota_available, retry_allowed = self.verify_api_quota_state()  # Get quota and retry state
+        if not quota_available:  # If quota is exhausted
+            raise QuotaExceededError("Quota already exhausted for this API key.")  # Raise quota exhaustion error
+
         retry_count = 0  # Initialize retry counter for transient failures
 
         while True:  # Continue attempts until success or retry limit reached
             try:  # Attempt API call and return immediately when successful
                 return request_callable()  # Execute the provided Gemini API request callable
             except Exception as e:  # Capture request exceptions for retry decision
-                if self.is_quota_exhausted_api_error(e):  # Verify if this failure represents exhausted key quota.
-                    raise self.create_quota_exhausted_error(e)  # Raise controlled quota signal so caller can rotate key.
+                if self.is_quota_exhausted_api_error(e):  # If this failure represents exhausted key quota
+                    self.quota_exhausted = True  # Mark quota as exhausted for this API key
+                    raise self.create_quota_exhausted_error(e)  # Raise controlled quota signal so caller can rotate key
 
                 if not self.is_retryable_api_error(e):  # Stop retry flow for non-transient exceptions
                     raise  # Re-raise non-retryable error so caller can handle it
+
+                if self.quota_exhausted:  # If quota is now exhausted
+                    raise QuotaExceededError("Quota already exhausted for this API key.")  # Raise quota exhaustion error
 
                 if retry_count >= MAX_RETRIES:  # Stop retry flow when maximum retry budget is exhausted
                     print(f"{BackgroundColors.YELLOW}[WARNING] Gemini API temporary failure persisted after {MAX_RETRIES} retries during {operation_name}.{Style.RESET_ALL}")  # Log terminal warning when retries are exhausted
@@ -361,17 +382,21 @@ class Gemini:
     def send_message(self, message, config=None):
         """
         Send a message in the chat session and get the output.
-        
+
         :param message: The user message to send.
         :param config: Optional configuration (temperature, max_output_tokens, etc.).
         :return: The output text.
         """
-        
+
+        quota_available, retry_allowed = self.verify_api_quota_state()  # Get quota and retry state
+        if not quota_available:  # If quota is exhausted
+            raise QuotaExceededError("Quota already exhausted for this API key.")  # Raise quota exhaustion error
+
         verbose_output(true_string=f"{BackgroundColors.GREEN}Sending the message...{Style.RESET_ALL}")
-        
+
         if self.chat is None:  # If the chat session has not been started
             self.start_chat_session()  # Start the chat session
-        
+
         assert self.chat is not None  # Ensure chat is initialized
         chat_session = self.chat  # Store non-null chat session reference for type-safe lambda usage
         response = self.execute_with_retry(lambda: chat_session.send_message(message), operation_name="send_message")  # Send message with retry for transient API failures
@@ -381,14 +406,19 @@ class Gemini:
     def generate_content(self, prompt, config=None):
         """
         Generate content without maintaining chat history (stateless).
-        
+
         :param prompt: The prompt to send to the model.
         :param config: Optional configuration (temperature, system_instruction, etc.).
         :return: The generated text.
         """
+
+        quota_available, retry_allowed = self.verify_api_quota_state()  # Get quota and retry state
         
+        if not quota_available:  # If quota is exhausted
+            raise QuotaExceededError("Quota already exhausted for this API key.")  # Raise quota exhaustion error
+
         verbose_output(true_string=f"{BackgroundColors.GREEN}Generating content...{Style.RESET_ALL}")
-        
+
         response = self.execute_with_retry(
             lambda: self.client.models.generate_content(
                 model=self.model,
