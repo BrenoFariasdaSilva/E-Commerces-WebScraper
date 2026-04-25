@@ -1674,7 +1674,6 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         if not activate_automation_window():  # Verify if automation window activation succeeds before opening separator tab.
             return processed_count, url_to_download, False  # Return failure state when activation fails.
 
-
     bar_format = (
         f"{BackgroundColors.GREEN}{{desc}}: {Style.RESET_ALL}"  # Format the description and a green colon for clarity
         f"{BackgroundColors.CYAN}{{bar}}{Style.RESET_ALL} "  # Render the progress bar itself in cyan for visibility
