@@ -2586,6 +2586,7 @@ def generate_template_files_from_local(outputs_dir: str, api_keys: list) -> None
         return  # Return early when base directory does not exist
 
     timestamp_pattern = re.compile(r'^\d+\. \d{4}-\d{2}-\d{2} - \d{2}h\d{2}m\d{2}s$')  # Regex matching the "{index}. YYYY-MM-DD - HHhMMmSSs" format for timestamped directories
+    product_dirs = []  # List to collect valid product directory info for tqdm
 
     for timestamp_dir_name in sorted(os.listdir(outputs_dir)):  # Iterate timestamp directories in sorted order for deterministic processing
         timestamp_dir_path = os.path.join(outputs_dir, timestamp_dir_name)  # Build full path to the current timestamp directory
@@ -2612,21 +2613,46 @@ def generate_template_files_from_local(outputs_dir: str, api_keys: list) -> None
                 verbose_output(f"{BackgroundColors.YELLOW}No description file found in: {BackgroundColors.CYAN}{product_dir_name}{BackgroundColors.YELLOW}. Skipping.{Style.RESET_ALL}")  # Log missing description file for verbose mode
                 continue  # Continue to next product directory when no description file is present
 
-            description_file = os.path.join(product_dir_path, description_files[0])  # Select the first description file as the authoritative source
             template_file = os.path.join(product_dir_path, "Template.txt")  # Build expected Template.txt path for existence verification
 
             if os.path.exists(template_file):  # Verify if Template.txt already exists for this product
-                print(f"{BackgroundColors.CYAN}[DEBUG] Template.txt already exists for: {BackgroundColors.GREEN}{product_dir_name}{BackgroundColors.CYAN}. Skipping generation.{Style.RESET_ALL}")  # Log skip when template is already present
+                verbose_output(f"{BackgroundColors.YELLOW}Template file already exists in: {BackgroundColors.CYAN}{product_dir_name}{BackgroundColors.YELLOW}. Skipping.{Style.RESET_ALL}")  # Log existing template file for verbose mode
                 continue  # Continue to next product directory when template already exists
+            product_dirs.append((product_dir_path, product_dir_name, description_files[0]))  # Collect tuple for tqdm iteration
 
-            verbose_output(true_string=f"{BackgroundColors.GREEN}Generating Template.txt for: {BackgroundColors.CYAN}{product_dir_name}{Style.RESET_ALL}")  # Log template generation start for this product directory
+    total = len(product_dirs)  # Compute total number of valid products to process
+    
+    if total == 0:  # If no valid products to process
+        return  # Return early with no tqdm or further processing
 
-            success = generate_and_validate_template_for_product(description_file, api_keys)  # Generate and validate Template.txt using the extracted reusable function
+    pbar = tqdm(
+        product_dirs,
+        desc=f"{BackgroundColors.GREEN}Generating Templates{Style.RESET_ALL}",
+        unit="product",
+        ncols=100,
+        bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]",
+        file=sys.__stdout__,
+    )  # Initialize tqdm progress bar for product directories
 
-            if success:  # Verify if generation and validation succeeded
-                verbose_output(f"{BackgroundColors.GREEN}Successfully generated and validated Template.txt for: {BackgroundColors.CYAN}{product_dir_name}{Style.RESET_ALL}")  # Log successful generation and validation
-            else:  # If generation or validation failed
-                print(f"{BackgroundColors.RED}Failed to generate Template.txt for: {BackgroundColors.CYAN}{product_dir_name}{Style.RESET_ALL}")  # Log generation failure for this product
+    for idx, (product_dir_path, product_dir_name, description_file_name) in enumerate(pbar, 1):  # Iterate with tqdm and 1-based index
+        description_file = os.path.join(product_dir_path, description_file_name)  # Select the first description file as the authoritative source
+        
+        template_file = os.path.join(product_dir_path, "Template.txt")  # Build expected Template.txt path for existence verification
+        
+        pbar.set_description(f"{BackgroundColors.GREEN}Generating {BackgroundColors.CYAN}{idx}{BackgroundColors.GREEN}/{BackgroundColors.CYAN}{total}{BackgroundColors.GREEN} - {BackgroundColors.CYAN}{product_dir_name}{Style.RESET_ALL}")  # Update tqdm description with color and index
+        
+        if os.path.exists(template_file):  # Verify if Template.txt already exists for this product
+            verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Template.txt already exists for: {BackgroundColors.GREEN}{product_dir_name}{BackgroundColors.CYAN}. Skipping generation.{Style.RESET_ALL}")  # Log skip when template is already present
+            continue  # Continue to next product directory when template already exists
+        
+        verbose_output(true_string=f"{BackgroundColors.GREEN}Generating Template.txt for: {BackgroundColors.CYAN}{product_dir_name}{Style.RESET_ALL}")  # Log template generation start for this product directory
+        
+        success = generate_and_validate_template_for_product(description_file, api_keys)  # Generate and validate Template.txt using the extracted reusable function
+        
+        if success:  # Verify if generation and validation succeeded
+            verbose_output(f"{BackgroundColors.GREEN}Successfully generated and validated Template.txt for: {BackgroundColors.CYAN}{product_dir_name}{Style.RESET_ALL}")  # Log successful generation and validation
+        else:  # If generation or validation failed
+            print(f"{BackgroundColors.RED}Failed to generate Template.txt for: {BackgroundColors.CYAN}{product_dir_name}{Style.RESET_ALL}")  # Log generation failure for this product
 
 
 def handle_generate_template_files_from_local_mode(args: argparse.Namespace, start_time: datetime.datetime) -> bool:
