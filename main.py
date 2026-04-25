@@ -758,7 +758,7 @@ def run_merge_output_directories(base_output_dir: str) -> Optional[str]:
     :return: Full path to the newly created merged directory, or None when merge did not proceed.
     """
 
-    print(f"{BackgroundColors.GREEN}Running in merge output directories mode.{Style.RESET_ALL}")  # Log merge mode activation at start of operation
+    print(f"{BackgroundColors.GREEN}Running in {BackgroundColors.CYAN}Merge Output Directories{BackgroundColors.GREEN} Mode.{Style.RESET_ALL}")  # Log merge mode activation at start of operation
 
     valid_dirs = discover_valid_output_directories(base_output_dir)  # Discover all directories matching the required timestamped format
     print(f"{BackgroundColors.GREEN}Found valid output directories: {BackgroundColors.CYAN}{[os.path.basename(d) for d in valid_dirs]}{Style.RESET_ALL}")  # Log the list of discovered valid directory names
@@ -2531,7 +2531,7 @@ def load_product_data(product_dir: str) -> Optional[dict]:
     try:  # Try to read and parse the product data JSON file
         with open(json_path, "r", encoding="utf-8") as f:  # Open JSON file for reading with UTF-8 encoding
             product_data = json.load(f)  # Parse JSON content into dictionary
-        print(f"{BackgroundColors.GREEN}[DEBUG] Loaded product_data.json for: {BackgroundColors.CYAN}{product_name}{Style.RESET_ALL}")  # Log successful JSON load
+        verbose_output(true_string=f"{BackgroundColors.GREEN}[DEBUG] Loaded product_data.json for: {BackgroundColors.CYAN}{product_name}{Style.RESET_ALL}")  # Log successful JSON load
         return product_data  # Return loaded product data dictionary
     except Exception as e:  # If reading or parsing the JSON file fails
         print(f"{BackgroundColors.YELLOW}[WARNING] Failed to load product_data.json for: {BackgroundColors.CYAN}{product_name}{BackgroundColors.YELLOW}: {e}{Style.RESET_ALL}")  # Report load failure
@@ -2579,7 +2579,7 @@ def generate_template_files_from_local(outputs_dir: str, api_keys: list) -> None
     :return: None
     """
 
-    print(f"{BackgroundColors.GREEN}Running in generate_template_files_from_local mode.{Style.RESET_ALL}")  # Log mode activation at start of traversal
+    print(f"{BackgroundColors.GREEN}Running in {BackgroundColors.CYAN}Generate Template Files from Local{BackgroundColors.GREEN} Mode.{Style.RESET_ALL}")  # Log mode activation at start of traversal
 
     if not os.path.isdir(outputs_dir):  # Verify if the base outputs directory exists before traversal
         print(f"{BackgroundColors.RED}Outputs directory not found: {BackgroundColors.CYAN}{outputs_dir}{Style.RESET_ALL}")  # Report missing base directory
@@ -2619,12 +2619,12 @@ def generate_template_files_from_local(outputs_dir: str, api_keys: list) -> None
                 print(f"{BackgroundColors.CYAN}[DEBUG] Template.txt already exists for: {BackgroundColors.GREEN}{product_dir_name}{BackgroundColors.CYAN}. Skipping generation.{Style.RESET_ALL}")  # Log skip when template is already present
                 continue  # Continue to next product directory when template already exists
 
-            print(f"{BackgroundColors.GREEN}Generating Template.txt for: {BackgroundColors.CYAN}{product_dir_name}{Style.RESET_ALL}")  # Log template generation start for this product directory
+            verbose_output(true_string=f"{BackgroundColors.GREEN}Generating Template.txt for: {BackgroundColors.CYAN}{product_dir_name}{Style.RESET_ALL}")  # Log template generation start for this product directory
 
             success = generate_and_validate_template_for_product(description_file, api_keys)  # Generate and validate Template.txt using the extracted reusable function
 
             if success:  # Verify if generation and validation succeeded
-                print(f"{BackgroundColors.GREEN}Successfully generated and validated Template.txt for: {BackgroundColors.CYAN}{product_dir_name}{Style.RESET_ALL}")  # Log successful generation and validation
+                verbose_output(f"{BackgroundColors.GREEN}Successfully generated and validated Template.txt for: {BackgroundColors.CYAN}{product_dir_name}{Style.RESET_ALL}")  # Log successful generation and validation
             else:  # If generation or validation failed
                 print(f"{BackgroundColors.RED}Failed to generate Template.txt for: {BackgroundColors.CYAN}{product_dir_name}{Style.RESET_ALL}")  # Log generation failure for this product
 
@@ -3293,9 +3293,9 @@ def handle_sorting_phase(args: argparse.Namespace, context: dict) -> None:
 
         if sorting_target_dir:  # Verify if a valid sorting target directory is available
             if sorting_only_mode:  # Verify if running in sorting-only mode
-                print(f"{BackgroundColors.CYAN}Running in sorting-only mode.{Style.RESET_ALL}")  # Log sorting-only mode info
-                print(f"{BackgroundColors.CYAN}Sorting product directories by product name.{Style.RESET_ALL}")  # Log sorting action
-                print(f"{BackgroundColors.CYAN}Target output directory: {sorting_target_dir}{Style.RESET_ALL}")  # Log target directory
+                print(f"{BackgroundColors.GREEN}Running in {BackgroundColors.CYAN}sorting-only{BackgroundColors.GREEN} mode.{Style.RESET_ALL}")  # Log sorting-only mode info
+                print(f"{BackgroundColors.GREEN}Sorting product directories by product name.{Style.RESET_ALL}")  # Log sorting action
+                print(f"{BackgroundColors.GREEN}Target output directory: {BackgroundColors.CYAN}{sorting_target_dir}{Style.RESET_ALL}")  # Log target directory
             rename_plan = sort_output_directories_by_platform_and_product_name(sorting_target_dir)  # Build deterministic full rename plan before any filesystem mutation
             for plan_row in rename_plan:  # Iterate planned mappings to display deterministic assignment before renaming
                 verbose_output(
