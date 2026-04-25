@@ -1681,7 +1681,7 @@ def remove_url_line_from_input_file(url, local_html_path=None):
         return False  # Indicate nothing removed
 
 
-def generate_marketing_text(product_description, description_file, product_data=None, product_url=None, api_key=None, key_index=1, total_keys=1):
+def generate_marketing_text(product_description, description_file, product_data=None, product_url=None,  owner_name=None, api_key=None, key_index=1, total_keys=1):
     """
     Generates marketing text from product description using Gemini AI.
     Uses a single API key attempt and signals quota exhaustion for caller-side key rotation.
@@ -1691,6 +1691,7 @@ def generate_marketing_text(product_description, description_file, product_data=
     :param product_data: Optional dictionary containing product information (e.g., is_international)
     :param product_url: Optional product URL used to apply platform-specific prompt rules
     :param api_key: Gemini API key string to use for this single generation attempt
+    :param owner_name: Optional owner name label for the API key used (for logging)
     :param key_index: 1-based index of the API key being used
     :param total_keys: Total number of available API keys for log context
     :return: True if successful, False otherwise
@@ -1725,10 +1726,12 @@ def generate_marketing_text(product_description, description_file, product_data=
 
     try:  # Try a single-key generation request and delegate key rotation to caller.
         verbose_output(  # Emit verbose key-attempt diagnostics for this single-key attempt.
-            true_string=f"{BackgroundColors.GREEN}Attempting to use Gemini API key {key_index} of {total_keys}...{Style.RESET_ALL}"
+            true_string=(
+                f"{BackgroundColors.GREEN}Attempting to use Gemini API key {owner_name or key_index} ({key_index}/{total_keys})...{Style.RESET_ALL}"
+            )
         )  # Output verbose message.
 
-        gemini = Gemini(api_key, api_key_index=key_index)  # Create Gemini instance with key metadata for quota signaling.
+        gemini = Gemini(api_key, api_key_index=key_index)  # Create Gemini instance with numeric key index for quota signaling.
         formatted_output = gemini.generate_content(prompt)  # Generate formatted marketing text with the provided key.
 
         if formatted_output:  # Verify if generation returned content.
@@ -1744,13 +1747,13 @@ def generate_marketing_text(product_description, description_file, product_data=
 
             return True  # Return success for this key attempt even if validation logged warnings.
 
-        verbose_output(f"{BackgroundColors.YELLOW}API key {key_index} returned empty response.{Style.RESET_ALL}")  # Report empty successful-response body.
+        verbose_output(f"{BackgroundColors.YELLOW}API key {owner_name or key_index} returned empty response.{Style.RESET_ALL}")  # Report empty successful-response body.
         return False  # Return failure for empty response.
     except QuotaExceededError as e:  # Handle controlled quota exhaustion from Gemini layer.
-        verbose_output(f"{BackgroundColors.YELLOW}[WARNING] API key {key_index} quota exhausted. Rotating to next API key.{Style.RESET_ALL}")  # Emit deterministic quota-rotation warning.
+        verbose_output(f"{BackgroundColors.YELLOW}[WARNING] API key {owner_name or key_index} quota exhausted. Rotating to next API key.{Style.RESET_ALL}")  # Emit deterministic quota-rotation warning.
         raise e  # Re-raise controlled signal so caller can rotate without skipping URL.
     except Exception as e:  # Handle non-quota generation failures.
-        verbose_output(f"{BackgroundColors.RED}Error with API key {key_index}: {e}{Style.RESET_ALL}")  # Report unexpected generation failure.
+        verbose_output(f"{BackgroundColors.RED}Error with API key {owner_name or key_index}: {e}{Style.RESET_ALL}")  # Report unexpected generation failure.
         return False  # Return failure for non-quota errors.
     finally:  # Guarantee client cleanup regardless of success, quota signal, or generic failure.
         if gemini is not None:  # Verify if Gemini client was instantiated before cleanup.
@@ -2539,12 +2542,12 @@ def load_product_data(product_dir: str) -> Optional[dict]:
         return None  # Return None when product data could not be loaded
 
 
-def generate_and_validate_template_for_product(description_file: str, api_keys: list) -> bool:
+def generate_and_validate_template_for_product(description_file: str, api_keys: Dict[str, str]) -> bool:
     """
     Generate and validate Template.txt for a product using its existing description file.
 
     :param description_file: Absolute path to the product description file.
-    :param api_keys: List of Gemini API key strings.
+    :param api_keys: Mapping of Gemini API owner names to API key strings.
     :return: True if generation and validation succeeded, False otherwise.
     """
 
@@ -2571,12 +2574,12 @@ def generate_and_validate_template_for_product(description_file: str, api_keys: 
     return True  # Return success after generation and validation complete
 
 
-def generate_template_files_from_local(outputs_dir: str, api_keys: list) -> None:
+def generate_template_files_from_local(outputs_dir: str, api_keys: Dict[str, str]) -> None:
     """
     Traverse all timestamped output directories and generate missing Template.txt files.
 
     :param outputs_dir: Path to the base outputs directory to scan for timestamped run directories.
-    :param api_keys: List of Gemini API key strings for generation.
+    :param api_keys: Mapping of Gemini API owner names to API key strings for generation.
     :return: None
     """
 
@@ -2679,7 +2682,7 @@ def handle_generate_template_files_from_local_mode(args: argparse.Namespace, sta
 
     create_directory(os.path.abspath(OUTPUT_DIRECTORY), OUTPUT_DIRECTORY.replace(".", ""))  # Ensure the base output directory exists before traversal
 
-    reversed_api_keys = list(reversed(api_keys))  # Reverse API keys to use them in a different order for generation compared to scraping runs
+    reversed_api_keys = OrderedDict(reversed(list(api_keys.items())))  # Reverse ordered mapping to change generation order
 
     generate_template_files_from_local(OUTPUT_DIRECTORY, reversed_api_keys)  # Execute template generation traversal for all product directories missing Template.txt
 
@@ -2719,13 +2722,13 @@ def load_api_keys() -> Dict[str, str]:
     :return: Ordered mapping of owner name to API key strings, or empty mapping if none configured.
     """
 
-    api_keys_raw = os.getenv(ENV_VARIABLES["GEMINI"], "")  # Get Gemini API key(s) from environment variables.
-    api_keys = [key.strip() for key in api_keys_raw.split(",") if key.strip()]  # Split and normalize non-empty keys.
+    api_keys_raw = os.getenv(ENV_VARIABLES["GEMINI"], "")  # Get raw GEMINI value from environment variables
+    parsed = parse_gemini_api_keys(api_keys_raw)  # Parse raw env value into ordered mapping of name->key
 
-    if not api_keys:  # Verify if at least one Gemini API key exists before processing URLs.
-        print(f"{BackgroundColors.RED}Error: No Gemini API keys configured in .env file.{Style.RESET_ALL}")  # Report missing API key configuration.
+    if not parsed:  # Verify if parsing produced at least one API key
+        print(f"{BackgroundColors.RED}Error: No Gemini API keys configured in .env file.{Style.RESET_ALL}")  # Report missing API key configuration
 
-    return api_keys  # Return list of validated API keys
+    return parsed  # Return ordered mapping of validated API keys
 
 
 def parse_gemini_api_keys(env_value: str) -> Dict[str, str]:
@@ -3066,7 +3069,7 @@ def save_product_data_json(product_data: dict, product_dir: str) -> bool:
         return False  # Return False when product data could not be saved
 
 
-def handle_gemini_processing(product_description: str, description_file: str, product_data: Optional[dict], url: str, api_keys: list) -> bool:
+def handle_gemini_processing(product_description: str, description_file: str, product_data: Optional[dict], url: str, api_keys: Dict[str, str]) -> bool:
     """
     Execute Gemini AI marketing text generation with key rotation and quota retry logic.
 
@@ -3074,58 +3077,65 @@ def handle_gemini_processing(product_description: str, description_file: str, pr
     :param description_file: Path to the product description file for output.
     :param product_data: Optional dictionary of scraped product data fields.
     :param url: Product URL being processed.
-    :param api_keys: List of Gemini API key strings.
+    :param api_keys: Ordered mapping of owner name to Gemini API key strings.
     :return: True if Gemini generation succeeded, False otherwise.
     """
 
     verbose_output(f"{BackgroundColors.CYAN}Step 2{BackgroundColors.GREEN}: Formatting with Gemini AI{Style.RESET_ALL}")  # Step 2: Format the product description with Gemini AI
 
     success = False  # Initialize Gemini formatting success flag for this URL.
-    exhausted_key_indices = set()  # Track exhausted key indices during the current rotation cycle.
+    exhausted_key_indices = set()  # Track exhausted key labels during the current rotation cycle.
     exhausted_cycles = 0  # Track how many full exhausted cycles happened for this URL.
-    total_keys = len(api_keys)  # Compute total available keys for this URL attempt.
+    names = list(api_keys.keys())  # Extract owner name list preserving order for deterministic rotation
+    total_keys = len(names)  # Compute total available keys for this URL attempt.
 
-    global GEMINI_LAST_KEY_INDEX  # Reuse module-level key index to preserve deterministic rotation across URLs.
-    current_idx = GEMINI_LAST_KEY_INDEX % total_keys if total_keys > 0 else 0  # Start from last successful key index.
+    global GEMINI_LAST_KEY_INDEX  # Reuse module-level key index to preserve deterministic rotation across URLs
+    current_idx = GEMINI_LAST_KEY_INDEX % total_keys if total_keys > 0 else 0  # Start from last successful key index
 
-    while True:  # Keep retrying same product request until success or maximum exhausted cycles reached.
-        key_index = current_idx + 1  # Convert zero-based key index to one-based display index.
-        api_key = api_keys[current_idx]  # Select API key for this iteration.
+    while True:  # Keep retrying same product request until success or maximum exhausted cycles reached
+        owner = names[current_idx] if total_keys > 0 else ""  # Resolve current owner name for logging and selection
+        api_key = api_keys.get(owner, "")  # Select API key for this owner from the mapping
 
-        try:  # Try processing the same product with current key.
-            success = generate_marketing_text(  # Execute single-key Gemini generation attempt.
-                product_description,  # Reuse same product description for deterministic retry behavior.
-                description_file,  # Reuse same description file destination for deterministic retry behavior.
-                product_data,  # Reuse same product data context across retries.
-                url,  # Reuse same product URL across retries.
-                api_key=api_key,  # Pass current key only and let main handle rotations.
-                key_index=key_index,  # Pass one-based key index for logging and exception metadata.
-                total_keys=total_keys,  # Pass total key count for contextual logging.
-            )  # End single-key generation call.
+        verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Testing API key {owner}...{Style.RESET_ALL}")  # Log which owner/key is being tested for this attempt
 
-            if success:  # Verify whether generation succeeded for this key.
-                GEMINI_LAST_KEY_INDEX = current_idx  # Persist last successful key for next URL.
-                break  # Exit retry loop and continue URL pipeline.
+        try:  # Try processing the same product with current owner/key
+            success = generate_marketing_text(  # Execute single-key Gemini generation attempt
+                product_description,  # Reuse same product description for deterministic retry behavior
+                description_file,  # Reuse same description file destination for deterministic retry behavior
+                product_data,  # Reuse same product data context across retries
+                url,  # Reuse same product URL across retries
+                owner_name=owner,  # Pass owner name for enhanced logging
+                api_key=api_key,  # Pass current key only and let caller-side logic handle rotations
+                key_index=(current_idx + 1),  # Pass numeric one-based index for Gemini client and rotation logic
+                total_keys=total_keys,  # Pass total key count for contextual logging
+            )  # End single-key generation call
 
-            current_idx = (current_idx + 1) % total_keys  # Rotate to next key on non-quota failure to maximize resilience.
-            if current_idx == 0:  # Verify if a full key round has been completed.
-                break  # Stop loop after one full non-quota rotation and keep failure result.
-        except QuotaExceededError as quota_error:  # Handle controlled quota exhaustion signal.
-            exhausted_key_index = quota_error.key_index if quota_error.key_index else key_index  # Resolve exhausted key index from exception metadata.
-            exhausted_key_indices.add(exhausted_key_index)  # Mark current key as exhausted for this cycle.
-            current_idx = (current_idx + 1) % total_keys  # Rotate to next key for same URL and same prompt.
+            if success:  # Verify whether generation succeeded for this owner/key
+                GEMINI_LAST_KEY_INDEX = current_idx  # Persist last successful key index for next URL
+                verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Using API key {owner} for generation...{Style.RESET_ALL}")  # Log which owner/key succeeded
+                break  # Exit retry loop and continue URL pipeline
 
-            if len(exhausted_key_indices) >= total_keys:  # Verify if all keys are exhausted in current cycle.
-                exhausted_cycles += 1  # Increment all-keys-exhausted cycle counter.
-                if exhausted_cycles > GEMINI_MAX_ALL_KEYS_EXHAUSTED_CYCLES:  # Verify if maximum cycle retries reached.
-                    print(f"{BackgroundColors.RED}All API keys remained exhausted after {GEMINI_MAX_ALL_KEYS_EXHAUSTED_CYCLES} cycle(s) for URL: {BackgroundColors.CYAN}{url}{Style.RESET_ALL}")  # Report final exhaustion failure for current URL.
-                    break  # Stop retrying this URL after configured exhausted cycles.
-                print(f"{BackgroundColors.YELLOW}[WARNING] All API keys exhausted. Waiting {GEMINI_ALL_KEYS_EXHAUSTED_WAIT_SECONDS}s before retrying the same URL.{Style.RESET_ALL}")  # Report cooldown before restarting key rotation.
-                time.sleep(GEMINI_ALL_KEYS_EXHAUSTED_WAIT_SECONDS)  # Wait before restarting rotation to allow quota reset windows.
-                exhausted_key_indices.clear()  # Reset exhausted key tracking for next cycle.
-                current_idx = 0  # Restart rotation from first key after cooldown.
+            print(f"{BackgroundColors.YELLOW}[WARNING] API key {owner} failed to generate content.{Style.RESET_ALL}")  # Report non-quota failure for this owner/key
+            current_idx = (current_idx + 1) % total_keys  # Rotate to next owner on non-quota failure to maximize resilience
+            if current_idx == 0:  # Verify if a full owner/key round has been completed
+                break  # Stop loop after one full non-quota rotation and keep failure result
+        except QuotaExceededError as quota_error:  # Handle controlled quota exhaustion signal
+            exhausted_label = quota_error.key_index if quota_error.key_index else owner  # Resolve exhausted owner label from exception metadata
+            exhausted_key_indices.add(exhausted_label)  # Mark current owner as exhausted for this cycle
+            verbose_output(f"{BackgroundColors.YELLOW}[WARNING] API key {owner} quota exhausted. Rotating to next API key.{Style.RESET_ALL}")  # Log quota exhaustion for current owner/key
+            current_idx = (current_idx + 1) % total_keys  # Rotate to next owner for same URL and same prompt
 
-            continue  # Continue retry loop for same URL.
+            if len(exhausted_key_indices) >= total_keys:  # Verify if all owners/keys are exhausted in current cycle
+                exhausted_cycles += 1  # Increment all-keys-exhausted cycle counter
+                if exhausted_cycles > GEMINI_MAX_ALL_KEYS_EXHAUSTED_CYCLES:  # Verify if maximum cycle retries reached
+                    print(f"{BackgroundColors.RED}All API keys remained exhausted after {GEMINI_MAX_ALL_KEYS_EXHAUSTED_CYCLES} cycle(s) for URL: {BackgroundColors.CYAN}{url}{Style.RESET_ALL}")  # Report final exhaustion failure for current URL
+                    break  # Stop retrying this URL after configured exhausted cycles
+                print(f"{BackgroundColors.YELLOW}[WARNING] All API keys exhausted. Waiting {GEMINI_ALL_KEYS_EXHAUSTED_WAIT_SECONDS}s before retrying the same URL.{Style.RESET_ALL}")  # Report cooldown before restarting owner/key rotation
+                time.sleep(GEMINI_ALL_KEYS_EXHAUSTED_WAIT_SECONDS)  # Wait before restarting rotation to allow quota reset windows
+                exhausted_key_indices.clear()  # Reset exhausted owner/key tracking for next cycle
+                current_idx = 0  # Restart rotation from first owner after cooldown
+
+            continue  # Continue retry loop for same URL
 
     return success  # Return whether Gemini generation succeeded
 
@@ -3180,7 +3190,7 @@ def handle_success_tracking(success: bool, final_product_directory_path: str, de
     return True  # Return True to signal successful and verified processing
 
 
-def process_single_url(url: str, local_html_path, index: int, total_urls: int, api_keys: list, platform_name: str, context: dict) -> bool:
+def process_single_url(url: str, local_html_path, index: int, total_urls: int, api_keys: Dict[str, str], platform_name: str, context: dict) -> bool:
     """
     Process a single URL through the full scrape-format-verify pipeline with retries.
 
@@ -3188,7 +3198,7 @@ def process_single_url(url: str, local_html_path, index: int, total_urls: int, a
     :param local_html_path: Optional local HTML file path from input.
     :param index: Current URL index in the processing queue.
     :param total_urls: Total number of URLs to process.
-    :param api_keys: List of Gemini API key strings.
+    :param api_keys: Mapping of Gemini API owner names to API key strings.
     :param platform_name: Human-friendly platform name string.
     :param context: Mutable processing context dictionary.
     :return: True if URL was successfully processed and verified, False otherwise.
@@ -3263,14 +3273,14 @@ def process_single_url(url: str, local_html_path, index: int, total_urls: int, a
     return url_processed_successfully  # Return whether this URL was successfully processed
 
 
-def process_urls_pipeline(args: argparse.Namespace, urls_to_process: list, total_urls: int, api_keys: list, context: dict) -> None:
+def process_urls_pipeline(args: argparse.Namespace, urls_to_process: list, total_urls: int, api_keys: Dict[str, str], context: dict) -> None:
     """
     Execute the full URL processing pipeline with progress bar and per-URL dispatch.
 
     :param args: Parsed command-line arguments namespace.
     :param urls_to_process: List of (url, local_html_path) tuples to process.
     :param total_urls: Total number of URLs to process.
-    :param api_keys: List of Gemini API key strings.
+    :param api_keys: Mapping of Gemini API owner names to API key strings.
     :param context: Mutable processing context dictionary.
     :return: None
     """
