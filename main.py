@@ -81,6 +81,7 @@ from Shopee import Shopee  # Import the Shopee class
 from tkinter import Tk, messagebox  # For showing GUI warnings
 from tqdm import tqdm  # Progress bar for URL processing
 from typing import Dict, List, Optional, Set, Tuple  # For type-annotated containers used by final verification functions
+from collections import OrderedDict  # For deterministic ordered mapping of named API keys
 from urllib.parse import urlparse  # For parsing URL hostnames
 from urls_utils import load_urls_to_process, preprocess_urls, write_urls_to_file  # URL helpers
 
@@ -2710,12 +2711,12 @@ def setup_environment() -> bool:
     return True  # Return True to signal successful environment setup
 
 
-def load_api_keys() -> list:
+def load_api_keys() -> Dict[str, str]:
     """
     Load and validate Gemini API keys from environment variables.
 
     :param: None
-    :return: List of non-empty API key strings, or empty list if none configured.
+    :return: Ordered mapping of owner name to API key strings, or empty mapping if none configured.
     """
 
     api_keys_raw = os.getenv(ENV_VARIABLES["GEMINI"], "")  # Get Gemini API key(s) from environment variables.
@@ -2725,6 +2726,46 @@ def load_api_keys() -> list:
         print(f"{BackgroundColors.RED}Error: No Gemini API keys configured in .env file.{Style.RESET_ALL}")  # Report missing API key configuration.
 
     return api_keys  # Return list of validated API keys
+
+
+def parse_gemini_api_keys(env_value: str) -> Dict[str, str]:
+    """
+    Parse GEMINI API keys from an environment variable into a name->key mapping.
+
+    :param env_value: Raw environment variable string containing API key entries.
+    :return: Ordered dictionary mapping owner name to API key string.
+    """
+
+    env_value = (env_value or "").strip()  # Normalize raw value and guard against None
+    if not env_value:  # Return empty mapping for empty env values
+        return OrderedDict()  # Return empty ordered dict when no keys configured
+
+    entries = [entry.strip() for entry in env_value.split(",") if entry.strip()]  # Split on commas and trim whitespace
+    named_keys: "OrderedDict[str, str]" = OrderedDict()  # Prepare ordered mapping for resulting keys
+
+    contains_colon = any((":" in e) for e in entries)  # Determine whether at least one entry uses name:key format
+
+    if contains_colon:  # Parse only entries with a colon when new-style format detected
+        for entry in entries:  # Iterate over comma-separated entries preserving order
+            if ":" not in entry:  # Ignore malformed entries that do not contain a colon
+                continue  # Skip malformed entry without raising to remain tolerant
+            name, key = entry.split(":", 1)  # Split only on the first colon to allow colons in keys
+            name = name.strip()  # Trim whitespace around owner name
+            key = key.strip()  # Trim whitespace around API key value
+            if not name or not key:  # Ignore entries missing a name or key after trimming
+                continue  # Skip malformed or empty entries gracefully
+            named_keys[name] = key  # Store or override entry by owner name
+    else:  # Fallback to old-style comma-separated keys without explicit names
+        idx = 1  # Start incremental index counter for unnamed keys
+        for entry in entries:  # Iterate entries to assign generated names in original order
+            key = entry.strip()  # Normalize key string by trimming whitespace
+            if not key:  # Ignore empty key tokens
+                continue  # Skip empty entries without raising
+            generated_name = f"key_{idx}"  # Build deterministic generated owner name for compatibility
+            named_keys[generated_name] = key  # Assign generated name to the key in order
+            idx += 1  # Increment generated name counter for next unnamed key
+
+    return named_keys  # Return ordered mapping of owner->api_key
 
 
 def initialize_directories() -> str:
