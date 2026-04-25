@@ -22,7 +22,7 @@ Usage:
     1. Configure the .env file with necessary API keys (e.g., GEMINI_API_KEY).
     2. Prepare input files with URLs or search terms in the ./Inputs/ directory.
     3. Run the script via Makefile or Python:
-            $ make run   or   $ python main.py
+        $ make run   or   $ python main.py
     4. Verify outputs in the ./Outputs/ directory for scraped data.
 
 Outputs:
