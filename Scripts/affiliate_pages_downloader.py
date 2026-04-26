@@ -1772,7 +1772,6 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
 
         download_method = click_download_button(download_img)  # Execute download click action.
         confirmation_method = wait_for_download_confirmation(confirmation_img)  # Execute completion polling action.
-        close_method = close_extension_download_tab(close_download_tab_img)  # Execute close extension tab action.
 
         post_download_snapshots = snapshot_download_directories(downloads_dirs)  # Capture downloads directory snapshots after download completion.
 
@@ -1799,6 +1798,8 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         add_method(ext_methods, extension_method, current_tab)  # Store extension method for report.
         add_method(download_methods, download_method, current_tab)  # Store download method for report.
         add_method(completion_methods, confirmation_method, current_tab)  # Store completion method for report.
+        
+        close_method = close_extension_download_tab(close_download_tab_img)  # Execute close extension tab action.
         add_method(close_methods, close_method, current_tab)  # Store close method for report.
 
         try:  # Attempt safe tab closure and focus restoration for download flow.
