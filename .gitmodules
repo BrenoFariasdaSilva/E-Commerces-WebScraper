@@ -1,0 +1,3 @@
+[submodule "Multi-Fragmented-ZipFile-Extractor"]
+	path = Multi-Fragmented-ZipFile-Extractor
+	url = https://github.com/BrenoFariasdaSilva/Multi-Fragmented-ZipFile-Extractor
