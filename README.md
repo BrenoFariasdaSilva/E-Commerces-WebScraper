@@ -16,6 +16,7 @@ A production-ready web scraper for extracting product information from multiple 
 
 <div align="center">
 
+![Build Submodule Sync](https://github.com/BrenoFariasdaSilva/E-Commerces-WebScraper/actions/workflows/update-submodule.yml/badge.svg)
 ![GitHub Code Size in Bytes](https://img.shields.io/github/languages/code-size/BrenoFariasdaSilva/E-Commerces-WebScraper)
 ![GitHub Commits](https://img.shields.io/github/commit-activity/t/BrenoFariasdaSilva/E-Commerces-WebScraper/main)
 ![GitHub Last Commit](https://img.shields.io/github/last-commit/BrenoFariasdaSilva/E-Commerces-WebScraper)
