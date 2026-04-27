@@ -1356,9 +1356,9 @@ def verify_java_available() -> bool:
     :return: True when Java is available, otherwise False.
     """
 
-    java_check = run_executable(["java"], ["--version"])  # Verify Java availability cross-platform.
+    java_result = run_executable(["java"], ["--version"])  # Verify Java availability cross-platform.
 
-    if java_check.returncode != 0:  # Verify whether Java is present on the system.
+    if java_result.returncode != 0:  # Verify whether Java is present on the system.
         print(f"{BackgroundColors.YELLOW}[WARNING] Java not found. Cannot build Multi-Fragmented-ZipFile-Extractor JAR. See: https://github.com/BrenoFariasdaSilva/Multi-Fragmented-ZipFile-Extractor#installation. Falling back to local JAR if available.{Style.RESET_ALL}")  # Log Java missing warning.
         return False  # Return False when Java is unavailable.
 
@@ -1373,9 +1373,9 @@ def verify_maven_available() -> bool:
     :return: True when Maven is available, otherwise False.
     """
 
-    mvn_check = run_executable(["mvn", "mvn.cmd", "mvn.bat"], ["--version"])  # Verify Maven availability cross-platform.
+    mvn_result = run_executable(["mvn", "mvn.cmd", "mvn.bat"], ["--version"])  # Verify Maven availability cross-platform.
 
-    if mvn_check.returncode != 0:  # Verify whether Maven is present on the system.
+    if mvn_result.returncode != 0:  # Verify whether Maven is present on the system.
         print(f"{BackgroundColors.YELLOW}[WARNING] Maven not found. Cannot build Multi-Fragmented-ZipFile-Extractor JAR. See: https://github.com/BrenoFariasdaSilva/Multi-Fragmented-ZipFile-Extractor#installation. Falling back to local JAR if available.{Style.RESET_ALL}")  # Log Maven missing warning.
         return False  # Return False when Maven is unavailable.
 
@@ -2175,7 +2175,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
             if is_fragmented:  # Verify whether fragmented ZIP handling is required for this download.
                 final_filename = handle_fragmented_file_processing(detected_download_dir, detected_filenames, frag_base_name, url)  # Execute fragmented ZIP handling pipeline for the detected file.
                 
-                if final_filename == "":  # Verify whether fragmented ZIP processing succeeded by checking for a non-empty final filename.
+                if final_filename == "":  # Verify whether fragmented ZIP processing succeeded by verifying for a non-empty final filename.
                     print(f"{BackgroundColors.YELLOW}[WARNING] Fragmented ZIP processing failed for URL: {url}. Detected file: {detected_filenames}{Style.RESET_ALL}")  # Log fragmented ZIP processing failure with URL and detected filename details.
                     continue  # Continue with next URL without updating mapping when fragmented ZIP processing fails.
                 
