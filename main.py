@@ -2823,7 +2823,7 @@ def prepare_input_urls() -> tuple:
     write_urls_to_file(processed_lines, INPUT_FILE, True)  # Write preprocessed lines back to input file for deterministic retries and user reference
 
     urls_to_process = []  # Prepare list of tuples (url, local_html_path)
-    for line in processed_lines:  # Iterate preprocessed lines
+    for line in sorted(processed_lines, key=lambda s: s.lower()):  # Iterate preprocessed lines sorted alphabetically in a case-insensitive manner
         parts = line.split(maxsplit=1)  # Separate URL and optional local path
         url = parts[0]  # First token is URL
         local_html = parts[1] if len(parts) > 1 else None  # Optional local HTML path
