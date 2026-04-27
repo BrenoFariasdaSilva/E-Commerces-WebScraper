@@ -2092,51 +2092,6 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
     first_fragmented_file_detected = False  # Flag to track whether the first fragmented file detection has occurred for initial failure handling.
 
     for index, url in enumerate(tqdm(urls, total=len(urls), desc="Processing URLs", bar_format=bar_format), start=1):  # Initialize tqdm with custom colored bar_format and enumerate indexing
-        if only_renew_amazon_urls:  # Verify whether only-renew mode is active for Amazon URLs.
-            if not activate_automation_window():  # Verify if automation window activation succeeds before URL navigation.
-                return processed_count, url_to_download, False  # Return failure state when activation fails.
-
-            pyautogui.hotkey("ctrl", "t")  # Open new browser tab.
-            opened_tabs += 1  # Increment opened tabs counter after opening a new tab.
-            time.sleep(0.2)  # Wait after opening tab.
-            pyautogui.hotkey("ctrl", "l")  # Focus browser address bar.
-            time.sleep(0.08)  # Wait after focusing address bar.
-            pyautogui.hotkey("ctrl", "a")  # Select any previous address-bar text.
-            time.sleep(0.05)  # Wait after selecting address text.
-            pyautogui.press("backspace")  # Clear selected address text.
-            time.sleep(0.05)  # Wait after clearing address text.
-            pyautogui.typewrite(url, interval=0.0)  # Type URL into address bar.
-            time.sleep(0.1)  # Wait after typing URL.
-            pyautogui.press("enter")  # Navigate to URL.
-            time.sleep(7)  # Wait for page loading.
-
-            current_tab = index  # Store current tab index.
-
-            if re.search(AFFILIATE_URL_PATTERN, url):  # Verify whether current URL matches Amazon affiliate pattern.
-                scroll_window_to_top_center()  # Scroll active window to top center to reveal the share button image.
-                time.sleep(1)  # Wait briefly after scrolling to allow UI to stabilize before renewal attempt.
-                renewal_success = renew_amazon_affiliate_url(url, share_button_img, Path(urls_file))  # Attempt Amazon affiliate URL renewal for current URL.
-                if VERBOSE:  # Verify whether verbose logging is enabled for renewal status reporting.
-                    if renewal_success:  # Verify whether renewal succeeded before logging success message.
-                        print(f"{BackgroundColors.GREEN}✓ Amazon URL renewed successfully for tab {current_tab}{Style.RESET_ALL}")  # Log successful renewal with green background.
-                    else:  # Otherwise renewal failed, log failure message.
-                        print(f"{BackgroundColors.RED}✗ Amazon URL renewal failed for tab {current_tab}{Style.RESET_ALL}")  # Log failed renewal with red background.
-
-            try:  # Attempt safe tab closure and focus restoration in only-renew mode.
-                if opened_tabs > 0:  # Verify that a tab opened by this loop exists before closing.
-                    close_current_tab()  # Close the current product tab that was opened earlier.
-                    opened_tabs -= 1  # Decrement opened tabs counter after successful closure.
-                    time.sleep(0.2)  # Wait briefly to stabilize focus after closing the tab.
-                else:  # When no opened tabs tracked, skip closure to avoid closing base tab.
-                    print(f"{BackgroundColors.YELLOW}[DEBUG] No opened tab to close; skipping to preserve main tab{Style.RESET_ALL}")  # Log skipping closure.
-            except Exception as e:  # Handle unexpected exceptions during closure.
-                print(f"{BackgroundColors.YELLOW}[WARNING] Failed to close browser tab: {e}{Style.RESET_ALL}")  # Log warning on failure.
-
-            processed_count += 1  # Increment processed counter.
-            continue  # Continue loop without executing download-specific workflow.
-
-        pre_download_snapshots = snapshot_download_directories(downloads_dirs)  # Capture downloads directory snapshots before URL processing.
-
         if not activate_automation_window():  # Verify if automation window activation succeeds before URL navigation.
             return processed_count, url_to_download, False  # Return failure state when activation fails.
 
@@ -2156,20 +2111,39 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
 
         current_tab = index  # Store current tab index.
 
-        if re.search(AFFILIATE_URL_PATTERN, url):  # Verify whether current URL matches Amazon affiliate pattern before renewal attempt.
+        if re.search(AFFILIATE_URL_PATTERN, url):  # Verify whether current URL matches Amazon affiliate pattern.
             scroll_window_to_top_center()  # Scroll active window to top center to reveal the share button image.
-            time.sleep(1)  # Wait briefly after scrolling to allow UI to stabilize before attempting image search for renewal.
+            time.sleep(1)  # Wait briefly after scrolling to allow UI to stabilize before renewal attempt.
+
             renewal_success = False  # Initialize renewal success flag.
             renewed_url = url  # Initialize renewed URL with original URL.
+
             if renew_amazon_affiliate or RENEW_AMAZON_AFFILIATE_URL:  # Verify whether renewal is enabled via arg or global flag before attempting renewal.
                 renewal_success, renewed_url = renew_amazon_affiliate_url(url, share_button_img, Path(urls_file))  # Attempt Amazon affiliate URL renewal and capture tuple result.
                 if renewal_success and renewed_url != url:  # Verify whether renewal succeeded and URL changed before updating current URL.
                     url = renewed_url  # Update current URL with renewed affiliate URL.
+
             if VERBOSE:  # Verify whether verbose logging is enabled for renewal status reporting.
                 if renewal_success:  # Verify whether renewal succeeded before logging success message.
-                    print(f"{BackgroundColors.GREEN}✓ Amazon URL renewed successfully for tab {BackgroundColors.CYAN}{current_tab}{BackgroundColors.GREEN} from {BackgroundColors.CYAN}{url}{BackgroundColors.GREEN} to {BackgroundColors.CYAN}{renewed_url}{Style.RESET_ALL}")  # Log successful renewal with details and green background.
+                    print(f"{BackgroundColors.GREEN}Amazon URL renewed successfully for tab {BackgroundColors.CYAN}{current_tab}{BackgroundColors.GREEN} from {BackgroundColors.CYAN}{url}{BackgroundColors.GREEN} to {BackgroundColors.CYAN}{renewed_url}{Style.RESET_ALL}")  # Log successful renewal with details and green background.
                 else:  # Otherwise renewal failed, log failure message.
-                    print(f"{BackgroundColors.RED}✗ Amazon URL renewal failed for tab {BackgroundColors.CYAN}{current_tab}{BackgroundColors.RED} from {BackgroundColors.CYAN}{url}{BackgroundColors.RED} to {BackgroundColors.CYAN}{renewed_url}{Style.RESET_ALL}")  # Log failed renewal with details and red background.
+                    print(f"{BackgroundColors.RED}Amazon URL renewal failed for tab {BackgroundColors.CYAN}{current_tab}{BackgroundColors.RED} from {BackgroundColors.CYAN}{url}{BackgroundColors.RED} to {BackgroundColors.CYAN}{renewed_url}{Style.RESET_ALL}")  # Log failed renewal with details and red background.
+
+        if only_renew_amazon_urls:  # Verify whether only-renew mode is active for Amazon URLs.
+            try:  # Attempt safe tab closure and focus restoration in only-renew mode.
+                if opened_tabs > 0:  # Verify that a tab opened by this loop exists before closing.
+                    close_current_tab()  # Close the current product tab that was opened earlier.
+                    opened_tabs -= 1  # Decrement opened tabs counter after successful closure.
+                    time.sleep(0.2)  # Wait briefly to stabilize focus after closing the tab.
+                else:  # When no opened tabs tracked, skip closure to avoid closing base tab.
+                    print(f"{BackgroundColors.YELLOW}[DEBUG] No opened tab to close; skipping to preserve main tab{Style.RESET_ALL}")  # Log skipping closure.
+            except Exception as e:  # Handle unexpected exceptions during closure.
+                print(f"{BackgroundColors.YELLOW}[WARNING] Failed to close browser tab: {e}{Style.RESET_ALL}")  # Log warning on failure.
+
+            processed_count += 1  # Increment processed counter.
+            continue  # Continue loop without executing download-specific workflow.
+
+        pre_download_snapshots = snapshot_download_directories(downloads_dirs)  # Capture downloads directory snapshots before URL processing.
 
         click_go_to_product_button(mercado_livre_img)  # Execute MercadoLivre button action when available.
 
