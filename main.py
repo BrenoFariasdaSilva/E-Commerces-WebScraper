@@ -2477,6 +2477,7 @@ def parse_arguments() -> argparse.Namespace:
 
     parser = argparse.ArgumentParser(description="E-Commerces WebScraper")  # Initialize argument parser
 
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose debug output (default: False)")  # Register verbose flag that sets True when provided
     parser.add_argument("--headerless", type=lambda s: str(s).lower() in ("true", "1", "yes", "y"), default=False, help="Whether to suppress GUI messagebox (default: False)")  # Register headerless argument with boolean conversion
     parser.add_argument("--sort_products_by_product_name", type=lambda s: str(s).lower() in ("true", "1", "yes", "y"), default=False, help="Whether to sort and normalize product output directories by product name (default: False)")  # Register sort_products_by_product_name argument with boolean conversion
     parser.add_argument("--output_dir", type=str, default=None, help="Explicit path to output directory for sorting (optional)")  # Register output_dir argument for sorting-only mode
@@ -3440,6 +3441,10 @@ def main():
     start_time = datetime.datetime.now()  # Get the start time of the program
 
     args = parse_arguments()  # Parse command-line arguments
+
+    if args.verbose:  # Verify if verbose mode is enabled
+        global VERBOSE  # Set the global VERBOSE variable to True when the --verbose flag is provided
+        VERBOSE = True  # Enable verbose output
 
     if handle_merge_mode(args, start_time):  # Execute merge-only mode and early exit if applicable
         return  # Exit early if merge mode executed
