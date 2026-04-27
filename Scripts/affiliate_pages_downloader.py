@@ -1204,6 +1204,23 @@ def handle_initial_chrome_download_failures(chrome_download_settings_ready: bool
     return initial_consecutive_download_failures, None  # Return updated failures count and no abort when continuing
 
 
+def verify_java_available() -> bool:
+    """
+    Verify Java availability on the system.
+
+    :param: None.
+    :return: True when Java is available, otherwise False.
+    """
+
+    java_check = run_executable(["java"], ["--version"])  # Verify Java availability cross-platform.
+
+    if java_check.returncode != 0:  # Verify whether Java is present on the system.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Java not found. Cannot build Multi-Fragmented-ZipFile-Extractor JAR. See: https://github.com/BrenoFariasdaSilva/Multi-Fragmented-ZipFile-Extractor#installation. Falling back to local JAR if available.{Style.RESET_ALL}")  # Log Java missing warning.
+        return False  # Return False when Java is unavailable.
+
+    return True  # Return True when Java is available.
+
+
 def verify_maven_available() -> bool:
     """
     Verify Maven availability on the system.
