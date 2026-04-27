@@ -1204,6 +1204,48 @@ def handle_initial_chrome_download_failures(chrome_download_settings_ready: bool
     return initial_consecutive_download_failures, None  # Return updated failures count and no abort when continuing
 
 
+def handle_fragmented_file_processing(detected_download_dir: str, detected_filename: str, frag_base_name: str, url: str) -> str:
+    """
+    Handles the detection and merging of fragmented ZIP files when applicable.
+
+    :param detected_download_dir: Directory where the fragmented files were detected.
+    :param detected_filename: Initially detected filename from the downloads directory, used for logging and potential association with the URL if merging fails or is not needed.
+    :param frag_base_name: Base name of the fragmented files without the .z01/.zip extensions.
+    :param url: URL associated with the current processing cycle, used for logging context.
+    :return: The new detected filename after handling fragmentation in case of success. In case of failure during merging, return empty string to indicate that the URL should not be associated with any file due to potential corruption, or return the original detected filename if no fragmentation handling was needed.
+    """
+
+    zip_arrived = wait_for_zip_completion(detected_download_dir, frag_base_name)  # Poll until the companion .zip file exists alongside the .z01 fragment.
+
+    if zip_arrived:  # Verify whether the companion ZIP arrived before proceeding with merge.
+        jar_path = resolve_or_build_java_jar()  # Resolve or build the Java merge JAR from submodule.
+
+        if jar_path is not None:  # Verify whether the JAR was resolved or built successfully.
+            original_zip_path = Path(detected_download_dir) / f"{frag_base_name}.zip"  # Build absolute path to the companion .zip file.
+            merged_zip_path = Path(detected_download_dir) / f"{frag_base_name}_merged.zip"  # Build absolute output path for the merged ZIP file.
+            merge_ok = run_zip_merge_java(jar_path, original_zip_path, merged_zip_path)  # Execute Java merge pipeline combining fragment pair into single archive.
+
+            if merge_ok:  # Verify whether Java merge pipeline completed successfully.
+                canonical_filename = finalize_fragment_cleanup(detected_download_dir, frag_base_name, detected_filename)  # Delete fragments, rename merged ZIP to canonical basename.
+
+                if canonical_filename != "":  # Verify whether cleanup and rename completed successfully.
+                    detected_filename = canonical_filename  # Replace detected filename with canonical single ZIP artifact.
+                else:  # Cleanup failed — do not associate any file to avoid corrupted downstream mapping.
+                    print(f"{BackgroundColors.YELLOW}[WARNING] Fragment cleanup failed for URL: {url} — skipping URL association.{Style.RESET_ALL}")  # Log cleanup failure and skip association.
+                    detected_filename = ""  # Clear detected filename to prevent invalid URL association.
+            else:  # Java merge failed — do not delete anything, skip association safely.
+                print(f"{BackgroundColors.YELLOW}[WARNING] Java merge failed for URL: {url} — skipping URL association to preserve artifacts.{Style.RESET_ALL}")  # Log merge failure and skip association.
+                detected_filename = ""  # Clear detected filename to prevent invalid URL association.
+        else:  # JAR unavailable — cannot merge, skip association safely.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Java JAR unavailable for fragmented ZIP merge of URL: {url} — skipping URL association.{Style.RESET_ALL}")  # Log JAR unavailable warning.
+            detected_filename = ""  # Clear detected filename to prevent invalid URL association.
+    else:  # ZIP did not arrive — should not happen given infinite wait, but guard anyway.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Companion ZIP did not appear for fragmented archive of URL: {url} — skipping URL association.{Style.RESET_ALL}")  # Log missing companion ZIP warning.
+        pass  # No fragmentation handling was needed; keep original detected filename.
+
+    return detected_filename  # Return the potentially updated detected filename after handling fragmentation.
+
+
 def is_file_empty(filepath: str) -> bool:
     """
     Verifies whether a file is empty.
