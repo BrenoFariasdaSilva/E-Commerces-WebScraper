@@ -1204,6 +1204,24 @@ def handle_initial_chrome_download_failures(chrome_download_settings_ready: bool
     return initial_consecutive_download_failures, None  # Return updated failures count and no abort when continuing
 
 
+def detect_fragmented_zip_pair(filename: str) -> Tuple[bool, str]:
+    """
+    Detect whether a downloaded filename is a fragmented ZIP first-part (.z01).
+
+    :param filename: Detected downloaded filename to evaluate.
+    :return: Tuple of (is_fragmented, base_name_without_extension).
+    """
+
+    lower = filename.lower()  # Normalize filename for extension comparison.
+
+    if not re.search(r"\.z\d{2}$", lower):  # Verify whether filename ends with .zNN fragmented archive suffix.
+        return False, ""  # Return not-fragmented when filename does not match .zNN pattern.
+
+    base_name = Path(filename).stem  # Extract base name without the .zNN extension.
+    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] .z01 detected: {filename} — entering fragmented ZIP wait mode.{Style.RESET_ALL}")  # Log fragmented archive detection.
+    return True, base_name  # Return fragmented flag and base name for downstream polling.
+
+
 def wait_for_zip_completion(downloads_dir: str, base_name: str) -> bool:
     """
     Poll downloads directory every 1 second until {base_name}.zip exists.
