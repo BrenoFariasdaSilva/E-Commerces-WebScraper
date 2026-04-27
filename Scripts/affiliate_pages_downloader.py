@@ -1795,8 +1795,10 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
 
         if abort_result is not None:  # Verify whether handler requested abort after manual intervention request
             return abort_result  # Return handler-provided abort tuple to stop processing remaining URLs
-        
-        associate_url_with_download(url_to_download, url, detected_filenames)  # Persist URL to downloaded filename mapping when detection succeeds.
+
+        effective_filename = detected_filenames  # Default: Non-fragmented file case.
+
+        associate_url_with_download(url_to_download, url, effective_filename)  # Persist URL to downloaded filename mapping when detection succeeds.
 
         add_method(ext_methods, extension_method, current_tab)  # Store extension method for report.
         add_method(download_methods, download_method, current_tab)  # Store download method for report.
