@@ -1185,8 +1185,11 @@ def scrape_product(url, timestamped_output_dir, local_html_path=None):
                 zip_ref.extractall(extracted_dir)  # Extract the contents to the extracted_dir
             html_path = os.path.join(extracted_dir, "index.html")  # Assume the main HTML file is named index.html in the extracted directory
             if not os.path.exists(html_path):  # Verify if the expected HTML file exists after extraction
-                print(f"{BackgroundColors.RED}Error: index.html not found in extracted directory {extracted_dir}{Style.RESET_ALL}")
-                return None, None, None, None, None, None  # Return None values if extraction failed or expected file not found
+                normalize_extracted_directory_structure(extracted_dir)  # Normalize directory structure when nested directory exists
+                html_path = os.path.join(extracted_dir, "index.html")  # Recompute html_path after normalization
+                if not os.path.exists(html_path):  # Verify again if index.html exists after normalization
+                    print(f"{BackgroundColors.RED}Error: index.html not found in extracted directory {extracted_dir}{Style.RESET_ALL}")
+                    return None, None, None, None, None, None  # Return None values if extraction failed or expected file not found
         except Exception as e:  # If an error occurs during extraction
             print(f"{BackgroundColors.RED}Error extracting zip {zip_path}: {e}{Style.RESET_ALL}")
             return None, None, None, None, None, None  # Return None values if extraction failed
