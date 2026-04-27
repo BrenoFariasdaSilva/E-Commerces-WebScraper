@@ -1204,6 +1204,30 @@ def handle_initial_chrome_download_failures(chrome_download_settings_ready: bool
     return initial_consecutive_download_failures, None  # Return updated failures count and no abort when continuing
 
 
+def resolve_java_jar_path(submodule_dir: Path) -> Path | None:
+    """
+    Resolve the JAR path inside Multi-Fragmented-ZipFile-Extractor/target/.
+
+    :param submodule_dir: Path to the submodule directory.
+    :return: Resolved JAR Path when found, otherwise None.
+    """
+
+    target_dir = submodule_dir / "target"  # Build Maven target directory path.
+
+    if not target_dir.exists():  # Verify whether the Maven target directory exists.
+        return None  # Return None when target directory is absent.
+
+    jar_candidates = [
+        p for p in target_dir.glob("*.jar")
+        if not p.name.startswith("original-")
+    ]  # Discover all non-original JAR files inside target directory.
+
+    if len(jar_candidates) == 0:  # Verify whether any JAR candidates were found.
+        return None  # Return None when no JAR exists in target directory.
+
+    return max(jar_candidates, key=lambda p: p.stat().st_mtime)  # Return most recently modified JAR candidate.
+
+
 def resolve_existing_jar(submodule_dir: Path) -> Path | None:
     """
     Resolve an existing JAR file from the submodule target directory.
