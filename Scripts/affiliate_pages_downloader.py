@@ -1961,6 +1961,39 @@ def detect_new_download_file(before_snapshot: Dict[str, float], after_snapshot: 
     return selected_filename  # Return selected downloaded filename.
 
 
+def handle_fragmented_download(detected_download_dir: str, detected_filenames: str, url: str, first_fragmented_file_detected: bool) -> Tuple[str, bool, bool]:
+    """
+    Handles fragmented ZIP detection and processing.
+
+    :param detected_download_dir: Detected download directory.
+    :param detected_filenames: Detected filename.
+    :param url: URL associated with the download.
+    :param first_fragmented_file_detected: Flag indicating first fragmented detection.
+    :return: Tuple containing effective filename, updated fragmented flag, and continue flag.
+    """
+    
+    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Handling fragmented download for URL: {url} with detected file: {detected_filenames} in directory: {detected_download_dir}{Style.RESET_ALL}")  # Log entry into fragmented download handling with details.
+
+    effective_filename = detected_filenames  # Initialize effective filename with detected filename.
+    should_continue = False  # Initialize continue flag.
+
+    if detected_filenames != "" and detected_download_dir != "":  # Verify whether a download was detected before fragmentation evaluation.
+        is_fragmented, frag_base_name = detect_split_zip_fragment_start(detected_filenames)  # Evaluate whether detected file is a fragmented ZIP first-part.
+
+        if is_fragmented:  # Verify whether fragmented ZIP handling is required for this download.
+            is_first_fragment = not first_fragmented_file_detected  # Determine whether this is the first fragmented file detection.
+            first_fragmented_file_detected = True  # Mark that at least one fragmented file has been detected.
+            final_filename = handle_fragmented_file_processing(detected_download_dir, detected_filenames, frag_base_name, url, is_first_fragment)  # Execute fragmented ZIP handling pipeline for the detected file.
+
+            if final_filename == "":  # Verify whether fragmented ZIP processing succeeded by verifying for a non-empty final filename.
+                print(f"{BackgroundColors.YELLOW}[WARNING] Fragmented ZIP processing failed for URL: {url}. Detected file: {detected_filenames}{Style.RESET_ALL}")  # Log fragmented ZIP processing failure with URL and detected filename details.
+                should_continue = True  # Mark loop to continue without processing mapping.
+            else:  # Verify whether fragmented processing returned a valid filename.
+                effective_filename = final_filename  # Update effective filename to processed fragmented result.
+
+    return effective_filename, first_fragmented_file_detected, should_continue  # Return processed filename, updated flag, and continue signal.
+
+
 def associate_url_with_download(url_to_download: Dict[str, str], url: str, downloaded_filename: str) -> None:
     """
     Associates the processed URL with detected downloaded filename.
@@ -2149,20 +2182,12 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
 
         effective_filename = detected_filenames  # Default: Non-fragmented file case.
 
-        if detected_filenames != "" and detected_download_dir != "":  # Verify whether a download was detected before fragmentation evaluation.
-            is_fragmented, frag_base_name = detect_split_zip_fragment_start(detected_filenames)  # Evaluate whether detected file is a fragmented ZIP first-part.
+        effective_filename, first_fragmented_file_detected, should_continue = handle_fragmented_download(detected_download_dir, detected_filenames, url, first_fragmented_file_detected)  # Execute fragmented ZIP handling logic.
 
-            if is_fragmented:  # Verify whether fragmented ZIP handling is required for this download.
-                is_first_fragment = not first_fragmented_file_detected  # Determine whether this is the first fragmented file detection.
-                first_fragmented_file_detected = True  # Mark that at least one fragmented file has been detected.
-                final_filename = handle_fragmented_file_processing(detected_download_dir, detected_filenames, frag_base_name, url, is_first_fragment)  # Execute fragmented ZIP handling pipeline for the detected file.
-                
-                if final_filename == "":  # Verify whether fragmented ZIP processing succeeded by verifying for a non-empty final filename.
-                    print(f"{BackgroundColors.YELLOW}[WARNING] Fragmented ZIP processing failed for URL: {url}. Detected file: {detected_filenames}{Style.RESET_ALL}")  # Log fragmented ZIP processing failure with URL and detected filename details.
-                    continue  # Continue with next URL without updating mapping when fragmented ZIP processing fails.
-                
-                effective_filename = final_filename  # Update effective filename to the result of fragmented ZIP processing when applicable.
-                
+        if should_continue:  # Verify whether fragmented processing requested loop continuation.
+            verbose_output(f"{BackgroundColors.YELLOW}[WARNING] Skipping URL mapping update due to fragmented ZIP processing failure for URL: {url}{Style.RESET_ALL}")  # Log mapping skip due to fragmented processing failure with URL details when verbose.
+            continue  # Continue with next URL without updating mapping when fragmented ZIP processing fails.
+
         associate_url_with_download(url_to_download, url, effective_filename)  # Persist URL to downloaded filename mapping when detection succeeds.
         
         close_method = close_extension_download_tab(close_download_tab_img)  # Execute close extension tab action.
