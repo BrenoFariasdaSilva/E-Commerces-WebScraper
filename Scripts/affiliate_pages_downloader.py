@@ -1247,22 +1247,26 @@ def wait_for_zip_fragmented_chain_completion(downloads_dir: str, base_name: str)
     :return: True when the full ZIP chain is detected, otherwise False.
     """
 
-    expected_zip = Path(downloads_dir) / f"{base_name}.zip"  # Build expected final ZIP path.
+    dir_path = Path(downloads_dir)  # Resolve downloads directory path.
+    final_zip = dir_path / f"{base_name}.zip"  # Build expected final ZIP path.
+
     elapsed_seconds = 0  # Initialize elapsed seconds counter for periodic INFO logging.
     notify_interval = 10  # Define interval in seconds between wait-status messages.
 
-    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Waiting for {expected_zip.name} to appear in {downloads_dir}{Style.RESET_ALL}")  # Log initial wait start message.
+    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Waiting for full ZIP chain: {base_name}.z[0-9][0-9] + .zip in {downloads_dir}{Style.RESET_ALL}")  # Log initial wait start message.
 
-    while True:  # Poll indefinitely until ZIP appears.
-        if expected_zip.exists():  # Verify whether expected ZIP file now exists.
-            verbose_output(f"{BackgroundColors.CYAN}[DEBUG] {expected_zip.name} detected — fragmented ZIP pair is complete.{Style.RESET_ALL}")  # Log ZIP arrival.
-            return True  # Return success when final ZIP is found.
+    while True:  # Poll indefinitely until ZIP chain is complete.
+        fragments = list(dir_path.glob(f"{base_name}.z[0-9][0-9]"))  # Collect all fragment parts.
+
+        if final_zip.exists() and len(fragments) > 0:  # Verify whether full ZIP chain is complete.
+            verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Full ZIP chain detected ({len(fragments)} parts + .zip).{Style.RESET_ALL}")  # Log ZIP chain completion.
+            return True  # Return success when full chain is detected.
 
         time.sleep(1)  # Wait 1 second before re-polling.
         elapsed_seconds += 1  # Increment elapsed seconds tracker.
 
         if elapsed_seconds % notify_interval == 0:  # Verify whether notify interval has elapsed.
-            print(f"{BackgroundColors.CYAN}[DEBUG] Still waiting for {expected_zip.name} — {elapsed_seconds}s elapsed.{Style.RESET_ALL}")  # Print periodic wait notification.
+            print(f"{BackgroundColors.CYAN}[DEBUG] Waiting ZIP chain {base_name} — {elapsed_seconds}s elapsed.{Style.RESET_ALL}")  # Print periodic wait notification.
 
 
 def initialize_git_submodules(submodule_dir: Path) -> Path | None:
