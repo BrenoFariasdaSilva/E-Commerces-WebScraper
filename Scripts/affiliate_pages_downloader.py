@@ -1204,6 +1204,27 @@ def handle_initial_chrome_download_failures(chrome_download_settings_ready: bool
     return initial_consecutive_download_failures, None  # Return updated failures count and no abort when continuing
 
 
+def handle_build_failure(submodule_dir: Path, build_result: subprocess.CompletedProcess) -> Path | None:
+    """
+    Handle Maven build failure and attempt fallback JAR resolution.
+
+    :param submodule_dir: Path to the submodule directory.
+    :param build_result: Maven build process result.
+    :return: Resolved JAR Path if available, otherwise None.
+    """
+
+    print(f"{BackgroundColors.YELLOW}[WARNING] mvn clean package failed: {build_result.stderr.strip()}{Style.RESET_ALL}")  # Log Maven build failure.
+    print(f"{BackgroundColors.YELLOW}[WARNING] See: https://github.com/BrenoFariasdaSilva/Multi-Fragmented-ZipFile-Extractor#installation{Style.RESET_ALL}")  # Log installation reference.
+
+    jar_path = resolve_java_jar_path(submodule_dir)  # Attempt fallback to existing JAR after failure.
+
+    if jar_path is not None:  # Verify whether fallback JAR exists.
+        verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Java jar resolved (fallback after failure): {jar_path}{Style.RESET_ALL}")  # Log fallback resolution.
+        return jar_path  # Return fallback JAR.
+
+    return None  # Return None when no JAR exists.
+
+
 def resolve_or_build_java_jar(first_run: bool = True) -> Path | None:
     """
     Build or resolve the Multi-Fragmented-ZipFile-Extractor JAR.
