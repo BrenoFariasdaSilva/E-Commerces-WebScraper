@@ -1204,6 +1204,30 @@ def handle_initial_chrome_download_failures(chrome_download_settings_ready: bool
     return initial_consecutive_download_failures, None  # Return updated failures count and no abort when continuing
 
 
+def run_executable(executable_names: list[str], args: list[str], cwd: str | None = None) -> subprocess.CompletedProcess:
+    """
+    Resolves and executes a system binary in a cross-platform safe way.
+
+    :param executable_names: List of possible executable names (e.g. ["java"], ["mvn", "mvn.cmd", "mvn.bat"]).
+    :param args: Arguments to pass to the executable.
+    :param cwd: Working directory for execution.
+    :return: Completed subprocess result.
+    """
+
+    resolved_exe = None  # Initialize resolved executable path.
+
+    for name in executable_names:  # Iterate through possible executable variants.
+        resolved_exe = shutil.which(name)  # Attempt to resolve executable in PATH.
+
+        if resolved_exe is not None:  # Verify if executable was found.
+            break  # Stop at first valid match.
+
+    if resolved_exe is None:  # Verify whether any executable was resolved.
+        raise FileNotFoundError(f"None of the executables were found: {executable_names}")  # Fail fast with context.
+
+    return subprocess.run([resolved_exe, *args], capture_output=True, text=True, cwd=cwd)  # Execute safely.
+
+
 def verify_java_available() -> bool:
     """
     Verify Java availability on the system.
