@@ -3136,7 +3136,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
             seen_urls.add(candidate_url)  # Register current candidate URL in deduplication set.
             unique_urls.append(candidate_url)  # Append unique URL to ordered processing list.
 
-        urls = unique_urls  # Persist deduplicated URL list as only-renew processing source.
+        urls = sorted(unique_urls, key=lambda x: x.lower())  # Persist sorted deduplicated URL list as only-renew processing source.
 
         if len(urls) == 0:  # Verify whether both URL files produced zero valid Amazon URLs.
             fallback_outputs_mode = True  # Enable Outputs fallback mode when both URL files have no valid Amazon URLs.
