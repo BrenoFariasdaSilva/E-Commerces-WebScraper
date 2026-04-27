@@ -1204,6 +1204,25 @@ def handle_initial_chrome_download_failures(chrome_download_settings_ready: bool
     return initial_consecutive_download_failures, None  # Return updated failures count and no abort when continuing
 
 
+def initialize_git_submodules(submodule_dir: Path) -> Path | None:
+    """
+    Initialize git submodules when directory is missing or empty.
+
+    :param submodule_dir: Path to the target submodule directory.
+    :return: The submodule directory path if initialization succeeds, otherwise None.
+    """
+
+    if not submodule_dir.exists() or not any(submodule_dir.iterdir()):  # Verify whether submodule directory is present and non-empty.
+        print(f"{BackgroundColors.CYAN}[DEBUG] Submodule directory missing or empty — initializing via git submodule update.{Style.RESET_ALL}")  # Log submodule initialization attempt.
+        init_result = subprocess.run(["git", "submodule", "update", "--init", "--recursive"], capture_output=True, text=True, cwd=PROJECT_ROOT)  # Run git submodule init from project root.
+
+        if init_result.returncode != 0:  # Verify whether submodule initialization succeeded.
+            print(f"{BackgroundColors.YELLOW}[WARNING] git submodule update failed: {init_result.stderr.strip()}{Style.RESET_ALL}")  # Log submodule initialization failure.
+            return None  # Return None when submodule cannot be initialized.
+
+    return submodule_dir  # Return validated submodule directory path.
+
+
 def resolve_submodule_path() -> Path:
     """
     Resolve the Multi-Fragmented-ZipFile-Extractor submodule path.
