@@ -1204,6 +1204,49 @@ def handle_initial_chrome_download_failures(chrome_download_settings_ready: bool
     return initial_consecutive_download_failures, None  # Return updated failures count and no abort when continuing
 
 
+def run_zip_merge_java(jar_path: Path, zip_file: Path, output_zip: Path) -> bool:
+    """
+    Run the Java merge pipeline to combine fragmented ZIP parts into a single archive.
+
+    :param jar_path: Absolute path to the Multi-Fragmented-ZipFile-Extractor JAR.
+    :param zip_file: Absolute path to the original .zip fragment companion file.
+    :param output_zip: Absolute path for the merged output ZIP file.
+    :return: True when merge succeeds, otherwise False.
+    """
+
+    command = ["java", "-jar", str(jar_path), str(output_zip), str(zip_file)]  # Build Java execution command.
+
+    try:  # Attempt Java execution.
+        result = subprocess.run(command, capture_output=True, text=True)  # Execute Java process.
+    except Exception as exc:  # Handle subprocess failure.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to execute Java merge command: {exc}{Style.RESET_ALL}")  # Log execution failure.
+        return False  # Return failure.
+
+    raw_output = result.stdout.strip() if result.stdout else ""  # Normalize stdout output.
+
+    try:  # Attempt to extract JSON from mixed output.
+        json_match = re.findall(r"\{.*\}", raw_output, re.DOTALL)[-1]  # Extract last JSON object safely.
+
+        parsed = json.loads(json_match)  # Parse extracted JSON.
+        status = str(parsed.get("status", "")).lower()  # Extract status field.
+
+        if status == "success":  # Verify success status.
+            verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Merge success: {parsed.get('output', '')}{Style.RESET_ALL}")  # Log success.
+            # verify if the file exists
+            if not verify_filepath_exists(output_zip):  # Verify whether the expected merged ZIP file now exists after Java merge.
+                print(f"{BackgroundColors.YELLOW}[WARNING] Java merge reported success but output ZIP not found: {output_zip}{Style.RESET_ALL}")  # Log missing output ZIP warning.
+                return False  # Return failure when output ZIP is not found after reported success.
+            return True  # Return success.
+
+
+        print(f"{BackgroundColors.YELLOW}[WARNING] Java merge returned non-success status: {parsed}{Style.RESET_ALL}")  # Log failure status.
+        return False  # Return failure.
+
+    except Exception:  # Handle parsing failure.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Java merge output could not be parsed as JSON: {raw_output}{Style.RESET_ALL}")  # Log raw output.
+        return False  # Return failure.
+
+
 def finalize_fragment_cleanup(downloads_dir: str, base_name: str, z01_filename: str) -> str:
     """
     Delete fragmented artifacts and rename merged ZIP to canonical filename.
