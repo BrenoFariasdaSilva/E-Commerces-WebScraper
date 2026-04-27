@@ -1029,6 +1029,40 @@ def resolve_local_html_path(local_html_path):
     return local_html_path  # Return original path even if not found
 
 
+def normalize_extracted_directory_structure(extracted_dir: str) -> None:
+    """
+    Normalizes extracted directory when a single nested directory contains actual content.
+
+    :param extracted_dir: Path to extracted directory.
+    :return: None.
+    """
+
+    try:  # Try to normalize extracted directory structure
+        if not os.path.isdir(extracted_dir):  # Verify if extracted_dir exists and is a directory
+            return  # Exit early when extracted_dir is invalid
+
+        entries = os.listdir(extracted_dir)  # List all entries inside extracted_dir
+
+        if len(entries) != 1:  # Verify if there is exactly one entry in extracted_dir
+            return  # Exit when multiple entries exist (no normalization needed)
+
+        single_entry_path = os.path.join(extracted_dir, entries[0])  # Build full path to the single entry
+
+        if not os.path.isdir(single_entry_path):  # Verify if the single entry is a directory
+            return  # Exit when the single entry is not a directory
+
+        nested_entries = os.listdir(single_entry_path)  # List all entries inside nested directory
+
+        for entry in nested_entries:  # Iterate over nested directory contents
+            source_path = os.path.join(single_entry_path, entry)  # Build source path for entry inside nested directory
+            destination_path = os.path.join(extracted_dir, entry)  # Build destination path at root extracted_dir
+            shutil.move(source_path, destination_path)  # Move entry from nested directory to extracted_dir root
+
+        os.rmdir(single_entry_path)  # Remove now-empty nested directory
+    except Exception:  # Catch any exception during normalization
+        return  # Silently return to preserve existing behavior
+
+
 def copy_original_input_to_output(input_source, product_directory, base_output_dir=OUTPUT_DIRECTORY):
     """
     Copies the original input file or directory used for scraping into the product output directory.
