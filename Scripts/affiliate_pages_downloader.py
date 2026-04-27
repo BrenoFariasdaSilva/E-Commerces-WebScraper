@@ -2092,24 +2092,12 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
     first_fragmented_file_detected = False  # Flag to track whether the first fragmented file detection has occurred for initial failure handling.
 
     for index, url in enumerate(tqdm(urls, total=len(urls), desc="Processing URLs", bar_format=bar_format), start=1):  # Initialize tqdm with custom colored bar_format and enumerate indexing
+        # @TODO: Implement update and link of the url to the zip file in the txt file at every product iteration, so that if the process is interrupted, we can know which URLs were processed and which file corresponds to each URL for better recovery and tracking.
+
         if not activate_automation_window():  # Verify if automation window activation succeeds before URL navigation.
             return processed_count, url_to_download, False  # Return failure state when activation fails.
 
-        # @TODO: Implement update and link of the url to the zip file in the txt file at every product iteration, so that if the process is interrupted, we can know which URLs were processed and which file corresponds to each URL for better recovery and tracking.
-
-        pyautogui.hotkey("ctrl", "t")  # Open new browser tab.
-        opened_tabs += 1  # Increment opened tabs counter after opening a new tab.
-        time.sleep(0.2)  # Wait after opening tab.
-        pyautogui.hotkey("ctrl", "l")  # Focus browser address bar.
-        time.sleep(0.08)  # Wait after focusing address bar.
-        pyautogui.hotkey("ctrl", "a")  # Select any previous address-bar text.
-        time.sleep(0.05)  # Wait after selecting address text.
-        pyautogui.press("backspace")  # Clear selected address text.
-        time.sleep(0.05)  # Wait after clearing address text.
-        pyautogui.typewrite(url, interval=0.0)  # Type URL into address bar.
-        time.sleep(0.1)  # Wait after typing URL.
-        pyautogui.press("enter")  # Navigate to URL.
-        time.sleep(7)  # Wait for page loading.
+        opened_tabs = open_url_in_new_tab(url, opened_tabs)  # Open URL in new tab and update opened tabs counter.
 
         current_tab = index  # Store current tab index.
 
@@ -2335,6 +2323,37 @@ def scroll_extension_tab_to_start_button(scroll_amount: int = -500) -> None:
 
     time.sleep(0.2)  # Wait briefly after scrolling to allow elements to become visible.
 
+
+def open_url_in_new_tab(url: str, opened_tabs: int) -> int:
+    """
+    Open URL in a new browser tab and navigate to it.
+
+    :param url: URL to open in the browser.
+    :param opened_tabs: Current count of opened tabs.
+    :return: Updated opened tabs count.
+    """
+
+    pyautogui.hotkey("ctrl", "t")  # Open new browser tab.
+    opened_tabs += 1  # Increment opened tabs counter after opening a new tab.
+
+    time.sleep(0.2)  # Wait after opening tab.
+    pyautogui.hotkey("ctrl", "l")  # Focus browser address bar.
+
+    time.sleep(0.08)  # Wait after focusing address bar.
+    pyautogui.hotkey("ctrl", "a")  # Select any previous address-bar text.
+
+    time.sleep(0.05)  # Wait after selecting address text.
+    pyautogui.press("backspace")  # Clear selected address text.
+
+    time.sleep(0.05)  # Wait after clearing address text.
+    pyautogui.typewrite(url, interval=0.0)  # Type URL into address bar.
+
+    time.sleep(0.1)  # Wait after typing URL.
+    pyautogui.press("enter")  # Navigate to URL.
+
+    time.sleep(7)  # Wait for page loading.
+
+    return opened_tabs  # Return updated opened tabs count.
 
 def scroll_window_to_top_center() -> None:
     """
