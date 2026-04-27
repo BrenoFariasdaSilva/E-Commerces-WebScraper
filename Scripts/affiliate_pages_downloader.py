@@ -2168,15 +2168,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         close_method = close_extension_download_tab(close_download_tab_img)  # Execute close extension tab action.
         handle_post_download_methods(ext_methods, download_methods, completion_methods, close_methods, extension_method, download_method, confirmation_method, close_method, current_tab)  # Execute extracted method tracking logic.
         
-        try:  # Attempt safe tab closure and focus restoration for download flow.
-            if opened_tabs > 0:  # Verify that a tab opened by this loop exists before closing.
-                close_current_tab()  # Close the current product tab that was opened earlier.
-                opened_tabs -= 1  # Decrement opened tabs counter after successful closure.
-                time.sleep(0.2)  # Wait briefly to stabilize focus after closing the tab.
-            else:  # When no opened tabs tracked, skip closure to avoid closing base tab.
-                print(f"{BackgroundColors.YELLOW}[DEBUG] No opened tab to close; skipping to preserve main tab{Style.RESET_ALL}")  # Log skipping closure.
-        except Exception as e:  # Handle unexpected exceptions during closure.
-            print(f"{BackgroundColors.YELLOW}[WARNING] Failed to close browser tab: {e}{Style.RESET_ALL}")  # Log warning on failure.
+        opened_tabs = safely_close_product_tab(opened_tabs)  # Execute extracted safe tab closure logic and update opened tabs counter.
 
         processed_count += 1  # Increment processed counter.
 
@@ -2584,6 +2576,27 @@ def handle_post_download_methods(ext_methods: Dict[str, List[int]], download_met
     add_method(download_methods, download_method, current_tab)  # Store download method for report.
     add_method(completion_methods, confirmation_method, current_tab)  # Store completion method for report.
     add_method(close_methods, close_method, current_tab)  # Store close method for report.
+
+
+def safely_close_product_tab(opened_tabs: int) -> int:
+    """
+    Safely closes the current product tab and restores focus.
+
+    :param opened_tabs: Current opened tabs counter.
+    :return: Updated opened tabs counter.
+    """
+
+    try:  # Attempt safe tab closure and focus restoration for download flow.
+        if opened_tabs > 0:  # Verify that a tab opened by this loop exists before closing.
+            close_current_tab()  # Close the current product tab that was opened earlier.
+            opened_tabs -= 1  # Decrement opened tabs counter after successful closure.
+            time.sleep(0.2)  # Wait briefly to stabilize focus after closing the tab.
+        else:  # When no opened tabs tracked, skip closure to avoid closing base tab.
+            print(f"{BackgroundColors.YELLOW}[DEBUG] No opened tab to close; skipping to preserve main tab{Style.RESET_ALL}")  # Log skipping closure.
+    except Exception as e:  # Handle unexpected exceptions during closure.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to close browser tab: {e}{Style.RESET_ALL}")  # Log warning on failure.
+
+    return opened_tabs  # Return updated opened tabs counter.
 
 
 def join_array(values: List[int]) -> str:
