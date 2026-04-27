@@ -1785,18 +1785,18 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
                 update_active_download_directory(resolved_download_dir)  # Persist resolved monitored downloads directory in global cache.
                 downloads_dirs[:] = ACTIVE_DOWNLOADS_DIRS  # Update local monitored downloads directories list with resolved cache.
 
-        detected_download_dir, detected_filename = detect_new_download_from_directories(pre_download_snapshots, post_download_snapshots, downloads_dirs, url)  # Detect downloaded filename and source directory associated with current URL.
+        detected_download_dir, detected_filenames = detect_new_download_from_directories(pre_download_snapshots, post_download_snapshots, downloads_dirs, url)  # Detect downloaded filename and source directory associated with current URL.
 
         if detected_download_dir != "" and len(downloads_dirs) > 1:  # Verify whether detected directory exists while local list remains unresolved.
             update_active_download_directory(detected_download_dir)  # Persist detected monitored downloads directory in global cache.
             downloads_dirs[:] = ACTIVE_DOWNLOADS_DIRS  # Update local monitored downloads directories list with detected cache.
 
-        initial_consecutive_download_failures, abort_result = handle_initial_chrome_download_failures(chrome_download_settings_ready, index, detected_filename, initial_consecutive_download_failures, url, processed_count, url_to_download)  # Verify initial downloads and possibly request manual intervention
+        initial_consecutive_download_failures, abort_result = handle_initial_chrome_download_failures(chrome_download_settings_ready, index, detected_filenames, initial_consecutive_download_failures, url, processed_count, url_to_download)  # Verify initial downloads and possibly request manual intervention
 
         if abort_result is not None:  # Verify whether handler requested abort after manual intervention request
             return abort_result  # Return handler-provided abort tuple to stop processing remaining URLs
-
-        associate_url_with_download(url_to_download, url, detected_filename)  # Persist URL to downloaded filename mapping when detection succeeds.
+        
+        associate_url_with_download(url_to_download, url, detected_filenames)  # Persist URL to downloaded filename mapping when detection succeeds.
 
         add_method(ext_methods, extension_method, current_tab)  # Store extension method for report.
         add_method(download_methods, download_method, current_tab)  # Store download method for report.
