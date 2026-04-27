@@ -2873,7 +2873,7 @@ def update_urls_txt_with_new_amazon_url(old_url: str, new_url: str, urls_file: P
         if not replacement_occurred:  # Verify whether any replacement actually took place.
             return False  # Return failure when no replacement was detected in the file.
 
-        write_atomic_temp_file(urls_file, sorted(updated_lines, key=lambda s: s.lower()))  # Write updated content atomically using helper function with case-insensitive alphabetical sorting
+        write_atomic_temp_file(urls_file, updated_lines)  # Write updated content atomically using helper function.
         verbose_output(f"{BackgroundColors.GREEN}Updated Amazon URL in {BackgroundColors.CYAN}{urls_file.resolve()}{Style.RESET_ALL}")  # Log successful URL update when verbose enabled.
         return True  # Return success after atomic file replacement.
     except Exception as e:  # Handle file IO or replacement errors.
@@ -2955,14 +2955,14 @@ def replace_url_recursively(base_path: Path, old_url: str, new_url: str) -> None
             replace_url_in_file(str(filepath), old_url, new_url)  # Replace URL occurrences in current file.
 
 
-def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, urls_file: Path) -> bool:
+def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, urls_file: Path) -> tuple:
     """
     Orchestrate complete Amazon affiliate URL renewal workflow.
 
     :param current_url: Original Amazon URL to replace.
     :param share_button_img: Path to ShareAffiliateURL-Amazon.png image.
     :param urls_file: Path to the urls.txt file.
-    :return: True if renewal succeeded, False otherwise.
+    :return: Tuple containing True if renewal succeeded, otherwise False, and the new URL if successful or the original URL if failed.
     """
 
     verbose_output(f"{BackgroundColors.GREEN}Initiating Amazon affiliate URL renewal for: {current_url}{Style.RESET_ALL}")  # Log renewal workflow start when verbose enabled.
@@ -2975,15 +2975,15 @@ def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, urls_fi
     copied_url = wait_for_valid_affiliate_url(current_url, 8)  # Wait for a valid renewed affiliate URL from clipboard.
     if not copied_url:  # Verify if clipboard retrieval succeeded.
         verbose_output(f"{BackgroundColors.RED}Failed to retrieve valid renewed URL from clipboard{Style.RESET_ALL}")  # Log clipboard retrieval failure when verbose enabled.
-        return False  # Return failure when clipboard is empty.
+        return False, current_url  # Return failure and original URL when clipboard is empty.
 
     if not validate_amazon_affiliate_url(copied_url):  # Verify if copied URL matches strict and project affiliate validation.
         verbose_output(f"{BackgroundColors.RED}Invalid Amazon affiliate URL format: {copied_url}{Style.RESET_ALL}")  # Log invalid URL format when verbose enabled.
-        return False  # Return failure when URL format is invalid.
+        return False, current_url  # Return failure and original URL when URL format is invalid.
 
     if normalize_affiliate_url(copied_url) == normalize_affiliate_url(current_url):  # Verify whether renewed URL differs from original URL.
         verbose_output(f"{BackgroundColors.RED}Renewed Amazon URL is identical to original URL: {copied_url}{Style.RESET_ALL}")  # Log unchanged URL failure when verbose enabled.
-        return False  # Return failure when renewed URL matches the original URL.
+        return False, current_url  # Return failure and original URL when renewed URL matches the original URL.
 
     RENEWED_URL_MAP[current_url] = copied_url  # Store successful renewal mapping for fallback mapped-file replacements.
 
@@ -3004,9 +3004,11 @@ def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, urls_fi
             files_to_validate = [str(urls_file.resolve())]  # Include only urls.txt for validation in default mode.
         if not validate_url_update(current_url, copied_url, files_to_validate):  # Verify new URL presence and old URL absence across selected files.
             print(f"{BackgroundColors.YELLOW}[WARNING] Affiliate URL validation failed for files: {BackgroundColors.CYAN}{files_to_validate}{Style.RESET_ALL}")  # Log validation failure and mention only the files actually validated.
-            return False  # Return failure when validation does not pass to avoid continuing silently.
+            return False, current_url  # Return failure and original URL when validation does not pass to avoid continuing silently.
 
-    return success  # Return the update result status.
+        return True, copied_url  # Return success and new URL when full workflow completes successfully.
+
+    return False, current_url  # Return failure and original URL when initial update step fails.
 
 
 def build_report(ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]]) -> str:
