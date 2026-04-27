@@ -1473,18 +1473,23 @@ def resolve_or_build_java_jar(first_run: bool = True) -> Path | None:
     return jar_path  # Return resolved JAR path.
 
 
-def run_zip_merge_java(jar_path: Path, zip_file: Path, output_zip: Path) -> bool:
+def run_zip_merge_java(jar_path: Path, zip_files: List[Path], output_zip: Path) -> bool:
     """
     Run the Java merge pipeline to combine fragmented ZIP parts into a single archive.
 
     :param jar_path: Absolute path to the Multi-Fragmented-ZipFile-Extractor JAR.
-    :param zip_file: Absolute path to the original .zip fragment companion file.
+    :param zip_files: List of absolute paths to the .zip fragment companion files.
     :param output_zip: Absolute path for the merged output ZIP file.
     :return: True when merge succeeds, otherwise False.
     """
 
-    command = ["java", "-jar", str(jar_path), str(output_zip), str(zip_file)]  # Build Java execution command.
+    command = ["java", "-jar", str(jar_path), str(output_zip)] + [str(p) for p in zip_files if str(p).lower().endswith(".zip")]  # Build the Java command with the JAR, output path, and all .zip fragment companions as arguments.
 
+    if VERBOSE:
+        command.insert(3, "--log=DEBUG")  # Insert verbose logging argument if verbose mode is enabled.
+    
+    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Executing Java merge command: {' '.join(command)}{Style.RESET_ALL}")  # Log the exact Java command being executed
+    
     try:  # Attempt Java execution.
         result = subprocess.run(command, capture_output=True, text=True)  # Execute Java process.
     except Exception as exc:  # Handle subprocess failure.
@@ -1492,9 +1497,17 @@ def run_zip_merge_java(jar_path: Path, zip_file: Path, output_zip: Path) -> bool
         return False  # Return failure.
 
     raw_output = result.stdout.strip() if result.stdout else ""  # Normalize stdout output.
+    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Raw Java output: {raw_output}{Style.RESET_ALL}")  # Log raw Java output for debugging.
 
     try:  # Attempt to extract JSON from mixed output.
-        json_match = re.findall(r"\{.*\}", raw_output, re.DOTALL)[-1]  # Extract last JSON object safely.
+        json_matches = re.findall(r"\{.*\}", raw_output, re.DOTALL)  # Extract JSON objects from the raw output using regex, allowing for any surrounding text.
+        verbose_output(f"{BackgroundColors.CYAN}[DEBUG] JSON matches found in Java output: {json_matches}{Style.RESET_ALL}")  # Log JSON matches found in the Java output for debugging.
+
+        if not json_matches:  # Verify whether any JSON was found in the output.
+            print(f"{BackgroundColors.YELLOW}[WARNING] No JSON found in Java output: {raw_output}{Style.RESET_ALL}")
+            return False  # Return failure when no JSON is found to parse.
+
+        json_match = json_matches[-1]  # Use the last JSON match found, assuming it's the most relevant status output from the Java process.
 
         parsed = json.loads(json_match)  # Parse extracted JSON.
         status = str(parsed.get("status", "")).lower()  # Extract status field.
@@ -1506,7 +1519,6 @@ def run_zip_merge_java(jar_path: Path, zip_file: Path, output_zip: Path) -> bool
                 print(f"{BackgroundColors.YELLOW}[WARNING] Java merge reported success but output ZIP not found: {output_zip}{Style.RESET_ALL}")  # Log missing output ZIP warning.
                 return False  # Return failure when output ZIP is not found after reported success.
             return True  # Return success.
-
 
         print(f"{BackgroundColors.YELLOW}[WARNING] Java merge returned non-success status: {parsed}{Style.RESET_ALL}")  # Log failure status.
         return False  # Return failure.
