@@ -1204,6 +1204,23 @@ def handle_initial_chrome_download_failures(chrome_download_settings_ready: bool
     return initial_consecutive_download_failures, None  # Return updated failures count and no abort when continuing
 
 
+def resolve_existing_jar(submodule_dir: Path) -> Path | None:
+    """
+    Resolve an existing JAR file from the submodule target directory.
+
+    :param submodule_dir: Path to the submodule directory.
+    :return: Resolved JAR Path if available, otherwise None.
+    """
+
+    jar_path = resolve_java_jar_path(submodule_dir)  # Attempt to resolve JAR from target directory.
+
+    if jar_path is not None:  # Verify whether JAR exists locally.
+        verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Java jar resolved (cached): {jar_path}{Style.RESET_ALL}")  # Log cached JAR resolution.
+        return jar_path  # Return resolved JAR path.
+
+    return None  # Return None when no JAR is available.
+
+
 def run_executable(executable_names: list[str], args: list[str], cwd: str | None = None) -> subprocess.CompletedProcess:
     """
     Resolves and executes a system binary in a cross-platform safe way.
