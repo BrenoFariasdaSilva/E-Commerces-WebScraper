@@ -2169,6 +2169,18 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
 
         effective_filename = detected_filenames  # Default: Non-fragmented file case.
 
+        if detected_filenames != "" and detected_download_dir != "":  # Verify whether a download was detected before fragmentation evaluation.
+            is_fragmented, frag_base_name = detect_fragmented_zip_pair(detected_filenames)  # Evaluate whether detected file is a fragmented ZIP first-part.
+
+            if is_fragmented:  # Verify whether fragmented ZIP handling is required for this download.
+                final_filename = handle_fragmented_file_processing(detected_download_dir, detected_filenames, frag_base_name, url)  # Execute fragmented ZIP handling pipeline for the detected file.
+                
+                if final_filename == "":  # Verify whether fragmented ZIP processing succeeded by checking for a non-empty final filename.
+                    print(f"{BackgroundColors.YELLOW}[WARNING] Fragmented ZIP processing failed for URL: {url}. Detected file: {detected_filenames}{Style.RESET_ALL}")  # Log fragmented ZIP processing failure with URL and detected filename details.
+                    continue  # Continue with next URL without updating mapping when fragmented ZIP processing fails.
+                
+                effective_filename = final_filename  # Update effective filename to the result of fragmented ZIP processing when applicable.
+                
         associate_url_with_download(url_to_download, url, effective_filename)  # Persist URL to downloaded filename mapping when detection succeeds.
 
         add_method(ext_methods, extension_method, current_tab)  # Store extension method for report.
