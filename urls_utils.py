@@ -180,17 +180,21 @@ def load_urls_to_process(input_file) -> list[str]:
     return url_list  # Return the collected URL lines as strings
 
 
-def write_urls_to_file(urls_to_write: list, input_file_path: str, recursive: bool = False) -> None:
+def write_urls_to_file(urls_to_write: list, input_file_path: str, recursive: bool = False, sort: bool = True) -> None:
     """
     Write URLs to input file, supporting optional local HTML paths.
 
     :param urls_to_write: List of URLs or tuples (url, local_html_path).
     :param input_file_path: Path to the input file.
     :param recursive: Optional; when True also write a "-backup" copy. Defaults to False.
+    :param sort: Optional; when True sorts lines alphabetically (case-insensitive). Defaults to True.
     :return: None.
     """
 
     try:  # Attempt to write URLs to the input file
+        if sort:  # If sorting is enabled, sort the URLs case-insensitively before writing
+            urls_to_write = sorted(urls_to_write, key=lambda x: x[0].lower() if isinstance(x, tuple) else x.lower())  # Sort URLs by URL string (case-insensitive), handling both tuples and plain strings
+        
         with open(input_file_path, "w", encoding="utf-8") as file:  # Open the file in write mode with UTF-8 encoding
             for item in urls_to_write:  # Iterate over each item in the URLs list
                 if isinstance(item, tuple):  # Verify if the item is a tuple
@@ -205,5 +209,5 @@ def write_urls_to_file(urls_to_write: list, input_file_path: str, recursive: boo
                     file.write(f"{url}\n")  # Write only the URL
         if recursive and os.path.exists(input_file_path.replace(".txt", "-backup.txt")):  # If recursive flag is True and backup file exists
             write_urls_to_file(urls_to_write, input_file_path.replace(".txt", "-backup.txt"), False)  # Recursively write to backup file if recursive flag is True
-    except Exception as e:  # Handle any exception during file writing
+    except Exception as e:  # Handle any exception during file write
         print(f"{BackgroundColors.RED}Error writing to file {input_file_path}: {e}{Style.RESET_ALL}")  # Report write errors
