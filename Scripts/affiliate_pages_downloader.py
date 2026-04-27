@@ -1204,6 +1204,37 @@ def handle_initial_chrome_download_failures(chrome_download_settings_ready: bool
     return initial_consecutive_download_failures, None  # Return updated failures count and no abort when continuing
 
 
+def resolve_or_build_java_jar(first_run: bool = True) -> Path | None:
+    """
+    Build or resolve the Multi-Fragmented-ZipFile-Extractor JAR.
+
+    :param first_run: When True, forces build attempt; otherwise uses cached resolution only.
+    :return: Resolved JAR Path if available, otherwise None.
+    """
+
+    submodule_dir = resolve_submodule_path()  # Resolve submodule directory.
+
+    if not first_run:  # Verify whether build is skipped on non-first run.
+        return resolve_existing_jar(submodule_dir)  # Return cached JAR if available.
+
+    if not verify_java_available() or not verify_maven_available():  # Verify Java and Maven availability before attempting build.
+        return resolve_existing_jar(submodule_dir)  # Attempt fallback JAR when Java or Maven is unavailable.
+
+    build_result = build_maven_project(submodule_dir)  # Execute Maven build.
+
+    if build_result.returncode != 0:  # Verify whether Maven build succeeded.
+        return handle_build_failure(submodule_dir, build_result)  # Handle build failure and fallback.
+
+    jar_path = resolve_java_jar_path(submodule_dir)  # Resolve JAR after successful build.
+
+    if jar_path is None:  # Verify whether JAR was produced.
+        print(f"{BackgroundColors.YELLOW}[WARNING] JAR not found in target/ after successful Maven build.{Style.RESET_ALL}")  # Log missing JAR after build.
+        return None  # Return None when JAR is missing.
+
+    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Java jar resolved: {jar_path}{Style.RESET_ALL}")  # Log resolved JAR path.
+    return jar_path  # Return resolved JAR path.
+
+
 def run_zip_merge_java(jar_path: Path, zip_file: Path, output_zip: Path) -> bool:
     """
     Run the Java merge pipeline to combine fragmented ZIP parts into a single archive.
