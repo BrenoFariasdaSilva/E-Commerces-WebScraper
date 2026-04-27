@@ -2117,15 +2117,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
             url, renewal_success, renewed_url = handle_amazon_affiliate_url(current_tab, url, share_button_img, Path(urls_file), renew_amazon_affiliate)  # Execute extracted Amazon affiliate handling logic.
 
         if only_renew_amazon_urls:  # Verify whether only-renew mode is active for Amazon URLs.
-            try:  # Attempt safe tab closure and focus restoration in only-renew mode.
-                if opened_tabs > 0:  # Verify that a tab opened by this loop exists before closing.
-                    close_current_tab()  # Close the current product tab that was opened earlier.
-                    opened_tabs -= 1  # Decrement opened tabs counter after successful closure.
-                    time.sleep(0.2)  # Wait briefly to stabilize focus after closing the tab.
-                else:  # When no opened tabs tracked, skip closure to avoid closing base tab.
-                    print(f"{BackgroundColors.YELLOW}[DEBUG] No opened tab to close; skipping to preserve main tab{Style.RESET_ALL}")  # Log skipping closure.
-            except Exception as e:  # Handle unexpected exceptions during closure.
-                print(f"{BackgroundColors.YELLOW}[WARNING] Failed to close browser tab: {e}{Style.RESET_ALL}")  # Log warning on failure.
+            opened_tabs = handle_only_renew_amazon_urls(opened_tabs)  # Execute extracted only-renew tab handling logic.
 
             processed_count += 1  # Increment processed counter.
             continue  # Continue loop without executing download-specific workflow.
@@ -2396,6 +2388,27 @@ def handle_amazon_affiliate_url(current_tab: int, url: str, share_button_img: Pa
             print(f"{BackgroundColors.RED}Amazon URL renewal failed for tab {BackgroundColors.CYAN}{current_tab}{BackgroundColors.RED} from {BackgroundColors.CYAN}{url}{BackgroundColors.RED} to {BackgroundColors.CYAN}{renewed_url}{Style.RESET_ALL}")  # Log failed renewal with details and red background.
 
     return url, renewal_success, renewed_url  # Return updated URL, success flag, and renewed URL.
+
+
+def handle_only_renew_amazon_urls(opened_tabs: int) -> int:
+    """
+    Handle only-renew Amazon URLs mode tab closure logic.
+
+    :param opened_tabs: Current number of opened tabs.
+    :return: Updated opened_tabs count after closure attempt.
+    """
+
+    try:  # Attempt safe tab closure and focus restoration in only-renew mode.
+        if opened_tabs > 0:  # Verify that a tab opened by this loop exists before closing.
+            close_current_tab()  # Close the current product tab that was opened earlier.
+            opened_tabs -= 1  # Decrement opened tabs counter after successful closure.
+            time.sleep(0.2)  # Wait briefly to stabilize focus after closing the tab.
+        else:  # When no opened tabs tracked, skip closure to avoid closing base tab.
+            print(f"{BackgroundColors.YELLOW}[DEBUG] No opened tab to close; skipping to preserve main tab{Style.RESET_ALL}")  # Log skipping closure.
+    except Exception as e:  # Handle unexpected exceptions during closure.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to close browser tab: {e}{Style.RESET_ALL}")  # Log warning on failure.
+
+    return opened_tabs  # Return updated opened tabs count.
 
 
 def click_download_button(download_img: Path) -> str:
