@@ -1204,12 +1204,21 @@ def handle_initial_chrome_download_failures(chrome_download_settings_ready: bool
     return initial_consecutive_download_failures, None  # Return updated failures count and no abort when continuing
 
 
-def detect_fragmented_zip_pair(filename: str) -> Tuple[bool, str]:
+def detect_split_zip_fragment_start(filename: str) -> Tuple[bool, str]:
     """
-    Detect whether a downloaded filename is a fragmented ZIP first-part (.z01).
+    Detect whether a downloaded filename is the first fragment of a split ZIP archive (.zNN format).
+
+    Split ZIP archives use sequential parts like:
+    - file.z01
+    - file.z02
+    - ...
+    - file.zip (final container)
+
+    This function identifies whether the given file is part of such a fragmented sequence and extracts
+    the base name used to track the full archive chain.
 
     :param filename: Detected downloaded filename to evaluate.
-    :return: Tuple of (is_fragmented, base_name_without_extension).
+    :return: Tuple of (is_split_fragment, base_name_without_extension).
     """
 
     lower = filename.lower()  # Normalize filename for extension comparison.
@@ -2173,7 +2182,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         effective_filename = detected_filenames  # Default: Non-fragmented file case.
 
         if detected_filenames != "" and detected_download_dir != "":  # Verify whether a download was detected before fragmentation evaluation.
-            is_fragmented, frag_base_name = detect_fragmented_zip_pair(detected_filenames)  # Evaluate whether detected file is a fragmented ZIP first-part.
+            is_fragmented, frag_base_name = detect_split_zip_fragment_start(detected_filenames)  # Evaluate whether detected file is a fragmented ZIP first-part.
 
             if is_fragmented:  # Verify whether fragmented ZIP handling is required for this download.
                 is_first_fragment = not first_fragmented_file_detected  # Determine whether this is the first fragmented file detection.
