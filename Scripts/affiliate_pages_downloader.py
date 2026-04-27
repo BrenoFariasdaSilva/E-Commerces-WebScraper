@@ -2096,7 +2096,7 @@ def close_current_tab() -> None:
     try:  # Attempt to close the current browser tab with graceful handling.
         pyautogui.hotkey("ctrl", "w")  # Trigger close-tab hotkey.
         time.sleep(0.4)  # Wait after closing the tab to allow focus stabilization.
-        print(f"{BackgroundColors.GREEN}[DEBUG] Closed browser tab after processing URL{Style.RESET_ALL}")  # Log debug success message.
+        verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Closed browser tab after processing URL{Style.RESET_ALL}")  # Log debug success message.
     except Exception as e:  # Handle failures to close the tab without crashing.
         print(f"{BackgroundColors.YELLOW}[WARNING] Failed to close browser tab: {e}{Style.RESET_ALL}")  # Log warning when closure fails.
 
