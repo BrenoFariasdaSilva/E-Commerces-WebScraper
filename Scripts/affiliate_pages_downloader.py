@@ -1204,6 +1204,25 @@ def handle_initial_chrome_download_failures(chrome_download_settings_ready: bool
     return initial_consecutive_download_failures, None  # Return updated failures count and no abort when continuing
 
 
+def build_maven_project(submodule_dir: Path) -> subprocess.CompletedProcess:
+    """
+    Execute Maven clean package build.
+
+    :param submodule_dir: Path to the submodule directory.
+    :return: Maven build process result.
+    """
+
+    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Maven build executed — running mvn clean package in submodule.{Style.RESET_ALL}")  # Log Maven build execution.
+
+    build_result = run_executable(
+        ["mvn", "mvn.cmd", "mvn.bat"],  # Resolve Maven cross-platform.
+        ["clean", "package"],  # Maven build arguments.
+        cwd=str(submodule_dir)  # Execute inside submodule directory.
+    )  # Run Maven clean package safely.
+
+    return build_result  # Return build result.
+
+
 def handle_build_failure(submodule_dir: Path, build_result: subprocess.CompletedProcess) -> Path | None:
     """
     Handle Maven build failure and attempt fallback JAR resolution.
