@@ -1222,12 +1222,15 @@ def detect_split_zip_fragment_start(filename: str) -> Tuple[bool, str]:
     """
 
     lower = filename.lower()  # Normalize filename for extension comparison.
+    is_fragment = bool(re.search(r"\.z\d{2}$", lower))  # Verify whether the filename ends with a .zNN pattern indicating a fragmented ZIP first-part.
+    base_name = Path(filename).stem  # Extract the base name without the .zNN extension for downstream polling of the expected final ZIP file.
 
-    if not re.search(r"\.z\d{2}$", lower):  # Verify whether filename ends with .zNN fragmented archive suffix.
+    if not is_fragment:  # Verify whether filename ends with .zNN fragmented archive suffix.
         return False, ""  # Return not-fragmented when filename does not match .zNN pattern.
 
     base_name = Path(filename).stem  # Extract base name without the .zNN extension.
-    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] .z01 detected: {filename} — entering fragmented ZIP wait mode.{Style.RESET_ALL}")  # Log fragmented archive detection.
+    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Fragment detected: {filename} — tracking full ZIP chain.{Style.RESET_ALL}")  # Log fragmented archive detection.
+
     return True, base_name  # Return fragmented flag and base name for downstream polling.
 
 
