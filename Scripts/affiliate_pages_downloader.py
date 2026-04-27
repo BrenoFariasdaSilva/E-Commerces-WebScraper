@@ -1204,6 +1204,23 @@ def handle_initial_chrome_download_failures(chrome_download_settings_ready: bool
     return initial_consecutive_download_failures, None  # Return updated failures count and no abort when continuing
 
 
+def verify_maven_available() -> bool:
+    """
+    Verify Maven availability on the system.
+
+    :param: None.
+    :return: True when Maven is available, otherwise False.
+    """
+
+    mvn_check = run_executable(["mvn", "mvn.cmd", "mvn.bat"], ["--version"])  # Verify Maven availability cross-platform.
+
+    if mvn_check.returncode != 0:  # Verify whether Maven is present on the system.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Maven not found. Cannot build Multi-Fragmented-ZipFile-Extractor JAR. See: https://github.com/BrenoFariasdaSilva/Multi-Fragmented-ZipFile-Extractor#installation. Falling back to local JAR if available.{Style.RESET_ALL}")  # Log Maven missing warning.
+        return False  # Return False when Maven is unavailable.
+
+    return True  # Return True when Maven is available.
+
+
 def build_maven_project(submodule_dir: Path) -> subprocess.CompletedProcess:
     """
     Execute Maven clean package build.
