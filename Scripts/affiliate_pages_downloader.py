@@ -2113,33 +2113,9 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
 
         current_tab = index  # Store current tab index.
 
-        # @TODO:Extract the logic inside:
-        # "if re.search(AFFILIATE_URL_PATTERN, url):  # Verify whether current URL matches Amazon affiliate pattern.
-        #             scroll_window_to_top_center()  # Scroll active window to top center to reveal the share button image.
-        #             time.sleep(1)  # Wait briefly after scrolling to allow UI to stabilize before renewal attempt."
-        # into a separate function named "handle_amazon_affiliate_url" that takes the current tab, URL, and renewed URL as parameters and performs the necessary actions for handling Amazon affiliate URL renewal.
         if re.search(AFFILIATE_URL_PATTERN, url):  # Verify whether current URL matches Amazon affiliate pattern.
-            scroll_window_to_top_center()  # Scroll active window to top center to reveal the share button image.
-            time.sleep(1)  # Wait briefly after scrolling to allow UI to stabilize before renewal attempt.
+            url, renewal_success, renewed_url = handle_amazon_affiliate_url(current_tab, url, share_button_img, Path(urls_file), renew_amazon_affiliate)  # Execute extracted Amazon affiliate handling logic.
 
-            renewal_success = False  # Initialize renewal success flag.
-            renewed_url = url  # Initialize renewed URL with original URL.
-
-            if renew_amazon_affiliate or RENEW_AMAZON_AFFILIATE_URL:  # Verify whether renewal is enabled via arg or global flag before attempting renewal.
-                renewal_success, renewed_url = renew_amazon_affiliate_url(url, share_button_img, Path(urls_file))  # Attempt Amazon affiliate URL renewal and capture tuple result.
-                if renewal_success and renewed_url != url:  # Verify whether renewal succeeded and URL changed before updating current URL.
-                    url = renewed_url  # Update current URL with renewed affiliate URL.
-
-            if VERBOSE:  # Verify whether verbose logging is enabled for renewal status reporting.
-                if renewal_success:  # Verify whether renewal succeeded before logging success message.
-                    print(f"{BackgroundColors.GREEN}Amazon URL renewed successfully for tab {BackgroundColors.CYAN}{current_tab}{BackgroundColors.GREEN} from {BackgroundColors.CYAN}{url}{BackgroundColors.GREEN} to {BackgroundColors.CYAN}{renewed_url}{Style.RESET_ALL}")  # Log successful renewal with details and green background.
-                else:  # Otherwise renewal failed, log failure message.
-                    print(f"{BackgroundColors.RED}Amazon URL renewal failed for tab {BackgroundColors.CYAN}{current_tab}{BackgroundColors.RED} from {BackgroundColors.CYAN}{url}{BackgroundColors.RED} to {BackgroundColors.CYAN}{renewed_url}{Style.RESET_ALL}")  # Log failed renewal with details and red background.
-
-        # @TODO:Extract the logic inside:
-        # " if only_renew_amazon_urls:  # Verify whether only-renew mode is active for Amazon URLs.
-        #             try:  # Attempt safe tab closure and focus restoration in only-renew mode."
-        # into a separate function named "handle_only_renew_amazon_urls" that takes the current tab, URL, and renewed URL as parameters and performs the necessary actions for handling only-renew mode for Amazon URLs.
         if only_renew_amazon_urls:  # Verify whether only-renew mode is active for Amazon URLs.
             try:  # Attempt safe tab closure and focus restoration in only-renew mode.
                 if opened_tabs > 0:  # Verify that a tab opened by this loop exists before closing.
@@ -2388,6 +2364,39 @@ def scroll_window_to_top_center() -> None:
         time.sleep(0.2)  # Wait after input to allow UI elements to stabilize.
     except Exception:  # Handle unexpected exceptions to avoid breaking main flow
         pass  # Ignore exceptions to preserve execution flow when Home key press fails
+
+
+def handle_amazon_affiliate_url(current_tab: int, url: str, share_button_img: Path, urls_file: Path, renew_amazon_affiliate: bool) -> Tuple[str, bool, str]:
+    """
+    Handle Amazon affiliate URL renewal flow.
+
+    :param current_tab: Current browser tab index.
+    :param url: Original URL being processed.
+    :param share_button_img: Path to ShareAffiliateURL button image.
+    :param urls_file: Path to urls.txt file.
+    :param renew_amazon_affiliate: Flag indicating whether renewal is enabled.
+    :return: Tuple containing possibly updated URL, success flag, and renewed URL.
+    """
+
+    scroll_window_to_top_center()  # Scroll active window to top center to reveal the share button image.
+    time.sleep(1)  # Wait briefly after scrolling to allow UI to stabilize before renewal attempt.
+
+    renewal_success = False  # Initialize renewal success flag.
+    renewed_url = url  # Initialize renewed URL with original URL.
+
+    if renew_amazon_affiliate or RENEW_AMAZON_AFFILIATE_URL:  # Verify whether renewal is enabled via arg or global flag before attempting renewal.
+        renewal_success, renewed_url = renew_amazon_affiliate_url(url, share_button_img, Path(urls_file))  # Attempt Amazon affiliate URL renewal and capture tuple result.
+        if renewal_success and renewed_url != url:  # Verify whether renewal succeeded and URL changed before updating current URL.
+            url = renewed_url  # Update current URL with renewed affiliate URL.
+
+    if VERBOSE:  # Verify whether verbose logging is enabled for renewal status reporting.
+        if renewal_success:  # Verify whether renewal succeeded before logging success message.
+            print(f"{BackgroundColors.GREEN}Amazon URL renewed successfully for tab {BackgroundColors.CYAN}{current_tab}{BackgroundColors.GREEN} from {BackgroundColors.CYAN}{url}{BackgroundColors.GREEN} to {BackgroundColors.CYAN}{renewed_url}{Style.RESET_ALL}")  # Log successful renewal with details and green background.
+        else:  # Otherwise renewal failed, log failure message.
+            print(f"{BackgroundColors.RED}Amazon URL renewal failed for tab {BackgroundColors.CYAN}{current_tab}{BackgroundColors.RED} from {BackgroundColors.CYAN}{url}{BackgroundColors.RED} to {BackgroundColors.CYAN}{renewed_url}{Style.RESET_ALL}")  # Log failed renewal with details and red background.
+
+    return url, renewal_success, renewed_url  # Return updated URL, success flag, and renewed URL.
+
 
 def click_download_button(download_img: Path) -> str:
     """
