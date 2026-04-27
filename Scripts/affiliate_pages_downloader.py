@@ -1583,12 +1583,14 @@ def handle_fragmented_file_processing(detected_download_dir: str, detected_filen
         jar_path = resolve_or_build_java_jar(first_fragmented_file_detected)  # Resolve or build the Java merge JAR from submodule.
 
         if jar_path is not None:  # Verify whether the JAR was resolved or built successfully.
-            original_zip_path = Path(detected_download_dir) / f"{frag_base_name}.zip"  # Build absolute path to the companion .zip file.
-            merged_zip_path = Path(detected_download_dir) / f"{frag_base_name}_merged.zip"  # Build absolute output path for the merged ZIP file.
-            merge_ok = run_zip_merge_java(jar_path, original_zip_path, merged_zip_path)  # Execute Java merge pipeline combining fragment pair into single archive.
+            zip_dir = Path(detected_download_dir)  # Resolve downloads directory path.
+            zip_parts = sorted(zip_dir.glob(f"{frag_base_name}.z[0-9][0-9]"))  # Collect all fragmented parts (.z01, .z02, etc.)
+            zip_parts.append(zip_dir / f"{frag_base_name}.zip")  # Add final ZIP file to complete the chain.
+            merged_zip_path = zip_dir / f"{frag_base_name}_merged.zip"  # Build absolute output path for merged ZIP file.
+            merge_ok = run_zip_merge_java(jar_path, zip_parts, merged_zip_path)  # Execute Java merge pipeline with ZIP chain reference.
 
             if merge_ok:  # Verify whether Java merge pipeline completed successfully.
-                canonical_filename = finalize_fragments_cleanup(detected_download_dir, frag_base_name, detected_filename)  # Delete fragments, rename merged ZIP to canonical basename.
+                canonical_filename = finalize_fragments_cleanup(detected_download_dir, frag_base_name)  # Delete fragments, rename merged ZIP to canonical basename.
 
                 if canonical_filename != "":  # Verify whether cleanup and rename completed successfully.
                     detected_filename = canonical_filename  # Replace detected filename with canonical single ZIP artifact.
