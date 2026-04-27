@@ -2164,14 +2164,10 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
                 effective_filename = final_filename  # Update effective filename to the result of fragmented ZIP processing when applicable.
                 
         associate_url_with_download(url_to_download, url, effective_filename)  # Persist URL to downloaded filename mapping when detection succeeds.
-
-        add_method(ext_methods, extension_method, current_tab)  # Store extension method for report.
-        add_method(download_methods, download_method, current_tab)  # Store download method for report.
-        add_method(completion_methods, confirmation_method, current_tab)  # Store completion method for report.
         
         close_method = close_extension_download_tab(close_download_tab_img)  # Execute close extension tab action.
-        add_method(close_methods, close_method, current_tab)  # Store close method for report.
-
+        handle_post_download_methods(ext_methods, download_methods, completion_methods, close_methods, extension_method, download_method, confirmation_method, close_method, current_tab)  # Execute extracted method tracking logic.
+        
         try:  # Attempt safe tab closure and focus restoration for download flow.
             if opened_tabs > 0:  # Verify that a tab opened by this loop exists before closing.
                 close_current_tab()  # Close the current product tab that was opened earlier.
@@ -2566,6 +2562,28 @@ def add_method(methods: Dict[str, List[int]], method: str, tab_index: int) -> No
     """
 
     methods.setdefault(method, []).append(tab_index)  # Append tab index to grouped method list.
+
+
+def handle_post_download_methods(ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]], extension_method: str, download_method: str, confirmation_method: str, close_method: str, current_tab: int) -> None:
+    """
+    Handles method tracking after download
+
+    :param ext_methods: Dictionary tracking extension click methods by tab index.
+    :param download_methods: Dictionary tracking download click methods by tab index.
+    :param completion_methods: Dictionary tracking completion detection methods by tab index.
+    :param close_methods: Dictionary tracking close tab methods by tab index.
+    :param extension_method: Method used for extension click action.
+    :param download_method: Method used for download click action.
+    :param confirmation_method: Method used for download confirmation detection.
+    :param close_method: Method used for close tab action.
+    :param current_tab: Current browser tab index for method tracking association.
+    :return: None
+    """
+
+    add_method(ext_methods, extension_method, current_tab)  # Store extension method for report.
+    add_method(download_methods, download_method, current_tab)  # Store download method for report.
+    add_method(completion_methods, confirmation_method, current_tab)  # Store completion method for report.
+    add_method(close_methods, close_method, current_tab)  # Store close method for report.
 
 
 def join_array(values: List[int]) -> str:
