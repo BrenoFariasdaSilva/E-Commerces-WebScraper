@@ -74,9 +74,11 @@ from tqdm import tqdm  # Import tqdm progress bar iterator.
 from typing import Any, Dict, List, Tuple  # Provide typing annotations for containers and dynamic objects.
 
 
-PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)  # Project root directory
+PROJECT_ROOT = str(Path(__file__).resolve().parents[[p.name for p in Path(__file__).resolve().parents].index("E-Commerces-WebScraper")])  # Project root directory
+
 if PROJECT_ROOT not in sys.path:  # Ensure project root is in sys.path
     sys.path.insert(0, PROJECT_ROOT)  # Insert at the beginning
+
 from Logger import Logger  # For logging output to both terminal and file
 from Amazon import AFFILIATE_URL_PATTERN  # Import Amazon affiliate URL regex pattern from project Amazon module
 from urls_utils import load_urls_to_process, preprocess_urls, write_urls_to_file  # Centralized URL helpers
