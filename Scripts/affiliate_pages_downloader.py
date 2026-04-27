@@ -2218,6 +2218,8 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
 
         processed_count += 1  # Increment processed counter.
 
+    url_to_download = dict(sorted(url_to_download.items(), key=lambda item: item[0].lower()))  # Sort URL mapping dictionary by keys alphabetically in a case-insensitive manner
+
     return processed_count, url_to_download, True  # Return processed counter, URL mapping, and success status.
 
 
