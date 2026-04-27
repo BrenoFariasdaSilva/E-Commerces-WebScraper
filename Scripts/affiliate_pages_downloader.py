@@ -2873,7 +2873,7 @@ def update_urls_txt_with_new_amazon_url(old_url: str, new_url: str, urls_file: P
         if not replacement_occurred:  # Verify whether any replacement actually took place.
             return False  # Return failure when no replacement was detected in the file.
 
-        write_atomic_temp_file(urls_file, updated_lines)  # Write updated content atomically using helper function.
+        write_atomic_temp_file(urls_file, sorted(updated_lines, key=lambda s: s.lower()))  # Write updated content atomically using helper function with case-insensitive alphabetical sorting
         verbose_output(f"{BackgroundColors.GREEN}Updated Amazon URL in {BackgroundColors.CYAN}{urls_file.resolve()}{Style.RESET_ALL}")  # Log successful URL update when verbose enabled.
         return True  # Return success after atomic file replacement.
     except Exception as e:  # Handle file IO or replacement errors.
