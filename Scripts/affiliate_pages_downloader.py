@@ -1204,6 +1204,43 @@ def handle_initial_chrome_download_failures(chrome_download_settings_ready: bool
     return initial_consecutive_download_failures, None  # Return updated failures count and no abort when continuing
 
 
+def finalize_fragment_cleanup(downloads_dir: str, base_name: str, z01_filename: str) -> str:
+    """
+    Delete fragmented artifacts and rename merged ZIP to canonical filename.
+
+    :param downloads_dir: Resolved path to the downloads directory containing the artifacts.
+    :param base_name: Base filename without extension shared by all fragmented parts.
+    :param z01_filename: Original .z01 filename to delete after merge.
+    :return: Canonical ZIP filename after successful cleanup, or empty string on failure.
+    """
+
+    dir_path = Path(downloads_dir)  # Build Path instance for downloads directory.
+    z01_path = dir_path / z01_filename  # Build absolute path to the original .z01 fragment.
+    original_zip_path = dir_path / f"{base_name}.zip"  # Build absolute path to the original .zip companion.
+    merged_zip_path = dir_path / f"{base_name}_merged.zip"  # Build absolute path to the Java-produced merged ZIP.
+    canonical_zip_path = dir_path / f"{base_name}.zip"  # Build canonical final ZIP path (same as original after cleanup).
+
+    if not merged_zip_path.exists():  # Verify whether merged ZIP was produced by Java pipeline.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Merged ZIP not found after Java pipeline: {merged_zip_path}{Style.RESET_ALL}")  # Log missing merged ZIP warning.
+        return ""  # Return empty string when merged ZIP is absent.
+
+    try:  # Attempt deletion of fragmented artifacts before renaming.
+        if z01_path.exists():  # Verify whether .z01 fragment file still exists.
+            os.remove(z01_path)  # Delete the .z01 fragment file to clean up the directory after successful merge.
+            verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Fragmented file deleted: {z01_path.name}{Style.RESET_ALL}")  # Log successful deletion of the .z01 fragment.
+            
+        if original_zip_path.exists():  # Verify whether original .zip companion still exists.
+            os.remove(original_zip_path)  # Delete the original .zip companion file to clean up the directory after successful merge.
+            verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Original ZIP fragment deleted: {original_zip_path.name}{Style.RESET_ALL}")  # Log successful deletion of the original .zip companion.
+
+        os.rename(merged_zip_path, canonical_zip_path)  # Rename the merged ZIP to the canonical filename (same as original .zip) for downstream compatibility.
+        verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Final rename complete: {merged_zip_path.name} → {canonical_zip_path.name}{Style.RESET_ALL}")  # Log successful rename to canonical filename.
+        return canonical_zip_path.name  # Return canonical ZIP filename as the final artifact.
+    except Exception as exc:  # Handle filesystem operation failures.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed during fragment cleanup or rename: {exc}{Style.RESET_ALL}")  # Log cleanup failure warning.
+        return ""  # Return empty string when cleanup fails.
+
+
 def handle_fragmented_file_processing(detected_download_dir: str, detected_filename: str, frag_base_name: str, url: str) -> str:
     """
     Handles the detection and merging of fragmented ZIP files when applicable.
