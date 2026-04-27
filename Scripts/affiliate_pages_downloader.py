@@ -2118,7 +2118,6 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
 
         if only_renew_amazon_urls:  # Verify whether only-renew mode is active for Amazon URLs.
             opened_tabs = handle_only_renew_amazon_urls(opened_tabs)  # Execute extracted only-renew tab handling logic.
-
             processed_count += 1  # Increment processed counter.
             continue  # Continue loop without executing download-specific workflow.
 
