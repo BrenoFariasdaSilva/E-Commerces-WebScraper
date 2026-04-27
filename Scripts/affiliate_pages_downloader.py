@@ -2113,7 +2113,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
 
         current_tab = index  # Store current tab index.
 
-        # Extract the logic inside:
+        # @TODO:Extract the logic inside:
         # "if re.search(AFFILIATE_URL_PATTERN, url):  # Verify whether current URL matches Amazon affiliate pattern.
         #             scroll_window_to_top_center()  # Scroll active window to top center to reveal the share button image.
         #             time.sleep(1)  # Wait briefly after scrolling to allow UI to stabilize before renewal attempt."
@@ -2136,7 +2136,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
                 else:  # Otherwise renewal failed, log failure message.
                     print(f"{BackgroundColors.RED}Amazon URL renewal failed for tab {BackgroundColors.CYAN}{current_tab}{BackgroundColors.RED} from {BackgroundColors.CYAN}{url}{BackgroundColors.RED} to {BackgroundColors.CYAN}{renewed_url}{Style.RESET_ALL}")  # Log failed renewal with details and red background.
 
-        # Extract the logic inside:
+        # @TODO:Extract the logic inside:
         # " if only_renew_amazon_urls:  # Verify whether only-renew mode is active for Amazon URLs.
         #             try:  # Attempt safe tab closure and focus restoration in only-renew mode."
         # into a separate function named "handle_only_renew_amazon_urls" that takes the current tab, URL, and renewed URL as parameters and performs the necessary actions for handling only-renew mode for Amazon URLs.
