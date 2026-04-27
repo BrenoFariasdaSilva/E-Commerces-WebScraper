@@ -1231,13 +1231,17 @@ def detect_split_zip_fragment_start(filename: str) -> Tuple[bool, str]:
     return True, base_name  # Return fragmented flag and base name for downstream polling.
 
 
-def wait_for_zip_completion(downloads_dir: str, base_name: str) -> bool:
+def wait_for_zip_fragmented_chain_completion(downloads_dir: str, base_name: str) -> bool:
     """
-    Poll downloads directory every 1 second until {base_name}.zip exists.
+    Poll downloads directory every 1 second until the full ZIP chain is completed.
+
+    The completion condition requires:
+    - Presence of the final .zip file
+    - At least one fragmented part (.z01, .z02, etc.)
 
     :param downloads_dir: Resolved path to the downloads directory to poll.
-    :param base_name: Base filename without extension to construct the expected ZIP path.
-    :return: True when the expected ZIP file is found, otherwise False.
+    :param base_name: Base filename without extension to construct the expected ZIP family.
+    :return: True when the full ZIP chain is detected, otherwise False.
     """
 
     expected_zip = Path(downloads_dir) / f"{base_name}.zip"  # Build expected final ZIP path.
@@ -1554,7 +1558,7 @@ def handle_fragmented_file_processing(detected_download_dir: str, detected_filen
     :return: The new detected filename after handling fragmentation in case of success. In case of failure during merging, return empty string to indicate that the URL should not be associated with any file due to potential corruption, or return the original detected filename if no fragmentation handling was needed.
     """
 
-    zip_arrived = wait_for_zip_completion(detected_download_dir, frag_base_name)  # Poll until the companion .zip file exists alongside the .z01 fragment.
+    zip_arrived = wait_for_zip_fragmented_chain_completion(detected_download_dir, frag_base_name)  # Poll until the companion .zip file exists alongside the .z01 fragment.
 
     if zip_arrived:  # Verify whether the companion ZIP arrived before proceeding with merge.
         jar_path = resolve_or_build_java_jar(first_fragmented_file_detected)  # Resolve or build the Java merge JAR from submodule.
