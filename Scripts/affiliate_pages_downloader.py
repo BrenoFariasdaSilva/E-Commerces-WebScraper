@@ -1509,7 +1509,7 @@ def run_zip_merge_java(jar_path: Path, zip_file: Path, output_zip: Path) -> bool
         return False  # Return failure.
 
 
-def finalize_fragment_cleanup(downloads_dir: str, base_name: str, z01_filename: str) -> str:
+def finalize_fragments_cleanup(downloads_dir: str, base_name: str, z01_filename: str) -> str:
     """
     Delete fragmented artifacts and rename merged ZIP to canonical filename.
 
@@ -1569,7 +1569,7 @@ def handle_fragmented_file_processing(detected_download_dir: str, detected_filen
             merge_ok = run_zip_merge_java(jar_path, original_zip_path, merged_zip_path)  # Execute Java merge pipeline combining fragment pair into single archive.
 
             if merge_ok:  # Verify whether Java merge pipeline completed successfully.
-                canonical_filename = finalize_fragment_cleanup(detected_download_dir, frag_base_name, detected_filename)  # Delete fragments, rename merged ZIP to canonical basename.
+                canonical_filename = finalize_fragments_cleanup(detected_download_dir, frag_base_name, detected_filename)  # Delete fragments, rename merged ZIP to canonical basename.
 
                 if canonical_filename != "":  # Verify whether cleanup and rename completed successfully.
                     detected_filename = canonical_filename  # Replace detected filename with canonical single ZIP artifact.
