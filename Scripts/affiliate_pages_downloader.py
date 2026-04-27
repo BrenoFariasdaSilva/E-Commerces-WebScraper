@@ -62,9 +62,11 @@ import platform  # Identify active operating system.
 import pyautogui  # Automate keyboard and mouse interactions.
 import re  # Regular expressions for stripping ANSI escape sequences.
 import shutil  # Move files between directories.
+import subprocess  # Execute shell commands for clipboard access and other operations.
 import sys  # Access process-level runtime controls.
 import time  # Manage sleep and elapsed time operations.
 import tkinter as tk  # Import tkinter module.
+import traceback  # Import traceback module for detailed exception reporting.
 from colorama import Style  # Reset ANSI style output.
 from pathlib import Path  # Build and resolve filesystem paths.
 from tkinter import messagebox  # Import tkinter messagebox utility.
@@ -889,7 +891,6 @@ def diagnose_screenshot_capability() -> Tuple[bool, str]:
         size = screenshot.size  # Retrieve screenshot image size dimensions.
         return True, f"Screenshot working - Size: {size}"  # Return success with diagnostic message.
     except Exception as e:  # Handle screenshot diagnostic exceptions.
-        import traceback  # Import traceback module for detailed exception reporting.
         error_details = traceback.format_exc()  # Capture full exception traceback for diagnostic purposes.
         return False, f"Screenshot failed: {str(e)} | Traceback: {error_details}"  # Return failure with diagnostic details.
 
@@ -2202,7 +2203,6 @@ def get_clipboard_text() -> str:
         pass  # Continue execution with subprocess-based fallback.
 
     try:  # Attempt clipboard retrieval using PowerShell backend.
-        import subprocess  # Import subprocess module for shell clipboard command execution.
         result = subprocess.run(["powershell", "-NoProfile", "-Command", "Get-Clipboard"], capture_output=True, text=True)  # Execute PowerShell clipboard command.
         return str(result.stdout)  # Return clipboard content from PowerShell output.
     except Exception:  # Handle subprocess clipboard retrieval failures.
