@@ -2159,14 +2159,17 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         if re.search(AFFILIATE_URL_PATTERN, url):  # Verify whether current URL matches Amazon affiliate pattern before renewal attempt.
             scroll_window_to_top_center()  # Scroll active window to top center to reveal the share button image.
             time.sleep(1)  # Wait briefly after scrolling to allow UI to stabilize before attempting image search for renewal.
-            renewal_success = False  # Placeholder for Amazon URL renewal result since the actual renewal function is currently disabled.
+            renewal_success = False  # Initialize renewal success flag.
+            renewed_url = url  # Initialize renewed URL with original URL.
             if renew_amazon_affiliate or RENEW_AMAZON_AFFILIATE_URL:  # Verify whether renewal is enabled via arg or global flag before attempting renewal.
-                renewal_success = renew_amazon_affiliate_url(url, share_button_img, Path(urls_file))  # Attempt Amazon affiliate URL renewal when URL matches pattern.
+                renewal_success, renewed_url = renew_amazon_affiliate_url(url, share_button_img, Path(urls_file))  # Attempt Amazon affiliate URL renewal and capture tuple result.
+                if renewal_success and renewed_url != url:  # Verify whether renewal succeeded and URL changed before updating current URL.
+                    url = renewed_url  # Update current URL with renewed affiliate URL.
             if VERBOSE:  # Verify whether verbose logging is enabled for renewal status reporting.
                 if renewal_success:  # Verify whether renewal succeeded before logging success message.
-                    print(f"{BackgroundColors.GREEN}✓ Amazon URL renewed successfully for tab {current_tab}{Style.RESET_ALL}")  # Log successful renewal with green background.
+                    print(f"{BackgroundColors.GREEN}✓ Amazon URL renewed successfully for tab {BackgroundColors.CYAN}{current_tab}{BackgroundColors.GREEN} from {BackgroundColors.CYAN}{url}{BackgroundColors.GREEN} to {BackgroundColors.CYAN}{renewed_url}{Style.RESET_ALL}")  # Log successful renewal with details and green background.
                 else:  # Otherwise renewal failed, log failure message.
-                    print(f"{BackgroundColors.RED}✗ Amazon URL renewal failed for tab {current_tab}{Style.RESET_ALL}")  # Log failed renewal with red background.
+                    print(f"{BackgroundColors.RED}✗ Amazon URL renewal failed for tab {BackgroundColors.CYAN}{current_tab}{BackgroundColors.RED} from {BackgroundColors.CYAN}{url}{BackgroundColors.RED} to {BackgroundColors.CYAN}{renewed_url}{Style.RESET_ALL}")  # Log failed renewal with details and red background.
 
         click_go_to_product_button(mercado_livre_img)  # Execute MercadoLivre button action when available.
 
@@ -2994,7 +2997,6 @@ def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, urls_fi
 
         outputs_dir = resolve_outputs_directory()  # Resolve Outputs directory path from project root.
         replace_url_recursively(outputs_dir, current_url, copied_url)  # Replace renewed Amazon URL recursively inside Outputs files.
-    
         verbose_output(f"{BackgroundColors.GREEN}Amazon URL successfully renewed from {current_url} to {copied_url}{Style.RESET_ALL}")  # Log successful renewal completion when verbose enabled.
 
         print_url_update(current_url, copied_url)  # Print colored OLD and NEW URL output to terminal for visibility.
