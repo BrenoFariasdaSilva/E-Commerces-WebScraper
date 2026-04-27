@@ -1204,6 +1204,33 @@ def handle_initial_chrome_download_failures(chrome_download_settings_ready: bool
     return initial_consecutive_download_failures, None  # Return updated failures count and no abort when continuing
 
 
+def wait_for_zip_completion(downloads_dir: str, base_name: str) -> bool:
+    """
+    Poll downloads directory every 1 second until {base_name}.zip exists.
+
+    :param downloads_dir: Resolved path to the downloads directory to poll.
+    :param base_name: Base filename without extension to construct the expected ZIP path.
+    :return: True when the expected ZIP file is found, otherwise False.
+    """
+
+    expected_zip = Path(downloads_dir) / f"{base_name}.zip"  # Build expected final ZIP path.
+    elapsed_seconds = 0  # Initialize elapsed seconds counter for periodic INFO logging.
+    notify_interval = 10  # Define interval in seconds between wait-status messages.
+
+    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Waiting for {expected_zip.name} to appear in {downloads_dir}{Style.RESET_ALL}")  # Log initial wait start message.
+
+    while True:  # Poll indefinitely until ZIP appears.
+        if expected_zip.exists():  # Verify whether expected ZIP file now exists.
+            verbose_output(f"{BackgroundColors.CYAN}[DEBUG] {expected_zip.name} detected — fragmented ZIP pair is complete.{Style.RESET_ALL}")  # Log ZIP arrival.
+            return True  # Return success when final ZIP is found.
+
+        time.sleep(1)  # Wait 1 second before re-polling.
+        elapsed_seconds += 1  # Increment elapsed seconds tracker.
+
+        if elapsed_seconds % notify_interval == 0:  # Verify whether notify interval has elapsed.
+            print(f"{BackgroundColors.CYAN}[DEBUG] Still waiting for {expected_zip.name} — {elapsed_seconds}s elapsed.{Style.RESET_ALL}")  # Print periodic wait notification.
+
+
 def initialize_git_submodules(submodule_dir: Path) -> Path | None:
     """
     Initialize git submodules when directory is missing or empty.
