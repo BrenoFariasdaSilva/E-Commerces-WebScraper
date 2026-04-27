@@ -1204,6 +1204,21 @@ def handle_initial_chrome_download_failures(chrome_download_settings_ready: bool
     return initial_consecutive_download_failures, None  # Return updated failures count and no abort when continuing
 
 
+def resolve_submodule_path() -> Path:
+    """
+    Resolve the Multi-Fragmented-ZipFile-Extractor submodule path.
+
+    :param: None.
+    :return: Resolved submodule Path.
+    """
+
+    submodule_dir = Path(PROJECT_ROOT) / "Multi-Fragmented-ZipFile-Extractor"  # Build submodule root path from project root.
+
+    initialize_git_submodules(submodule_dir)  # Ensure submodule is initialized.
+
+    return submodule_dir  # Return resolved submodule directory.
+
+
 def resolve_java_jar_path(submodule_dir: Path) -> Path | None:
     """
     Resolve the JAR path inside Multi-Fragmented-ZipFile-Extractor/target/.
