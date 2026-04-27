@@ -1533,7 +1533,7 @@ def finalize_fragment_cleanup(downloads_dir: str, base_name: str, z01_filename: 
         return ""  # Return empty string when cleanup fails.
 
 
-def handle_fragmented_file_processing(detected_download_dir: str, detected_filename: str, frag_base_name: str, url: str) -> str:
+def handle_fragmented_file_processing(detected_download_dir: str, detected_filename: str, frag_base_name: str, url: str, first_fragmented_file_detected: bool) -> str:
     """
     Handles the detection and merging of fragmented ZIP files when applicable.
 
@@ -1541,13 +1541,14 @@ def handle_fragmented_file_processing(detected_download_dir: str, detected_filen
     :param detected_filename: Initially detected filename from the downloads directory, used for logging and potential association with the URL if merging fails or is not needed.
     :param frag_base_name: Base name of the fragmented files without the .z01/.zip extensions.
     :param url: URL associated with the current processing cycle, used for logging context.
+    :param first_fragmented_file_detected: Boolean flag indicating if this is the first detection of a fragmented file.
     :return: The new detected filename after handling fragmentation in case of success. In case of failure during merging, return empty string to indicate that the URL should not be associated with any file due to potential corruption, or return the original detected filename if no fragmentation handling was needed.
     """
 
     zip_arrived = wait_for_zip_completion(detected_download_dir, frag_base_name)  # Poll until the companion .zip file exists alongside the .z01 fragment.
 
     if zip_arrived:  # Verify whether the companion ZIP arrived before proceeding with merge.
-        jar_path = resolve_or_build_java_jar()  # Resolve or build the Java merge JAR from submodule.
+        jar_path = resolve_or_build_java_jar(first_fragmented_file_detected)  # Resolve or build the Java merge JAR from submodule.
 
         if jar_path is not None:  # Verify whether the JAR was resolved or built successfully.
             original_zip_path = Path(detected_download_dir) / f"{frag_base_name}.zip"  # Build absolute path to the companion .zip file.
@@ -2054,6 +2055,8 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         f"{BackgroundColors.GREEN}{{n_fmt}}/{{total_fmt}} [{{elapsed}}<{{remaining}}, {{rate_fmt}}/it]{Style.RESET_ALL}"
     )  # Combine ANSI-colored segments into a single tqdm bar format string
 
+    first_fragmented_file_detected = False  # Flag to track whether the first fragmented file detection has occurred for initial failure handling.
+
     for index, url in enumerate(tqdm(urls, total=len(urls), desc="Processing URLs", bar_format=bar_format), start=1):  # Initialize tqdm with custom colored bar_format and enumerate indexing
         if only_renew_amazon_urls:  # Verify whether only-renew mode is active for Amazon URLs.
             if not activate_automation_window():  # Verify if automation window activation succeeds before URL navigation.
@@ -2173,7 +2176,9 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
             is_fragmented, frag_base_name = detect_fragmented_zip_pair(detected_filenames)  # Evaluate whether detected file is a fragmented ZIP first-part.
 
             if is_fragmented:  # Verify whether fragmented ZIP handling is required for this download.
-                final_filename = handle_fragmented_file_processing(detected_download_dir, detected_filenames, frag_base_name, url)  # Execute fragmented ZIP handling pipeline for the detected file.
+                is_first_fragment = not first_fragmented_file_detected  # Determine whether this is the first fragmented file detection.
+                first_fragmented_file_detected = True  # Mark that at least one fragmented file has been detected.
+                final_filename = handle_fragmented_file_processing(detected_download_dir, detected_filenames, frag_base_name, url, is_first_fragment)  # Execute fragmented ZIP handling pipeline for the detected file.
                 
                 if final_filename == "":  # Verify whether fragmented ZIP processing succeeded by verifying for a non-empty final filename.
                     print(f"{BackgroundColors.YELLOW}[WARNING] Fragmented ZIP processing failed for URL: {url}. Detected file: {detected_filenames}{Style.RESET_ALL}")  # Log fragmented ZIP processing failure with URL and detected filename details.
