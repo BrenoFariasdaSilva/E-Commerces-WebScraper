@@ -147,6 +147,7 @@ def list_supported_archives(input_directory):
     directory_path = Path(input_directory)  # Create Path instance for input directory
 
     if not verify_filepath_exists(directory_path) or not directory_path.is_dir():  # Verify if the input directory exists and is a valid directory
+        verbose_output(f"{BackgroundColors.YELLOW}Input directory {BackgroundColors.CYAN}{input_directory}{BackgroundColors.YELLOW} does not exist or is not a valid directory. No files will be processed.{Style.RESET_ALL}")  # Log warning when input directory is invalid with color
         return []  # Return empty list when input directory is invalid
 
     return [file for file in directory_path.iterdir() if file.is_file() and file.suffix.lower() in SUPPORTED_EXTENSIONS]  # Return only supported archive files
@@ -159,10 +160,13 @@ def remove_duplicate_archives(input_directory: str) -> None:
     :param input_directory: Directory containing archive files to sanitize.
     :return: None.
     """
+    
+    verbose_output(f"{BackgroundColors.GREEN}Verifying for duplicate archive copies in {BackgroundColors.CYAN}{input_directory}{BackgroundColors.GREEN}...{Style.RESET_ALL}")  # Log the start of duplicate archive checking with color
 
     directory_path = Path(input_directory)  # Build the Path object for the target input directory
 
     if not verify_filepath_exists(directory_path) or not directory_path.is_dir():  # Verify if the input directory exists and is a valid directory
+        verbose_output(f"{BackgroundColors.YELLOW}Input directory {BackgroundColors.CYAN}{input_directory}{BackgroundColors.YELLOW} does not exist or is not a valid directory. Skipping duplicate archive removal.{Style.RESET_ALL}")  # Log warning when input directory is invalid with color
         return  # Exit early when the input directory is not available
 
     archive_files = list_supported_archives(input_directory)  # Load all supported archive files from the input directory
@@ -269,11 +273,13 @@ def resolve_archive_match(expected_filename: str, input_directory: str) -> Optio
     directory_path = Path(input_directory)  # Build the Path object for the input directory
 
     if not verify_filepath_exists(directory_path) or not directory_path.is_dir():  # Verify if the input directory exists and is a valid directory
+        print(f"{BackgroundColors.YELLOW}Input directory {BackgroundColors.CYAN}{input_directory}{BackgroundColors.YELLOW} does not exist or is not a valid directory. Cannot resolve expected filename: {BackgroundColors.CYAN}{expected_filename}{Style.RESET_ALL}")  # Log warning when input directory is invalid with color and expected filename details
         return None  # Return None when the input directory is not accessible
 
     candidate = directory_path / expected_filename  # Build the full candidate path for the expected archive file
 
     if verify_filepath_exists(candidate) and candidate.is_file():  # Verify if the expected file exists in the input directory
+        verbose_output(f"{BackgroundColors.GREEN}Found matching archive for expected filename: {BackgroundColors.CYAN}{expected_filename}{Style.RESET_ALL}")  # Log successful match of expected filename with color
         return candidate  # Return the resolved Path when the expected file is found
 
     return None  # Return None when no matching archive file is found
@@ -362,6 +368,7 @@ def process_url_based_renames(input_directory: str, urls_file_path: str) -> None
         rename_success = perform_safe_rename(source_path, target_path)  # Perform the safe rename of the archive file
 
         if rename_success:  # Verify if the rename operation completed successfully
+            verbose_output(f"{BackgroundColors.GREEN}Successfully renamed {BackgroundColors.CYAN}{source_path.name}{BackgroundColors.GREEN} -> {BackgroundColors.CYAN}{new_filename}{Style.RESET_ALL}")
             rename_map[expected_filename] = new_filename  # Record the successful rename in the tracking dictionary
 
     updated_mapping = build_updated_mapping(sorted_entries, rename_map)  # Build the updated URL-filename mapping from rename results
