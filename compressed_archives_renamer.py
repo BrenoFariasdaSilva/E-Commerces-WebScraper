@@ -283,6 +283,31 @@ def finalize_renames(temporary_mappings: list) -> None:
         temporary_file.rename(final_file)  # Rename temporary file to final file name
 
 
+def perform_safe_rename(source_path: Path, target_path: Path) -> bool:
+    """
+    Rename source archive file to target path without overwriting existing files.
+
+    :param source_path: Original Path of the archive file to rename.
+    :param target_path: Destination Path for the renamed archive file.
+    :return: True if the rename succeeded, False otherwise.
+    """
+
+    if not source_path.exists():  # Verify if the source file exists before attempting rename
+        print(f"{BackgroundColors.RED}Source file not found for rename: {BackgroundColors.CYAN}{source_path.name}{Style.RESET_ALL}")  # Log missing source file error
+        return False  # Return False when source file is not accessible
+
+    if target_path.exists():  # Verify if the target path already exists to prevent overwrite
+        print(f"{BackgroundColors.RED}Target file already exists, skipping rename: {BackgroundColors.CYAN}{target_path.name}{Style.RESET_ALL}")  # Log overwrite prevention warning
+        return False  # Return False when target file already exists
+
+    try:  # Attempt the rename operation safely
+        source_path.rename(target_path)  # Rename the source archive file to the target path
+        return True  # Return True when the rename operation completes successfully
+    except Exception as rename_error:  # Capture any rename operation failures without breaking execution
+        print(f"{BackgroundColors.RED}Failed to rename {BackgroundColors.CYAN}{source_path.name}{BackgroundColors.RED} to {BackgroundColors.CYAN}{target_path.name}{BackgroundColors.RED}: {rename_error}{Style.RESET_ALL}")  # Log rename failure details
+        return False  # Return False when the rename operation fails
+
+
 def to_seconds(obj):
     """
     Converts various time-like objects to seconds.
