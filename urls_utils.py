@@ -204,7 +204,7 @@ def write_urls_to_file(urls_to_write: list, input_file_path: str, recursive: boo
                     url = item  # Treat the item directly as URL
                     local_html_path = None  # Set local HTML path as None when not provided
                 if local_html_path:  # Verify if local HTML path exists
-                    file.write(f"{url} -> {local_html_path}\n")  # Write URL with local HTML path mapping
+                    file.write(f"{url} {local_html_path}\n")  # Write URL with local HTML path mapping
                 else:  # Handle case where local HTML path is not provided
                     file.write(f"{url}\n")  # Write only the URL
         if recursive and os.path.exists(input_file_path.replace(".txt", "-backup.txt")):  # If recursive flag is True and backup file exists
