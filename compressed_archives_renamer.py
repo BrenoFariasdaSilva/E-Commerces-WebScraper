@@ -63,6 +63,8 @@ import sys  # For system-specific parameters and functions
 from colorama import Style  # For coloring the terminal
 from Logger import Logger  # For logging output to both terminal and file
 from pathlib import Path  # For handling file paths
+from typing import Optional  # Optional type hint utility for nullable return values
+from urls_utils import load_urls_to_process, write_urls_to_file  # URL loading and writing utilities
 
 
 # Macros:
