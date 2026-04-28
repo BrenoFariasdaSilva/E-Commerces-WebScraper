@@ -1658,6 +1658,7 @@ def run_zip_merge_java(jar_path: Path, zip_files: List[Path], output_zip: Path) 
         print(f"{BackgroundColors.RED}[WARNING] Java merge returned non-success status: {BackgroundColors.CYAN}{parsed}{Style.RESET_ALL}")  # Log failure status.
         print(f"{BackgroundColors.RED}[WARNING] Full Java output for context: {BackgroundColors.CYAN}{raw_output}{Style.RESET_ALL}")  # Log full raw output for additional context on failure.
         print(f"{BackgroundColors.RED}[WARNING] Executed command: {BackgroundColors.CYAN}{' '.join(command)}{Style.RESET_ALL}")  # Log executed command for context.
+        return False  # Return failure for non-success status.
     except Exception:  # Handle parsing failure.
         print(f"{BackgroundColors.RED}[WARNING] Java merge output could not be parsed as JSON: {BackgroundColors.CYAN}{raw_output}{Style.RESET_ALL}")  # Log raw output.
         return False  # Return failure.
