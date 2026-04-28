@@ -3449,7 +3449,7 @@ def main():
     print(f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Welcome to the {BackgroundColors.CYAN}Affiliate Pages Downloader Automation{BackgroundColors.GREEN} program!{Style.RESET_ALL}", end="\n")  # Print welcome banner.
     start_time = datetime.datetime.now()  # Capture program start timestamp.
 
-    repo_root = Path(__file__).resolve().parent.parent  # Resolve repository root path.
+    repo_root = Path(PROJECT_ROOT)  # Convert project root string into Path object.
     parser = argparse.ArgumentParser(description="Cross-platform affiliate pages downloader automation")  # Initialize argument parser.
     parser.add_argument("--tab-count", type=int, default=0, help="Number of URLs/tabs to process (0 = use all URLs from Inputs/urls.txt)")  # Register tab-count argument.
     parser.add_argument("--urls-file", type=Path, default=repo_root / "Inputs" / "urls.txt", help="Path to URLs input file")  # Register urls-file argument.
