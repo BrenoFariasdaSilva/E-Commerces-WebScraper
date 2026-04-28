@@ -2082,6 +2082,35 @@ def move_downloaded_archives(downloads_dirs: List[str], destination_dir: Path, u
             print(f"{BackgroundColors.YELLOW}[WARNING] Failed to move downloaded file: {source_path}{Style.RESET_ALL}")  # Log archive move failure warning.
 
 
+def resolve_backup_file_path(urls_file: Path) -> Path:
+    """
+    Resolve the backup file path corresponding to the given URLs file.
+
+    :param urls_file: Path to the main URLs input file.
+    :return: Path to the corresponding backup file with '-backup' suffix.
+    """
+
+    return urls_file.with_name(urls_file.stem + "-backup" + urls_file.suffix)  # Build backup path by inserting '-backup' before the file extension.
+
+
+def apply_renewed_url_to_files(original_url: str, renewed_url: str, urls_file: Path) -> None:
+    """
+    Apply a renewed Amazon affiliate URL replacement to both the main and backup input files.
+
+    :param original_url: Original URL to locate and replace in both files.
+    :param renewed_url: Renewed affiliate URL to substitute in place of the original.
+    :param urls_file: Path to the main URLs input file.
+    :return: None.
+    """
+
+    update_urls_txt_with_new_amazon_url(original_url, renewed_url, urls_file)  # Replace original URL with renewed URL in the main URLs input file.
+
+    backup_file = resolve_backup_file_path(urls_file)  # Resolve the backup file path from the main URLs file path.
+
+    if backup_file.exists():  # Verify whether the backup file exists before attempting update.
+        update_urls_txt_with_new_amazon_url(original_url, renewed_url, backup_file)  # Replace original URL with renewed URL in the backup URLs input file.
+
+
 def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_count: int, downloads_dirs: List[str], extension_img: Path, download_img: Path, enable_permission_img: Path, confirmation_img: Path, close_download_tab_img: Path, mercado_livre_img: Path, share_button_img: Path, ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]], chrome_download_settings_ready: bool, renew_amazon_affiliate: bool = False, only_renew_amazon_urls: bool = False) -> Tuple[int, Dict[str, str], bool]:
     """
     Processes URLs while tracking downloaded files by directory snapshots.
@@ -2131,11 +2160,13 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         opened_tabs = open_url_in_new_tab(url, opened_tabs)  # Open URL in new tab and update opened tabs counter.
 
         current_tab = index  # Store current tab index.
+        original_url = url  # Preserve original URL before potential Amazon affiliate renewal modification.
 
         if re.search(AFFILIATE_URL_PATTERN, url):  # Verify whether current URL matches Amazon affiliate pattern.
             url, renewal_success, renewed_url = handle_amazon_affiliate_url(current_tab, url, share_button_img, Path(urls_file), renew_amazon_affiliate)  # Execute extracted Amazon affiliate handling logic.
 
-        # @TODO: Implement a update of the old url in the txt file with the renewed url when renewal is successful, so that we can keep track of which URLs were renewed and their new values for better tracking and recovery. That is, find the old url in the urls_file for "".txt", "-backup.txt" and find the old url and update with the new.
+            if renewal_success and renewed_url != original_url:  # Verify whether renewal succeeded and URL actually changed before applying file updates.
+                apply_renewed_url_to_files(original_url, renewed_url, urls_file)  # Apply renewed URL to both main and backup input files.
 
         if only_renew_amazon_urls:  # Verify whether only-renew mode is active for Amazon URLs.
             opened_tabs = handle_only_renew_amazon_urls(opened_tabs)  # Execute extracted only-renew tab handling logic.
