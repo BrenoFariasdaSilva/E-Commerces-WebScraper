@@ -3401,8 +3401,6 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
             AFFILIATE_URL_PATTERN  # Provide Amazon affiliate URL pattern for extraction filtering.
         )  # Execute consolidated URL preparation pipeline including fallback Outputs scan when required.
 
-        tab_count = len(urls)  # Update tab count to reflect final resolved URL list size.
-
     if tab_count <= 0:  # Verify there are URLs to process.
         print(f"{BackgroundColors.RED}Error: The file {BackgroundColors.CYAN}{urls_file}{BackgroundColors.RED} is empty or contains no valid URLs.{Style.RESET_ALL}")  # Print empty URLs error.
         return 1  # Return error exit code.
