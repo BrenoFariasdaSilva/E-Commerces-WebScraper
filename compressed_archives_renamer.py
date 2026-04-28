@@ -227,6 +227,32 @@ def assign_temporary_names(archive_files_sorted: list[Path], temporary_mappings:
         temporary_index += 1  # Increment the temporary index counter
 
 
+def parse_url_entries(input_file_path: str) -> list[tuple[str, Optional[str]]]:
+    """
+    Parse the URLs input file into structured product_url and expected_filename entries.
+
+    :param input_file_path: Path to the URLs input file to parse.
+    :return: List of (product_url, expected_filename or None) tuples.
+    """
+
+    raw_lines = load_urls_to_process(input_file_path)  # Load raw lines from the URLs input file
+    url_entries: list[tuple[str, Optional[str]]] = []  # Initialize list to hold parsed URL entries
+
+    for line in raw_lines:  # Iterate over each raw line from the URLs file
+        if " -> " in line:  # Verify if the line contains a URL-to-filename mapping separator
+            parts = line.split(" -> ", 1)  # Split on the first occurrence of the mapping separator
+            product_url = parts[0].strip()  # Extract the product URL from the left side of the separator
+            expected_filename = parts[1].strip() if parts[1].strip() else None  # Extract expected filename or set None when empty
+        else:  # Handle lines without a filename mapping separator
+            product_url = line.strip()  # Treat the entire line as the product URL
+            expected_filename = None  # Set expected filename to None when no mapping is present
+
+        if product_url:  # Verify if the parsed product URL is not empty before appending
+            url_entries.append((product_url, expected_filename))  # Append the parsed URL entry to the list
+
+    return url_entries  # Return the list of parsed URL entries
+
+
 def finalize_renames(temporary_mappings: list) -> None:
     """
     Rename temporary files to final sequential numeric names.
