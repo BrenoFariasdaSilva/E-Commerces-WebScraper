@@ -859,6 +859,47 @@ def resolve_url_files(urls_file: Path) -> Tuple[Path, Path]:
     return primary_urls_file, backup_urls_file  # Return resolved file paths
 
 
+def extract_and_validate_urls(primary_file: Path, backup_file: Path, affiliate_pattern: str) -> List[str]:
+    """
+    Extracts and validates Amazon URLs from primary and backup sources with deduplication.
+
+    :param primary_file: Primary URLs file.
+    :param backup_file: Backup URLs file.
+    :param affiliate_pattern: Pattern used for extraction.
+    :return: Deduplicated URL list.
+    """
+
+    primary_is_empty = is_file_empty(str(primary_file))  # Verify primary file emptiness
+    backup_is_empty = is_file_empty(str(backup_file))  # Verify backup file emptiness
+
+    if primary_is_empty:  # Verify primary file empty state
+        print(f"{BackgroundColors.YELLOW}[WARNING] {primary_file.name} is empty{Style.RESET_ALL}")  # Log primary empty warning
+
+    if backup_is_empty:  # Verify backup file empty state
+        print(f"{BackgroundColors.YELLOW}[WARNING] {backup_file.name} is empty{Style.RESET_ALL}")  # Log backup empty warning
+
+    primary_valid_urls = [] if primary_is_empty else extract_amazon_urls_from_file(str(primary_file), affiliate_pattern)  # Extract primary URLs
+    backup_valid_urls = [] if backup_is_empty else extract_amazon_urls_from_file(str(backup_file), affiliate_pattern)  # Extract backup URLs
+
+    if not primary_is_empty and len(primary_valid_urls) == 0:  # Verify invalid primary content
+        print(f"{BackgroundColors.YELLOW}[WARNING] {primary_file.name} contains no valid Amazon URLs{Style.RESET_ALL}")  # Log warning
+
+    if not backup_is_empty and len(backup_valid_urls) == 0:  # Verify invalid backup content
+        print(f"{BackgroundColors.YELLOW}[WARNING] {backup_file.name} contains no valid Amazon URLs{Style.RESET_ALL}")  # Log warning
+
+    unique_urls: List[str] = []  # Initialize deduplicated URL list
+    seen_urls: set[str] = set()  # Initialize deduplication set
+
+    for candidate_url in primary_valid_urls + backup_valid_urls:  # Iterate merged URLs
+        if candidate_url in seen_urls:  # Verify duplication
+            continue  # Skip duplicate
+
+        seen_urls.add(candidate_url)  # Register URL
+        unique_urls.append(candidate_url)  # Append unique URL
+
+    return sorted(unique_urls, key=lambda x: x.lower())  # Return sorted URLs
+
+
 def setup_only_renew_amazon_urls(tab_count: int, urls: List[str], urls_file: Path, affiliate_pattern: str) -> Tuple[List[str], bool, Dict[str, List[str]], int]:
     """
     Builds the final URL list for only-renew mode with validation, deduplication, and fallback scanning.
