@@ -1623,7 +1623,7 @@ def run_zip_merge_java(jar_path: Path, zip_files: List[Path], output_zip: Path) 
     if VERBOSE:
         command.insert(3, "--log=DEBUG")  # Insert verbose logging argument if verbose mode is enabled.
     
-    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Executing Java merge command: {' '.join(command)}{Style.RESET_ALL}")  # Log the exact Java command being executed
+    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Executing Java merge fragment zip file command: {' '.join(command)}{Style.RESET_ALL}")  # Log the exact Java command being executed
     
     try:  # Attempt Java execution.
         result = subprocess.run(command, capture_output=True, text=True)  # Execute Java process.
@@ -1651,15 +1651,15 @@ def run_zip_merge_java(jar_path: Path, zip_files: List[Path], output_zip: Path) 
             verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Merge success: {parsed.get('output', '')}{Style.RESET_ALL}")  # Log success.
             # verify if the file exists
             if not verify_filepath_exists(output_zip):  # Verify whether the expected merged ZIP file now exists after Java merge.
-                print(f"{BackgroundColors.YELLOW}[WARNING] Java merge reported success but output ZIP not found: {output_zip}{Style.RESET_ALL}")  # Log missing output ZIP warning.
+                print(f"{BackgroundColors.RED}[WARNING] Java merge reported success but output ZIP not found: {output_zip}{Style.RESET_ALL}")  # Log missing output ZIP warning.
                 return False  # Return failure when output ZIP is not found after reported success.
             return True  # Return success.
 
-        print(f"{BackgroundColors.YELLOW}[WARNING] Java merge returned non-success status: {parsed}{Style.RESET_ALL}")  # Log failure status.
-        return False  # Return failure.
-
+        print(f"{BackgroundColors.RED}[WARNING] Java merge returned non-success status: {BackgroundColors.CYAN}{parsed}{Style.RESET_ALL}")  # Log failure status.
+        print(f"{BackgroundColors.RED}[WARNING] Full Java output for context: {BackgroundColors.CYAN}{raw_output}{Style.RESET_ALL}")  # Log full raw output for additional context on failure.
+        print(f"{BackgroundColors.RED}[WARNING] Executed command: {BackgroundColors.CYAN}{' '.join(command)}{Style.RESET_ALL}")  # Log executed command for context.
     except Exception:  # Handle parsing failure.
-        print(f"{BackgroundColors.YELLOW}[WARNING] Java merge output could not be parsed as JSON: {raw_output}{Style.RESET_ALL}")  # Log raw output.
+        print(f"{BackgroundColors.RED}[WARNING] Java merge output could not be parsed as JSON: {BackgroundColors.CYAN}{raw_output}{Style.RESET_ALL}")  # Log raw output.
         return False  # Return failure.
 
 
