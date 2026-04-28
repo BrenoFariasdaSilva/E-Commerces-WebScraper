@@ -242,6 +242,28 @@ def sort_url_entries(url_entries: list[tuple[str, Optional[str]]]) -> list[tuple
     return sorted(url_entries, key=lambda entry: entry[0].lower())  # Return entries sorted case-insensitively by product URL
 
 
+def resolve_archive_match(expected_filename: str, input_directory: str) -> Optional[Path]:
+    """
+    Resolve an expected filename to a matching archive file path in the input directory.
+
+    :param expected_filename: Filename to resolve against files in the input directory.
+    :param input_directory: Directory path to search for the matching archive file.
+    :return: Path of the matched archive file, or None if no match is found.
+    """
+
+    directory_path = Path(input_directory)  # Build the Path object for the input directory
+
+    if not directory_path.exists() or not directory_path.is_dir():  # Verify if the input directory exists and is a valid directory
+        return None  # Return None when the input directory is not accessible
+
+    candidate = directory_path / expected_filename  # Build the full candidate path for the expected archive file
+
+    if candidate.exists() and candidate.is_file():  # Verify if the expected file exists in the input directory
+        return candidate  # Return the resolved Path when the expected file is found
+
+    return None  # Return None when no matching archive file is found
+
+
 def finalize_renames(temporary_mappings: list) -> None:
     """
     Rename temporary files to final sequential numeric names.
