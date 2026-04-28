@@ -2118,7 +2118,7 @@ def normalize_output_directory_indexes(rename_plan: List[Dict[str, str]]) -> Lis
     temporary_records: List[Tuple[str, str, str, str, str]] = []  # Store temporary rename records as (old_path, temp_path, normalized_name, old_index, new_index).
 
     for plan_record in rename_plan:  # Iterate each planned mapping to derive unique temporary targets.
-        original_path = plan_record.get("old_path", "")  # Resolve original directory path from the plan record.
+        original_path = normalize_path(plan_record.get("old_path", ""))  # Normalize original directory path from the plan record.
         if not original_path or not os.path.isdir(original_path):  # Ignore planned entries that are unavailable on disk.
             continue  # Continue when the original directory path is unavailable.
 
@@ -2128,15 +2128,15 @@ def normalize_output_directory_indexes(rename_plan: List[Dict[str, str]]) -> Lis
         if not normalized_name or not new_index:  # Ignore malformed plan records without deterministic naming fields.
             continue  # Continue when required plan fields are missing.
 
-        parent_directory = os.path.dirname(original_path)  # Resolve parent directory for renaming operations.
+        parent_directory = normalize_path(os.path.dirname(original_path))  # Normalize parent directory for renaming operations.
         temporary_base_name = f"__tmp__{new_index}"  # Build deterministic temporary base name from planned final index.
         temporary_name = temporary_base_name  # Initialize temporary name candidate.
-        temporary_path = os.path.join(parent_directory, temporary_name)  # Build temporary path candidate.
+        temporary_path = normalize_path(os.path.join(parent_directory, temporary_name))  # Normalize temporary path candidate.
         temporary_suffix = 1  # Initialize suffix used when a temporary name already exists.
 
         while os.path.exists(temporary_path):  # Avoid conflicts by searching for a free temporary path.
             temporary_name = f"{temporary_base_name}_{temporary_suffix}"  # Build a suffixed temporary name candidate.
-            temporary_path = os.path.join(parent_directory, temporary_name)  # Build a new temporary path candidate.
+            temporary_path = normalize_path(os.path.join(parent_directory, temporary_name))  # Normalize a new temporary path candidate.
             temporary_suffix += 1  # Increment suffix for the next collision cycle.
 
         temporary_records.append((original_path, temporary_path, normalized_name, old_index, new_index))  # Append temporary mapping without touching filesystem yet.
@@ -2145,31 +2145,31 @@ def normalize_output_directory_indexes(rename_plan: List[Dict[str, str]]) -> Lis
         if not old_path or not os.path.isdir(old_path):  # Ignore stale plan rows whose source directory no longer exists.
             continue  # Continue when original directory cannot be renamed in phase one.
 
-        norm_old_path = normalize_path(old_path)  # Normalize old path for logging
-        norm_temporary_path = normalize_path(temporary_path)  # Normalize temporary path for logging
+        norm_old_path = old_path  # Already normalized for both logging and filesystem
+        norm_temporary_path = temporary_path  # Already normalized for both logging and filesystem
         verbose_output(f"{BackgroundColors.GREEN}Renaming for normalization (phase 1): {BackgroundColors.CYAN}{norm_old_path}{BackgroundColors.GREEN} -> {BackgroundColors.CYAN}{norm_temporary_path}{Style.RESET_ALL}")  # Emit verbose diagnostics for phase-one rename.
         rename_with_retry(old_path, temporary_path)  # Retry-safe rename operation
 
     for _, temporary_path, normalized_name, old_index, new_index in temporary_records:  # Iterate temporary records for final naming and internal normalization.
-        parent_directory = os.path.dirname(temporary_path)  # Resolve parent directory from temporary path.
+        parent_directory = normalize_path(os.path.dirname(temporary_path))  # Normalize parent directory from temporary path.
         final_directory_name = f"{new_index}. {normalized_name}"  # Build final directory name with normalized index.
-        final_directory_path = os.path.join(parent_directory, final_directory_name)  # Build final directory absolute path.
+        final_directory_path = normalize_path(os.path.join(parent_directory, final_directory_name))  # Normalize final directory absolute path.
 
-        norm_temporary_path = normalize_path(temporary_path)  # Normalize temporary path for logging
-        norm_final_directory_path = normalize_path(final_directory_path)  # Normalize final path for logging
+        norm_temporary_path = temporary_path  # Already normalized for both logging and filesystem
+        norm_final_directory_path = final_directory_path  # Already normalized for both logging and filesystem
 
         if os.path.exists(norm_final_directory_path):  # Avoid overwriting any pre-existing directory path.
             collision_suffix = 1  # Initialize collision suffix for final path fallback naming.
-            collision_path = os.path.join(parent_directory, f"{final_directory_name} ({collision_suffix})")  # Build first fallback path candidate.
-            norm_collision_path = normalize_path(collision_path)
+            collision_path = normalize_path(os.path.join(parent_directory, f"{final_directory_name} ({collision_suffix})"))  # Normalize first fallback path candidate.
+            norm_collision_path = collision_path
             while os.path.exists(norm_collision_path):  # Search for an available fallback path when collisions persist.
                 collision_suffix += 1  # Increment suffix for the next fallback candidate.
-                collision_path = os.path.join(parent_directory, f"{final_directory_name} ({collision_suffix})")  # Build next fallback path candidate.
-                norm_collision_path = normalize_path(collision_path)
+                collision_path = normalize_path(os.path.join(parent_directory, f"{final_directory_name} ({collision_suffix})"))  # Normalize next fallback path candidate.
+                norm_collision_path = collision_path
             norm_final_directory_path = norm_collision_path  # Use collision-safe final path when original target is occupied.
 
         verbose_output(f"{BackgroundColors.GREEN}Renaming for normalization (phase 2): {BackgroundColors.CYAN}{norm_temporary_path}{BackgroundColors.GREEN} -> {BackgroundColors.CYAN}{norm_final_directory_path}{Style.RESET_ALL}")  # Emit verbose diagnostics for phase-two rename.
-        rename_with_retry(temporary_path, final_directory_path)  # Retry-safe rename operation
+        rename_with_retry(temporary_path, norm_final_directory_path)  # Retry-safe rename operation
 
         if os.path.isdir(norm_final_directory_path):  # Continue internal normalization only when final directory exists.
             current_entries = os.listdir(norm_final_directory_path)  # List current entries inside the normalized directory.
@@ -2187,10 +2187,10 @@ def normalize_output_directory_indexes(rename_plan: List[Dict[str, str]]) -> Lis
 
             target_internal_directory = new_index  # Build target child directory name from new normalized index.
             if source_internal_directory and source_internal_directory != target_internal_directory:  # Continue child directory rename only when source and target differ.
-                source_internal_path = os.path.join(norm_final_directory_path, source_internal_directory)  # Build source child directory absolute path.
-                target_internal_path = os.path.join(norm_final_directory_path, target_internal_directory)  # Build target child directory absolute path.
-                norm_source_internal_path = normalize_path(source_internal_path)  # Normalize source child directory path for logging
-                norm_target_internal_path = normalize_path(target_internal_path)  # Normalize target child directory path for logging
+                source_internal_path = normalize_path(os.path.join(norm_final_directory_path, source_internal_directory))  # Normalize source child directory absolute path.
+                target_internal_path = normalize_path(os.path.join(norm_final_directory_path, target_internal_directory))  # Normalize target child directory absolute path.
+                norm_source_internal_path = source_internal_path  # Already normalized
+                norm_target_internal_path = target_internal_path  # Already normalized
                 if not os.path.exists(norm_target_internal_path):  # Avoid overwriting existing target child directory.
                     verbose_output(f"{BackgroundColors.GREEN}Renaming for normalization (phase 1): {BackgroundColors.CYAN}{norm_source_internal_path}{BackgroundColors.GREEN} -> {BackgroundColors.CYAN}{norm_target_internal_path}{Style.RESET_ALL}")  # Emit verbose diagnostics for phase-one rename.
                     rename_with_retry(source_internal_path, target_internal_path)  # Retry-safe rename operation
@@ -2211,10 +2211,10 @@ def normalize_output_directory_indexes(rename_plan: List[Dict[str, str]]) -> Lis
 
             target_zip_file = f"{new_index}.zip"  # Build target zip filename from normalized index.
             if source_zip_file and source_zip_file != target_zip_file:  # Continue zip rename only when source and target differ.
-                source_zip_path = os.path.join(norm_final_directory_path, source_zip_file)  # Build source zip absolute path.
-                target_zip_path = os.path.join(norm_final_directory_path, target_zip_file)  # Build target zip absolute path.
-                norm_source_zip_path = normalize_path(source_zip_path)
-                norm_target_zip_path = normalize_path(target_zip_path)
+                source_zip_path = normalize_path(os.path.join(norm_final_directory_path, source_zip_file))  # Normalize source zip absolute path.
+                target_zip_path = normalize_path(os.path.join(norm_final_directory_path, target_zip_file))  # Normalize target zip absolute path.
+                norm_source_zip_path = source_zip_path  # Already normalized
+                norm_target_zip_path = target_zip_path  # Already normalized
                 if not os.path.exists(norm_target_zip_path):  # Avoid overwriting existing target zip file.
                     verbose_output(f"{BackgroundColors.GREEN}Renaming for normalization (phase 1): {BackgroundColors.CYAN}{norm_source_zip_path}{BackgroundColors.GREEN} -> {BackgroundColors.CYAN}{norm_target_zip_path}{Style.RESET_ALL}")  # Emit verbose diagnostics for phase-one rename.
                     rename_with_retry(source_zip_path, target_zip_path)  # Retry-safe rename operation
