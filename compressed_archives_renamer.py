@@ -509,19 +509,9 @@ def main():
         print(f"{BackgroundColors.GREEN}No supported compressed files found in {BackgroundColors.CYAN}{INPUT_DIRECTORY}{BackgroundColors.GREEN}.{Style.RESET_ALL}")  # Output no files found message
         return
 
-    verbose_output(f"{BackgroundColors.GREEN}Sorting files by modification time...{Style.RESET_ALL}")  # Output sorting operation message
+    process_url_based_renames(INPUT_DIRECTORY, URLS_INPUT_FILE)  # Process URL-driven deterministic archive renaming
 
-    # @TODO: Implement a new logic, of reading the urls.txt file, where each line is in the format of "{product_url}" or "{product_url} {expected_filename}", sort the lines alphabetically and non-case sentitive for renaming the menionted expected filename for each product url using the index of the line (that is, the number of the line where that product url is), and obviously keep track of this new mapping for every line (even the ones that doesnt have a expected filename, as those will simply contain the product url). This only for the products urls that have a matching expected filename, for the lines that doesnt have a expected filename, the program should ignore them and not rename any file for those urls. After every product is processed, it updates urls.txt using this function "write_urls_to_file(urls_to_write: list, input_file_path: str, recursive: bool = False, sort: bool = True) -> None:" from the urls_utils.py, where you pass the lines for it to write, that is, the mapping of the product urls to the expected filenames, and then it writes this mapping to urls.txt, sorted alphabetically and non-case sensitive by the product url. This way, we can have a deterministic mapping of product urls to expected filenames that is based on the alphabetical order of the product urls in urls.txt, and we can also keep track of this mapping in urls.txt itself, which is useful for debugging and for future reference. So, for that, thise sort of files from oldest to newest is removed, as now the renaming is fully based on the reading of the content inside urls.txt, and the order of the lines in urls.txt is what determines the final expected filename for each product url, and the program will simply read this mapping from urls.txt and rename the files accordingly, without needing to sort them by creation time or anything like that. This also means that the program will be more flexible and adaptable to different scenarios, as we can easily change the expected filenames for each product url by simply editing urls.txt, without needing to change the code or anything like that. This also allows us to have a more deterministic and consistent mapping of product urls to expected filenames, as it is based on the content of urls.txt, which is something that we can control and manage easily. Also, it must remove old, now unused lines/code/functions. Also must update the header of this file
-
-    archive_files_sorted = sorted(archive_files, key=lambda file: (get_creation_timestamp(file), file.name.lower()))  # Sort files from oldest to newest
-
-    temporary_mappings = []  # Store source and temporary path mappings
-
-    assign_temporary_names(archive_files_sorted, temporary_mappings)  # Assign temporary names to all sorted archive files
-
-    finalize_renames(temporary_mappings)  # Rename temporary files to final sequential numeric names
-
-    verbose_output(f"{BackgroundColors.GREEN}Renaming of the compressed files in {BackgroundColors.CYAN}{INPUT_DIRECTORY}{BackgroundColors.GREEN} completed successfully.{Style.RESET_ALL}")  # Output completion message
+    verbose_output(f"{BackgroundColors.GREEN}Renaming of the compressed files in {BackgroundColors.CYAN}{INPUT_DIRECTORY}{BackgroundColors.GREEN} completed successfully.{Style.RESET_ALL}")  # Output rename completion message
     
     finish_time = datetime.datetime.now()  # Get the finish time of the program
     print(
