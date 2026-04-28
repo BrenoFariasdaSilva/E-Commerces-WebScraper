@@ -121,6 +121,21 @@ def verbose_output(true_string="", false_string=""):
         print(false_string)  # Output the false statement string
 
 
+def verify_filepath_exists(filepath):
+    """
+    Verify if a file or folder exists at the specified path.
+
+    :param filepath: Path to the file or folder
+    :return: True if the file or folder exists, False otherwise
+    """
+
+    verbose_output(
+        f"{BackgroundColors.GREEN}Verifying if the file or folder exists at the path: {BackgroundColors.CYAN}{filepath}{Style.RESET_ALL}"
+    )  # Output the verbose message
+
+    return os.path.exists(filepath)  # Return True if the file or folder exists, False otherwise
+
+
 def list_supported_archives(input_directory):
     """
     Lists archive files in the input directory that match supported extensions.
@@ -429,21 +444,6 @@ def calculate_execution_time(start_time, finish_time=None):
     if minutes > 0:  # Include minutes when present
         return f"{minutes}m {seconds}s"  # Return formatted minutes+seconds
     return f"{seconds}s"  # Fallback: only seconds
-
-
-def verify_filepath_exists(filepath):
-    """
-    Verify if a file or folder exists at the specified path.
-
-    :param filepath: Path to the file or folder
-    :return: True if the file or folder exists, False otherwise
-    """
-
-    verbose_output(
-        f"{BackgroundColors.GREEN}Verifying if the file or folder exists at the path: {BackgroundColors.CYAN}{filepath}{Style.RESET_ALL}"
-    )  # Output the verbose message
-
-    return os.path.exists(filepath)  # Return True if the file or folder exists, False otherwise
 
 
 def play_sound():
