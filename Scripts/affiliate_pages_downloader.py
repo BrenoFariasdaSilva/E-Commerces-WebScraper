@@ -3195,6 +3195,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
     fallback_outputs_mode = False  # Initialize Outputs fallback mode status flag.
 
     if only_renew_amazon_urls:  # Verify whether only-renew mode is enabled before processing URLs.
+        # @TODO: Extract functions for the setup and validation of those URL files and the extraction of valid Amazon URLs from them, as well as the merging and deduplication logic to produce the final URL list to process, which includes the fallback scan of Outputs when both files yield zero valid URLs.
         primary_urls_file = urls_file.resolve()  # Resolve primary urls.txt absolute path for validation and extraction.
         backup_urls_file = primary_urls_file.with_name(primary_urls_file.stem + "-backup" + primary_urls_file.suffix)  # Resolve backup urls file absolute path for validation and extraction.
         primary_is_empty = is_file_empty(str(primary_urls_file))  # Evaluate whether primary URLs file is empty.
@@ -3244,6 +3245,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
 
     urls = urls[:tab_count]  # Limit URL list to requested tab count.
 
+    # @TODO: Extract a function for the setup of those image paths
     extension_img = assets_dir / "Extension.png"  # Define extension image path.
     download_img = assets_dir / "DownloadButton.png"  # Define download button image path.
     enable_permission_img = assets_dir / "Extension Enable Permission.png"  # Define optional extension enable-permission image path.
@@ -3276,6 +3278,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
             if not chrome_download_settings_ready:  # Verify whether Chrome downloads settings could not be verified or corrected automatically.
                 print(f"{BackgroundColors.YELLOW}[WARNING] Chrome downloads settings could not be verified or corrected automatically. Continuing execution.{Style.RESET_ALL}")  # Log non-blocking downloads settings verification warning.
 
+        # @TODO: Extract a function for returning the various method maps from ext_methods to close_methods
         ext_methods: Dict[str, List[int]] = {}  # Initialize extension method map.
         download_methods: Dict[str, List[int]] = {}  # Initialize download method map.
         completion_methods: Dict[str, List[int]] = {}  # Initialize completion method map.
