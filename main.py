@@ -2167,6 +2167,21 @@ def select_source_zip_file(numeric_zip_files: list[str], normalized_old_zip: str
     return None
 
 
+def get_numeric_directories(base_path: str, entries: list[str]) -> list[str]:
+    """
+    Returns only numeric-named directories from a directory listing.
+
+    :param base_path: Base directory path where entries exist.
+    :param entries: List of directory entries.
+    :return: Filtered numeric directory names.
+    """
+    
+    return [
+        entry for entry in entries
+        if os.path.isdir(os.path.join(base_path, entry)) and re.fullmatch(r"\d+", entry)
+    ]
+
+
 def normalize_output_directory_indexes(rename_plan: List[Dict[str, str]]) -> List[str]:
     """
     Normalize output directory indexes and internal numeric artifacts using a safe two-phase rename.
@@ -2230,7 +2245,7 @@ def normalize_output_directory_indexes(rename_plan: List[Dict[str, str]]) -> Lis
 
         if os.path.isdir(norm_final_directory_path):  # Continue internal normalization only when final directory exists.
             current_entries = os.listdir(norm_final_directory_path)  # List current entries inside the normalized directory.
-            numeric_directories = [entry for entry in current_entries if os.path.isdir(os.path.join(norm_final_directory_path, entry)) and re.fullmatch(r"\d+", entry)]  # Collect child directories with numeric-only names.
+            numeric_directories = get_numeric_directories(norm_final_directory_path, current_entries)  # Collect child directories with numeric-only names.
             normalized_old_index = f"{int(old_index):02d}" if old_index.isdigit() else ""  # Normalize old index to two digits when possible.
             source_internal_directory = select_internal_directory(numeric_directories, normalized_old_index, old_index, new_index)  # Select the correct internal directory candidate for renaming based on deterministic rules.
 
