@@ -116,6 +116,36 @@ def remove_dash_prefixes(input_urls: list[str]) -> list[str]:
     return updated  # Return the processed list of URLs
 
 
+def normalize_paths_to_unix(input_urls: list[str]) -> list[str]:
+    """
+    Normalize Windows-style paths in URL entries to Unix-style paths.
+
+    Converts backslashes "\" (single or multiple) to forward slashes "/"
+    only in the optional filename/path portion, preserving the URL.
+
+    :param input_urls: List of raw URL lines (URL + optional filename).
+    :return: New list with normalized paths.
+    """
+
+    normalized_urls: list[str] = []  # Initialize list to store normalized URL entries
+
+    for line in input_urls:  # Iterate over each input line
+        parts = line.split(None, 1)  # Split into URL and optional filename/path
+
+        if not parts:  # Safety check for empty split result
+            continue  # Skip malformed/empty entries
+
+        product_url = parts[0].strip()  # Extract URL portion
+
+        if len(parts) > 1 and parts[1].strip():  # Verify if a filename/path exists
+            path_part = parts[1].strip().replace("\\", "/")  # Normalize backslashes to forward slashes
+            normalized_urls.append(f"{product_url} {path_part}")  # Reconstruct normalized line
+        else:
+            normalized_urls.append(product_url)  # Keep only URL when no path is present
+
+    return normalized_urls  # Return list with normalized paths
+
+
 def sort_urls(input_urls: list[str]) -> list[str]:
     """
     Return an alphabetically sorted copy of the list.
