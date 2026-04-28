@@ -2135,7 +2135,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         if re.search(AFFILIATE_URL_PATTERN, url):  # Verify whether current URL matches Amazon affiliate pattern.
             url, renewal_success, renewed_url = handle_amazon_affiliate_url(current_tab, url, share_button_img, Path(urls_file), renew_amazon_affiliate)  # Execute extracted Amazon affiliate handling logic.
 
-        # @TODO: Implement a update of the old url in the txt file with the renewed url when renewal is successful, so that we can keep track of which URLs were renewed and their new values for better tracking and recovery. That is, find the old url in the urls_file for "".txt", "-backup.txt" and find the old url and update with the new
+        # @TODO: Implement a update of the old url in the txt file with the renewed url when renewal is successful, so that we can keep track of which URLs were renewed and their new values for better tracking and recovery. That is, find the old url in the urls_file for "".txt", "-backup.txt" and find the old url and update with the new.
 
         if only_renew_amazon_urls:  # Verify whether only-renew mode is active for Amazon URLs.
             opened_tabs = handle_only_renew_amazon_urls(opened_tabs)  # Execute extracted only-renew tab handling logic.
