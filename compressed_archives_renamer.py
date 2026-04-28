@@ -205,27 +205,6 @@ def remove_duplicate_archives(input_directory: str) -> None:
                 print(f"{BackgroundColors.RED} Failed to remove duplicate archive: {BackgroundColors.CYAN}{duplicate_file.name}{BackgroundColors.RED} | Error: {exception_error}{Style.RESET_ALL}")  # Log deletion failure details for troubleshooting with color
 
 
-def assign_temporary_names(archive_files_sorted: list[Path], temporary_mappings: list) -> None:
-    """
-    Assign temporary unique names to sorted archive files.
-
-    :param archive_files_sorted: List of Path objects sorted by creation time.
-    :param temporary_mappings: List to be populated with (original, temporary) tuples.
-    :return: None
-    """
-
-    temporary_index = 0  # Initialize the temporary index counter
-
-    for index, source_file in enumerate(archive_files_sorted, start=1):  # Iterate over sorted files to assign temporary names
-        temporary_file = source_file.with_name(f"__tmp__{index:04d}{source_file.suffix}")  # Build temporary file name with original extension
-
-        while temporary_file.exists():  # Verify if generated temporary name already exists
-            temporary_file = source_file.with_name(f"__tmp__{index:04d}_{datetime.datetime.now().strftime('%f')}{source_file.suffix}")  # Build a unique temporary name using microseconds
-
-        source_file.rename(temporary_file)  # Rename source file to temporary file name
-        temporary_mappings.append((source_file, temporary_file))  # Store mapping for phase two rename
-        temporary_index += 1  # Increment the temporary index counter
-
 
 def parse_url_entries(input_file_path: str) -> list[tuple[str, Optional[str]]]:
     """
