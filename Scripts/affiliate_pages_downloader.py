@@ -1618,9 +1618,16 @@ def run_zip_merge_java(jar_path: Path, zip_files: List[Path], output_zip: Path) 
     :return: True when merge succeeds, otherwise False.
     """
 
-    command = ["java", "-jar", str(jar_path), str(output_zip)] + [str(p) for p in zip_files if str(p).lower().endswith(".zip")]  # Build the Java command with the JAR, output path, and all .zip fragment companions as arguments.
+    jar_path_str = jar_path.resolve().as_posix()  # Normalize JAR path to POSIX format for Java compatibility.
+    output_zip_str = output_zip.resolve().as_posix()  # Normalize output ZIP path to POSIX format for Java compatibility.
 
-    if VERBOSE:
+    zip_files_str = [
+        p.resolve().as_posix() for p in zip_files if str(p).lower().endswith(".zip")
+    ]  # Normalize all ZIP fragment paths to POSIX format for consistent CLI handling.
+
+    command = ["java", "-jar", jar_path_str, output_zip_str] + zip_files_str  # Build Java command with normalized POSIX paths.
+
+    if VERBOSE:  # Verify whether verbose mode is enabled for debugging output.
         command.insert(3, "--log=DEBUG")  # Insert verbose logging argument if verbose mode is enabled.
     
     verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Executing Java merge fragment zip file command: {' '.join(command)}{Style.RESET_ALL}")  # Log the exact Java command being executed
@@ -1649,7 +1656,7 @@ def run_zip_merge_java(jar_path: Path, zip_files: List[Path], output_zip: Path) 
 
         if status == "success":  # Verify success status.
             verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Merge success: {parsed.get('output', '')}{Style.RESET_ALL}")  # Log success.
-            # verify if the file exists
+
             if not verify_filepath_exists(output_zip):  # Verify whether the expected merged ZIP file now exists after Java merge.
                 print(f"{BackgroundColors.RED}[WARNING] Java merge reported success but output ZIP not found: {output_zip}{Style.RESET_ALL}")  # Log missing output ZIP warning.
                 return False  # Return failure when output ZIP is not found after reported success.
