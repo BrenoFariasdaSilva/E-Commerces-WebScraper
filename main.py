@@ -2129,6 +2129,25 @@ def resolve_collision_path(parent_directory: str, final_directory_name: str) -> 
     return norm_final_directory_path  # Return the original or collision-resolved final directory path.
 
 
+def select_internal_directory(numeric_directories: list[str], normalized_old_index: str, old_index: str, new_index: str) -> str | None:
+    """
+    Selects the correct internal directory candidate for renaming.
+
+    :return: Selected source directory name or None.
+    """
+    
+    verbose_output(f"{BackgroundColors.GREEN}Selecting source directory for new index {BackgroundColors.CYAN}{new_index}{BackgroundColors.GREEN}...{Style.RESET_ALL}")  # Emit verbose diagnostics for internal directory selection process.
+    
+    if normalized_old_index and normalized_old_index in numeric_directories:  # Prefer exact match with normalized old index name.
+        return normalized_old_index  # Select normalized old index directory as source.
+    elif old_index and old_index in numeric_directories:  # Fallback to raw old index name when present.
+        return old_index  # Select raw old index directory as source.
+    elif numeric_directories and new_index not in numeric_directories:  # Fallback to first numeric directory when target does not already exist.
+        sorted_numeric_directories = sorted(numeric_directories, key=lambda value: int(value))  # Sort numeric directories in ascending numeric order.
+        return sorted_numeric_directories[0]  # Select the first numeric directory as source.
+    return None
+
+
 def normalize_output_directory_indexes(rename_plan: List[Dict[str, str]]) -> List[str]:
     """
     Normalize output directory indexes and internal numeric artifacts using a safe two-phase rename.
@@ -2194,15 +2213,7 @@ def normalize_output_directory_indexes(rename_plan: List[Dict[str, str]]) -> Lis
             current_entries = os.listdir(norm_final_directory_path)  # List current entries inside the normalized directory.
             numeric_directories = [entry for entry in current_entries if os.path.isdir(os.path.join(norm_final_directory_path, entry)) and re.fullmatch(r"\d+", entry)]  # Collect child directories with numeric-only names.
             normalized_old_index = f"{int(old_index):02d}" if old_index.isdigit() else ""  # Normalize old index to two digits when possible.
-            source_internal_directory = None  # Initialize source numeric child directory to rename.
-
-            if normalized_old_index and normalized_old_index in numeric_directories:  # Prefer exact match with normalized old index name.
-                source_internal_directory = normalized_old_index  # Select normalized old index directory as source.
-            elif old_index and old_index in numeric_directories:  # Fallback to raw old index name when present.
-                source_internal_directory = old_index  # Select raw old index directory as source.
-            elif numeric_directories and new_index not in numeric_directories:  # Fallback to first numeric directory when target does not already exist.
-                sorted_numeric_directories = sorted(numeric_directories, key=lambda value: int(value))  # Sort numeric directories in ascending numeric order.
-                source_internal_directory = sorted_numeric_directories[0]  # Select the first numeric directory as source.
+            source_internal_directory = select_internal_directory(numeric_directories, normalized_old_index, old_index, new_index)  # Select the correct internal directory candidate for renaming based on deterministic rules.
 
             target_internal_directory = new_index  # Build target child directory name from new normalized index.
             if source_internal_directory and source_internal_directory != target_internal_directory:  # Continue child directory rename only when source and target differ.
