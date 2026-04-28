@@ -928,64 +928,22 @@ def resolve_outputs_fallback(urls: List[str], affiliate_pattern: str) -> Tuple[L
 
 def setup_only_renew_amazon_urls(tab_count: int, urls: List[str], urls_file: Path, affiliate_pattern: str) -> Tuple[List[str], bool, Dict[str, List[str]], int]:
     """
-    Builds the final URL list for only-renew mode with validation, deduplication, and fallback scanning.
+    Builds final URL list for only-renew mode with validation, deduplication, and fallback scanning.
 
-    :param tab_count: Requested number of URLs to process.
+    :param tab_count: Requested number of URLs.
     :param urls: Initial URL list.
-    :param urls_file: Path to primary URLs file.
-    :param affiliate_pattern: Pattern used to extract valid Amazon URLs.
-    :return: Final URL list, fallback mode flag, fallback outputs map, and updated tab count.
+    :param urls_file: Path to URLs file.
+    :param affiliate_pattern: Amazon URL pattern.
+    :return: Final URLs, fallback flag, fallback map, updated tab count.
     """
 
-    if tab_count is None or tab_count <= 0:  # Verify tab count validity
-        tab_count = len(urls)  # Use full URL list length when invalid tab count
+    tab_count = resolve_urls_tab_count(tab_count, urls)  # Normalize tab count
 
-    fallback_outputs_url_map: Dict[str, List[str]] = {}  # Initialize fallback Outputs URL map
-    fallback_outputs_mode = False  # Initialize fallback mode flag
+    primary_urls_file, backup_urls_file = resolve_url_files(urls_file)  # Resolve file paths
 
-    primary_urls_file = urls_file.resolve()  # Resolve primary file path
-    backup_urls_file = primary_urls_file.with_name(primary_urls_file.stem + "-backup" + primary_urls_file.suffix)  # Resolve backup file path
+    urls = extract_and_validate_urls(primary_urls_file, backup_urls_file, affiliate_pattern)  # Extract and validate URLs
 
-    primary_is_empty = is_file_empty(str(primary_urls_file))  # Verify primary file emptiness
-    backup_is_empty = is_file_empty(str(backup_urls_file))  # Verify backup file emptiness
-
-    if primary_is_empty:  # Verify primary file empty state
-        print(f"{BackgroundColors.YELLOW}[WARNING] {primary_urls_file.name} is empty{Style.RESET_ALL}")  # Log primary empty warning
-
-    if backup_is_empty:  # Verify backup file empty state
-        print(f"{BackgroundColors.YELLOW}[WARNING] {backup_urls_file.name} is empty{Style.RESET_ALL}")  # Log backup empty warning
-
-    primary_valid_urls = [] if primary_is_empty else extract_amazon_urls_from_file(str(primary_urls_file), affiliate_pattern)  # Extract primary URLs
-    backup_valid_urls = [] if backup_is_empty else extract_amazon_urls_from_file(str(backup_urls_file), affiliate_pattern)  # Extract backup URLs
-
-    if not primary_is_empty and len(primary_valid_urls) == 0:  # Verify primary has no valid URLs
-        print(f"{BackgroundColors.YELLOW}[WARNING] {primary_urls_file.name} contains no valid Amazon URLs{Style.RESET_ALL}")  # Log primary invalid content warning
-
-    if not backup_is_empty and len(backup_valid_urls) == 0:  # Verify backup has no valid URLs
-        print(f"{BackgroundColors.YELLOW}[WARNING] {backup_urls_file.name} contains no valid Amazon URLs{Style.RESET_ALL}")  # Log backup invalid content warning
-
-    unique_urls: List[str] = []  # Initialize deduplicated URL list
-    seen_urls: set[str] = set()  # Initialize deduplication set
-
-    for candidate_url in primary_valid_urls + backup_valid_urls:  # Iterate combined URL sources
-        if candidate_url in seen_urls:  # Verify URL duplication
-            continue  # Skip duplicate URL
-
-        seen_urls.add(candidate_url)  # Register URL as seen
-        unique_urls.append(candidate_url)  # Append unique URL
-
-    urls = sorted(unique_urls, key=lambda x: x.lower())  # Sort final URL list
-
-    if len(urls) == 0:  # Verify empty merged result
-        fallback_outputs_mode = True  # Enable fallback mode
-
-        outputs_dir = resolve_outputs_directory()  # Resolve outputs directory
-        fallback_outputs_url_map = scan_outputs_for_amazon_urls(str(outputs_dir), affiliate_pattern)  # Scan outputs for URLs
-
-        urls = sorted(fallback_outputs_url_map.keys())  # Build URL list from fallback map
-
-        if len(urls) == 0:  # Verify fallback failure
-            print(f"{BackgroundColors.YELLOW}[WARNING] No valid Amazon URLs found in Outputs fallback scan.{Style.RESET_ALL}")  # Log fallback failure
+    urls, fallback_outputs_mode, fallback_outputs_url_map = resolve_outputs_fallback(urls, affiliate_pattern)  # Resolve fallback scan
 
     tab_count = len(urls)  # Update tab count
 
