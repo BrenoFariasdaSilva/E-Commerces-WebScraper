@@ -303,7 +303,7 @@ def verify_env_variables():
 
 def is_ffmpeg_installed():
     """
-    Checks if FFmpeg is installed by running 'ffmpeg -version'.
+    Verifies if FFmpeg is installed by running 'ffmpeg -version'.
 
     :return: bool - True if FFmpeg is installed, False otherwise.
     """
@@ -324,11 +324,11 @@ def install_ffmpeg_windows():
     :return: None
     """
 
-    verbose_output(f"{BackgroundColors.GREEN}Checking for Chocolatey...{Style.RESET_ALL}")  # Output the verbose message
+    verbose_output(f"{BackgroundColors.GREEN}Verifying for Chocolatey...{Style.RESET_ALL}")  # Output the verbose message
 
     choco_installed = (
         subprocess.run(["choco", "--version"], capture_output=True, text=True).returncode == 0
-    )  # Check if Chocolatey is installed
+    )  # Verify if Chocolatey is installed
 
     if not choco_installed:  # If Chocolatey is not installed
         verbose_output(f"{BackgroundColors.YELLOW}Chocolatey not found. Installing Chocolatey...{Style.RESET_ALL}")
@@ -969,7 +969,7 @@ def resolve_local_html_path(local_html_path):
         return local_html_path  # Return as-is
     
     if verify_filepath_exists(local_html_path):  # If path exists as provided
-        if os.path.isdir(local_html_path):  # Check if it's a directory
+        if os.path.isdir(local_html_path):  # Verify if it's a directory
             index_html_path = os.path.join(local_html_path, "index.html")  # Construct path to index.html inside directory
             if verify_filepath_exists(index_html_path):  # If index.html exists inside directory
                 verbose_output(f"{BackgroundColors.GREEN}Resolved local HTML path (directory): {BackgroundColors.CYAN}{local_html_path}{BackgroundColors.GREEN} -> {BackgroundColors.CYAN}{index_html_path}{Style.RESET_ALL}")  # Confirm resolution
@@ -987,7 +987,7 @@ def resolve_local_html_path(local_html_path):
             
             test_path = f"{prefix}{local_html_path}{suffix}"  # Construct test path with prefix and suffix
             if verify_filepath_exists(test_path):  # If test path exists
-                if os.path.isdir(test_path):  # Check if the resolved path is a directory
+                if os.path.isdir(test_path):  # Verify if the resolved path is a directory
                     index_html_path = os.path.join(test_path, "index.html")  # Construct path to index.html inside directory
                     if verify_filepath_exists(index_html_path):  # If index.html exists inside directory
                         verbose_output(f"{BackgroundColors.GREEN}Resolved local HTML path (directory): {BackgroundColors.CYAN}{local_html_path}{BackgroundColors.GREEN} -> {BackgroundColors.CYAN}{index_html_path}{Style.RESET_ALL}")  # Inform about resolution
@@ -1089,7 +1089,7 @@ def copy_original_input_to_output(input_source, product_directory, base_output_d
                 html_dir_name = os.path.basename(html_dir)  # Basename of the directory containing HTML
                 copied_any = False  # Track whether we copied any preferred artifact
 
-                # Candidate zip locations to check for the original archive
+                # Candidate zip locations to verify for the original archive
                 candidate_zips = [
                     f"{html_dir}.zip",  # Same path with .zip appended
                     os.path.join(os.path.dirname(html_dir), f"{html_dir_name}.zip"),  # Parent dir + basename.zip
@@ -1467,7 +1467,7 @@ def validate_price_relationships(old_price: Optional[str], current_price: Option
     if parsed_old is not None and parsed_current is not None and abs(parsed_old - parsed_current) < 1e-6:  # Verify old and current prices are not equal
         return False, "inconsistent price fields detected"  # Return invalid status when prices are equal
 
-    return True, None  # Return valid status when all logical price checks passed
+    return True, None  # Return valid status when all logical price verifications passed
 
 
 def output_missing_fields(missing_fields: List[str]) -> bool:
@@ -2340,7 +2340,7 @@ def collect_product_dirs_for_removal(run_dirs: List[str], keys_to_cleanup: List[
                 for (platform_name, pname, aurl), day_marker in keys_to_cleanup:  # Iterate cleanup candidate keys to find matches
                     if pname and detected_name and pname.strip() == detected_name.strip() and aurl and detected_url and aurl.strip() == detected_url.strip():  # Verify both product name and affiliate URL match exactly
                         matched_dirs.append(prod_full)  # Append this product directory as a removal candidate upon match
-                        break  # Stop checking other keys for this product directory after a match
+                        break  # Stop verifying other keys for this product directory after a match
         except Exception:  # Ignore unexpected errors scanning a run directory to continue other runs
             continue  # Continue to next run directory when scanning errors occur
 
