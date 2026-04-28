@@ -2125,8 +2125,6 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
     first_fragmented_file_detected = False  # Flag to track whether the first fragmented file detection has occurred for initial failure handling.
 
     for index, url in enumerate(tqdm(urls, total=len(urls), desc="Processing URLs", bar_format=bar_format), start=1):  # Initialize tqdm with custom colored bar_format and enumerate indexing
-        # @TODO: Implement update and link of the url to the zip file in the txt file at every product iteration, so that if the process is interrupted, we can know which URLs were processed and which file corresponds to each URL for better recovery and tracking.
-
         if not activate_automation_window():  # Verify if automation window activation succeeds before URL navigation.
             return processed_count, url_to_download, False  # Return failure state when activation fails.
 
@@ -2189,6 +2187,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
             continue  # Continue with next URL without updating mapping when fragmented ZIP processing fails.
 
         associate_url_with_download(url_to_download, url, effective_filename)  # Persist URL to downloaded filename mapping when detection succeeds.
+        # @TODO: Implement update and link of the url to the zip file in the txt file at every product iteration, so that if the process is interrupted, we can know which URLs were processed and which file corresponds to each URL for better recovery and tracking.
         
         close_method = close_extension_download_tab(close_download_tab_img)  # Execute close extension tab action.
         handle_post_download_methods(ext_methods, download_methods, completion_methods, close_methods, extension_method, download_method, confirmation_method, close_method, current_tab)  # Execute extracted method tracking logic.
