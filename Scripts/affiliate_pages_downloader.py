@@ -830,6 +830,21 @@ def prepare_active_downloads_directory() -> List[str]:
     return ACTIVE_DOWNLOADS_DIRS  # Return cached active downloads directories for immediate usage.
 
 
+def resolve_urls_tab_count(tab_count: int, urls: List[str]) -> int:
+    """
+    Normalizes tab count based on available URL list.
+
+    :param tab_count: Requested tab count.
+    :param urls: URL list used for fallback sizing.
+    :return: Resolved tab count.
+    """
+
+    if tab_count is None or tab_count <= 0:  # Verify tab count validity
+        tab_count = len(urls)  # Use full URL list length when invalid tab count
+
+    return tab_count  # Return normalized tab count
+
+
 def setup_only_renew_amazon_urls(tab_count: int, urls: List[str], urls_file: Path, affiliate_pattern: str) -> Tuple[List[str], bool, Dict[str, List[str]], int]:
     """
     Builds the final URL list for only-renew mode with validation, deduplication, and fallback scanning.
