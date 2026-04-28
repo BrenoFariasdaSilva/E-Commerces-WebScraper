@@ -126,7 +126,10 @@ def sort_urls(input_urls: list[str]) -> list[str]:
     
     verbose_output(f"{BackgroundColors.GREEN}Sorting {BackgroundColors.CYAN}{len(input_urls)}{BackgroundColors.GREEN} URLs...{Style.RESET_ALL}")  # Log the start of URL sorting
 
-    return sorted(input_urls)  # Return a new list sorted in alphabetical order without modifying the original list
+    return sorted(
+        input_urls,
+        key=lambda line: line.split(None, 1)[0].lower() if line.strip() else ""
+    )  # Return a new list sorted by URL without modifying the original list
 
 
 def preprocess_urls(urls: list[str]) -> list[str]:
