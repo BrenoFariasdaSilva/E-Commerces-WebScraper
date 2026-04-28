@@ -137,19 +137,6 @@ def list_supported_archives(input_directory):
     return [file for file in directory_path.iterdir() if file.is_file() and file.suffix.lower() in SUPPORTED_EXTENSIONS]  # Return only supported archive files
 
 
-def get_creation_timestamp(file_path):
-    """
-    Gets the most reliable modification timestamp for a file.
-
-    :param file_path: Path object of the target file.
-    :return: Modification timestamp as float seconds.
-    """
-
-    stats = file_path.stat()  # Get filesystem metadata for the file
-
-    return float(stats.st_mtime)  # Return the file modification time (mtime) as seconds
-
-
 def remove_duplicate_archives(input_directory: str) -> None:
     """
     Detects and removes duplicate archive copies before renaming starts.
