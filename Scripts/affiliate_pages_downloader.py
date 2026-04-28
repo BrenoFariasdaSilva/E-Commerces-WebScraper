@@ -1625,11 +1625,14 @@ def run_zip_merge_java(jar_path: Path, zip_files: List[Path], output_zip: Path) 
         p.resolve().as_posix() for p in zip_files if str(p).lower().endswith(".zip")
     ]  # Normalize all ZIP fragment paths to POSIX format for consistent CLI handling.
 
-    command = ["java", "-jar", jar_path_str, output_zip_str] + zip_files_str  # Build Java command with normalized POSIX paths.
+    command = ["java", "-jar", jar_path_str]  # Initialize Java base command with JAR execution.
 
     if VERBOSE:  # Verify whether verbose mode is enabled for debugging output.
-        command.insert(3, "--log=DEBUG")  # Insert verbose logging argument if verbose mode is enabled.
-    
+        command.append("--log=DEBUG")  # Append verbose logging argument in correct CLI position.
+
+    command.append(output_zip_str)  # Append output ZIP path as first positional argument after flags.
+    command.extend(zip_files_str)  # Append all ZIP fragment inputs to command.
+
     verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Executing Java merge fragment zip file command: {' '.join(command)}{Style.RESET_ALL}")  # Log the exact Java command being executed
     
     try:  # Attempt Java execution.
