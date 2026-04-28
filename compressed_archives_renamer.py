@@ -64,7 +64,7 @@ from colorama import Style  # For coloring the terminal
 from Logger import Logger  # For logging output to both terminal and file
 from pathlib import Path  # For handling file paths
 from typing import Optional  # Optional type hint utility for nullable return values
-from urls_utils import load_urls_to_process, write_urls_to_file  # URL loading and writing utilities
+from urls_utils import preprocess_urls, load_urls_to_process, write_urls_to_file  # URL loading and writing utilities
 
 
 # Macros:
@@ -233,6 +233,7 @@ def parse_url_entries(input_file_path: str) -> list[tuple[str, Optional[str]]]:
     """
 
     raw_lines = load_urls_to_process(input_file_path)  # Load raw lines from the URLs input file
+    preprocessed_lines = preprocess_urls(raw_lines)  # Preprocess the raw lines to clean and sort them
     url_entries: list[tuple[str, Optional[str]]] = []  # Initialize list to hold parsed URL entries
 
     for line in raw_lines:  # Iterate over each raw line from the URLs file
