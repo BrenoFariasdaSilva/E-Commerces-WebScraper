@@ -350,7 +350,7 @@ def process_url_based_renames(input_directory: str, urls_file_path: str) -> None
             rename_map[expected_filename] = new_filename  # Record the successful rename in the tracking dictionary
 
     updated_mapping = build_updated_mapping(sorted_entries, rename_map)  # Build the updated URL-filename mapping from rename results
-    write_urls_to_file(updated_mapping, urls_file_path, recursive=False, sort=True)  # Write updated mapping to the URLs file sorted alphabetically
+    write_urls_to_file(updated_mapping, urls_file_path, recursive=True, sort=True)  # Write updated mapping to the URLs file sorted alphabetically
 
 
 def to_seconds(obj):
