@@ -900,6 +900,32 @@ def extract_and_validate_urls(primary_file: Path, backup_file: Path, affiliate_p
     return sorted(unique_urls, key=lambda x: x.lower())  # Return sorted URLs
 
 
+def resolve_outputs_fallback(urls: List[str], affiliate_pattern: str) -> Tuple[List[str], bool, Dict[str, List[str]]]:
+    """
+    Resolves Outputs fallback scan when no valid URLs exist in primary sources.
+
+    :param urls: Current URL list.
+    :param affiliate_pattern: Pattern used for scanning.
+    :return: Updated URLs, fallback mode flag, and fallback map.
+    """
+
+    fallback_outputs_mode = False  # Initialize fallback mode flag
+    fallback_outputs_url_map: Dict[str, List[str]] = {}  # Initialize fallback map
+
+    if len(urls) == 0:  # Verify empty merged result
+        fallback_outputs_mode = True  # Enable fallback mode
+
+        outputs_dir = resolve_outputs_directory()  # Resolve outputs directory
+        fallback_outputs_url_map = scan_outputs_for_amazon_urls(str(outputs_dir), affiliate_pattern)  # Scan outputs
+
+        urls = sorted(fallback_outputs_url_map.keys())  # Build URL list from fallback map
+
+        if len(urls) == 0:  # Verify fallback failure
+            print(f"{BackgroundColors.YELLOW}[WARNING] No valid Amazon URLs found in Outputs fallback scan.{Style.RESET_ALL}")  # Log failure
+
+    return urls, fallback_outputs_mode, fallback_outputs_url_map  # Return fallback result
+
+
 def setup_only_renew_amazon_urls(tab_count: int, urls: List[str], urls_file: Path, affiliate_pattern: str) -> Tuple[List[str], bool, Dict[str, List[str]], int]:
     """
     Builds the final URL list for only-renew mode with validation, deduplication, and fallback scanning.
