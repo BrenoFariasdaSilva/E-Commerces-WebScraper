@@ -165,7 +165,7 @@ def sort_urls(input_urls: list[str]) -> list[str]:
 def preprocess_urls(urls: list[str]) -> list[str]:
     """
     Preprocesses a list of URLs by stripping whitespace and removing empty entries.
-    Also, it calls two functions. One for detecting "- " and "-- " at the start of the line of the urls.txt file and another for sorting the urls in alphabetical order.
+    Also, it calls four functions. One for stripping whitespace and filtering empty entries, another for removing dash prefixes, another for normalizing paths to Unix-style, and another for sorting the URLs alphabetically.
 
     :param urls: A list of URL strings to preprocess.
     :return: A new list of preprocessed URL strings.
@@ -175,7 +175,8 @@ def preprocess_urls(urls: list[str]) -> list[str]:
 
     cleaned = strip_whitespace_and_filter(urls)  # Remove leading/trailing whitespace and filter out empty strings
     without_prefixes = remove_dash_prefixes(cleaned)  # Remove any leading "-- " or "- " prefixes from the URLs
-    sorted_urls = sort_urls(without_prefixes)  # Sort the URLs in alphabetical order
+    normalized = normalize_paths_to_unix(without_prefixes)  # Normalize Windows-style paths to Unix-style paths
+    sorted_urls = sort_urls(normalized)  # Sort the URLs in alphabetical order
     
     return sorted_urls  # Return the URLs sorted in alphabetical order
 
