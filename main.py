@@ -2182,6 +2182,21 @@ def get_numeric_directories(base_path: str, entries: list[str]) -> list[str]:
     ]
 
 
+def get_numeric_zip_files(base_path: str, entries: list[str]) -> list[str]:
+    """
+    Returns only numeric zip files from a directory listing.
+
+    :param base_path: Base directory path where entries exist.
+    :param entries: List of file entries.
+    :return: Filtered numeric zip filenames.
+    """
+    
+    return [
+        entry for entry in entries
+        if os.path.isfile(os.path.join(base_path, entry)) and re.fullmatch(r"\d+\.zip", entry)
+    ]
+
+
 def normalize_output_directory_indexes(rename_plan: List[Dict[str, str]]) -> List[str]:
     """
     Normalize output directory indexes and internal numeric artifacts using a safe two-phase rename.
@@ -2260,7 +2275,7 @@ def normalize_output_directory_indexes(rename_plan: List[Dict[str, str]]) -> Lis
                     rename_with_retry(source_internal_path, target_internal_path)  # Retry-safe rename operation
 
             current_entries = os.listdir(norm_final_directory_path)  # Refresh directory listing after optional child directory rename.
-            numeric_zip_files = [entry for entry in current_entries if os.path.isfile(os.path.join(norm_final_directory_path, entry)) and re.fullmatch(r"\d+\.zip", entry)]  # Collect zip files that use numeric names.
+            numeric_zip_files = get_numeric_zip_files(norm_final_directory_path, current_entries)  # Collect zip files that use numeric names.
             normalized_old_zip = f"{normalized_old_index}.zip" if normalized_old_index else ""  # Build normalized old zip filename candidate.
             raw_old_zip = f"{old_index}.zip" if old_index else ""  # Build raw old zip filename candidate.
             source_zip_file = select_source_zip_file(numeric_zip_files, normalized_old_zip, raw_old_zip, new_index)  # Select the correct zip file candidate for renaming based on deterministic rules.
