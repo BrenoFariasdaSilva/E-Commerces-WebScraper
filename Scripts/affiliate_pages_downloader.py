@@ -3164,11 +3164,9 @@ def validate_url_update(old_url: str, new_url: str, filepaths: list) -> bool:
     for fp in filepaths:  # Iterate each file path to validate presence and absence of URLs.
         exists_new = url_exists_in_file(fp, new_url)  # Verify new URL presence in the file.
         if not exists_new:  # Verify whether new URL is missing in the current file.
-            print(f"{BackgroundColors.YELLOW}[WARNING] New URL not found in {BackgroundColors.CYAN}{fp}{Style.RESET_ALL}")  # Log missing new URL.
             all_ok = False  # Mark aggregated flag as failed when missing new URL.
         exists_old = url_exists_in_file(fp, old_url)  # Verify old URL presence in the file.
         if exists_old:  # Verify whether old URL is still present in the current file.
-            print(f"{BackgroundColors.YELLOW}[WARNING] Old URL still present in {BackgroundColors.CYAN}{fp}{Style.RESET_ALL}")  # Log lingering old URL.
             all_ok = False  # Mark aggregated flag as failed when old URL remains.
     return all_ok  # Return aggregated validation result.
 
