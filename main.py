@@ -2102,6 +2102,33 @@ def rename_with_retry(source_path: str, target_path: str) -> None:
         raise  # Re-raise error after retries exhausted
 
 
+def resolve_collision_path(parent_directory: str, final_directory_name: str) -> str:
+    """
+    Resolves filesystem naming collisions by appending incremental suffixes.
+
+    :param parent_directory: Directory where the target path resides.
+    :param final_directory_name: Desired final directory name.
+    :return: Collision-safe absolute directory path.
+    """
+    
+    verbose_output(f"{BackgroundColors.GREEN}Resolving collision for target directory: {BackgroundColors.CYAN}{final_directory_name}{BackgroundColors.GREEN} in parent directory: {BackgroundColors.CYAN}{parent_directory}{Style.RESET_ALL}")  # Emit verbose diagnostics for collision resolution process.
+    
+    norm_final_directory_path = normalize_path(os.path.join(parent_directory, final_directory_name))  # Normalize the initial target path for collision verifying and potential use.
+    
+    if os.path.exists(norm_final_directory_path):  # Avoid overwriting any pre-existing directory path.
+        collision_suffix = 1  # Initialize collision suffix for final path fallback naming.
+        collision_path = normalize_path(os.path.join(parent_directory, f"{final_directory_name} ({collision_suffix})"))  # Normalize first fallback path candidate.
+        norm_collision_path = collision_path  # Initialize normalized collision path for existence verifying and potential use.
+        
+        while os.path.exists(norm_collision_path):  # Search for an available fallback path when collisions persist.
+            collision_suffix += 1  # Increment suffix for the next fallback candidate.
+            collision_path = normalize_path(os.path.join(parent_directory, f"{final_directory_name} ({collision_suffix})"))  # Normalize next fallback path candidate.
+            norm_collision_path = collision_path  # Update normalized collision path for the next existence check.
+        norm_final_directory_path = norm_collision_path  # Use collision-safe final path when original target is occupied.
+        
+    return norm_final_directory_path  # Return the original or collision-resolved final directory path.
+
+
 def normalize_output_directory_indexes(rename_plan: List[Dict[str, str]]) -> List[str]:
     """
     Normalize output directory indexes and internal numeric artifacts using a safe two-phase rename.
@@ -2158,15 +2185,7 @@ def normalize_output_directory_indexes(rename_plan: List[Dict[str, str]]) -> Lis
         norm_temporary_path = temporary_path  # Already normalized for both logging and filesystem
         norm_final_directory_path = final_directory_path  # Already normalized for both logging and filesystem
 
-        if os.path.exists(norm_final_directory_path):  # Avoid overwriting any pre-existing directory path.
-            collision_suffix = 1  # Initialize collision suffix for final path fallback naming.
-            collision_path = normalize_path(os.path.join(parent_directory, f"{final_directory_name} ({collision_suffix})"))  # Normalize first fallback path candidate.
-            norm_collision_path = collision_path
-            while os.path.exists(norm_collision_path):  # Search for an available fallback path when collisions persist.
-                collision_suffix += 1  # Increment suffix for the next fallback candidate.
-                collision_path = normalize_path(os.path.join(parent_directory, f"{final_directory_name} ({collision_suffix})"))  # Normalize next fallback path candidate.
-                norm_collision_path = collision_path
-            norm_final_directory_path = norm_collision_path  # Use collision-safe final path when original target is occupied.
+        norm_final_directory_path = resolve_collision_path(parent_directory, final_directory_name)  # Resolve potential naming collisions for the final directory path to avoid overwriting existing directories.
 
         verbose_output(f"{BackgroundColors.GREEN}Renaming for normalization (phase 2): {BackgroundColors.CYAN}{norm_temporary_path}{BackgroundColors.GREEN} -> {BackgroundColors.CYAN}{norm_final_directory_path}{Style.RESET_ALL}")  # Emit verbose diagnostics for phase-two rename.
         rename_with_retry(temporary_path, norm_final_directory_path)  # Retry-safe rename operation
