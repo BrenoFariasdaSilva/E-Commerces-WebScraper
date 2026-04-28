@@ -3579,7 +3579,7 @@ def main():
 
     if args.verbose:  # Verify if verbose mode is enabled
         global VERBOSE  # Set the global VERBOSE variable to True when the --verbose flag is provided
-        VERBOSE = True  # Enable verbose output
+        VERBOSE = False  # Enable verbose output
 
     if handle_merge_mode(args, start_time):  # Execute merge-only mode and early exit if applicable
         return  # Exit early if merge mode executed
