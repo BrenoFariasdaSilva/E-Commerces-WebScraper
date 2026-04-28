@@ -1,29 +1,36 @@
 """
 ================================================================================
-Compressed Archives Renamer by Creation Date - compressed_archives_renamer.py
+Compressed Archives Renamer by URL Mapping - compressed_archives_renamer.py
 ================================================================================
 Author      : Breno Farias da Silva
 Created     : 2026-03-13
 Description :
     Reads compressed archive files from the Inputs directory and renames them
-    in chronological creation order using sequential numeric filenames.
+    using a deterministic URL-driven mapping system based on urls.txt.
     This script standardizes archive naming for downstream processing.
 
     Key features include:
         - Detects only .zip, .7z, and .rar files in ./Inputs/.
-        - Collects file modification timestamps with cross-platform-safe fallback.
-        - Sorts archives from oldest to newest before renaming.
+        - Parses urls.txt into (product_url, expected_filename) entries.
+        - Sorts URL entries alphabetically (case-insensitive) by product URL.
+        - Assigns deterministic index-based filenames based on sorted URL position.
+        - Renames only archives that have an expected_filename in urls.txt.
+        - Persists the updated URL-to-filename mapping back into urls.txt.
         - Preserves original archive extensions in final filenames.
-        - Uses a two-phase temporary rename workflow to avoid overwrite risks.
 
 Usage:
-    1. Place archive files in ./Inputs/.
-    2. Execute the script.
+    1. Populate urls.txt with lines in format:
+           {product_url}
+           OR
+           {product_url} -> {expected_filename}
+    2. Place archive files in ./Inputs/.
+    3. Execute the script.
         $ python compressed_archives_renamer.py
-    3. Verify renamed archive files in ./Inputs/ with numeric names.
+    4. Verify renamed archive files in ./Inputs/ with numeric names.
 
 Outputs:
     - Renamed archives in ./Inputs/ (01.ext, 02.ext, ..., NN.ext).
+    - Updated urls.txt with new filename mappings after renaming.
     - Execution logs in ./Logs/compressed_archives_renamer.log.
 
 TODOs:
@@ -37,12 +44,13 @@ Dependencies:
     - colorama
     - telegram_bot module
     - Logger module
+    - urls_utils module
 
 Assumptions & Notes:
     - Only files with .zip, .7z, and .rar extensions are processed.
-    - File modification time is obtained from `st_mtime` (modification timestamp).
-    - On Windows, `st_mtime` is used consistently for modification time.
-    - Renaming runs in-place inside ./Inputs/ using a conflict-safe two-phase flow.
+    - Renaming order is fully determined by alphabetical sort of product URLs in urls.txt.
+    - Timestamp-based sorting has been removed in favor of URL-driven deterministic mapping.
+    - Renaming runs in-place inside ./Inputs/ without overwriting existing files.
 """
 
 
