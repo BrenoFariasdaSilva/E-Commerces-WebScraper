@@ -250,17 +250,6 @@ def parse_url_entries(input_file_path: str) -> list[tuple[str, Optional[str]]]:
     return url_entries  # Return the list of parsed URL entries
 
 
-def sort_url_entries(url_entries: list[tuple[str, Optional[str]]]) -> list[tuple[str, Optional[str]]]:
-    """
-    Sort URL entries alphabetically case-insensitively by product URL.
-
-    :param url_entries: List of (product_url, expected_filename) tuples to sort.
-    :return: New list sorted alphabetically case-insensitively by product URL.
-    """
-
-    return sorted(url_entries, key=lambda entry: entry[0].lower())  # Return entries sorted case-insensitively by product URL
-
-
 def resolve_archive_match(expected_filename: str, input_directory: str) -> Optional[Path]:
     """
     Resolve an expected filename to a matching archive file path in the input directory.
@@ -346,11 +335,9 @@ def process_url_based_renames(input_directory: str, urls_file_path: str) -> None
         print(f"{BackgroundColors.YELLOW}No URL entries found in: {BackgroundColors.CYAN}{urls_file_path}{Style.RESET_ALL}")  # Log warning when no entries are found
         return  # Exit early when there are no URL entries to process
 
-    sorted_entries = sort_url_entries(url_entries)  # Sort entries alphabetically case-insensitively by product URL
-
     rename_map: dict[str, str] = {}  # Initialize dictionary to track old-to-new filename renames
 
-    for index, (product_url, expected_filename) in enumerate(sorted_entries, start=1):  # Iterate with 1-based index over sorted URL entries
+    for index, (product_url, expected_filename) in enumerate(url_entries, start=1):  # Iterate with 1-based index over sorted URL entries
         if expected_filename is None:  # Verify if this entry has no expected filename to process
             continue  # Skip entries without an expected filename mapping
 
@@ -371,7 +358,7 @@ def process_url_based_renames(input_directory: str, urls_file_path: str) -> None
             verbose_output(f"{BackgroundColors.GREEN}Successfully renamed {BackgroundColors.CYAN}{source_path.name}{BackgroundColors.GREEN} -> {BackgroundColors.CYAN}{new_filename}{Style.RESET_ALL}")
             rename_map[expected_filename] = new_filename  # Record the successful rename in the tracking dictionary
 
-    updated_mapping = build_updated_mapping(sorted_entries, rename_map)  # Build the updated URL-filename mapping from rename results
+    updated_mapping = build_updated_mapping(url_entries, rename_map)  # Build the updated URL-filename mapping from rename results
     write_urls_to_file(updated_mapping, urls_file_path, recursive=True, sort=True)  # Write updated mapping to the URLs file sorted alphabetically
 
 
