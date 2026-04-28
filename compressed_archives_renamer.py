@@ -205,7 +205,6 @@ def remove_duplicate_archives(input_directory: str) -> None:
                 print(f"{BackgroundColors.RED} Failed to remove duplicate archive: {BackgroundColors.CYAN}{duplicate_file.name}{BackgroundColors.RED} | Error: {exception_error}{Style.RESET_ALL}")  # Log deletion failure details for troubleshooting with color
 
 
-
 def parse_url_entries(input_file_path: str) -> list[tuple[str, Optional[str]]]:
     """
     Parse the URLs input file into structured product_url and expected_filename entries.
@@ -230,6 +229,17 @@ def parse_url_entries(input_file_path: str) -> list[tuple[str, Optional[str]]]:
             url_entries.append((product_url, expected_filename))  # Append the parsed URL entry to the list
 
     return url_entries  # Return the list of parsed URL entries
+
+
+def sort_url_entries(url_entries: list[tuple[str, Optional[str]]]) -> list[tuple[str, Optional[str]]]:
+    """
+    Sort URL entries alphabetically case-insensitively by product URL.
+
+    :param url_entries: List of (product_url, expected_filename) tuples to sort.
+    :return: New list sorted alphabetically case-insensitively by product URL.
+    """
+
+    return sorted(url_entries, key=lambda entry: entry[0].lower())  # Return entries sorted case-insensitively by product URL
 
 
 def finalize_renames(temporary_mappings: list) -> None:
