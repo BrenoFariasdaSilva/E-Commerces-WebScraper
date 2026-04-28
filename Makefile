@@ -55,7 +55,7 @@ local:  dependencies
 main: dependencies
 	$(ENSURE_LOG_DIR)
 	$(CLEAR_CMD)
-	$(call RUN_AND_LOG, ./main.py)
+	$(call RUN_AND_LOG, ./main.py --sort_products_by_product_name True)
 
 sort_products: dependencies
 	$(ENSURE_LOG_DIR)
