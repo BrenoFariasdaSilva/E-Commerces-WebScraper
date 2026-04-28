@@ -2068,6 +2068,29 @@ def sort_output_directories_by_platform_and_product_name(base_output_dir: str) -
     return rename_plan  # Return deterministic full rename plan for downstream execution.
 
 
+def rename_with_retry(source_path: str, target_path: str) -> None:
+    """
+    Attempt to rename a file or directory from source_path to target_path with retries on PermissionError.
+
+    :param source_path: The source path to rename.
+    :param target_path: The target path to rename to.
+    :return: None
+    """
+    
+    verbose_output(f"{BackgroundColors.GREEN}Renaming: {BackgroundColors.CYAN}{source_path}{BackgroundColors.GREEN} -> {BackgroundColors.CYAN}{target_path}{Style.RESET_ALL}")  # Emit verbose diagnostics for rename operation
+    
+    retry_count = 0  # Initialize retry counter for Windows file locking issues
+    while retry_count < 5:  # Retry a few times to bypass transient locks
+        try:  # Attempt rename operation
+            os.rename(source_path, target_path)  # Attempt rename operation
+            break  # Exit retry loop on success
+        except PermissionError:  # Handle potential file locking issues on Windows by retrying a few times with delays.
+            retry_count += 1  # Increment retry counter
+            time.sleep(0.5)  # Small delay to allow OS to release file handles
+    else:
+        raise  # Re-raise error after retries exhausted
+
+
 def normalize_output_directory_indexes(rename_plan: List[Dict[str, str]]) -> List[str]:
     """
     Normalize output directory indexes and internal numeric artifacts using a safe two-phase rename.
@@ -2114,16 +2137,7 @@ def normalize_output_directory_indexes(rename_plan: List[Dict[str, str]]) -> Lis
         norm_old_path = os.path.normpath(old_path).replace("\\", "/")  # Normalize old path for consistent diagnostics and operations across platforms.
         norm_temporary_path = os.path.normpath(temporary_path).replace("\\", "/")  # Normalize temporary path for consistent diagnostics and operations across platforms.
         verbose_output(f"{BackgroundColors.GREEN}Renaming for normalization (phase 1): {BackgroundColors.CYAN}{norm_old_path}{BackgroundColors.GREEN} -> {BackgroundColors.CYAN}{norm_temporary_path}{Style.RESET_ALL}")  # Emit verbose diagnostics for phase-one rename.
-        retry_count = 0  # Initialize retry counter for Windows file locking issues
-        while retry_count < 5:  # Retry a few times to bypass transient locks
-            try:  # Attempt initial rename to a unique temporary name to free up the original path for the final rename, which also serves as a collision resolution when the original target name is occupied by another directory that needs to be renamed.
-                os.rename(norm_old_path, norm_temporary_path)  # Attempt rename operation
-                break  # Exit retry loop on success
-            except PermissionError:  # Handle potential file locking issues on Windows by retrying a few times with delays.
-                retry_count += 1  # Increment retry counter
-                time.sleep(0.5)  # Small delay to allow OS to release file handles
-        else:
-            raise  # Re-raise error after retries exhausted
+        rename_with_retry(norm_old_path, norm_temporary_path)  # Retry-safe rename operation
 
     for _, temporary_path, normalized_name, old_index, new_index in temporary_records:  # Iterate temporary records for final naming and internal normalization.
         parent_directory = os.path.dirname(temporary_path)  # Resolve parent directory from temporary path.
@@ -2144,16 +2158,7 @@ def normalize_output_directory_indexes(rename_plan: List[Dict[str, str]]) -> Lis
             norm_final_directory_path = norm_collision_path  # Use collision-safe final path when original target is occupied.
 
         verbose_output(f"{BackgroundColors.GREEN}Renaming for normalization (phase 2): {BackgroundColors.CYAN}{norm_temporary_path}{BackgroundColors.GREEN} -> {BackgroundColors.CYAN}{norm_final_directory_path}{Style.RESET_ALL}")  # Emit verbose diagnostics for phase-two rename.
-        retry_count = 0  # Initialize retry counter for Windows file locking issues
-        while retry_count < 5:  # Retry a few times to bypass transient locks
-            try:  # Attempt final rename to the normalized directory name, which may also serve as a collision resolution if the original target was occupied.
-                os.rename(norm_temporary_path, norm_final_directory_path)  # Attempt rename operation
-                break  # Exit retry loop on success
-            except PermissionError:  # Handle potential file locking issues on Windows by retrying a few times with delays.
-                retry_count += 1  # Increment retry counter
-                time.sleep(0.5)  # Small delay to allow OS to release file handles
-        else:  # If we exhausted retries, we log an error and skip to the next record without halting the entire normalization process.
-            raise  # Re-raise error after retries exhausted
+        rename_with_retry(norm_temporary_path, norm_final_directory_path)  # Retry-safe rename operation
 
         if os.path.isdir(norm_final_directory_path):  # Continue internal normalization only when final directory exists.
             current_entries = os.listdir(norm_final_directory_path)  # List current entries inside the normalized directory.
@@ -2177,16 +2182,7 @@ def normalize_output_directory_indexes(rename_plan: List[Dict[str, str]]) -> Lis
                 norm_target_internal_path = os.path.normpath(target_internal_path).replace("\\", "/")  # Normalize target child directory path for consistent diagnostics and operations across platforms.
                 if not os.path.exists(norm_target_internal_path):  # Avoid overwriting existing target child directory.
                     verbose_output(f"{BackgroundColors.GREEN}Renaming for normalization (phase 1): {BackgroundColors.CYAN}{norm_source_internal_path}{BackgroundColors.GREEN} -> {BackgroundColors.CYAN}{norm_target_internal_path}{Style.RESET_ALL}")  # Emit verbose diagnostics for phase-one rename.
-                    retry_count = 0  # Initialize retry counter for Windows file locking issues
-                    while retry_count < 5:  # Retry a few times to bypass transient locks
-                        try:  # Attempt rename operation
-                            os.rename(norm_source_internal_path, norm_target_internal_path)  # Attempt rename operation
-                            break  # Exit retry loop on success
-                        except PermissionError:  # Handle potential file locking issues on Windows by retrying a few times with delays.
-                            retry_count += 1  # Increment retry counter
-                            time.sleep(0.5)  # Small delay to allow OS to release file handles
-                    else:  # If we exhausted retries, we log an error and skip to the next record without halting the entire normalization process.
-                        raise  # Re-raise error after retries exhausted
+                    rename_with_retry(norm_source_internal_path, norm_target_internal_path)  # Retry-safe rename operation
 
             current_entries = os.listdir(norm_final_directory_path)  # Refresh directory listing after optional child directory rename.
             numeric_zip_files = [entry for entry in current_entries if os.path.isfile(os.path.join(norm_final_directory_path, entry)) and re.fullmatch(r"\d+\.zip", entry)]  # Collect zip files that use numeric names.
@@ -2210,16 +2206,7 @@ def normalize_output_directory_indexes(rename_plan: List[Dict[str, str]]) -> Lis
                 norm_target_zip_path = os.path.normpath(target_zip_path).replace("\\", "/")
                 if not os.path.exists(norm_target_zip_path):  # Avoid overwriting existing target zip file.
                     verbose_output(f"{BackgroundColors.GREEN}Renaming for normalization (phase 1): {BackgroundColors.CYAN}{norm_source_zip_path}{BackgroundColors.GREEN} -> {BackgroundColors.CYAN}{norm_target_zip_path}{Style.RESET_ALL}")  # Emit verbose diagnostics for phase-one rename.
-                    retry_count = 0  # Initialize retry counter for Windows file locking issues
-                    while retry_count < 5:  # Retry a few times to bypass transient locks
-                        try:
-                            os.rename(norm_source_zip_path, norm_target_zip_path)  # Attempt rename operation
-                            break  # Exit retry loop on success
-                        except PermissionError:
-                            retry_count += 1  # Increment retry counter
-                            time.sleep(0.5)  # Small delay to allow OS to release file handles
-                    else:
-                        raise  # Re-raise error after retries exhausted
+                    rename_with_retry(norm_source_zip_path, norm_target_zip_path)  # Retry-safe rename operation
 
         final_directory_paths.append(norm_final_directory_path)  # Append resulting normalized directory path to return list.
 
