@@ -845,6 +845,20 @@ def resolve_urls_tab_count(tab_count: int, urls: List[str]) -> int:
     return tab_count  # Return normalized tab count
 
 
+def resolve_url_files(urls_file: Path) -> Tuple[Path, Path]:
+    """
+    Resolves primary and backup URL file paths.
+
+    :param urls_file: Base URLs file path.
+    :return: Tuple containing resolved primary and backup file paths.
+    """
+
+    primary_urls_file = urls_file.resolve()  # Resolve primary file path
+    backup_urls_file = primary_urls_file.with_name(primary_urls_file.stem + "-backup" + primary_urls_file.suffix)  # Resolve backup file path
+
+    return primary_urls_file, backup_urls_file  # Return resolved file paths
+
+
 def setup_only_renew_amazon_urls(tab_count: int, urls: List[str], urls_file: Path, affiliate_pattern: str) -> Tuple[List[str], bool, Dict[str, List[str]], int]:
     """
     Builds the final URL list for only-renew mode with validation, deduplication, and fallback scanning.
