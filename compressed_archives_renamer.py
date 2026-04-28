@@ -310,6 +310,18 @@ def build_updated_mapping(url_entries: list[tuple[str, Optional[str]]], rename_m
     return updated_mapping  # Return the complete updated mapping list
 
 
+def write_mapping_to_file(updated_mapping: list, urls_file_path: str) -> None:
+    """
+    Write the updated URL-filename mapping back to the URLs input file.
+
+    :param updated_mapping: List of URLs or (url, filename) tuples to write.
+    :param urls_file_path: Path to the URLs input file to overwrite with the updated mapping.
+    :return: None.
+    """
+
+    write_urls_to_file(updated_mapping, urls_file_path, recursive=False, sort=True)  # Write updated mapping to the URLs file sorted alphabetically
+
+
 def to_seconds(obj):
     """
     Converts various time-like objects to seconds.
