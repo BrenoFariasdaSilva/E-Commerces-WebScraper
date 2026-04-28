@@ -1159,6 +1159,21 @@ def verify_and_correct_chrome_download_settings(assets_dir: Path, open_in_new_ta
     return verified  # Return final downloads settings verification result.
 
 
+def setup_method_maps() -> Tuple[Dict[str, List[int]], Dict[str, List[int]], Dict[str, List[int]], Dict[str, List[int]]]:
+    """
+    Initializes and returns grouped automation method maps.
+
+    :return: Tuple containing extension, download, completion, and close method maps.
+    """
+
+    ext_methods: Dict[str, List[int]] = {}  # Initialize extension method map
+    download_methods: Dict[str, List[int]] = {}  # Initialize download method map
+    completion_methods: Dict[str, List[int]] = {}  # Initialize completion method map
+    close_methods: Dict[str, List[int]] = {}  # Initialize close tab method map
+
+    return ext_methods, download_methods, completion_methods, close_methods  # Return all method maps
+
+
 def notify_manual_chrome_download_settings_intervention(url: str) -> None:
     """
     Requests manual Chrome downloads settings correction after first-URL download failure.
@@ -3389,11 +3404,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
             if not chrome_download_settings_ready:  # Verify whether Chrome downloads settings could not be verified or corrected automatically.
                 print(f"{BackgroundColors.YELLOW}[WARNING] Chrome downloads settings could not be verified or corrected automatically. Continuing execution.{Style.RESET_ALL}")  # Log non-blocking downloads settings verification warning.
 
-        # @TODO: Extract a function for returning the various method maps from ext_methods to close_methods
-        ext_methods: Dict[str, List[int]] = {}  # Initialize extension method map.
-        download_methods: Dict[str, List[int]] = {}  # Initialize download method map.
-        completion_methods: Dict[str, List[int]] = {}  # Initialize completion method map.
-        close_methods: Dict[str, List[int]] = {}  # Initialize close tab method map.
+        ext_methods, download_methods, completion_methods, close_methods = setup_method_maps()  # Initialize grouped automation method maps for extension, download, completion, and close actions
 
         processed_count = 0  # Initialize processed tab counter.
         start_tick = time.time()  # Capture workflow start timestamp.
