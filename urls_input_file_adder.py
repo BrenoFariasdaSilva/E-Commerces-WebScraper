@@ -212,6 +212,7 @@ def generate_numbered_lines(urls: list, input_dir: Path) -> list:
 
     return new_lines  # Return the updated lines
 
+
 def verify_filepath_exists(filepath):
     """
     Verify if a file or folder exists at the specified path.
