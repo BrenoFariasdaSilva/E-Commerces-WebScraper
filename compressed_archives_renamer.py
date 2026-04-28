@@ -322,6 +322,49 @@ def write_mapping_to_file(updated_mapping: list, urls_file_path: str) -> None:
     write_urls_to_file(updated_mapping, urls_file_path, recursive=False, sort=True)  # Write updated mapping to the URLs file sorted alphabetically
 
 
+def process_url_based_renames(input_directory: str, urls_file_path: str) -> None:
+    """
+    Orchestrate URL-driven deterministic archive renaming using urls.txt mappings.
+
+    :param input_directory: Directory containing the archive files to rename.
+    :param urls_file_path: Path to the URLs input file containing URL-filename mappings.
+    :return: None.
+    """
+
+    url_entries = parse_url_entries(urls_file_path)  # Parse the URLs file into structured URL-filename entries
+
+    if not url_entries:  # Verify if any URL entries were loaded from the input file
+        print(f"{BackgroundColors.YELLOW}No URL entries found in: {BackgroundColors.CYAN}{urls_file_path}{Style.RESET_ALL}")  # Log warning when no entries are found
+        return  # Exit early when there are no URL entries to process
+
+    sorted_entries = sort_url_entries(url_entries)  # Sort entries alphabetically case-insensitively by product URL
+
+    rename_map: dict[str, str] = {}  # Initialize dictionary to track old-to-new filename renames
+
+    for index, (product_url, expected_filename) in enumerate(sorted_entries, start=1):  # Iterate with 1-based index over sorted URL entries
+        if expected_filename is None:  # Verify if this entry has no expected filename to process
+            continue  # Skip entries without an expected filename mapping
+
+        source_path = resolve_archive_match(expected_filename, input_directory)  # Resolve the expected filename to a real archive file path
+
+        if source_path is None:  # Verify if the expected archive file was found in the input directory
+            verbose_output(f"{BackgroundColors.YELLOW}No matching archive found for: {BackgroundColors.CYAN}{expected_filename}{Style.RESET_ALL}")  # Log warning when no matching archive is found
+            continue  # Skip this entry when no matching archive file is found
+
+        new_filename = f"{index:02d}{source_path.suffix}"  # Build the deterministic index-based filename for this archive
+        target_path = source_path.parent / new_filename  # Build the full target path for the renamed archive
+
+        verbose_output(f"{BackgroundColors.GREEN}Renaming {BackgroundColors.CYAN}{source_path.name}{BackgroundColors.GREEN} -> {BackgroundColors.CYAN}{new_filename}{Style.RESET_ALL}")  # Log the rename operation details
+
+        rename_success = perform_safe_rename(source_path, target_path)  # Perform the safe rename of the archive file
+
+        if rename_success:  # Verify if the rename operation completed successfully
+            rename_map[expected_filename] = new_filename  # Record the successful rename in the tracking dictionary
+
+    updated_mapping = build_updated_mapping(sorted_entries, rename_map)  # Build the updated URL-filename mapping from rename results
+    write_mapping_to_file(updated_mapping, urls_file_path)  # Write the updated mapping back to the URLs input file
+
+
 def to_seconds(obj):
     """
     Converts various time-like objects to seconds.
