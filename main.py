@@ -2148,6 +2148,25 @@ def select_internal_directory(numeric_directories: list[str], normalized_old_ind
     return None
 
 
+def select_source_zip_file(numeric_zip_files: list[str], normalized_old_zip: str, raw_old_zip: str, new_index: str) -> str | None:
+    """
+    Determines which zip file should be renamed based on deterministic rules.
+
+    :return: Selected zip filename or None.
+    """
+    
+    verbose_output(f"{BackgroundColors.GREEN}Selecting source zip file for new index {BackgroundColors.CYAN}{new_index}{BackgroundColors.GREEN}...{Style.RESET_ALL}")  # Emit verbose diagnostics for zip selection process.
+    
+    if normalized_old_zip and normalized_old_zip in numeric_zip_files:  # Prefer normalized old zip filename when present.
+        return normalized_old_zip  # Select normalized old zip as source.
+    elif raw_old_zip and raw_old_zip in numeric_zip_files:  # Fallback to raw old zip filename when present.
+        return raw_old_zip  # Select raw old zip as source.
+    elif numeric_zip_files and f"{new_index}.zip" not in numeric_zip_files:  # Fallback to first numeric zip when target zip does not exist.
+        sorted_numeric_zip_files = sorted(numeric_zip_files, key=lambda value: int(value[:-4]))  # Sort numeric zip files by numeric prefix.
+        return sorted_numeric_zip_files[0]  # Select the first numeric zip file as source.
+    return None
+
+
 def normalize_output_directory_indexes(rename_plan: List[Dict[str, str]]) -> List[str]:
     """
     Normalize output directory indexes and internal numeric artifacts using a safe two-phase rename.
@@ -2227,17 +2246,9 @@ def normalize_output_directory_indexes(rename_plan: List[Dict[str, str]]) -> Lis
 
             current_entries = os.listdir(norm_final_directory_path)  # Refresh directory listing after optional child directory rename.
             numeric_zip_files = [entry for entry in current_entries if os.path.isfile(os.path.join(norm_final_directory_path, entry)) and re.fullmatch(r"\d+\.zip", entry)]  # Collect zip files that use numeric names.
-            source_zip_file = None  # Initialize source zip filename to rename.
             normalized_old_zip = f"{normalized_old_index}.zip" if normalized_old_index else ""  # Build normalized old zip filename candidate.
             raw_old_zip = f"{old_index}.zip" if old_index else ""  # Build raw old zip filename candidate.
-
-            if normalized_old_zip and normalized_old_zip in numeric_zip_files:  # Prefer normalized old zip filename when present.
-                source_zip_file = normalized_old_zip  # Select normalized old zip as source.
-            elif raw_old_zip and raw_old_zip in numeric_zip_files:  # Fallback to raw old zip filename when present.
-                source_zip_file = raw_old_zip  # Select raw old zip as source.
-            elif numeric_zip_files and f"{new_index}.zip" not in numeric_zip_files:  # Fallback to first numeric zip when target zip does not exist.
-                sorted_numeric_zip_files = sorted(numeric_zip_files, key=lambda value: int(value[:-4]))  # Sort numeric zip files by numeric prefix.
-                source_zip_file = sorted_numeric_zip_files[0]  # Select the first numeric zip file as source.
+            source_zip_file = select_source_zip_file(numeric_zip_files, normalized_old_zip, raw_old_zip, new_index)  # Select the correct zip file candidate for renaming based on deterministic rules.
 
             target_zip_file = f"{new_index}.zip"  # Build target zip filename from normalized index.
             if source_zip_file and source_zip_file != target_zip_file:  # Continue zip rename only when source and target differ.
