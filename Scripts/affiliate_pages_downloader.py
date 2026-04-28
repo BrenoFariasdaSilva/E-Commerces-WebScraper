@@ -2302,6 +2302,7 @@ def move_downloaded_archives(downloads_dirs: List[str], destination_dir: Path, u
 
         try:  # Attempt to move archive into destination directory.
             shutil.move(str(source_path), str(destination_path))  # Move detected downloaded archive to URLs directory.
+            verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Successfully moved downloaded file to: {destination_path}{Style.RESET_ALL}")  # Log successful archive move with destination details.
         except Exception:  # Handle archive move failures.
             print(f"{BackgroundColors.YELLOW}[WARNING] Failed to move downloaded file: {source_path}{Style.RESET_ALL}")  # Log archive move failure warning.
 
@@ -3494,11 +3495,13 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
         start_tick = time.time()  # Capture workflow start timestamp.
         url_to_download: Dict[str, str] = {}  # Initialize URL to downloaded filename mapping dictionary.
         processed_count, url_to_download, process_success = process_urls_with_download_tracking(urls, urls_file, tab_count, downloads_dirs, extension_img, download_img, enable_permission_img, confirmation_img, close_download_tab_img, mercado_livre_img, share_button_img, ext_methods, download_methods, completion_methods, close_methods, chrome_download_settings_ready, renew_amazon_affiliate, only_renew_amazon_urls)  # Process URLs with download tracking and retrieve mapping details.
+        
+        verbose_output(f"{BackgroundColors.GREEN}URL to Downloaded Filename Mapping:\n{BackgroundColors.CYAN}" + "\n".join(f'    "{k}": "{v}"' for k, v in url_to_download.items()) + f"{Style.RESET_ALL}")  # Print URL to downloaded filename mapping details when verbose enabled.
 
         if not process_success:  # Verify if URL processing completed without activation failure.
             return 1  # Return failure exit code when URL processing fails.
 
-        if processed_count == tab_count:  # Verify all tabs were processed.
+        if processed_count > 0:  # Verify that at least one URL was processed before reporting execution time and showing messagebox.
             elapsed_sec = round(time.time() - start_tick)  # Compute elapsed seconds.
             formatted = format_execution_time(elapsed_sec)  # Format elapsed time string.
             report = build_report(ext_methods, download_methods, completion_methods, close_methods)  # Build consolidated report text.
