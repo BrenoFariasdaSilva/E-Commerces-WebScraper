@@ -146,7 +146,7 @@ def list_supported_archives(input_directory):
 
     directory_path = Path(input_directory)  # Create Path instance for input directory
 
-    if not directory_path.exists() or not directory_path.is_dir():  # Verify if input directory is valid
+    if not verify_filepath_exists(directory_path) or not directory_path.is_dir():  # Verify if the input directory exists and is a valid directory
         return []  # Return empty list when input directory is invalid
 
     return [file for file in directory_path.iterdir() if file.is_file() and file.suffix.lower() in SUPPORTED_EXTENSIONS]  # Return only supported archive files
@@ -162,7 +162,7 @@ def remove_duplicate_archives(input_directory: str) -> None:
 
     directory_path = Path(input_directory)  # Build the Path object for the target input directory
 
-    if not directory_path.exists() or not directory_path.is_dir():  # Verify if the input path exists and is a valid directory
+    if not verify_filepath_exists(directory_path) or not directory_path.is_dir():  # Verify if the input directory exists and is a valid directory
         return  # Exit early when the input directory is not available
 
     archive_files = list_supported_archives(input_directory)  # Load all supported archive files from the input directory
@@ -209,7 +209,7 @@ def remove_duplicate_archives(input_directory: str) -> None:
         print(f"{BackgroundColors.YELLOW} Duplicate archive detected for base file: {BackgroundColors.CYAN}{original_file.name}{Style.RESET_ALL}")  # Log duplicate detection for the preserved original archive with color
 
         for duplicate_file in duplicate_files:  # Iterate through each duplicate archive file mapped to the current original archive
-            if not duplicate_file.exists():  # Verify if the duplicate archive file still exists before deletion
+            if not verify_filepath_exists(duplicate_file):  # Verify if the duplicate archive file still exists before deletion
                 continue  # Skip deletion when the duplicate file path no longer exists
 
             print(f"{BackgroundColors.YELLOW} Removing duplicate archive: {BackgroundColors.CYAN}{duplicate_file.name}{Style.RESET_ALL}")  # Log duplicate archive deletion before removing the file with color
@@ -268,12 +268,12 @@ def resolve_archive_match(expected_filename: str, input_directory: str) -> Optio
 
     directory_path = Path(input_directory)  # Build the Path object for the input directory
 
-    if not directory_path.exists() or not directory_path.is_dir():  # Verify if the input directory exists and is a valid directory
+    if not verify_filepath_exists(directory_path) or not directory_path.is_dir():  # Verify if the input directory exists and is a valid directory
         return None  # Return None when the input directory is not accessible
 
     candidate = directory_path / expected_filename  # Build the full candidate path for the expected archive file
 
-    if candidate.exists() and candidate.is_file():  # Verify if the expected file exists in the input directory
+    if verify_filepath_exists(candidate) and candidate.is_file():  # Verify if the expected file exists in the input directory
         return candidate  # Return the resolved Path when the expected file is found
 
     return None  # Return None when no matching archive file is found
@@ -288,11 +288,11 @@ def perform_safe_rename(source_path: Path, target_path: Path) -> bool:
     :return: True if the rename succeeded, False otherwise.
     """
 
-    if not source_path.exists():  # Verify if the source file exists before attempting rename
+    if not verify_filepath_exists(source_path):  # Verify if the source file exists before attempting rename
         print(f"{BackgroundColors.RED}Source file not found for rename: {BackgroundColors.CYAN}{source_path.name}{Style.RESET_ALL}")  # Log missing source file error
         return False  # Return False when source file is not accessible
 
-    if target_path.exists():  # Verify if the target path already exists to prevent overwrite
+    if verify_filepath_exists(target_path):  # Verify if the target path already exists to prevent overwrite
         print(f"{BackgroundColors.RED}Target file already exists, skipping rename: {BackgroundColors.CYAN}{target_path.name}{Style.RESET_ALL}")  # Log overwrite prevention warning
         return False  # Return False when target file already exists
 
