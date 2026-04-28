@@ -289,6 +289,27 @@ def perform_safe_rename(source_path: Path, target_path: Path) -> bool:
         return False  # Return False when the rename operation fails
 
 
+def build_updated_mapping(url_entries: list[tuple[str, Optional[str]]], rename_map: dict[str, str]) -> list:
+    """
+    Build the updated URL-to-filename mapping list for writing back to urls.txt.
+
+    :param url_entries: Sorted list of (product_url, expected_filename or None) tuples.
+    :param rename_map: Dictionary mapping old filenames to new filenames from completed renames.
+    :return: List of URLs or (url, filename) tuples suitable for write_urls_to_file.
+    """
+
+    updated_mapping: list = []  # Initialize the list to hold the updated URL-filename mapping entries
+
+    for product_url, expected_filename in url_entries:  # Iterate over each sorted URL entry
+        if expected_filename is None:  # Verify if this entry has no associated expected filename
+            updated_mapping.append(product_url)  # Append URL as plain string when no filename mapping exists
+        else:  # Handle entries that contain an associated expected filename
+            new_filename = rename_map.get(expected_filename, expected_filename)  # Retrieve new filename from rename map, falling back to original
+            updated_mapping.append((product_url, new_filename))  # Append the URL-filename tuple with the updated filename
+
+    return updated_mapping  # Return the complete updated mapping list
+
+
 def to_seconds(obj):
     """
     Converts various time-like objects to seconds.
