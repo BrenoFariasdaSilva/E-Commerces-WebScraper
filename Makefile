@@ -43,7 +43,6 @@ run:  dependencies
 	$(CLEAR_CMD)
 	$(call RUN_AND_LOG, ./Scripts/affiliate_pages_downloader.py --headerless True)
 	$(call RUN_AND_LOG, ./compressed_archives_renamer.py)
-	$(call RUN_AND_LOG, ./urls_input_file_adder.py)
 	$(call RUN_AND_LOG, ./main.py --headerless True --sort_products_by_product_name True)
 
 local:  dependencies
