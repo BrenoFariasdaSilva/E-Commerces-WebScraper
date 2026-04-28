@@ -3294,8 +3294,8 @@ def replace_url_recursively(base_path: Path, old_url: str, new_url: str) -> None
         return  # Return early when Outputs directory is unavailable.
 
     for filepath in base_path.rglob("*"):  # Traverse all filesystem entries under Outputs recursively.
-        if filepath.is_file():  # Verify whether current entry is a regular file.
-            replace_url_in_file(str(filepath), old_url, new_url)  # Replace URL occurrences in current file.
+        if filepath.is_file() and filepath.suffix in {".txt", ".json", ".csv"}:  # Verify file is a supported text-based format (txt, json, csv).
+            replace_url_in_file(str(filepath), old_url, new_url)  # Replace URL occurrences in current supported text file.
 
 
 def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, urls_file: Path) -> tuple:
