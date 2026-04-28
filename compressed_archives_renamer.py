@@ -82,6 +82,7 @@ class BackgroundColors:  # Colors for the terminal
 VERBOSE = False  # Set to True to output verbose messages
 INPUT_DIRECTORY = "./Inputs/"  # Directory containing compressed files to rename
 SUPPORTED_EXTENSIONS = (".zip", ".7z", ".rar")  # Supported compressed archive extensions
+URLS_INPUT_FILE = str(next(Path(__file__).resolve().parents[i] for i, p in enumerate(Path(__file__).resolve().parents) if p.name.lower() == "e-commerces-webscraper") / "Inputs" / "urls.txt")  # Path to the URLs input file containing URL-to-filename mappings
 
 # Logger Setup:
 logger = Logger(f"./Logs/{Path(__file__).stem}.log", clean=True)  # Create a Logger instance
