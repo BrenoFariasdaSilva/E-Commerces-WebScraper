@@ -3875,6 +3875,11 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
     """
 
     raw_lines = load_urls_to_process(str(urls_file))  # Read raw trimmed lines from input file using centralized helper
+    
+    if raw_lines is None:  # Verify whether loading lines failed due to file issues.
+        print(f"{BackgroundColors.RED}Error: Failed to read URLs from file: {BackgroundColors.CYAN}{urls_file}{BackgroundColors.RED}. Please ensure the file exists and is readable in that specified paths. Be careful with the parent directory of the file as well.{Style.RESET_ALL}")  # Print file read error with details and suggestions.
+        return 1  # Return error exit code when lines cannot be loaded.
+    
     preprocessed_urls = preprocess_urls(raw_lines)  # Preprocess lines (strip, remove dash prefixes, sort)
     write_urls_to_file(preprocessed_urls, str(urls_file), True)  # Write preprocessed lines back to the file for consistency and potential manual review.
     urls = [url.split()[0] for url in preprocessed_urls]  # Keep only the URL token (first token) per previous behavior
