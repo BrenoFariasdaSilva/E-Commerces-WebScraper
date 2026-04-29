@@ -499,7 +499,7 @@ def main():
 
     if args.verbose:  # Verify if verbose mode is enabled
         global VERBOSE  # Set the global VERBOSE variable to True when the --verbose flag is provided
-        VERBOSE = False  # Enable verbose output
+        VERBOSE = True  # Enable verbose output
     
     print(f"{BackgroundColors.GREEN}Scanning {BackgroundColors.CYAN}{INPUT_DIRECTORY}{BackgroundColors.GREEN} for compressed files...{Style.RESET_ALL}")  # Output scanning message 
     
