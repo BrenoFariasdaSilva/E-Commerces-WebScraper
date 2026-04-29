@@ -2570,6 +2570,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
 
         if confirmation_method != "Timeout":  # Verify whether download confirmation was not detected within the expected time frame.
             # @TODO: Dispatch this to a new function and thread/core in order for the code to jump to the next url and handle the download detection and mapping asynchronously while the current thread continues processing the next URLs and handling their downloads in parallel, which would significantly improve the overall processing time when dealing with a large number of URLs and downloads.
+            wait_for_download_file_stabilization(downloads_dirs)  # Wait for file to finish writing and remove temporary extensions.
             post_download_snapshots = snapshot_download_directories(downloads_dirs)  # Capture downloads directory snapshots after download completion.
 
             if len(downloads_dirs) > 1:  # Verify whether monitored downloads directories are unresolved.
@@ -2946,7 +2947,57 @@ def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_i
             center_y = box.top + (box.height // 2)  # Compute center Y coordinate of detected box.
             pyautogui.click(center_x, center_y)  # Click center point of the save button.
 
-        time.sleep(0.5)  # Wait 0.5 seconds before next verification cycle.
+
+def wait_for_download_file_stabilization(downloads_dirs: List[str], timeout: float = 10.0, interval: float = 0.5, recent_window: float = 60.0) -> None:
+    """
+    Waits until no recently modified or temporary download files are present in monitored directories.
+
+    :param downloads_dirs: Paths to monitored downloads directories.
+    :param timeout: Maximum time to wait for stabilization.
+    :param interval: Delay between verification cycles.
+    :param recent_window: Time window in seconds to consider files as recently modified.
+    :return: None
+    """
+    
+    verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Waiting for download file stabilization in monitored directories...{Style.RESET_ALL}")  # Log start of download file stabilization monitoring.
+
+    start_time = time.time()  # Record start time for timeout enforcement.
+    normalized_dirs = [str(Path(d).resolve()) for d in downloads_dirs]  # Normalize monitored directories.
+
+    while (time.time() - start_time) < timeout:  # Loop until timeout expires.
+        unstable_found = False  # Track whether unstable files are detected.
+        now = time.time()  # Capture current timestamp for modification comparison.
+
+        for normalized_dir in normalized_dirs:  # Iterate monitored directories.
+            try:  # Attempt directory listing.
+                for name in os.listdir(normalized_dir):  # Iterate files in directory.
+                    file_path = Path(normalized_dir) / name  # Build full file path.
+
+                    if not file_path.exists():  # Verify file still exists.
+                        continue  # Skip removed files.
+
+                    if name.endswith(".crdownload") or name.endswith(".tmp"):  # Verify temporary download file presence.
+                        verbose_output(f"{BackgroundColors.YELLOW}[DEBUG] Detected temporary download file: {BackgroundColors.CYAN}{file_path}{BackgroundColors.YELLOW}; waiting for stabilization...{Style.RESET_ALL}")  # Log detection of temporary file with path details when verbose.
+                        unstable_found = True  # Mark unstable file detected.
+                        break  # Stop scanning current directory.
+
+                    try:  # Attempt to read file metadata.
+                        mtime = file_path.stat().st_mtime  # Retrieve last modification time.
+                    except Exception:  # Handle stat access issues.
+                        continue  # Skip problematic file.
+
+                    if (now - mtime) <= recent_window:  # Verify file was modified recently.
+                        unstable_found = True  # Mark unstable file detected.
+                        break  # Stop scanning current directory.
+                if unstable_found:  # Verify if unstable file was found in this directory.
+                    break  # Stop scanning remaining directories.
+            except Exception:  # Handle directory access issues.
+                continue  # Skip directory on failure.
+        if not unstable_found:  # Verify no unstable files remain.
+            verbose_output(f"{BackgroundColors.GREEN}[DEBUG] No unstable download files detected; stabilization achieved.{Style.RESET_ALL}")  # Log stabilization success when no unstable files are found.
+            return  # Exit when downloads are stabilized.
+
+        time.sleep(interval)  # Wait before next verification cycle.
 
 
 def close_extension_download_tab(close_download_tab_img: Path) -> str:
