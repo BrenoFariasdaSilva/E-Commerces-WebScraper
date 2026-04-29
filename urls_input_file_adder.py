@@ -375,8 +375,9 @@ def main():
         return  # Exit when path resolution failed
 
     urls = load_urls_to_process(urls_path)  # Load URLs from the file using shared utility
-
+    
     if urls is None:  # Verify that URLs loaded successfully
+        print(f"{BackgroundColors.RED}Error: Failed to read URLs from file: {BackgroundColors.CYAN}{urls_path}{BackgroundColors.RED}. Please ensure the file exists and is readable in that specified path. Be careful with the parent directory of the file as well.{Style.RESET_ALL}")  # Print file read error with details and suggestions.
         return  # Exit when loading URLs failed
     
     sanitized_lines = sanitize_urls_lines(urls)  # Sanitize the loaded URL lines by removing trailing ZIP filenames and whitespace
