@@ -98,6 +98,8 @@ def parse_arguments() -> argparse.Namespace:
 
     parser = argparse.ArgumentParser(description="URLs Input File Adder - Reads urls.txt, validates URLs, appends ZIP filenames, and overwrites the file.")  # Create argument parser with description
 
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose debug output (default: False)")  # Register verbose flag that sets True when provided
+
     args = parser.parse_args()  # Parse command-line arguments
 
     return args  # Return parsed argument namespace
@@ -363,6 +365,10 @@ def main():
     
     args = parse_arguments()  # Parse command-line arguments
 
+    if args.verbose:  # Verify if verbose mode is enabled
+        global VERBOSE  # Set the global VERBOSE variable to True when the --verbose flag is provided
+        VERBOSE = True  # Enable verbose output
+    
     input_dir, urls_path = resolve_input_paths(INPUT_DIRECTORY, URLS_FILENAME)  # Resolve input directory and urls path
 
     if urls_path is None:  # Verify result from path resolution
