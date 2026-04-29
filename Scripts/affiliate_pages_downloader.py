@@ -465,6 +465,8 @@ def click_box_center(box: Tuple[int, int, int, int]) -> None:
     :param box: Bounding box tuple (x, y, width, height).
     :return: None
     """
+    
+    # @TODO: Implement a function to the move cursor to place where it detected the image before the click, for debug/trackability reasons. It must be done for every pyautogui.click in the file.
 
     x, y, w, h = box  # Unpack bounding box tuple.
 
@@ -2542,6 +2544,8 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
 
     first_fragmented_file_detected = False  # Flag to track whether the first fragmented file detection has occurred for initial failure handling.
 
+    # @TODO: Implement a retry method for failed url download of the zip file, that is, closes the extension tab, close the tab, closes the browser window (to avoid caches stuff), wait 1s, then open a new taba to process the same url and retry it once more. It would manipulate this loop (for index, url in enumerate(tqdm(urls, total=len(urls), desc="Processing URLs", bar_format=bar_format), start=1):  # Initialize tqdm with custom colored bar_format and enumerate indexing.), in order to do a "continue" but in a way that makes it reprocess the current url.
+
     for index, url in enumerate(tqdm(urls, total=len(urls), desc="Processing URLs", bar_format=bar_format), start=1):  # Initialize tqdm with custom colored bar_format and enumerate indexing
         if not activate_automation_window():  # Verify if automation window activation succeeds before URL navigation.
             return processed_count, url_to_download, False  # Return failure state when activation fails.
@@ -2580,10 +2584,11 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         download_method = click_download_button(download_img)  # Execute download click action.
         confirmation_alt_img = confirmation_img.with_name(f"{confirmation_img.stem}-Alternative{confirmation_img.suffix}")  # Build alternative confirmation image path using deterministic naming pattern.
         confirmation_method = watch_for_save_dialog_and_confirmation(save_button_img, confirmation_img, confirmation_alt_img)  # Watch and handle optional save dialog while waiting.
-        
 
         if confirmation_method != "Timeout":  # Verify whether download confirmation was not detected within the expected time frame.
+            
             # @TODO: Dispatch this to a new function and thread/core in order for the code to jump to the next url and handle the download detection and mapping asynchronously while the current thread continues processing the next URLs and handling their downloads in parallel, which would significantly improve the overall processing time when dealing with a large number of URLs and downloads.
+            
             wait_for_download_file_stabilization(downloads_dirs)  # Wait for file to finish writing and remove temporary extensions.
             post_download_snapshots = snapshot_download_directories(downloads_dirs)  # Capture downloads directory snapshots after download completion.
 
@@ -3884,6 +3889,9 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
         processed_count = 0  # Initialize processed tab counter.
         start_tick = time.time()  # Capture workflow start timestamp.
         url_to_download: Dict[str, str] = {}  # Initialize URL to downloaded filename mapping dictionary.
+        
+        # @TODO: Implement a rule for filtering the urls to process in process_urls_with_download_tracking function to only process the non-file-linked ones, in case of --process_only_unlinked_urls cli arg is used.
+        
         processed_count, url_to_download, process_success = process_urls_with_download_tracking(urls, urls_file, tab_count, downloads_dirs, extension_img, download_img, enable_permission_img, confirmation_img, close_download_tab_img, mercado_livre_img, share_button_img, save_button_img, ext_methods, download_methods, completion_methods, close_methods, chrome_download_settings_ready, renew_amazon_affiliate, only_renew_amazon_urls)  # Process URLs with download tracking and retrieve mapping details.
         
         verbose_output(f"{BackgroundColors.GREEN}URL to Downloaded Filename Mapping:\n{BackgroundColors.CYAN}" + "\n".join(f'    "{k}": "{v}"' for k, v in url_to_download.items()) + f"{Style.RESET_ALL}")  # Print URL to downloaded filename mapping details when verbose enabled.
