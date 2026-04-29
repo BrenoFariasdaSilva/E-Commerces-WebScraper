@@ -2722,6 +2722,41 @@ def validate_match(best_match: Any, best_val: float, threshold: float = 0.9) -> 
     return best_match  # Return valid match.
 
 
+def enhanced_locate_image(image_path: Path, threshold: float = 0.90) -> Any:
+    """
+    Locates an image on screen using multi-scale template matching.
+
+    :param image_path: Path to the image file.
+    :param threshold: Minimum allowed confidence for match validation.
+    :return: Box location when found, otherwise None.
+    """
+    
+    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Attempting to locate image with enhanced method: {image_path}{Style.RESET_ALL}")  # Log entry into enhanced image location with target path details when verbose.
+
+    if not image_path.exists():  # Verify image file existence.
+        return None  # Return None when image file does not exist.
+
+    try:  # Attempt image location on screen.
+        template = load_template(image_path)  # Load grayscale template.
+        if template is None:  # Verify template load success.
+            return None  # Return None when template loading fails.
+
+        screen = capture_screen_grayscale()  # Capture grayscale screen.
+        scales = get_scale_factors()  # Retrieve scale factors.
+
+        best_match, best_val = match_template_multi_scale(screen, template, scales)  # Perform multi-scale matching.
+        validated_match = validate_match(best_match, best_val, threshold=threshold)  # Validate match confidence.
+
+        if validated_match is None:  # Verify match validity.
+            return None  # Return None when invalid match.
+
+        (x, y), (w, h) = validated_match  # Unpack match result.
+
+        return (x, y, w, h)  # Return bounding box result.
+    except Exception:  # Handle image search exception.
+        return None  # Return None when image search fails.
+
+
 def get_screen_dimensions() -> Tuple[int, int]:
     """
     Retrieves current screen dimensions.
