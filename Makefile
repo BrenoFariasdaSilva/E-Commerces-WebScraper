@@ -38,14 +38,14 @@ endif
 # Default target
 all: run
 
-run:  dependencies
+run: dependencies
 	$(ENSURE_LOG_DIR)
 	$(CLEAR_CMD)
 	$(call RUN_AND_LOG, ./Scripts/affiliate_pages_downloader.py --headerless True)
 	$(call RUN_AND_LOG, ./compressed_archives_renamer.py)
 	$(call RUN_AND_LOG, ./main.py --headerless True --sort_products_by_product_name True)
 
-local:  dependencies
+local: dependencies
 	$(ENSURE_LOG_DIR)
 	$(CLEAR_CMD)
 	$(call RUN_AND_LOG, ./compressed_archives_renamer.py)
