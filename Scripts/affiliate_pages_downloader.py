@@ -1403,11 +1403,11 @@ def detect_split_zip_fragment_start(filename: str) -> Tuple[bool, str]:
     base_name = Path(filename).stem  # Extract the base name without the .zNN extension for downstream polling of the expected final ZIP file.
 
     if not is_fragment:  # Verify whether filename ends with .zNN fragmented archive suffix.
-        verbose_output(f"{BackgroundColors.CYAN}[DEBUG] No ZIP fragment detected in filename: {filename}{Style.RESET_ALL}")  # Log absence of fragmentation when filename does not match .zNN pattern.
+        verbose_output(f"{BackgroundColors.GREEN}[DEBUG] No ZIP fragment detected in filename: {BackgroundColors.CYAN}{filename}{Style.RESET_ALL}")  # Log absence of fragmentation when filename does not match .zNN pattern.
         return False, ""  # Return not-fragmented when filename does not match .zNN pattern.
 
     base_name = Path(filename).stem  # Extract base name without the .zNN extension.
-    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Fragment detected: {filename} — tracking full ZIP chain.{Style.RESET_ALL}")  # Log fragmented archive detection.
+    verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Fragment detected: {BackgroundColors.CYAN}{filename}{BackgroundColors.GREEN} — tracking full ZIP chain.{Style.RESET_ALL}")  # Log fragmented archive detection.
 
     return True, base_name  # Return fragmented flag and base name for downstream polling.
 
@@ -1431,20 +1431,20 @@ def wait_for_zip_fragmented_chain_completion(downloads_dir: str, base_name: str)
     elapsed_seconds = 0  # Initialize elapsed seconds counter for periodic INFO logging.
     notify_interval = 10  # Define interval in seconds between wait-status messages.
 
-    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Waiting for full ZIP chain: {base_name}.z[0-9][0-9] + .zip in {downloads_dir}{Style.RESET_ALL}")  # Log initial wait start message.
+    verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Waiting for full ZIP chain: {BackgroundColors.CYAN}{base_name}.z[0-9][0-9]{BackgroundColors.GREEN} + {BackgroundColors.CYAN}.zip{BackgroundColors.GREEN} in {downloads_dir}{Style.RESET_ALL}")  # Log initial wait start message.
 
     while True:  # Poll indefinitely until ZIP chain is complete.
         fragments = list(dir_path.glob(f"{base_name}.z[0-9][0-9]"))  # Collect all fragment parts.
 
         if final_zip.exists() and len(fragments) > 0:  # Verify whether full ZIP chain is complete.
-            verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Full ZIP chain detected ({len(fragments)} parts + .zip).{Style.RESET_ALL}")  # Log ZIP chain completion.
+            verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Full ZIP chain detected ({BackgroundColors.CYAN}{len(fragments)}{BackgroundColors.GREEN} parts + {BackgroundColors.CYAN}.zip{BackgroundColors.GREEN}).{Style.RESET_ALL}")  # Log ZIP chain completion.
             return True  # Return success when full chain is detected.
 
         time.sleep(1)  # Wait 1 second before re-polling.
         elapsed_seconds += 1  # Increment elapsed seconds tracker.
 
         if elapsed_seconds % notify_interval == 0:  # Verify whether notify interval has elapsed.
-            print(f"{BackgroundColors.CYAN}[DEBUG] Waiting ZIP chain {base_name} — {elapsed_seconds}s elapsed.{Style.RESET_ALL}")  # Print periodic wait notification.
+            print(f"{BackgroundColors.GREEN}[DEBUG] Waiting ZIP chain {base_name} — {BackgroundColors.CYAN}{elapsed_seconds}s{BackgroundColors.GREEN} elapsed.{Style.RESET_ALL}")  # Print periodic wait notification.
 
 
 def initialize_git_submodules(submodule_dir: Path) -> Path | None:
@@ -1456,7 +1456,7 @@ def initialize_git_submodules(submodule_dir: Path) -> Path | None:
     """
 
     if not submodule_dir.exists() or not any(submodule_dir.iterdir()):  # Verify whether submodule directory is present and non-empty.
-        print(f"{BackgroundColors.CYAN}[DEBUG] Submodule directory missing or empty — initializing via git submodule update.{Style.RESET_ALL}")  # Log submodule initialization attempt.
+        print(f"{BackgroundColors.GREEN}[DEBUG] Submodule directory missing or empty — initializing via git submodule update.{Style.RESET_ALL}")  # Log submodule initialization attempt.
         init_result = subprocess.run(["git", "submodule", "update", "--init", "--recursive"], capture_output=True, text=True, cwd=PROJECT_ROOT)  # Run git submodule init from project root.
 
         if init_result.returncode != 0:  # Verify whether submodule initialization succeeded.
@@ -1516,7 +1516,7 @@ def resolve_existing_jar(submodule_dir: Path) -> Path | None:
     jar_path = resolve_java_jar_path(submodule_dir)  # Attempt to resolve JAR from target directory.
 
     if jar_path is not None:  # Verify whether JAR exists locally.
-        verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Java jar resolved (cached): {jar_path}{Style.RESET_ALL}")  # Log cached JAR resolution.
+        verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Java jar resolved (cached): {BackgroundColors.CYAN}{jar_path}{BackgroundColors.GREEN}{Style.RESET_ALL}")  # Log cached JAR resolution.
         return jar_path  # Return resolved JAR path.
 
     return None  # Return None when no JAR is available.
@@ -1588,7 +1588,7 @@ def build_maven_project(submodule_dir: Path) -> subprocess.CompletedProcess:
     :return: Maven build process result.
     """
 
-    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Maven build executed — running mvn clean package in submodule.{Style.RESET_ALL}")  # Log Maven build execution.
+    verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Maven build executed — running {BackgroundColors.CYAN}mvn clean package{BackgroundColors.GREEN} in submodule.{Style.RESET_ALL}")  # Log Maven build execution.
 
     build_result = run_executable(
         ["mvn", "mvn.cmd", "mvn.bat"],  # Resolve Maven cross-platform.
@@ -1614,7 +1614,7 @@ def handle_build_failure(submodule_dir: Path, build_result: subprocess.Completed
     jar_path = resolve_java_jar_path(submodule_dir)  # Attempt fallback to existing JAR after failure.
 
     if jar_path is not None:  # Verify whether fallback JAR exists.
-        verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Java jar resolved (fallback after failure): {jar_path}{Style.RESET_ALL}")  # Log fallback resolution.
+        verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Java jar resolved (fallback after failure): {BackgroundColors.CYAN}{jar_path}{BackgroundColors.GREEN}{Style.RESET_ALL}")  # Log fallback resolution.
         return jar_path  # Return fallback JAR.
 
     return None  # Return None when no JAR exists.
@@ -1647,7 +1647,7 @@ def resolve_or_build_java_jar(first_run: bool = True) -> Path | None:
         print(f"{BackgroundColors.YELLOW}[WARNING] JAR not found in target/ after successful Maven build.{Style.RESET_ALL}")  # Log missing JAR after build.
         return None  # Return None when JAR is missing.
 
-    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Java jar resolved: {jar_path}{Style.RESET_ALL}")  # Log resolved JAR path.
+    verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Java jar resolved: {BackgroundColors.CYAN}{jar_path}{BackgroundColors.GREEN}{Style.RESET_ALL}")  # Log resolved JAR path.
     return jar_path  # Return resolved JAR path.
 
 
@@ -1693,7 +1693,7 @@ def run_zip_merge_java(jar_path: Path, zip_files: List[Path], output_zip: Path) 
     command.append(output_zip_str)  # Append output ZIP path as after optional logging argument but before the list of input ZIP fragments.
     command.extend(zip_files_str)  # Append all ZIP fragment inputs to command.
 
-    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Executing Java merge fragment zip file command: {' '.join(command)}{Style.RESET_ALL}")  # Log the exact Java command being executed
+    verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Executing Java merge fragment zip file command: {BackgroundColors.CYAN}{' '.join(command)}{BackgroundColors.GREEN}{Style.RESET_ALL}")  # Log the exact Java command being executed
     
     try:  # Attempt Java execution.
         result = subprocess.run(command, capture_output=True, text=True)  # Execute Java process.
@@ -1702,11 +1702,11 @@ def run_zip_merge_java(jar_path: Path, zip_files: List[Path], output_zip: Path) 
         return False  # Return failure.
 
     raw_output = result.stdout.strip() if result.stdout else ""  # Normalize stdout output.
-    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Raw Java output: {raw_output}{Style.RESET_ALL}")  # Log raw Java output for debugging.
+    verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Raw Java output: {BackgroundColors.CYAN}{raw_output}{BackgroundColors.GREEN}{Style.RESET_ALL}")  # Log raw Java output for debugging.
 
     try:  # Attempt to extract JSON from mixed output.
         json_matches = re.findall(r"\{.*\}", raw_output, re.DOTALL)  # Extract JSON objects from the raw output using regex, allowing for any surrounding text.
-        verbose_output(f"{BackgroundColors.CYAN}[DEBUG] JSON matches found in Java output: {json_matches}{Style.RESET_ALL}")  # Log JSON matches found in the Java output for debugging.
+        verbose_output(f"{BackgroundColors.GREEN}[DEBUG] JSON matches found in Java output: {BackgroundColors.CYAN}{json_matches}{BackgroundColors.GREEN}{Style.RESET_ALL}")  # Log JSON matches found in the Java output for debugging.
 
         if not json_matches:  # Verify whether any JSON was found in the output.
             print(f"{BackgroundColors.YELLOW}[WARNING] No JSON found in Java output: {raw_output}{Style.RESET_ALL}")
@@ -1718,7 +1718,7 @@ def run_zip_merge_java(jar_path: Path, zip_files: List[Path], output_zip: Path) 
         status = str(parsed.get("status", "")).lower()  # Extract status field.
 
         if status == "success":  # Verify success status.
-            verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Merge success: {parsed.get('output', '')}{Style.RESET_ALL}")  # Log success.
+            verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Merge success: {BackgroundColors.CYAN}{parsed.get('output', '')}{BackgroundColors.GREEN}{Style.RESET_ALL}")  # Log success.
 
             if not verify_filepath_exists(output_zip):  # Verify whether the expected merged ZIP file now exists after Java merge.
                 print(f"{BackgroundColors.RED}[WARNING] Java merge reported success but output ZIP not found: {output_zip}{Style.RESET_ALL}")  # Log missing output ZIP warning.
@@ -1756,14 +1756,14 @@ def finalize_fragments_cleanup(downloads_dir: str, base_name: str) -> str:
         for part in dir_path.glob(f"{base_name}.z[0-9][0-9]"):  # Iterate over ALL fragmented ZIP parts (.z01, .z02, .z03, etc.).
             if part.exists():  # Verify fragment still exists on disk.
                 os.remove(part)  # Delete fragmented ZIP part.
-                verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Fragmented file deleted: {part.name}{Style.RESET_ALL}")  # Log deletion of each fragment.
+                verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Fragmented file deleted: {BackgroundColors.CYAN}{part.name}{BackgroundColors.GREEN}{Style.RESET_ALL}")  # Log deletion of each fragment.
 
         if original_zip_path.exists():  # Verify whether original .zip companion still exists.
             os.remove(original_zip_path)  # Delete original .zip file.
-            verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Original ZIP deleted: {original_zip_path.name}{Style.RESET_ALL}")  # Log deletion.
+            verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Original ZIP deleted: {BackgroundColors.CYAN}{original_zip_path.name}{BackgroundColors.GREEN}{Style.RESET_ALL}")  # Log deletion.
 
         os.rename(merged_zip_path, canonical_zip_path)  # Rename merged ZIP to canonical filename.
-        verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Final rename complete: {merged_zip_path.name} → {canonical_zip_path.name}{Style.RESET_ALL}")  # Log rename.
+        verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Final rename complete: {BackgroundColors.CYAN}{merged_zip_path.name} → {canonical_zip_path.name}{BackgroundColors.GREEN}{Style.RESET_ALL}")  # Log rename.
 
         return canonical_zip_path.name  # Return final filename.
     except Exception as exc:  # Handle filesystem operation failures.
@@ -2207,7 +2207,7 @@ def handle_fragmented_download(detected_download_dir: str, detected_filenames: s
     :return: Tuple containing effective filename, updated fragmented flag, and continue flag.
     """
     
-    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Handling fragmented download for URL: {url} with detected file: {detected_filenames} in directory: {detected_download_dir}{Style.RESET_ALL}")  # Log entry into fragmented download handling with details.
+    verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Handling fragmented download for URL: {url} with detected file: {BackgroundColors.CYAN}{detected_filenames}{BackgroundColors.GREEN} in directory: {BackgroundColors.CYAN}{detected_download_dir}{BackgroundColors.GREEN}{Style.RESET_ALL}")  # Log entry into fragmented download handling with details.
 
     effective_filename = detected_filenames  # Initialize effective filename with detected filename.
     should_continue = False  # Initialize continue flag.
@@ -2253,7 +2253,7 @@ def normalize_and_deduplicate_url_entries(lines: List[str]) -> Tuple[Dict[str, s
     :return: Tuple containing (url_to_filename_map, ordered_urls).
     """
     
-    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Normalizing and deduplicating {len(lines)} raw URL entries from file.{Style.RESET_ALL}")  # Log entry into normalization with raw entry count.
+    verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Normalizing and deduplicating {BackgroundColors.CYAN}{len(lines)}{BackgroundColors.GREEN} raw URL entries from file.{Style.RESET_ALL}")  # Log entry into normalization with raw entry count.
 
     url_to_filename_map: Dict[str, str] = {}  # Initialize mapping of URL -> filename (empty string when not assigned).
     ordered_urls: List[str] = []  # Initialize ordered list to preserve first-seen URL ordering.
@@ -2288,7 +2288,7 @@ def apply_url_filename_update(url_to_filename_map: Dict[str, str], ordered_urls:
     :return: None
     """
     
-    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Applying filename update for URL: {BackgroundColors.CYAN}{target_url}{BackgroundColors.GREEN} with detected filename: {detected_filename}{Style.RESET_ALL}")  # Log entry into URL-filename update with details.
+    verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Applying filename update for URL: {BackgroundColors.CYAN}{target_url}{BackgroundColors.GREEN} with detected filename: {BackgroundColors.CYAN}{detected_filename}{BackgroundColors.GREEN}{Style.RESET_ALL}")  # Log entry into URL-filename update with details.
 
     if target_url == "":  # Verify whether target URL is valid.
         return  # Skip invalid updates.
@@ -2310,7 +2310,7 @@ def rebuild_url_file_lines(url_to_filename_map: Dict[str, str], ordered_urls: Li
     :return: List of normalized lines.
     """
     
-    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Rebuilding normalized lines for {len(ordered_urls)} URLs based on updated mapping.{Style.RESET_ALL}")  # Log entry into line rebuilding with URL count.
+    verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Rebuilding normalized lines for {BackgroundColors.CYAN}{len(ordered_urls)}{BackgroundColors.GREEN} URLs based on updated mapping.{Style.RESET_ALL}")  # Log entry into line rebuilding with URL count.
 
     normalized_lines: List[str] = []  # Initialize output lines container.
 
@@ -2349,7 +2349,7 @@ def update_url_filename_in_file(urls_file: Path, url: str, filename: str) -> boo
 
         normalized_lines = rebuild_url_file_lines(url_to_filename_map, ordered_urls)  # Rebuild normalized output.
 
-        verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Normalized URLs file with {len(normalized_lines)} unique entries.{Style.RESET_ALL}")  # Log normalization result.
+        verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Normalized URLs file with {BackgroundColors.CYAN}{len(normalized_lines)}{BackgroundColors.GREEN} unique entries.{Style.RESET_ALL}")  # Log normalization result.
 
         write_atomic_temp_file(urls_file, normalized_lines)  # Persist atomically.
 
@@ -2393,7 +2393,7 @@ def move_downloaded_file_for_url(downloads_dirs: List[str], destination_dir: Pat
     :return: Final moved file path as string.
     """
 
-    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Attempting to move downloaded file for URL: {BackgroundColors.CYAN}{url}{BackgroundColors.GREEN} with effective filename: {effective_filename} from {BackgroundColors.CYAN}{downloads_dirs}{BackgroundColors.GREEN} to {BackgroundColors.CYAN}{destination_dir}{Style.RESET_ALL}{Style.RESET_ALL}")  # Log entry into file move operation with details.
+    verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Attempting to move downloaded file for URL: {BackgroundColors.CYAN}{url}{BackgroundColors.GREEN} with effective filename: {BackgroundColors.CYAN}{effective_filename}{BackgroundColors.GREEN} from {BackgroundColors.CYAN}{downloads_dirs}{BackgroundColors.GREEN} to {BackgroundColors.CYAN}{destination_dir}{Style.RESET_ALL}{Style.RESET_ALL}")  # Log entry into file move operation with details.
 
     if effective_filename == "":  # Verify if effective filename is empty before attempting move.
         return ""  # Return empty string when no file to move.
@@ -2579,7 +2579,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         
         enable_permission_method = click_enable_permission(enable_permission_img)  # Attempt to click optional extension enable permission button using passed asset variable.
         
-        verbose_output(f"{BackgroundColors.CYAN}Enable permission action: {enable_permission_method}{Style.RESET_ALL}")  # Log enable-permission action when verbose.
+        verbose_output(f"{BackgroundColors.GREEN}Enable permission action: {BackgroundColors.CYAN}{enable_permission_method}{BackgroundColors.GREEN}{Style.RESET_ALL}")  # Log enable-permission action when verbose.
 
         download_method = click_download_button(download_img)  # Execute download click action.
         confirmation_alt_img = confirmation_img.with_name(f"{confirmation_img.stem}-Alternative{confirmation_img.suffix}")  # Build alternative confirmation image path using deterministic naming pattern.
@@ -2712,7 +2712,7 @@ def match_template_multi_scale(screen: Any, template: Any, scales: list[float]) 
         _, max_val, _, max_loc = cv2.minMaxLoc(result)  # Extract best result.
 
         if max_val > best_val:  # Verify improvement.
-            verbose_output(f"{BackgroundColors.CYAN}[DEBUG] New best match found at scale {scale} with confidence {max_val:.4f}{Style.RESET_ALL}")  # Log new best match details when verbose.
+            verbose_output(f"{BackgroundColors.GREEN}[DEBUG] New best match found at scale {BackgroundColors.CYAN}{scale}{BackgroundColors.GREEN} with confidence {BackgroundColors.CYAN}{max_val:.4f}{Style.RESET_ALL}")  # Log new best match details when verbose.
             best_val = max_val  # Update score.
             best_match = (max_loc, resized.shape[::-1])  # Store match.
 
@@ -2747,7 +2747,7 @@ def enhanced_locate_image(image_path: Path, threshold: float = 0.90) -> Any:
     :return: Box location when found, otherwise None.
     """
     
-    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Attempting to locate image with enhanced method: {image_path}{Style.RESET_ALL}")  # Log entry into enhanced image location with target path details when verbose.
+    verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Attempting to locate image with enhanced method: {image_path}{Style.RESET_ALL}")  # Log entry into enhanced image location with target path details when verbose.
 
     if not image_path.exists():  # Verify image file existence.
         return None  # Return None when image file does not exist.
@@ -3051,7 +3051,7 @@ def prevent_screen_lock(last_move_ts: float, interval_seconds: float = 50.0) -> 
     :return: Updated timestamp of last cursor movement.
     """
     
-    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Verifying screen lock prevention at interval of {interval_seconds} seconds...{Style.RESET_ALL}")  # Log entry into screen lock prevention with interval details when verbose.
+    verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Verifying screen lock prevention at interval of {BackgroundColors.CYAN}{interval_seconds}{BackgroundColors.GREEN} seconds...{Style.RESET_ALL}")  # Log entry into screen lock prevention with interval details when verbose.
 
     current_time = time.time()  # Capture current timestamp for interval comparison.
 
@@ -3061,7 +3061,7 @@ def prevent_screen_lock(last_move_ts: float, interval_seconds: float = 50.0) -> 
             pyautogui.moveTo(x + 1, y)  # Move cursor by +1 pixel on X axis.
             pyautogui.moveTo(x, y)  # Move cursor back to original position to avoid displacement.
 
-            verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Prevented screen lock via cursor jitter.{Style.RESET_ALL}")  # Log cursor movement action.
+            verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Prevented screen lock via cursor jitter.{Style.RESET_ALL}")  # Log cursor movement action.
 
         except Exception as e:  # Handle unexpected failures from pyautogui.
             verbose_output(f"{BackgroundColors.YELLOW}[WARNING] Failed to move cursor for screen lock prevention: {e}{Style.RESET_ALL}")  # Log failure.
@@ -3082,7 +3082,7 @@ def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_i
     :return: Detection status string.
     """
     
-    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Watching for save dialog and confirmation...{Style.RESET_ALL}")  # Log start of save dialog and confirmation monitoring.
+    verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Watching for save dialog and confirmation...{Style.RESET_ALL}")  # Log start of save dialog and confirmation monitoring.
 
     start_time = time.time()  # Record start time to enforce same timeout behavior as confirmation polling.
     last_cursor_move_ts = start_time  # Initialize last cursor movement timestamp for screen lock prevention.
@@ -3335,10 +3335,10 @@ def click_share_affiliate_url_button(share_button_img: Path) -> str:
         if box is not None:  # Verify if share affiliate URL image was detected.
             click_box_center(box)  # Click center of detected share button box to trigger URL copy action.
             time.sleep(0.5)  # Wait briefly after image-based click.
-            verbose_output(f"{BackgroundColors.CYAN}Used image: {share_button_img.name}{Style.RESET_ALL}")  # Print name of used image.
+            verbose_output(f"{BackgroundColors.GREEN}Used image: {BackgroundColors.CYAN}{share_button_img.name}{BackgroundColors.GREEN}{Style.RESET_ALL}")  # Print name of used image.
             return "ImageSearch"  # Return image search method label for image.
 
-    verbose_output(f"{BackgroundColors.YELLOW}Share affiliate URL button images not found: {share_button_img.name}{Style.RESET_ALL}")  # Print warning when neither image was detected.
+    verbose_output(f"{BackgroundColors.YELLOW}Share affiliate URL button images not found: {BackgroundColors.CYAN}{share_button_img.name}{BackgroundColors.YELLOW}{Style.RESET_ALL}")  # Print warning when neither image was detected.
     return "Not Found"  # Return not found status when no image matched.
 
 
