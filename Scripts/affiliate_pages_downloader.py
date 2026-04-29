@@ -2469,6 +2469,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         verbose_output(f"{BackgroundColors.CYAN}Enable permission action: {enable_permission_method}{Style.RESET_ALL}")  # Log enable-permission action when verbose.
 
         download_method = click_download_button(download_img)  # Execute download click action.
+        watch_for_save_dialog_and_confirmation(save_button_img, confirmation_img)  # Watch and handle optional save dialog while waiting.
         confirmation_method = wait_for_download_confirmation(confirmation_img)  # Execute completion polling action.
 
         if not confirmation_method is "Timeout":  # Verify whether download confirmation was not detected within the expected time frame.
@@ -2801,6 +2802,37 @@ def click_enable_permission(enable_img: Path) -> str:
         time.sleep(0.1)  # Wait before retrying image search when not found.
 
     return "NotFound"  # Return NotFound when no enable-permission image was detected.
+
+
+def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_img: Path) -> None:
+    """
+    Watches for the optional Chrome "Save As" dialog and clicks the save button if it appears,
+    while also monitoring for the confirmation image to stop early.
+
+    :param save_button_img: Path to the save button image.
+    :param confirmation_img: Path to the confirmation image.
+    :return: None
+    """
+    
+    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Watching for save dialog and confirmation...{Style.RESET_ALL}")  # Log start of save dialog and confirmation monitoring.
+
+    start_time = time.time()  # Record start time to enforce same timeout behavior as confirmation polling.
+    max_wait_time = 60 * 5  # Match wait_for_download_confirmation total wait time (60 iterations * 5 seconds).
+
+    while (time.time() - start_time) < max_wait_time:  # Loop until timeout window is reached.
+        if locate_image(confirmation_img) is not None:  # Verify if confirmation image already appeared.
+            verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Confirmation detected during save dialog watch; exiting early.{Style.RESET_ALL}")  # Log early exit due to confirmation detection.
+            break  # Exit loop early when confirmation image is detected.
+
+        box = locate_image(save_button_img)  # Attempt to locate the optional save button image on screen.
+
+        if box is not None:  # Verify image was found.
+            verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Save button detected; clicking to confirm download.{Style.RESET_ALL}")  # Log save button detection and click action.
+            center_x = box.left + (box.width // 2)  # Compute center X coordinate of detected box.
+            center_y = box.top + (box.height // 2)  # Compute center Y coordinate of detected box.
+            pyautogui.click(center_x, center_y)  # Click center point of the save button.
+
+        time.sleep(0.5)  # Wait 0.5 seconds before next verification cycle.
 
 
 def wait_for_download_confirmation(confirmation_img: Path) -> str:
