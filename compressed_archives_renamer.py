@@ -115,7 +115,7 @@ def parse_arguments() -> argparse.Namespace:
     :return: Parsed argument namespace containing all CLI flags.
     """
 
-    parser = argparse.ArgumentParser(description="E-Commerces WebScraper")  # Initialize argument parser
+    parser = argparse.ArgumentParser(description="Compressed Archives Renamer by URL Mapping - A script to rename compressed archive files in the Inputs directory based on deterministic URL-driven mapping from urls.txt.")  # Create an argument parser with a description of the program
 
     parser.add_argument("--verbose", action="store_true", help="Enable verbose debug output (default: False)")  # Register verbose flag that sets True when provided
 
