@@ -73,7 +73,7 @@ from colorama import Style  # Reset ANSI style output.
 from pathlib import Path  # Build and resolve filesystem paths.
 from tkinter import messagebox  # Import tkinter messagebox utility.
 from tqdm import tqdm  # Import tqdm progress bar iterator.
-from typing import Any, Dict, List, Tuple  # Provide typing annotations for containers and dynamic objects.
+from typing import Any, Dict, List, Optional, Tuple  # Provide typing annotations for containers and dynamic objects.
 
 
 PROJECT_ROOT = str(Path(__file__).resolve().parents[[p.name for p in Path(__file__).resolve().parents].index("E-Commerces-WebScraper")])  # Project root directory
@@ -3130,6 +3130,7 @@ def wait_for_download_file_stabilization(downloads_dirs: List[str], timeout: flo
 
     start_time = time.time()  # Record start time for timeout enforcement.
     normalized_dirs = [str(Path(d).resolve()) for d in downloads_dirs]  # Normalize monitored directories.
+    last_seen_temp_file: Optional[str] = None  # Track last observed temporary filename for rename detection.
 
     while (time.time() - start_time) < timeout:  # Loop until timeout expires.
         unstable_found = False  # Track whether unstable files are detected.
@@ -3144,6 +3145,7 @@ def wait_for_download_file_stabilization(downloads_dirs: List[str], timeout: flo
                         continue  # Skip removed files.
 
                     if name.endswith(".crdownload") or name.endswith(".tmp"):  # Verify temporary download file presence.
+                        last_seen_temp_file = name  # Track latest temporary filename.
                         verbose_output(f"{BackgroundColors.YELLOW}[DEBUG] Detected temporary download file: {BackgroundColors.CYAN}{file_path}{BackgroundColors.YELLOW}; waiting for stabilization...{Style.RESET_ALL}")  # Log detection of temporary file with path details when verbose.
                         unstable_found = True  # Mark unstable file detected.
                         break  # Stop scanning current directory.
@@ -3154,6 +3156,7 @@ def wait_for_download_file_stabilization(downloads_dirs: List[str], timeout: flo
                         continue  # Skip problematic file.
 
                     if (now - mtime) <= recent_window:  # Verify file was modified recently.
+                        if last_seen_temp_file is not None: verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Download finalized: {BackgroundColors.CYAN}{last_seen_temp_file}{BackgroundColors.GREEN} -> {BackgroundColors.CYAN}{name}{Style.RESET_ALL}")  # Log temp-to-final filename transition.
                         unstable_found = True  # Mark unstable file detected.
                         break  # Stop scanning current directory.
                 if unstable_found:  # Verify if unstable file was found in this directory.
