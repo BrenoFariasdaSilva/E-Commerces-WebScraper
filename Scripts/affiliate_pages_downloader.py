@@ -2259,6 +2259,30 @@ def normalize_and_deduplicate_url_entries(lines: List[str]) -> Tuple[Dict[str, s
     return url_to_filename_map, ordered_urls  # Return normalized structures.
 
 
+def apply_url_filename_update(url_to_filename_map: Dict[str, str], ordered_urls: List[str], target_url: str, detected_filename: str) -> None:
+    """
+    Applies a filename update to the normalized mapping.
+
+    :param url_to_filename_map: Mapping of URL -> filename.
+    :param ordered_urls: Ordered list of URLs.
+    :param target_url: URL to update.
+    :param detected_filename: Filename to associate.
+    :return: None
+    """
+    
+    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Applying filename update for URL: {BackgroundColors.CYAN}{target_url}{BackgroundColors.GREEN} with detected filename: {detected_filename}{Style.RESET_ALL}")  # Log entry into URL-filename update with details.
+
+    if target_url == "":  # Verify whether target URL is valid.
+        return  # Skip invalid updates.
+
+    if detected_filename != "":  # Verify whether detected filename is valid.
+        url_to_filename_map[target_url] = detected_filename  # Force overwrite with latest detected filename.
+    else:  # Handle case where filename is empty.
+        if target_url not in url_to_filename_map:  # Verify whether URL is not already present.
+            url_to_filename_map[target_url] = ""  # Insert URL with empty mapping.
+            ordered_urls.append(target_url)  # Preserve ordering for new URL.
+
+
 def update_url_filename_in_file(urls_file: Path, url: str, filename: str) -> bool:
     """
     Update the detected filename for a URL entry in a single file.
