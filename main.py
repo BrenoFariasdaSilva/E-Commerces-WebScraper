@@ -2940,6 +2940,11 @@ def prepare_input_urls() -> tuple:
     """
 
     raw_lines = load_urls_to_process(INPUT_FILE)  # Load raw trimmed input lines from file
+    
+    if raw_lines is None:  # Verify if loading the input file failed (e.g., file not found)
+        print(f"{BackgroundColors.RED}Error: Failed to read URLs from file: {BackgroundColors.CYAN}{INPUT_FILE}{BackgroundColors.RED}. Please ensure the file exists and is readable in that specified paths. Be careful with the parent directory of the file as well.{Style.RESET_ALL}")  # Print file read error with details and suggestions.
+        return [], 0  # Return empty list and zero count when input file cannot be loaded
+    
     processed_lines = preprocess_urls(raw_lines)  # Preprocess lines (strip, remove prefixes, sort)
     write_urls_to_file(processed_lines, INPUT_FILE, True)  # Write preprocessed lines back to input file for deterministic retries and user reference
 
