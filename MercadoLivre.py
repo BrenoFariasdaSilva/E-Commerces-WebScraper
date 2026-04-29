@@ -375,7 +375,7 @@ class MercadoLivre:
             integer_part = "N/A"  # Default integer part when not found
             decimal_part = "N/A"  # Default decimal part when not found
 
-        verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Current price extracted: {integer_part}.{decimal_part}{Style.RESET_ALL}")  # Log extracted current price
+        verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Current price extracted: {BackgroundColors.CYAN}{integer_part}.{decimal_part}{Style.RESET_ALL}")  # Log extracted current price
 
         return integer_part, decimal_part  # Return the price parts
 
@@ -398,7 +398,7 @@ class MercadoLivre:
         discount_marker = price_container.find(**HTML_SELECTORS["discount_marker"])  # Find discounted price marker inside price container
 
         if not discount_marker or not isinstance(discount_marker, Tag):  # Verify if discount marker is absent
-            verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Discount marker not found. No old price available.{Style.RESET_ALL}")  # Log debug message indicating no old price
+            verbose_output(f"{BackgroundColors.YELLOW}[DEBUG] Discount marker not found. No old price available.{Style.RESET_ALL}")  # Log debug message indicating no old price
             return "N/A", "N/A"  # Return N/A to indicate no old price present
 
         old_fraction = discount_marker.find_previous("span", **HTML_SELECTORS["price_fraction"]) or discount_marker.find("span", **HTML_SELECTORS["price_fraction"])  # Attempt to find old price fraction near discount marker
@@ -411,7 +411,7 @@ class MercadoLivre:
                 decimal_part = cents.get_text(strip=True) if cents and isinstance(cents, Tag) else "00"  # Extract decimal part or default
             else:  # If parent missing
                 decimal_part = "00"  # Default decimal part
-            verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Old price extracted: {integer_part}.{decimal_part}{Style.RESET_ALL}")  # Log extracted old price
+            verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Old price extracted: {BackgroundColors.CYAN}{integer_part}.{decimal_part}{Style.RESET_ALL}")  # Log extracted old price
             return integer_part, decimal_part  # Return detected old price parts
 
         verbose_output(f"{BackgroundColors.YELLOW}[WARNING] Could not locate old price element despite discount marker.{Style.RESET_ALL}")  # Log warning when marker exists but price not found
@@ -430,12 +430,12 @@ class MercadoLivre:
 
         if discount_element and isinstance(discount_element, Tag):  # Verify if discount element exists in document
             discount_text = discount_element.get_text(strip=True)  # Extract raw discount text
-            verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Discount element found in document: {discount_text}{Style.RESET_ALL}")  # Log found discount element
+            verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Discount element found in document: {BackgroundColors.CYAN}{discount_text}{Style.RESET_ALL}")  # Log found discount element
             return discount_text  # Return the discount text directly when present
 
         old_int, old_dec = self.extract_old_price(soup)  # Get old price components using container-aware logic
         if old_int in (None, "N/A"):  # Verify if there is no old price detected
-            verbose_output(f"{BackgroundColors.CYAN}[DEBUG] No old price present; discount will not be computed.{Style.RESET_ALL}")  # Log that discount is not applicable
+            verbose_output(f"{BackgroundColors.YELLOW}[DEBUG] No old price present; discount will not be computed.{Style.RESET_ALL}")  # Log that discount is not applicable
             return "N/A"  # Return N/A when discount cannot be computed without an old price
 
         curr_int, curr_dec = self.extract_current_price(soup)  # Get current price components for discount computation
@@ -445,7 +445,7 @@ class MercadoLivre:
             curr_value = float(f"{curr_int}.{curr_dec}")  # Compose current price float value
             if old_value > 0:  # Verify old price is greater than zero to avoid division by zero
                 discount = round((old_value - curr_value) / old_value * 100)  # Compute rounded discount percentage
-                verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Computed discount: {discount}%{Style.RESET_ALL}")  # Log computed discount
+                verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Computed discount: {BackgroundColors.CYAN}{discount}%{Style.RESET_ALL}")  # Log computed discount
                 return f"{discount}%"  # Return formatted percentage string
         except Exception:  # Handle numeric conversion or computation errors gracefully
             verbose_output(f"{BackgroundColors.YELLOW}[WARNING] Failed to compute discount due to numeric conversion error.{Style.RESET_ALL}")  # Log numeric conversion warning
