@@ -2604,13 +2604,13 @@ def play_sound():
 
 def parse_arguments() -> argparse.Namespace:
     """
-    Parse and return command-line arguments for the E-Commerces WebScraper.
+    Parse and return command-line arguments for the main program.
 
     :param: None
     :return: Parsed argument namespace containing all CLI flags.
     """
 
-    parser = argparse.ArgumentParser(description="E-Commerces WebScraper")  # Initialize argument parser
+    parser = argparse.ArgumentParser(description="Utility for sorting and normalizing product output directories, merging runs, generating template files, and cleaning up old repeated products based on history.")  # Create argument parser with description
 
     parser.add_argument("--verbose", action="store_true", help="Enable verbose debug output (default: False)")  # Register verbose flag that sets True when provided
     parser.add_argument("--headerless", type=lambda s: str(s).lower() in ("true", "1", "yes", "y"), default=False, help="Whether to suppress GUI messagebox (default: False)")  # Register headerless argument with boolean conversion
