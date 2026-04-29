@@ -3061,17 +3061,21 @@ def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_i
     max_wait_time = 60 * 10  # Match wait_for_download_confirmation total wait time (60 iterations * 5 seconds).
 
     while (time.time() - start_time) < max_wait_time:  # Loop until timeout window is reached.
-        box = None  # Initialize box variable for save button detection.
+        box = enhanced_locate_image(save_button_img)  # Attempt to locate the optional save button image on screen.
+        if box is not None:  # Verify image was found.
+            verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Save button detected; clicking to confirm download.{Style.RESET_ALL}")  # Log save button detection and click action.
+            time.sleep(0.1)  # Wait briefly to allow UI to process click before sending key event.
+            pyautogui.press("enter")  # Confirm save action via Enter key when required.
+        
         if enhanced_locate_image(confirmation_img) is not None or enhanced_locate_image(confirmation_alt_img) is not None:  # Check for confirmation images to allow early exit from waiting when detected.
             verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Confirmation detected during save dialog watch; exiting early.{Style.RESET_ALL}")  # Log early exit due to confirmation detection.
             box = enhanced_locate_image(save_button_img)  # Attempt to locate the optional save button image on screen.
-        if box is not None:  # Verify image was found.
-            verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Save button detected; clicking to confirm download.{Style.RESET_ALL}")  # Log save button detection and click action.
-            center_x = box.left + (box.width // 2)  # Compute center X coordinate of detected box.
-            center_y = box.top + (box.height // 2)  # Compute center Y coordinate of detected box.
-            pyautogui.click(center_x, center_y)  # Click center point of the save button.
+            if box is not None:  # Verify image was found.
+                verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Save button detected; clicking to confirm download.{Style.RESET_ALL}")  # Log save button detection and click action.
+                time.sleep(0.1)  # Wait briefly to allow UI to process click before sending key event.
+                pyautogui.press("enter")  # Confirm save action via Enter key when required.
     
-    return  "Timeout"  # Return Timeout when max wait time is reached without confirmation detection.
+    return  "Timeout"  # Return timeout status after wait window expires.
 
 
 def wait_for_download_file_stabilization(downloads_dirs: List[str], timeout: float = 10.0, interval: float = 0.5, recent_window: float = 60.0) -> None:
