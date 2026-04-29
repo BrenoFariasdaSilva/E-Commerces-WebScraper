@@ -174,6 +174,7 @@ def parse_arguments(repo_root: Path) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Affiliate Pages Downloader Automation")  # Initialize argument parser with description.
 
     parser = argparse.ArgumentParser(description="Cross-platform affiliate pages downloader automation")  # Initialize argument parser.
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose output for debugging and insights")  # Register verbose flag argument.
     parser.add_argument("--tab-count", type=int, default=0, help="Number of URLs/tabs to process (0 = use all URLs from Inputs/urls.txt)")  # Register tab-count argument.
     parser.add_argument("--urls-file", type=Path, default=repo_root / "Inputs" / "urls.txt", help="Path to URLs input file")  # Register urls-file argument.
     parser.add_argument("--assets-dir", type=Path, default=repo_root / ".assets" / "Browser", help="Directory containing image assets")  # Register assets-dir argument.
@@ -3696,6 +3697,10 @@ def main():
 
     args = parse_arguments(repo_root)  # Parse command-line arguments
     
+    if args.verbose:  # Verify if verbose mode is enabled
+        global VERBOSE  # Set the global VERBOSE variable to True when the --verbose flag is provided
+        VERBOSE = True  # Enable verbose output
+
     global ONLY_RENEW_AMAZON_AFFILIATE_URLS  # Reference global only-renew mode constant for CLI override.
     argv_only_renew = next((arg.split("=", 1)[1] if "=" in arg else "true" for arg in sys.argv[1:] if arg.lower().startswith("--only-renew-amazon-urls")), "")  # Resolve only-renew argument raw value from sys.argv.
     if str(argv_only_renew).lower() in ("true", "1"):  # Verify whether sys.argv includes truthy only-renew value.
