@@ -3069,6 +3069,7 @@ def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_i
             pyautogui.press("enter")  # Confirm save action via Enter key when required.
         
         if enhanced_locate_image(confirmation_img) is not None or enhanced_locate_image(confirmation_alt_img) is not None:  # Check for confirmation images to allow early exit from waiting when detected.
+            time.sleep(1)  # Wait briefly after confirmation detection to allow any UI changes to settle before proceeding.
             verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Confirmation detected during save dialog watch; exiting early.{Style.RESET_ALL}")  # Log early exit due to confirmation detection.
             box = enhanced_locate_image(save_button_img)  # Attempt to locate the optional save button image on screen.
             if box is not None:  # Verify image was found.
