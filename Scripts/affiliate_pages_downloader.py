@@ -2663,6 +2663,16 @@ def capture_screen_grayscale() -> Any:
     return cv2.cvtColor(np.array(screen), cv2.COLOR_RGB2GRAY)  # Convert to grayscale and return.
 
 
+def get_scale_factors() -> list[float]:
+    """
+    Provides predefined scale factors for multi-resolution matching.
+
+    :return: List of scale factors.
+    """
+
+    return [0.5, 0.75, 1.0, 1.25, 1.5]  # Return supported scaling values.
+
+
 def get_screen_dimensions() -> Tuple[int, int]:
     """
     Retrieves current screen dimensions.
