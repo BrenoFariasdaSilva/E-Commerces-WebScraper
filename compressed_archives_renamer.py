@@ -236,7 +236,7 @@ def parse_url_entries(input_file_path: str) -> list[tuple[str, Optional[str]]]:
     preprocessed_lines = preprocess_urls(raw_lines)  # Preprocess the raw lines to clean and sort them
     url_entries: list[tuple[str, Optional[str]]] = []  # Initialize list to hold parsed URL entries
 
-    for line in raw_lines:  # Iterate over each raw line from the URLs file
+    for line in preprocessed_lines:  # Iterate over each raw line from the URLs file
         if " -> " in line:  # Verify if the line contains a URL-to-filename mapping separator
             parts = line.split(" -> ", 1)  # Split on the first occurrence of the mapping separator
             product_url = parts[0].strip()  # Extract the product URL from the left side of the separator
