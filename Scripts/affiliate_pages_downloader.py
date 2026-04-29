@@ -2472,7 +2472,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         watch_for_save_dialog_and_confirmation(save_button_img, confirmation_img)  # Watch and handle optional save dialog while waiting.
         confirmation_method = wait_for_download_confirmation(confirmation_img)  # Execute completion polling action.
 
-        if not confirmation_method is "Timeout":  # Verify whether download confirmation was not detected within the expected time frame.
+        if confirmation_method != "Timeout":  # Verify whether download confirmation was not detected within the expected time frame.
             post_download_snapshots = snapshot_download_directories(downloads_dirs)  # Capture downloads directory snapshots after download completion.
 
             if len(downloads_dirs) > 1:  # Verify whether monitored downloads directories are unresolved.
