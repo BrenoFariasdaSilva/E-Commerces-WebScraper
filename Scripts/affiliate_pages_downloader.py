@@ -2581,7 +2581,6 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         confirmation_alt_img = confirmation_img.with_name(f"{confirmation_img.stem}-Alternative{confirmation_img.suffix}")  # Build alternative confirmation image path using deterministic naming pattern.
         confirmation_method = watch_for_save_dialog_and_confirmation(save_button_img, confirmation_img, confirmation_alt_img)  # Watch and handle optional save dialog while waiting.
         
-        # @TODO: Implement a function to be called in long waits, like in watch_for_save_dialog_and_confirmation and/or wait_for_download_confirmation to, every 60s, move the cursor like a pixel to prevent screen lock.
 
         if confirmation_method != "Timeout":  # Verify whether download confirmation was not detected within the expected time frame.
             # @TODO: Dispatch this to a new function and thread/core in order for the code to jump to the next url and handle the download detection and mapping asynchronously while the current thread continues processing the next URLs and handling their downloads in parallel, which would significantly improve the overall processing time when dealing with a large number of URLs and downloads.
@@ -3036,6 +3035,35 @@ def click_enable_permission(enable_img: Path) -> str:
         time.sleep(0.1)  # Wait before retrying image search when not found.
 
     return "NotFound"  # Return NotFound when no enable-permission image was detected.
+
+
+def prevent_screen_lock(last_move_ts: float, interval_seconds: float = 50.0) -> float:
+    """
+    Moves the cursor by a single pixel every defined interval to prevent screen lock.
+
+    :param last_move_ts: Timestamp of the last cursor movement.
+    :param interval_seconds: Minimum seconds between cursor movements.
+    :return: Updated timestamp of last cursor movement.
+    """
+    
+    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Verifying screen lock prevention at interval of {interval_seconds} seconds...{Style.RESET_ALL}")  # Log entry into screen lock prevention with interval details when verbose.
+
+    current_time = time.time()  # Capture current timestamp for interval comparison.
+
+    if (current_time - last_move_ts) >= interval_seconds:  # Verify whether interval threshold was reached.
+        try:  # Attempt cursor movement.
+            x, y = pyautogui.position()  # Get current cursor position.
+            pyautogui.moveTo(x + 1, y)  # Move cursor by +1 pixel on X axis.
+            pyautogui.moveTo(x, y)  # Move cursor back to original position to avoid displacement.
+
+            verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Prevented screen lock via cursor jitter.{Style.RESET_ALL}")  # Log cursor movement action.
+
+        except Exception as e:  # Handle unexpected failures from pyautogui.
+            verbose_output(f"{BackgroundColors.YELLOW}[WARNING] Failed to move cursor for screen lock prevention: {e}{Style.RESET_ALL}")  # Log failure.
+
+        return current_time  # Update last movement timestamp.
+
+    return last_move_ts  # Return unchanged timestamp when interval not reached.
 
 
 def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_img: Path, confirmation_alt_img: Path) -> str:
