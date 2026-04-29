@@ -3080,9 +3080,12 @@ def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_i
     verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Watching for save dialog and confirmation...{Style.RESET_ALL}")  # Log start of save dialog and confirmation monitoring.
 
     start_time = time.time()  # Record start time to enforce same timeout behavior as confirmation polling.
+    last_cursor_move_ts = start_time  # Initialize last cursor movement timestamp for screen lock prevention.
     max_wait_time = 60 * 10  # Match wait_for_download_confirmation total wait time (60 iterations * 5 seconds).
 
     while (time.time() - start_time) < max_wait_time:  # Loop until timeout window is reached.
+        last_cursor_move_ts = prevent_screen_lock(last_cursor_move_ts)  # Periodically move cursor to prevent screen lock.
+
         box = enhanced_locate_image(save_button_img)  # Attempt to locate the optional save button image on screen.
         if box is not None:  # Verify image was found.
             verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Save button detected; clicking to confirm download.{Style.RESET_ALL}")  # Log save button detection and click action.
