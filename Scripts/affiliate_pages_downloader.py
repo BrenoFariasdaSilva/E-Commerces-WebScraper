@@ -2356,7 +2356,7 @@ def move_downloaded_archives(downloads_dirs: List[str], destination_dir: Path, u
 
         try:  # Attempt to move archive into destination directory.
             shutil.move(str(source_path), str(destination_path))  # Move detected downloaded archive to URLs directory.
-            verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Successfully moved downloaded file to: {destination_path}{Style.RESET_ALL}")  # Log successful archive move with destination details.
+            verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Successfully moved downloaded file from {BackgroundColors.CYAN}{source_path}{BackgroundColors.GREEN} to {BackgroundColors.CYAN}{destination_path}{Style.RESET_ALL}")  # Log successful archive move with source and destination details.
         except Exception:  # Handle archive move failures.
             print(f"{BackgroundColors.YELLOW}[WARNING] Failed to move downloaded file: {source_path}{Style.RESET_ALL}")  # Log archive move failure warning.
 
