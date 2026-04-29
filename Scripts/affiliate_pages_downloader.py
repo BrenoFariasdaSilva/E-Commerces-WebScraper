@@ -2227,6 +2227,38 @@ def associate_url_with_download(url_to_download: Dict[str, str], url: str, downl
     url_to_download[url] = downloaded_filename  # Persist URL to downloaded filename association.
 
 
+def normalize_and_deduplicate_url_entries(lines: List[str]) -> Tuple[Dict[str, str], List[str]]:
+    """
+    Normalizes and deduplicates URL entries, preserving order and prioritizing valid filename mappings.
+
+    :param lines: Raw lines from URLs file.
+    :return: Tuple containing (url_to_filename_map, ordered_urls).
+    """
+    
+    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Normalizing and deduplicating {len(lines)} raw URL entries from file.{Style.RESET_ALL}")  # Log entry into normalization with raw entry count.
+
+    url_to_filename_map: Dict[str, str] = {}  # Initialize mapping of URL -> filename (empty string when not assigned).
+    ordered_urls: List[str] = []  # Initialize ordered list to preserve first-seen URL ordering.
+
+    for raw_line in lines:  # Iterate each raw line from file.
+        tokens = raw_line.strip().split()  # Normalize and split line into tokens.
+
+        if not tokens:  # Verify whether line is empty after stripping.
+            continue  # Skip empty lines.
+
+        parsed_url = tokens[0]  # Extract URL token (first token).
+        parsed_filename = tokens[1] if len(tokens) > 1 else ""  # Extract filename token when present.
+
+        if parsed_url not in url_to_filename_map:  # Verify whether URL is being seen for the first time.
+            url_to_filename_map[parsed_url] = parsed_filename  # Persist initial mapping.
+            ordered_urls.append(parsed_url)  # Preserve insertion order.
+        else:  # Handle duplicate URL entries.
+            if url_to_filename_map[parsed_url] == "" and parsed_filename != "":  # Prefer non-empty filename over empty mapping.
+                url_to_filename_map[parsed_url] = parsed_filename  # Upgrade mapping with valid filename.
+
+    return url_to_filename_map, ordered_urls  # Return normalized structures.
+
+
 def update_url_filename_in_file(urls_file: Path, url: str, filename: str) -> bool:
     """
     Update the detected filename for a URL entry in a single file.
