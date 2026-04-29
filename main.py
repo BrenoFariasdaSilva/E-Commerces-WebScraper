@@ -2123,7 +2123,7 @@ def resolve_collision_path(parent_directory: str, final_directory_name: str) -> 
         while os.path.exists(norm_collision_path):  # Search for an available fallback path when collisions persist.
             collision_suffix += 1  # Increment suffix for the next fallback candidate.
             collision_path = normalize_path(os.path.join(parent_directory, f"{final_directory_name} ({collision_suffix})"))  # Normalize next fallback path candidate.
-            norm_collision_path = collision_path  # Update normalized collision path for the next existence check.
+            norm_collision_path = collision_path  # Update normalized collision path for the next existence verification.
         norm_final_directory_path = norm_collision_path  # Use collision-safe final path when original target is occupied.
         
     return norm_final_directory_path  # Return the original or collision-resolved final directory path.
