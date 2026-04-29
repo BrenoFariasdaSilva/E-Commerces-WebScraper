@@ -2322,45 +2322,6 @@ def update_urls_file(urls_file: Path, url_to_download: Dict[str, str]) -> None:
     urls_file.write_text("\n".join(updated_lines) + "\n", encoding="utf-8")  # Rewrite URLs file with updated mapping lines.
 
 
-def move_downloaded_archives(downloads_dirs: List[str], destination_dir: Path, url_to_download: Dict[str, str]) -> None:
-    """
-    Moves downloaded archives from downloads directory to URLs directory.
-
-    :param downloads_dirs: Paths to monitored downloads directories.
-    :param destination_dir: Path to the target directory where URLs file is located.
-    :param url_to_download: Dictionary mapping URL to downloaded filename.
-    :return: None.
-    """
-
-    unique_filenames = sorted({filename for filename in url_to_download.values() if filename != ""})  # Build sorted unique list of detected downloaded filenames.
-    normalized_downloads_dirs = [str(Path(downloads_dir).resolve()) for downloads_dir in downloads_dirs]  # Resolve and normalize monitored downloads directory paths.
-
-    for filename in unique_filenames:  # Iterate over detected downloaded filenames.
-        source_path = None  # Initialize source archive file path placeholder.
-        destination_path = destination_dir / filename  # Build destination archive file path in URLs directory.
-
-        for downloads_dir in normalized_downloads_dirs:  # Iterate monitored downloads directories while searching for current archive.
-            candidate_path = Path(downloads_dir) / filename  # Build candidate source archive path for current monitored downloads directory.
-
-            if candidate_path.exists():  # Verify whether current candidate source archive path exists.
-                source_path = candidate_path  # Persist existing source archive path.
-                break  # Stop iteration after locating the first existing source archive path.
-
-        if source_path is None:  # Verify whether a source archive path was located.
-            print(f"{BackgroundColors.YELLOW}[WARNING] Downloaded file not found for move: {filename}{Style.RESET_ALL}")  # Log missing source archive warning.
-            continue  # Continue with next detected archive.
-
-        if destination_path.exists():  # Verify if destination archive already exists.
-            print(f"{BackgroundColors.YELLOW}[WARNING] Destination file already exists. Skipping move: {destination_path}{Style.RESET_ALL}")  # Log existing destination archive warning.
-            continue  # Continue with next detected archive.
-
-        try:  # Attempt to move archive into destination directory.
-            shutil.move(str(source_path), str(destination_path))  # Move detected downloaded archive to URLs directory.
-            verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Successfully moved downloaded file from {BackgroundColors.CYAN}{source_path}{BackgroundColors.GREEN} to {BackgroundColors.CYAN}{destination_path}{Style.RESET_ALL}")  # Log successful archive move with source and destination details.
-        except Exception:  # Handle archive move failures.
-            print(f"{BackgroundColors.YELLOW}[WARNING] Failed to move downloaded file: {source_path}{Style.RESET_ALL}")  # Log archive move failure warning.
-
-
 def resolve_backup_file_path(urls_file: Path) -> Path:
     """
     Resolve the backup file path corresponding to the given URLs file.
@@ -3605,7 +3566,6 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
 
             if not only_renew_amazon_urls:  # Verify whether normal mode requires urls-to-download mapping updates.
                 update_urls_file(urls_file, url_to_download)  # Rewrite URLs file with URL to downloaded filename mapping.
-                move_downloaded_archives(downloads_dirs, urls_file.resolve().parent, url_to_download)  # Move downloaded archives into URLs file directory.
 
             print(f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Automation Finished{Style.RESET_ALL}\n")  # Print automation completion message.
 
