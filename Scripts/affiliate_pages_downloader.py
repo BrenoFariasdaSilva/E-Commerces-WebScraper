@@ -458,6 +458,22 @@ def select_chrome_window(chrome_windows: List[Any]) -> Any:
     return sorted_windows[0] if len(sorted_windows) > 0 else None  # Return first deterministic candidate when available.
 
 
+def click_box_center(box: Tuple[int, int, int, int]) -> None:
+    """
+    Clicks the center of a detected bounding box.
+
+    :param box: Bounding box tuple (x, y, width, height).
+    :return: None
+    """
+
+    x, y, w, h = box  # Unpack bounding box tuple.
+
+    center_x = x + (w // 2)  # Compute center X coordinate of detected box.
+    center_y = y + (h // 2)  # Compute center Y coordinate of detected box.
+
+    pyautogui.click(center_x, center_y)  # Click center point of the box.
+
+
 def activate_window_with_fallback(target_window: Any) -> bool:
     """
     Activates a window using primary and secondary strategies.
@@ -3022,22 +3038,6 @@ def click_enable_permission(enable_img: Path) -> str:
         time.sleep(0.1)  # Wait before retrying image search when not found.
 
     return "NotFound"  # Return NotFound when no enable-permission image was detected.
-
-
-def click_box_center(box: Tuple[int, int, int, int]) -> None:
-    """
-    Clicks the center of a detected bounding box.
-
-    :param box: Bounding box tuple (x, y, width, height).
-    :return: None
-    """
-
-    x, y, w, h = box  # Unpack bounding box tuple.
-
-    center_x = x + (w // 2)  # Compute center X coordinate of detected box.
-    center_y = y + (h // 2)  # Compute center Y coordinate of detected box.
-
-    pyautogui.click(center_x, center_y)  # Click center point of the box.
 
 
 def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_img: Path, confirmation_alt_img: Path) -> str:
