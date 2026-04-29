@@ -3100,7 +3100,7 @@ def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_i
             time.sleep(0.1)  # Wait briefly to allow UI to process click before sending key event.
             pyautogui.press("enter")  # Confirm save action via Enter key when required.
         
-        if enhanced_locate_image(confirmation_img) is not None or enhanced_locate_image(confirmation_alt_img) is not None:  # Check for confirmation images to allow early exit from waiting when detected.
+        if enhanced_locate_image(confirmation_img) is not None or enhanced_locate_image(confirmation_alt_img) is not None:  # Verify for confirmation images to allow early exit from waiting when detected.
             time.sleep(1)  # Wait briefly after confirmation detection to allow any UI changes to settle before proceeding.
             verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Confirmation detected during save dialog watch; exiting early.{Style.RESET_ALL}")  # Log early exit due to confirmation detection.
             box = enhanced_locate_image(save_button_img)  # Attempt to locate the optional save button image on screen.
@@ -3515,6 +3515,15 @@ def write_atomic_temp_file(urls_file: Path, updated_lines: List[str]) -> None:
     temp_path = urls_file.with_name(f"{urls_file.name}.tmp-{os.getpid()}-{int(time.time() * 1000)}")  # Build unique temporary file path to avoid collisions.
     temp_text = "\n".join(updated_lines) + "\n"  # Join updated lines and ensure the file ends with a newline.
 
+    parent_dir = urls_file.parent  # Get parent directory of the target file for writability verification.
+
+    if not os.access(str(parent_dir), os.W_OK):  # Verify whether the parent directory is writable before attempting to write the temp file.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Cannot write to directory: {BackgroundColors.CYAN}{parent_dir}{Style.RESET_ALL}")
+        return
+    if urls_file.exists() and not os.access(str(urls_file), os.W_OK):  # Verify whether the file is writable before attempting replacement.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Skipping read-only file: {BackgroundColors.CYAN}{urls_file}{Style.RESET_ALL}")
+        return
+
     try:  # Attempt safe write + atomic replace sequence.
         with open(temp_path, "w", encoding="utf-8") as f:  # Open temporary file for writing.
             f.write(temp_text)  # Write full content to temp file.
@@ -3577,6 +3586,9 @@ def validate_url_update(old_url: str, new_url: str, filepaths: list) -> bool:
 
     all_ok = True  # Initialize aggregated validation flag assuming success.
     for fp in filepaths:  # Iterate each file path to validate presence and absence of URLs.
+        if not os.access(fp, os.W_OK):  # Verify whether the current file is writable before attempting validation.
+            print(f"{BackgroundColors.YELLOW}[DEBUG] Skipping validation for read-only file: {BackgroundColors.CYAN}{fp}{Style.RESET_ALL}")
+            continue  # Skip validation for read-only files to avoid false negatives.
         exists_new = url_exists_in_file(fp, new_url)  # Verify new URL presence in the file.
         if not exists_new:  # Verify whether new URL is missing in the current file.
             all_ok = False  # Mark aggregated flag as failed when missing new URL.
@@ -3608,6 +3620,10 @@ def update_urls_txt_with_new_amazon_url(old_url: str, new_url: str, urls_file: P
     :param urls_file: Path to the urls.txt file.
     :return: True if update succeeded, False otherwise.
     """
+
+    if urls_file.exists() and not os.access(str(urls_file), os.W_OK):  # Verify whether the urls.txt file exists and is writable before attempting update.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Skipping read-only file: {BackgroundColors.CYAN}{urls_file}{Style.RESET_ALL}")
+        return False
 
     try:  # Attempt file read and update operation.
         if not urls_file.exists():  # Verify urls.txt file exists before reading.
@@ -3660,6 +3676,10 @@ def replace_url_in_file(filepath: str, old_url: str, new_url: str) -> None:
     """
 
     filepath_obj = Path(filepath)  # Build Path object from filepath string for text operations.
+
+    if not os.access(str(filepath_obj), os.W_OK):  # Verify whether the file is writable before attempting replacement.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Skipping read-only file: {BackgroundColors.CYAN}{filepath_obj}{Style.RESET_ALL}")
+        return
 
     try:  # Attempt to read file text safely before replacement.
         text = filepath_obj.read_text(encoding="utf-8", errors="ignore")  # Read current file content using safe tolerant decoding.
