@@ -2931,7 +2931,7 @@ def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_i
     verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Watching for save dialog and confirmation...{Style.RESET_ALL}")  # Log start of save dialog and confirmation monitoring.
 
     start_time = time.time()  # Record start time to enforce same timeout behavior as confirmation polling.
-    max_wait_time = 60 * 5  # Match wait_for_download_confirmation total wait time (60 iterations * 5 seconds).
+    max_wait_time = 60 * 10  # Match wait_for_download_confirmation total wait time (60 iterations * 5 seconds).
 
     while (time.time() - start_time) < max_wait_time:  # Loop until timeout window is reached.
         if locate_image(confirmation_img) is not None:  # Verify if confirmation image already appeared.
