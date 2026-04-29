@@ -2283,6 +2283,30 @@ def apply_url_filename_update(url_to_filename_map: Dict[str, str], ordered_urls:
             ordered_urls.append(target_url)  # Preserve ordering for new URL.
 
 
+def rebuild_url_file_lines(url_to_filename_map: Dict[str, str], ordered_urls: List[str]) -> List[str]:
+    """
+    Reconstructs normalized file lines from mapping.
+
+    :param url_to_filename_map: Mapping of URL -> filename.
+    :param ordered_urls: Ordered list of URLs.
+    :return: List of normalized lines.
+    """
+    
+    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Rebuilding normalized lines for {len(ordered_urls)} URLs based on updated mapping.{Style.RESET_ALL}")  # Log entry into line rebuilding with URL count.
+
+    normalized_lines: List[str] = []  # Initialize output lines container.
+
+    for ordered_url in ordered_urls:  # Iterate URLs preserving original order.
+        mapped_filename = url_to_filename_map.get(ordered_url, "")  # Retrieve mapped filename.
+
+        if mapped_filename != "":  # Verify whether filename exists.
+            normalized_lines.append(f"{ordered_url} {mapped_filename}")  # Append URL with filename.
+        else:
+            normalized_lines.append(ordered_url)  # Append URL only.
+
+    return normalized_lines  # Return reconstructed lines.
+
+
 def update_url_filename_in_file(urls_file: Path, url: str, filename: str) -> bool:
     """
     Update the detected filename for a URL entry in a single file.
