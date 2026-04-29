@@ -1909,7 +1909,7 @@ def scan_outputs_for_amazon_urls(base_path: str, pattern: str) -> dict:
     return url_map  # Return completed URL-to-filepaths mapping dictionary.
 
 
-def setup_image_paths(assets_dir: Path) -> Tuple[Path, Path, Path, Path, Path, Path, Path]:
+def setup_image_paths(assets_dir: Path) -> Tuple[Path, Path, Path, Path, Path, Path, Path, Path]:
     """
     Creates and returns all required image asset paths.
 
@@ -1924,6 +1924,7 @@ def setup_image_paths(assets_dir: Path) -> Tuple[Path, Path, Path, Path, Path, P
     close_download_tab_img = assets_dir / "CloseDownloadTab.png"  # Define close tab image path
     mercado_livre_img = assets_dir / "MercadoLivre-GoToProduct.png"  # Define MercadoLivre navigation image path
     share_button_img = assets_dir / "ShareAffiliateURL-Amazon.png"  # Define Amazon share button image path
+    save_button_img = assets_dir / "SaveFileButton.png"  # Define MercadoLivre save button image path
 
     return (
         extension_img,  # Return extension image path
@@ -1933,6 +1934,7 @@ def setup_image_paths(assets_dir: Path) -> Tuple[Path, Path, Path, Path, Path, P
         close_download_tab_img,  # Return close tab image path
         mercado_livre_img,  # Return MercadoLivre image path
         share_button_img,  # Return share button image path
+        save_button_img,  # Return save button image path
     )  # Return complete tuple of image paths
 
 
@@ -3513,7 +3515,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
 
     urls = urls[:tab_count]  # Limit URL list to requested tab count.
 
-    extension_img, download_img, enable_permission_img, confirmation_img, close_download_tab_img, mercado_livre_img, share_button_img = setup_image_paths(assets_dir)  # Initialize all required UI image asset paths from assets directory
+    extension_img, download_img, enable_permission_img, confirmation_img, close_download_tab_img, mercado_livre_img, share_button_img, save_button_img = setup_image_paths(assets_dir)  # Initialize all required UI image asset paths from assets directory
 
     print(f"{BackgroundColors.GREEN}Starting automation immediately and activating Chrome window.{Style.RESET_ALL}")  # Print immediate start message.
 
