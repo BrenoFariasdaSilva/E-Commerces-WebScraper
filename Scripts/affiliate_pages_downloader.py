@@ -3512,10 +3512,23 @@ def write_atomic_temp_file(urls_file: Path, updated_lines: List[str]) -> None:
     :return: None
     """
 
-    temp_path = urls_file.with_suffix(".tmp")  # Build a temporary file path adjacent to the original file.
+    temp_path = urls_file.with_name(f"{urls_file.name}.tmp-{os.getpid()}-{int(time.time() * 1000)}")  # Build unique temporary file path to avoid collisions.
     temp_text = "\n".join(updated_lines) + "\n"  # Join updated lines and ensure the file ends with a newline.
-    temp_path.write_text(temp_text, encoding="utf-8")  # Persist the updated content to the temporary file.
-    os.replace(str(temp_path), str(urls_file))  # Atomically replace the original urls.txt with the temporary file.
+
+    try:  # Attempt safe write + atomic replace sequence.
+        with open(temp_path, "w", encoding="utf-8") as f:  # Open temporary file for writing.
+            f.write(temp_text)  # Write full content to temp file.
+            f.flush()  # Flush Python buffer to OS.
+            os.fsync(f.fileno())  # Force write to disk to avoid data loss on crash.
+
+        os.replace(str(temp_path), str(urls_file))  # Atomically replace the original file with the temp file.
+
+    except Exception as e:  # Handle any failure during write or replace.
+        try:  # Attempt cleanup of temp file if it exists.
+            if temp_path.exists(): temp_path.unlink()  # Remove orphan temp file.
+        except Exception:  # Ignore cleanup errors.
+            pass
+        raise e  # Re-raise original exception to caller.
 
 
 def read_file_lines(filepath: str) -> list:
@@ -3729,6 +3742,7 @@ def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, urls_fi
         return False, current_url  # Return failure and original URL when renewed URL matches the original URL.
 
     RENEWED_URL_MAP[current_url] = copied_url  # Store successful renewal mapping for fallback mapped-file replacements.
+    print(f"{BackgroundColors.GREEN}Old URL: {BackgroundColors.CYAN}{current_url}{BackgroundColors.GREEN} -> New URL: {BackgroundColors.CYAN}{copied_url}{Style.RESET_ALL}")  # Print old and new URL mapping after successful renewal.
 
     success = update_urls_txt_with_new_amazon_url(current_url, copied_url, urls_file)  # Update urls.txt with new affiliate URL.
     if success:  # Verify if urls.txt was successfully updated.
