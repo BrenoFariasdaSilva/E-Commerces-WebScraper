@@ -2665,7 +2665,7 @@ def load_product_data(product_dir: str) -> Optional[dict]:
     product_name = os.path.basename(product_dir)  # Use directory name as product identifier for logging
 
     if not os.path.isfile(json_path):  # Verify if product_data.json exists before attempting to load
-        print(f"{BackgroundColors.CYAN}[DEBUG] product_data.json not found for: {BackgroundColors.CYAN}{product_name}{Style.RESET_ALL}")  # Log missing JSON file
+        print(f"{BackgroundColors.RED}[DEBUG] product_data.json not found for: {BackgroundColors.CYAN}{product_name}{Style.RESET_ALL}")  # Log missing JSON file
         return None  # Return None when file does not exist
 
     try:  # Try to read and parse the product data JSON file
@@ -2782,7 +2782,7 @@ def generate_template_files_from_local(outputs_dir: str, api_keys: Dict[str, str
         pbar.set_description(f"{BackgroundColors.GREEN}Generating {BackgroundColors.CYAN}{idx}{BackgroundColors.GREEN}/{BackgroundColors.CYAN}{total}{BackgroundColors.GREEN} - {BackgroundColors.CYAN}{product_dir_name}{Style.RESET_ALL}")  # Update tqdm description with color and index
         
         if os.path.exists(template_file):  # Verify if Template.txt already exists for this product
-            verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Template.txt already exists for: {BackgroundColors.GREEN}{product_dir_name}{BackgroundColors.CYAN}. Skipping generation.{Style.RESET_ALL}")  # Log skip when template is already present
+            verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Template.txt already exists for: {BackgroundColors.CYAN}{product_dir_name}{BackgroundColors.GREEN}. Skipping generation.{Style.RESET_ALL}")  # Log skip when template is already present
             continue  # Continue to next product directory when template already exists
         
         verbose_output(true_string=f"{BackgroundColors.GREEN}Generating Template.txt for: {BackgroundColors.CYAN}{product_dir_name}{Style.RESET_ALL}")  # Log template generation start for this product directory
@@ -3024,7 +3024,7 @@ def handle_scraping(url: str, staging_output_dir: str, local_html_path, index: i
     :return: Tuple of (scrape_result, should_retry, should_break) controlling retry flow.
     """
 
-    verbose_output(f"{BackgroundColors.CYAN}Step 1{BackgroundColors.GREEN}: Scraping the product information{Style.RESET_ALL}")  # Step 1: Scrape the product information
+    verbose_output(f"{BackgroundColors.GREEN}Step 1: {BackgroundColors.CYAN}Scraping the product information{Style.RESET_ALL}")  # Step 1: Scrape the product information
     scrape_result = scrape_product(url, staging_output_dir, local_html_path)  # Scrape the product writing into staging
 
     if not scrape_result or len(scrape_result) != 6:  # If scraping failed or returned invalid result
@@ -3176,7 +3176,7 @@ def handle_validation(product_data: dict, product_directory: str, description_fi
 
     if not valid:  # If the product information is not valid, skip Gemini formatting and output the reasons
         print(
-            f"{BackgroundColors.RED}Skipping Step 2: Gemini formatting due to invalid product information for URL: {BackgroundColors.CYAN}{url}{BackgroundColors.RED}.{Style.RESET_ALL}"
+            f"{BackgroundColors.RED}Skipping Step 2: {BackgroundColors.CYAN}Gemini formatting{BackgroundColors.RED} due to invalid product information for URL: {BackgroundColors.CYAN}{url}{BackgroundColors.RED}.{Style.RESET_ALL}"
         )
         return False  # Return False to signal invalid product data
 
@@ -3217,7 +3217,7 @@ def handle_gemini_processing(product_description: str, description_file: str, pr
     :return: True if Gemini generation succeeded, False otherwise.
     """
 
-    verbose_output(f"{BackgroundColors.CYAN}Step 2{BackgroundColors.GREEN}: Formatting with Gemini AI{Style.RESET_ALL}")  # Step 2: Format the product description with Gemini AI
+    verbose_output(f"{BackgroundColors.GREEN}Step 2: {BackgroundColors.CYAN}Formatting with Gemini AI{Style.RESET_ALL}")  # Step 2: Format the product description with Gemini AI
 
     success = False  # Initialize Gemini formatting success flag for this URL.
     exhausted_key_indices = set()  # Track exhausted key labels during the current rotation cycle.
@@ -3232,7 +3232,7 @@ def handle_gemini_processing(product_description: str, description_file: str, pr
         owner = names[current_idx] if total_keys > 0 else ""  # Resolve current owner name for logging and selection
         api_key = api_keys.get(owner, "")  # Select API key for this owner from the mapping
 
-        verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Testing API key {owner}...{Style.RESET_ALL}")  # Log which owner/key is being tested for this attempt
+        verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Testing API key {BackgroundColors.CYAN}{owner}{BackgroundColors.GREEN}...{Style.RESET_ALL}")  # Log which owner/key is being tested for this attempt
 
         try:  # Try processing the same product with current owner/key
             success = generate_marketing_text(  # Execute single-key Gemini generation attempt
@@ -3516,7 +3516,7 @@ def handle_sorting_phase(args: argparse.Namespace, context: dict) -> None:
                 )  # Emit required mapping format for review before rename execution
             normalize_output_directory_indexes(rename_plan)  # Apply deterministic two-phase renaming using only the frozen plan mapping
             if sorting_only_mode:  # Verify if running in sorting-only mode
-                print(f"{BackgroundColors.CYAN}Product directories in {BackgroundColors.GREEN}{sorting_target_dir}{BackgroundColors.CYAN} sorted successfully.{Style.RESET_ALL}")  # Log sorting success
+                print(f"{BackgroundColors.GREEN}Product directories in {BackgroundColors.CYAN}{sorting_target_dir}{BackgroundColors.GREEN} sorted successfully.{Style.RESET_ALL}")  # Log sorting success
             verbose_output(f"{BackgroundColors.GREEN}Sorting and index normalization completed.{Style.RESET_ALL}")  # Confirm completion after all renames and internal updates finish
 
 
