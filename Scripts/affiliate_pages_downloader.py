@@ -3064,6 +3064,7 @@ def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_i
         box = enhanced_locate_image(save_button_img)  # Attempt to locate the optional save button image on screen.
         if box is not None:  # Verify image was found.
             verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Save button detected; clicking to confirm download.{Style.RESET_ALL}")  # Log save button detection and click action.
+            click_box_center(box)  # Click center of detected save button box.
             time.sleep(0.1)  # Wait briefly to allow UI to process click before sending key event.
             pyautogui.press("enter")  # Confirm save action via Enter key when required.
         
@@ -3072,10 +3073,15 @@ def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_i
             box = enhanced_locate_image(save_button_img)  # Attempt to locate the optional save button image on screen.
             if box is not None:  # Verify image was found.
                 verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Save button detected; clicking to confirm download.{Style.RESET_ALL}")  # Log save button detection and click action.
+                click_box_center(box)  # Click center of detected save button box.
                 time.sleep(0.1)  # Wait briefly to allow UI to process click before sending key event.
                 pyautogui.press("enter")  # Confirm save action via Enter key when required.
-    
-    return  "Timeout"  # Return timeout status after wait window expires.
+            return "Image Detected"  # Return confirmation detection method.
+
+        time.sleep(1)  # Wait 1 second before next verification cycle.
+
+    verbose_output(f"{BackgroundColors.YELLOW}[DEBUG] Save dialog and confirmation watch timed out after {max_wait_time} seconds.{Style.RESET_ALL}")  # Log timeout of save dialog and confirmation monitoring.
+    return "Timeout"  # Return timeout status after wait window expires.
 
 
 def wait_for_download_file_stabilization(downloads_dirs: List[str], timeout: float = 10.0, interval: float = 0.5, recent_window: float = 60.0) -> None:
