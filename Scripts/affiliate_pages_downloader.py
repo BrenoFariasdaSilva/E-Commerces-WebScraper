@@ -2288,6 +2288,63 @@ def update_url_filename_in_files(urls_file: Path, url: str, filename: str) -> No
         update_url_filename_in_file(backup_file, url, filename)  # Update detected filename in the backup URLs input file.
 
 
+def move_downloaded_file_for_url(downloads_dirs: List[str], destination_dir: Path, url: str, effective_filename: str, url_to_download: Dict[str, str]) -> str:
+    """
+    Moves a downloaded file associated with a URL into the URLs directory and returns final path.
+
+    :param downloads_dirs: Paths to monitored downloads directories.
+    :param destination_dir: Destination directory (urls_file.resolve().parent).
+    :param url: URL associated with the downloaded file.
+    :param effective_filename: Detected filename of the downloaded file.
+    :param url_to_download: Mapping of URL to filename.
+    :return: Final moved file path as string.
+    """
+
+    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Attempting to move downloaded file for URL: {url} with effective filename: {effective_filename} from {BackgroundColors.GREEN}{downloads_dirs}{Style.RESET_ALL} to {BackgroundColors.GREEN}{destination_dir}{Style.RESET_ALL}{Style.RESET_ALL}")  # Log entry into file move operation with details.
+
+    if effective_filename == "":  # Verify if effective filename is empty before attempting move.
+        return ""  # Return empty string when no file to move.
+
+    normalized_downloads_dirs = [str(Path(downloads_dir).resolve()) for downloads_dir in downloads_dirs]  # Resolve and normalize monitored downloads directory paths.
+
+    source_path = None  # Initialize source file path variable.
+
+    for downloads_dir in normalized_downloads_dirs:  # Iterate over monitored downloads directories.
+        candidate = Path(downloads_dir) / effective_filename  # Build candidate file path in current downloads directory.
+
+        if candidate.exists():  # Verify if candidate file exists in current directory.
+            source_path = candidate  # Assign candidate as source path if found.
+            break  # Break loop after finding the file.
+
+    if source_path is None:  # Verify if source file was not found in any monitored directory.
+        return ""  # Return empty string when file is missing.
+
+    destination_path = destination_dir / effective_filename  # Build initial destination file path in URLs directory.
+
+    if destination_path.exists():  # Verify if destination file already exists to resolve collision.
+        base = destination_path.stem  # Extract base name from destination file.
+        suffix = destination_path.suffix  # Extract suffix from destination file.
+        counter = 1  # Initialize collision counter.
+
+        while True:  # Loop to resolve filename collision deterministically.
+            new_name = f"{base} ({counter}){suffix}"  # Build new filename with deterministic suffix.
+            candidate_path = destination_dir / new_name  # Build candidate destination path.
+
+            if not candidate_path.exists():  # Verify if candidate path does not exist.
+                destination_path = candidate_path  # Assign candidate as destination path.
+                break  # Break loop after resolving collision.
+
+            counter += 1  # Increment collision counter.
+
+    try:  # Attempt to move file to destination path.
+        source_path.rename(destination_path)  # Move source file to destination path.
+
+    except Exception:  # Handle file move failures.
+        return str(source_path)  # Return original source path as fallback if move fails.
+
+    return destination_path.name  # Return final moved file name.
+
+
 def update_urls_file(urls_file: Path, url_to_download: Dict[str, str]) -> None:
     """
     Rewrites URLs file using URL and downloaded filename associations.
@@ -2464,6 +2521,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
 
             associate_url_with_download(url_to_download, url, effective_filename)  # Persist URL to downloaded filename mapping when detection succeeds.
             update_url_filename_in_files(urls_file, url, effective_filename)  # Update detected filename for the current URL in both main and backup input files.
+            effective_filename = move_downloaded_file_for_url(downloads_dirs, urls_file.resolve().parent, url, effective_filename, url_to_download)  # Move downloaded file for current URL and update mapping with new location
 
         close_method = close_extension_download_tab(close_download_tab_img)  # Execute close extension tab action.
         handle_post_download_methods(ext_methods, download_methods, completion_methods, close_methods, extension_method, download_method, confirmation_method, close_method, current_tab)  # Execute extracted method tracking logic.
