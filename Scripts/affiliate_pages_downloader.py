@@ -2309,42 +2309,37 @@ def rebuild_url_file_lines(url_to_filename_map: Dict[str, str], ordered_urls: Li
 
 def update_url_filename_in_file(urls_file: Path, url: str, filename: str) -> bool:
     """
-    Update the detected filename for a URL entry in a single file.
+    Update the detected filename for a URL entry in a single file,
+    while normalizing and deduplicating all entries.
 
     :param urls_file: Path to the URLs file to update.
-    :param url: URL string to locate as the first token of a matching line.
-    :param filename: Detected downloaded filename to associate with the URL.
-    :return: True when the file was successfully updated, otherwise False.
+    :param url: URL string to locate.
+    :param filename: Detected downloaded filename.
+    :return: True when successful, otherwise False.
     """
 
-    if not urls_file.exists():  # Verify whether the target file exists before attempting to read.
+    if not urls_file.exists():  # Verify whether the target file exists.
         return False  # Return failure when file is absent.
 
-    try:  # Attempt to read, modify, and atomically persist the file content.
-        raw_text = urls_file.read_text(encoding="utf-8", errors="ignore")  # Read full file content using safe tolerant decoding.
-        lines = raw_text.splitlines()  # Split content into individual lines for per-line processing.
-        updated_lines: List[str] = []  # Initialize list to accumulate processed output lines.
-        updated = False  # Initialize flag to track whether a matching URL line was modified.
+    try:  # Attempt full normalization + update flow.
+        raw_text = urls_file.read_text(encoding="utf-8", errors="ignore")  # Read file content.
+        lines = raw_text.splitlines()  # Split into lines.
 
-        for line in lines:  # Iterate each line to locate and update the target URL entry.
-            tokens = line.strip().split()  # Split normalized line into whitespace-separated tokens.
+        url_to_filename_map, ordered_urls = normalize_and_deduplicate_url_entries(lines)  # Normalize + deduplicate dataset.
 
-            if tokens and tokens[0] == url:  # Verify whether the first token exactly matches the target URL.
-                updated_lines.append(f"{url} {filename}")  # Replace the line with the URL and detected filename.
-                updated = True  # Mark that the target URL line was successfully updated.
-                continue  # Continue to next line without preserving the original entry.
+        apply_url_filename_update(url_to_filename_map, ordered_urls, url, filename)  # Apply update logic.
 
-            updated_lines.append(line)  # Preserve original line when it does not match the target URL.
+        normalized_lines = rebuild_url_file_lines(url_to_filename_map, ordered_urls)  # Rebuild normalized output.
 
-        if not updated:  # Verify whether any matching URL line was located and modified.
-            return False  # Return failure when no matching URL line was found in the file.
+        verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Normalized URLs file with {len(normalized_lines)} unique entries.{Style.RESET_ALL}")  # Log normalization result.
 
-        write_atomic_temp_file(urls_file, updated_lines)  # Persist updated lines atomically to prevent partial write corruption.
-        return True  # Return success after atomic file write completes.
+        write_atomic_temp_file(urls_file, normalized_lines)  # Persist atomically.
 
-    except Exception as e:  # Handle file IO errors during read or write operations.
-        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to update filename in {BackgroundColors.CYAN}{urls_file}{Style.RESET_ALL}: {e}")  # Log update failure with warning style and file path context.
-        return False  # Return failure when an exception is raised during file processing.
+        return True  # Return success.
+
+    except Exception as e:  # Handle IO errors.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to normalize/update {BackgroundColors.CYAN}{urls_file}{Style.RESET_ALL}: {e}")  # Log failure.
+        return False  # Return failure.
 
 
 def update_url_filename_in_files(urls_file: Path, url: str, filename: str) -> None:
