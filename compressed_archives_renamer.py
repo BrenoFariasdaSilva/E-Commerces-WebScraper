@@ -236,14 +236,11 @@ def parse_url_entries(input_file_path: str) -> list[tuple[str, Optional[str]]]:
     preprocessed_lines = preprocess_urls(raw_lines)  # Preprocess the raw lines to clean and sort them
     url_entries: list[tuple[str, Optional[str]]] = []  # Initialize list to hold parsed URL entries
 
-    for line in preprocessed_lines:  # Iterate over each raw line from the URLs file
-        if " -> " in line:  # Verify if the line contains a URL-to-filename mapping separator
-            parts = line.split(" -> ", 1)  # Split on the first occurrence of the mapping separator
-            product_url = parts[0].strip()  # Extract the product URL from the left side of the separator
-            expected_filename = parts[1].strip() if parts[1].strip() else None  # Extract expected filename or set None when empty
-        else:  # Handle lines without a filename mapping separator
-            product_url = line.strip()  # Treat the entire line as the product URL
-            expected_filename = None  # Set expected filename to None when no mapping is present
+    for line in preprocessed_lines:  # Iterate over each preprocessed line from the URLs file
+        parts = line.split(None, 1)  # Split on first whitespace (URL + optional filename)
+
+        product_url = parts[0].strip() if parts else ""  # Extract product URL from first token
+        expected_filename = parts[1].strip() if len(parts) > 1 and parts[1].strip() else None  # Extract optional filename when present
 
         if product_url:  # Verify if the parsed product URL is not empty before appending
             url_entries.append((product_url, expected_filename))  # Append the parsed URL entry to the list
