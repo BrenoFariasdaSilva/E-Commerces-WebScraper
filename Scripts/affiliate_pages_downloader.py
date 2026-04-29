@@ -2635,6 +2635,22 @@ def locate_image(image_path: Path) -> Any:
         return None  # Return None when image search fails.
 
 
+def load_template(image_path: Path) -> Any:
+    """
+    Loads the template image in grayscale.
+
+    :param image_path: Path to the image file.
+    :return: Loaded grayscale template or None.
+    """
+
+    template = cv2.imread(str(image_path), cv2.IMREAD_GRAYSCALE)  # Load image in grayscale.
+
+    if template is None:  # Verify template loading success.
+        return None  # Return None when loading fails.
+
+    return template  # Return loaded template.
+
+
 def get_screen_dimensions() -> Tuple[int, int]:
     """
     Retrieves current screen dimensions.
