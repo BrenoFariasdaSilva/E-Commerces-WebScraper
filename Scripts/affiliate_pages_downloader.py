@@ -2673,6 +2673,36 @@ def get_scale_factors() -> list[float]:
     return [0.5, 0.75, 1.0, 1.25, 1.5]  # Return supported scaling values.
 
 
+def match_template_multi_scale(screen: Any, template: Any, scales: list[float]) -> Any:
+    """
+    Performs multi-scale template matching.
+
+    :param screen: Grayscale screenshot.
+    :param template: Grayscale template image.
+    :param scales: Scale factors to test.
+    :return: Best match result or None.
+    """
+
+    best_match = None  # Initialize best match container.
+    best_val = -1  # Initialize best score.
+
+    for scale in scales:  # Iterate scale factors.
+        resized = cv2.resize(template, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)  # Resize template.
+
+        if resized.shape[0] > screen.shape[0] or resized.shape[1] > screen.shape[1]:  # Verify size compatibility.
+            continue  # Skip invalid scale.
+
+        result = cv2.matchTemplate(screen, resized, cv2.TM_CCOEFF_NORMED)  # Perform matching.
+        _, max_val, _, max_loc = cv2.minMaxLoc(result)  # Extract best result.
+
+        if max_val > best_val:  # Verify improvement.
+            verbose_output(f"{BackgroundColors.CYAN}[DEBUG] New best match found at scale {scale} with confidence {max_val:.4f}{Style.RESET_ALL}")  # Log new best match details when verbose.
+            best_val = max_val  # Update score.
+            best_match = (max_loc, resized.shape[::-1])  # Store match.
+
+    return best_match, best_val  # Return match and confidence.
+
+
 def get_screen_dimensions() -> Tuple[int, int]:
     """
     Retrieves current screen dimensions.
