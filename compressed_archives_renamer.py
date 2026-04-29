@@ -179,7 +179,7 @@ def remove_duplicate_archives(input_directory: str) -> None:
     :return: None.
     """
     
-    verbose_output(f"{BackgroundColors.GREEN}Verifying for duplicate archive copies in {BackgroundColors.CYAN}{input_directory}{BackgroundColors.GREEN}...{Style.RESET_ALL}")  # Log the start of duplicate archive checking with color
+    verbose_output(f"{BackgroundColors.GREEN}Verifying for duplicate archive copies in {BackgroundColors.CYAN}{input_directory}{BackgroundColors.GREEN}...{Style.RESET_ALL}")  # Log the start of duplicate archive verifying with color
 
     directory_path = Path(input_directory)  # Build the Path object for the target input directory
 
