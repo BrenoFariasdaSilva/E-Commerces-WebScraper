@@ -951,7 +951,7 @@ class Amazon:
                 if img_url.startswith("http") or os.path.exists(img_url):  # Verify accessibility
                     image_urls.append(img_url)  # Add URL to list
                     seen_urls.add(img_url)  # Mark URL as seen
-                    verbose_output(f"{BackgroundColors.CYAN}Image found: {img_url}{Style.RESET_ALL}")  # Output found image
+                    verbose_output(f"{BackgroundColors.RED}Image found: {BackgroundColors.CYAN}{img_url}{Style.RESET_ALL}")  # Output found image
         
         except Exception as e:  # Catch exceptions during extraction
             print(f"{BackgroundColors.YELLOW}Warning during image extraction: {e}{Style.RESET_ALL}")  # Warn user about exception
@@ -1101,7 +1101,7 @@ class Amazon:
 
             if discount in (None, "N/A") and cur_int not in (None, "N/A"):  # Verify if discount is absent while current price is available
                 old_int, old_dec = cur_int, cur_dec  # Normalize old price to current price when no real discount exists
-                verbose_output(f"{BackgroundColors.CYAN}[DEBUG] No discount element detected. Prices normalized{Style.RESET_ALL}")  # Log deterministic no-discount normalization
+                verbose_output(f"{BackgroundColors.YELLOW}[DEBUG] No discount element detected. Prices normalized{Style.RESET_ALL}")  # Log deterministic no-discount normalization
             
             current_price = f"R${cur_int},{cur_dec}" if cur_int != "N/A" else "N/A"  # Build current price display string using normalized values
             old_price = f"R${old_int},{old_dec}" if old_int != "N/A" else "N/A"  # Build old price display string using normalized values
