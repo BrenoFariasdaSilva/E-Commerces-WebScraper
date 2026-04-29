@@ -2651,6 +2651,18 @@ def load_template(image_path: Path) -> Any:
     return template  # Return loaded template.
 
 
+def capture_screen_grayscale() -> Any:
+    """
+    Captures the current screen and converts it to grayscale.
+
+    :return: Grayscale screenshot as numpy array.
+    """
+
+    screen = pyautogui.screenshot()  # Capture current screen.
+
+    return cv2.cvtColor(np.array(screen), cv2.COLOR_RGB2GRAY)  # Convert to grayscale and return.
+
+
 def get_screen_dimensions() -> Tuple[int, int]:
     """
     Retrieves current screen dimensions.
