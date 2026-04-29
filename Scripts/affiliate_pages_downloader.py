@@ -3693,16 +3693,9 @@ def main():
     start_time = datetime.datetime.now()  # Capture program start timestamp.
 
     repo_root = Path(PROJECT_ROOT)  # Convert project root string into Path object.
-    parser = argparse.ArgumentParser(description="Cross-platform affiliate pages downloader automation")  # Initialize argument parser.
-    parser.add_argument("--tab-count", type=int, default=0, help="Number of URLs/tabs to process (0 = use all URLs from Inputs/urls.txt)")  # Register tab-count argument.
-    parser.add_argument("--urls-file", type=Path, default=repo_root / "Inputs" / "urls.txt", help="Path to URLs input file")  # Register urls-file argument.
-    parser.add_argument("--assets-dir", type=Path, default=repo_root / ".assets" / "Browser", help="Directory containing image assets")  # Register assets-dir argument.
-    parser.add_argument("--headerless", type=lambda s: str(s).lower() in ("true", "1", "yes", "y"), default=True, help="Whether to suppress GUI messagebox (default: True)")  # Register headerless argument with boolean conversion
-    parser.add_argument("--renew-amazon-affiliate-url", action="store_true", default=False, help="Enable Amazon affiliate URL renewal attempts (default: False)")  # Register renewal override argument
-    parser.add_argument("--only-renew-amazon-urls", nargs="?", const="true", default=None, help="Enable mode that only renews Amazon affiliate URLs without downloading content")  # Register only-renew mode argument with optional truthy value.
 
-    args = parser.parse_args()  # Parse command-line arguments.
-
+    args = parse_arguments(repo_root)  # Parse command-line arguments
+    
     global ONLY_RENEW_AMAZON_AFFILIATE_URLS  # Reference global only-renew mode constant for CLI override.
     argv_only_renew = next((arg.split("=", 1)[1] if "=" in arg else "true" for arg in sys.argv[1:] if arg.lower().startswith("--only-renew-amazon-urls")), "")  # Resolve only-renew argument raw value from sys.argv.
     if str(argv_only_renew).lower() in ("true", "1"):  # Verify whether sys.argv includes truthy only-renew value.
