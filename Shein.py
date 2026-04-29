@@ -766,7 +766,7 @@ class Shein:
         try:  # Structured specification extraction from inline script fragments
             specifications = []  # Collect label:value strings found in script fragments
             script_tags = soup.find_all("script")  # Search all script tags in the document
-            verbose_output(f"{BackgroundColors.CYAN}Searching through {len(script_tags)} script tags for specification table...{Style.RESET_ALL}")  # Diagnostic log
+            verbose_output(f"{BackgroundColors.GREEN}Searching through {BackgroundColors.CYAN}{len(script_tags)}{BackgroundColors.GREEN} script tags for specification table...{Style.RESET_ALL}")  # Diagnostic log
             for script_tag in script_tags:  # Iterate script tags to search for common-entry__content anchor
                 if not script_tag.string:  # Skip empty or non-text script tags
                     continue  # Move to next script tag
@@ -1541,7 +1541,7 @@ class Shein:
                 dest_path = os.path.join(output_dir, f"video_{index:02d}.mp4")
                 
                 if ".m3u8" in video_url:
-                    verbose_output(f"{BackgroundColors.CYAN}Downloading HLS video {index} using ffmpeg...{Style.RESET_ALL}")
+                    verbose_output(f"{BackgroundColors.GREEN}Downloading HLS video {BackgroundColors.CYAN}{index}{BackgroundColors.GREEN} using {BackgroundColors.CYAN}ffmpeg{BackgroundColors.GREEN}...{Style.RESET_ALL}")
                     
                     try:
                         result = subprocess.run(
@@ -1573,7 +1573,7 @@ class Shein:
                         return None
                 
                 else:
-                    verbose_output(f"{BackgroundColors.CYAN}Downloading video {index}...{Style.RESET_ALL}")
+                    verbose_output(f"{BackgroundColors.GREEN}Downloading video {BackgroundColors.CYAN}{index}{BackgroundColors.GREEN}...{Style.RESET_ALL}")
                     response = requests.get(video_url, timeout=60, stream=True)
                     response.raise_for_status()
                     
@@ -1581,7 +1581,7 @@ class Shein:
                         for chunk in response.iter_content(chunk_size=8192):
                             f.write(chunk)
                     
-                    verbose_output(f"{BackgroundColors.GREEN}Downloaded video {index} to {dest_path}{Style.RESET_ALL}")
+                    verbose_output(f"{BackgroundColors.GREEN}Downloaded video {BackgroundColors.CYAN}{index}{BackgroundColors.GREEN} to {BackgroundColors.CYAN}{dest_path}{Style.RESET_ALL}")
                     return dest_path
         
         except Exception as e:
@@ -1604,14 +1604,14 @@ class Shein:
             verbose_output(f"{BackgroundColors.YELLOW}No image URLs to download.{Style.RESET_ALL}")
             return downloaded_images
         
-        verbose_output(f"{BackgroundColors.CYAN}Downloading {len(image_urls)} images...{Style.RESET_ALL}")
+        verbose_output(f"{BackgroundColors.GREEN}Downloading {BackgroundColors.CYAN}{len(image_urls)}{BackgroundColors.GREEN} images...{Style.RESET_ALL}")
         
         for idx, image_url in enumerate(image_urls, start=1):
             image_path = self.download_single_image(image_url, output_dir, idx)
             if image_path:
                 downloaded_images.append(image_path)
         
-        verbose_output(f"{BackgroundColors.GREEN}Successfully downloaded {len(downloaded_images)} of {len(image_urls)} images.{Style.RESET_ALL}")
+        verbose_output(f"{BackgroundColors.GREEN}Successfully downloaded {BackgroundColors.CYAN}{len(downloaded_images)}{BackgroundColors.GREEN} of {BackgroundColors.CYAN}{len(image_urls)}{BackgroundColors.GREEN} images.{Style.RESET_ALL}")
         return downloaded_images
 
 
@@ -1630,14 +1630,14 @@ class Shein:
             verbose_output(f"{BackgroundColors.YELLOW}No video URLs to download.{Style.RESET_ALL}")
             return downloaded_videos
         
-        verbose_output(f"{BackgroundColors.CYAN}Downloading {len(video_urls)} videos...{Style.RESET_ALL}")
+        verbose_output(f"{BackgroundColors.GREEN}Downloading {BackgroundColors.CYAN}{len(video_urls)}{BackgroundColors.GREEN} videos...{Style.RESET_ALL}")
         
         for idx, video_url in enumerate(video_urls, start=1):
             video_path = self.download_single_video(video_url, output_dir, idx)
             if video_path:
                 downloaded_videos.append(video_path)
         
-        verbose_output(f"{BackgroundColors.GREEN}Successfully downloaded {len(downloaded_videos)} of {len(video_urls)} videos.{Style.RESET_ALL}")
+        verbose_output(f"{BackgroundColors.GREEN}Successfully downloaded {BackgroundColors.CYAN}{len(downloaded_videos)}{BackgroundColors.GREEN} of {BackgroundColors.CYAN}{len(video_urls)}{BackgroundColors.GREEN} videos.{Style.RESET_ALL}")
         return downloaded_videos
 
 
@@ -1678,7 +1678,7 @@ class Shein:
             
             image_urls = self.find_image_urls(soup)
             if image_urls:
-                verbose_output(f"{BackgroundColors.CYAN}Found {len(image_urls)} images in gallery.{Style.RESET_ALL}")
+                verbose_output(f"{BackgroundColors.GREEN}Found {BackgroundColors.CYAN}{len(image_urls)}{BackgroundColors.GREEN} images in gallery.{Style.RESET_ALL}")
                 image_paths = self.download_product_images(image_urls, output_dir)
                 downloaded_files.extend(image_paths)  # Add all downloaded image paths
             else:
@@ -1686,7 +1686,7 @@ class Shein:
             
             video_urls = self.find_video_urls(soup)
             if video_urls:
-                verbose_output(f"{BackgroundColors.CYAN}Found {len(video_urls)} videos in gallery.{Style.RESET_ALL}")
+                verbose_output(f"{BackgroundColors.GREEN}Found {BackgroundColors.CYAN}{len(video_urls)}{BackgroundColors.GREEN} videos in gallery.{Style.RESET_ALL}")
                 video_paths = self.download_product_videos(video_urls, output_dir)
                 downloaded_files.extend(video_paths)  # Add all downloaded video paths
             else:
@@ -1702,7 +1702,7 @@ class Shein:
             if description_file:  # Verify if description file was created successfully
                 downloaded_files.append(description_file)  # Add description file path to downloaded files list
             
-            verbose_output(f"{BackgroundColors.GREEN}Media processing completed. {len(downloaded_files)} files saved.{Style.RESET_ALL}")
+            verbose_output(f"{BackgroundColors.GREEN}Media processing completed. {BackgroundColors.CYAN}{len(downloaded_files)}{BackgroundColors.GREEN} files saved.{Style.RESET_ALL}")
         except Exception as e:  # Catch any exceptions during media download
             print(f"{BackgroundColors.RED}Error during media download: {e}{Style.RESET_ALL}")  # Alert user about media download error
         return downloaded_files  # Return list of all downloaded file paths
