@@ -132,7 +132,7 @@ def normalize_paths_to_unix(input_urls: list[str]) -> list[str]:
     for line in input_urls:  # Iterate over each input line
         parts = line.split(None, 1)  # Split into URL and optional filename/path
 
-        if not parts:  # Safety check for empty split result
+        if not parts:  # Safety verification for empty split result
             continue  # Skip malformed/empty entries
 
         product_url = parts[0].strip()  # Extract URL portion
