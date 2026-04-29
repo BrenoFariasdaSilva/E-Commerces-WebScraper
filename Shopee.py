@@ -226,7 +226,7 @@ class Shopee:
 
         try:  # Attempt to launch browser with error handling
             self.playwright = sync_playwright().start()  # Start Playwright synchronous context manager
-            playwright_obj = cast(Any, self.playwright)  # Cast Playwright instance to Any for static type checkers
+            playwright_obj = cast(Any, self.playwright)  # Cast Playwright instance to Any for static type verifiers
             
             launch_options = {  # Configure browser launch options dictionary
                 "headless": HEADLESS,  # Set headless mode from environment variable
@@ -550,16 +550,16 @@ class Shopee:
 
     def detect_international(self, soup: BeautifulSoup) -> bool:
         """
-        Detects if the product is international by checking for the international import declaration text.
+        Detects if the product is international by verifying for the international import declaration text.
         Looks for "Produto International objeto de declaração de importação e sujeito a impostos estaduais e federais"
-        in elements with class="NzLZHV", or falls back to checking "País de Origem" (Country of Origin) field.
+        in elements with class="NzLZHV", or falls back to verifying "País de Origem" (Country of Origin) field.
         
         :param soup: BeautifulSoup object containing the parsed HTML
         :return: True if product is international, False otherwise
         """
         
         verbose_output(  # Log detection attempt
-            f"{BackgroundColors.GREEN}Checking if product is international...{Style.RESET_ALL}"
+            f"{BackgroundColors.GREEN}Verifying if product is international...{Style.RESET_ALL}"
         )  # End of verbose output call
         
         try:  # Attempt to detect international status with error handling
@@ -628,7 +628,7 @@ class Shopee:
 
     def is_video_url(self) -> bool:
         """
-        Quick check based on the original URL to detect Shopee short/video links
+        Quick verification based on the original URL to detect Shopee short/video links
         (for example `br.shp.ee` / `shp.ee` short links) which typically point
         to short-form video pages instead of product pages.
 
@@ -723,7 +723,7 @@ class Shopee:
         :return: Product name with International prefix
         """
         
-        if not product_name.upper().startswith("International"):  # Check if prefix not already present
+        if not product_name.upper().startswith("International"):  # Verify if prefix not already present
             product_name = f"International - {product_name}"  # Add International prefix
             # Normalize whitespace after prefix insertion to avoid accidental double spaces
             product_name = product_name.replace("\u00A0", " ")  # Replace NBSP with normal space
@@ -884,7 +884,7 @@ class Shopee:
                         srcset = img.get("srcset")
                         img_url = None
                         
-                        if srcset and isinstance(srcset, str):  # Check if srcset attribute exists
+                        if srcset and isinstance(srcset, str):  # Verify if srcset attribute exists
                             srcset_parts = srcset.split(",")  # Split by comma
                             if srcset_parts:  # Ensure we have parts
                                 first_url = srcset_parts[0].strip().split()[0]  # Get first URL before space
@@ -892,7 +892,7 @@ class Shopee:
                         
                         if not img_url:  # If srcset didn't provide URL
                             src = img.get("src") or img.get("data-src")
-                            if src and isinstance(src, str):  # Check if src attribute exists
+                            if src and isinstance(src, str):  # Verify if src attribute exists
                                 img_url = src
                         
                         if img_url:  # If we found a URL
@@ -904,7 +904,7 @@ class Shopee:
                             
                             if ("placeholder" not in img_url.lower() and 
                                 "loading" not in img_url.lower() and
-                                img_url not in seen_urls):  # Check for duplicates
+                                img_url not in seen_urls):  # Verify for duplicates
                                 
                                 image_urls.append(img_url)  # Add image URL to list
                                 seen_urls.add(img_url)  # Track this URL
@@ -1332,7 +1332,7 @@ class Shopee:
                 
                 local_img_path = os.path.normpath(os.path.join(html_dir, img_url))  # Resolve local image path
                 
-                if not os.path.exists(local_img_path):  # Check if local image file exists
+                if not os.path.exists(local_img_path):  # Verify if local image file exists
                     verbose_output(  # Log warning about missing file
                         f"{BackgroundColors.YELLOW}Local image file not found: {local_img_path}{Style.RESET_ALL}"
                     )  # End of verbose output call
@@ -1410,14 +1410,14 @@ class Shopee:
         """
         
         video_path = None  # Initialize video path variable
-        is_hls = video_url.endswith(".m3u8")  # Check if video URL is HLS stream
+        is_hls = video_url.endswith(".m3u8")  # Verify if video URL is HLS stream
         
         try:  # Attempt to download or copy the video with error handling
             if self.local_html_path and (video_url.startswith("./") or video_url.startswith("../") or not video_url.startswith(("http://", "https://"))):
                 html_dir = os.path.dirname(os.path.abspath(self.local_html_path))  # Get directory of local HTML file
                 local_video_path = os.path.normpath(os.path.join(html_dir, video_url))  # Resolve local video path
                 
-                if not os.path.exists(local_video_path):  # Check if local video file exists
+                if not os.path.exists(local_video_path):  # Verify if local video file exists
                     verbose_output(  # Log warning about missing file
                         f"{BackgroundColors.YELLOW}Local video file not found: {local_video_path}{Style.RESET_ALL}"
                     )  # End of verbose output call
@@ -1444,9 +1444,9 @@ class Shopee:
                 
                 video_filename = os.path.basename(urlparse(video_url).path)  # Extract filename from URL
                 if video_filename:  # If filename was extracted
-                    local_video_in_images = os.path.join(images_dir, video_filename)  # Check in images directory
+                    local_video_in_images = os.path.join(images_dir, video_filename)  # Verify in images directory
                     
-                    if os.path.exists(local_video_in_images):  # Check if video exists in images directory
+                    if os.path.exists(local_video_in_images):  # Verify if video exists in images directory
                         verbose_output(  # Log found in images directory
                             f"{BackgroundColors.GREEN}Found video in images/ subdirectory: {video_filename}{Style.RESET_ALL}"
                         )  # End of verbose output call
@@ -1491,7 +1491,7 @@ class Shopee:
                         timeout=300  # 5 minute timeout
                     )
                     
-                    if result.returncode == 0:  # Check if command succeeded
+                    if result.returncode == 0:  # Verify if command succeeded
                         verbose_output(  # Log successful download
                             f"{BackgroundColors.GREEN}Downloaded HLS video: {BackgroundColors.CYAN}{filename}{Style.RESET_ALL}"
                         )  # End of verbose output call
