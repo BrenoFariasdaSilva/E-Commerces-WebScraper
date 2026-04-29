@@ -2949,25 +2949,6 @@ def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_i
         time.sleep(0.5)  # Wait 0.5 seconds before next verification cycle.
 
 
-def wait_for_download_confirmation(confirmation_img: Path) -> str:
-    """
-    Waits for download confirmation image.
-
-    :param confirmation_img: Path to the confirmation image.
-    :return: Detection status string.
-    """
-
-    max_verifications = 60  # Set maximum number of verification iterations.
-
-    for _ in range(max_verifications):  # Iterate polling attempts.
-        if locate_image(confirmation_img) is not None:  # Verify confirmation image detection.
-            return "Image Detected"  # Return image detected status.
-
-        time.sleep(5)  # Wait before the next polling attempt.
-
-    return "Timeout"  # Return timeout status after all iterations.
-
-
 def close_extension_download_tab(close_download_tab_img: Path) -> str:
     """
     Closes extension download tab using image or scaled fallback coordinates.
