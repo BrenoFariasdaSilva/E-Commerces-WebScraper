@@ -3926,7 +3926,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
             if not chrome_download_settings_ready:  # Verify whether Chrome downloads settings could not be verified or corrected automatically.
                 print(f"{BackgroundColors.YELLOW}[WARNING] Chrome downloads settings could not be verified or corrected automatically. Continuing execution.{Style.RESET_ALL}")  # Log non-blocking downloads settings verification warning.
 
-        ext_methods, download_methods, completion_methods, close_methods = setup_method_maps()  # Initialize grouped automation method maps for extension, download, completion, and close actions
+        ext_methods, download_methods, completion_methods, close_methods = setup_method_maps()  # Initialize grouped automation method maps for extension, download, completion, and close actions.
 
         processed_count = 0  # Initialize processed tab counter.
         start_tick = time.time()  # Capture workflow start timestamp.
@@ -3952,7 +3952,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
                     renewed_url = RENEWED_URL_MAP.get(old_url, "")  # Resolve renewed URL from successful renewal mapping store.
 
                     if renewed_url == "":  # Verify whether renewal mapping exists for current fallback URL.
-                        continue  # Continue iteration when no renewed URL mapping is available.
+                        continue  # Skip processing when no renewed URL mapping is available.
 
                     for mapped_filepath in mapped_filepaths:  # Iterate mapped filepaths associated with current fallback URL.
                         replace_url_in_file(str(mapped_filepath), old_url, renewed_url)  # Replace old URL with renewed URL in mapped file.
@@ -3962,8 +3962,8 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
 
             print(f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Automation Finished{Style.RESET_ALL}\n")  # Print automation completion message.
 
-            if not headerless:  # Verify if headerless flag is disabled before showing GUI messagebox
-                maybe_show_messagebox("Automation Finished", final_report)  # Display optional messagebox report when allowed
+            if not headerless:  # Verify if headerless flag is disabled before showing GUI messagebox.
+                maybe_show_messagebox("Automation Finished", final_report)  # Display optional messagebox report when allowed.
 
         return 0  # Return success exit code.
     finally:  # Ensure dedicated automation window cleanup regardless of success or failure.
