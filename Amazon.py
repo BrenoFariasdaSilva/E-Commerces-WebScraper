@@ -645,12 +645,12 @@ class Amazon:
             return price_container.get_text(strip=True)  # Return visible container text as fallback extraction path.
 
         def is_current_price_container(price_container: Tag) -> bool:  # Define helper to ignore containers used by current price markup.
-            class_tokens = cast(List[str], price_container.get("class", [])) if price_container.has_attr("class") else []  # Resolve class token list for the candidate container.
+            class_tokens = cast(List[str], price_container.get("class") or []) if price_container.has_attr("class") else []  # Resolve class token list for the candidate container.
             class_text = " ".join(class_tokens)  # Build normalized class string for token matching.
             return bool(re.search(r"priceToPay|reinventPricePriceToPayMargin|aok-align-center", class_text, re.IGNORECASE))  # Return whether class tokens match current-price patterns.
 
         def is_old_price_container(price_container: Tag) -> bool:  # Define helper to keep only containers that look like old/list price markup.
-            class_tokens = cast(List[str], price_container.get("class", [])) if price_container.has_attr("class") else []  # Resolve class token list for candidate filtering.
+            class_tokens = cast(List[str], price_container.get("class") or []) if price_container.has_attr("class") else []  # Resolve class token list for candidate filtering.
             class_text = " ".join(class_tokens)  # Build normalized class string for class-based filtering.
             if re.search(r"a-text-price|basisPrice|apex-basisprice-value", class_text, re.IGNORECASE):  # Verify class string contains allowed old-price tokens.
                 return True  # Return acceptance when class token criteria are satisfied.
