@@ -181,7 +181,7 @@ def preprocess_urls(urls: list[str]) -> list[str]:
     return sorted_urls  # Return the URLs sorted in alphabetical order
 
 
-def load_urls_to_process(input_file) -> list[str]:
+def load_urls_to_process(input_file) -> list[str] | None:
     """
     Load the input file and return a list of non-empty trimmed lines.
 
@@ -193,7 +193,7 @@ def load_urls_to_process(input_file) -> list[str]:
         input_file (str): path to the input file to read.
 
     Returns:
-        list[str]: list of non-empty, trimmed lines from the file.
+        list[str] | None: list of non-empty, trimmed lines from the file, or None if the file is missing.
     """
 
     url_list: list[str] = []  # Initialize list to collect URL strings from the input file
@@ -208,6 +208,7 @@ def load_urls_to_process(input_file) -> list[str]:
                     url_list.append(line)  # Append the raw line (URL or 'URL local_path') to the list
         else:
             print(f"{BackgroundColors.YELLOW}Input file not found: {input_file}{Style.RESET_ALL}")  # Warn when input file is missing
+            return None  # Return None to indicate missing input file
     except Exception as e:  # Catch and report any IO/OS errors
         print(f"{BackgroundColors.RED}Error reading input file {input_file}: {e}{Style.RESET_ALL}")  # Report read errors
 
