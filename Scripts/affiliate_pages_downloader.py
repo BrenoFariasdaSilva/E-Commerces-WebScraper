@@ -3061,12 +3061,10 @@ def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_i
     max_wait_time = 60 * 10  # Match wait_for_download_confirmation total wait time (60 iterations * 5 seconds).
 
     while (time.time() - start_time) < max_wait_time:  # Loop until timeout window is reached.
-        if locate_image(confirmation_img) is not None or locate_image(confirmation_alt_img) is not None:  # Check for either confirmation image to allow early exit.
+        box = None  # Initialize box variable for save button detection.
+        if enhanced_locate_image(confirmation_img) is not None or enhanced_locate_image(confirmation_alt_img) is not None:  # Check for confirmation images to allow early exit from waiting when detected.
             verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Confirmation detected during save dialog watch; exiting early.{Style.RESET_ALL}")  # Log early exit due to confirmation detection.
-            return "ConfirmationDetected"  # Return confirmation detected status.
-
-        box = locate_image(save_button_img)  # Attempt to locate the optional save button image on screen.
-
+            box = enhanced_locate_image(save_button_img)  # Attempt to locate the optional save button image on screen.
         if box is not None:  # Verify image was found.
             verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Save button detected; clicking to confirm download.{Style.RESET_ALL}")  # Log save button detection and click action.
             center_x = box.left + (box.width // 2)  # Compute center X coordinate of detected box.
