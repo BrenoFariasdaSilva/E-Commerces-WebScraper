@@ -239,7 +239,7 @@ class Amazon:
 
         try:  # Attempt to launch browser with error handling
             self.playwright = sync_playwright().start()  # Start Playwright synchronous context manager
-            playwright_obj = cast(Any, self.playwright)  # Cast Playwright instance to Any for static type checkers
+            playwright_obj = cast(Any, self.playwright)  # Cast Playwright instance to Any for static type verifiers
             
             launch_options = {  # Initialize browser launch options dictionary
                 "headless": HEADLESS,  # Set headless mode from environment constant
@@ -295,11 +295,11 @@ class Amazon:
         )  # End of verbose output call
 
         try:  # Attempt to close browser resources with error handling
-            if self.page:  # Check if page instance exists
+            if self.page:  # Verify if page instance exists
                 self.page.close()  # Close the browser page
-            if self.browser:  # Check if browser instance exists
+            if self.browser:  # Verify if browser instance exists
                 self.browser.close()  # Close the browser
-            if self.playwright:  # Check if playwright instance exists
+            if self.playwright:  # Verify if playwright instance exists
                 self.playwright.stop()  # Stop the playwright context
             verbose_output(  # Output success message
                 f"{BackgroundColors.GREEN}Browser closed successfully.{Style.RESET_ALL}"
@@ -365,7 +365,7 @@ class Amazon:
                 
                 current_height = self.page.evaluate("document.body.scrollHeight")  # Get current page height
                 
-                if current_height == previous_height:  # Check if page height changed
+                if current_height == previous_height:  # Verify if page height changed
                     break  # Exit loop if no new content loaded
                 
                 previous_height = current_height  # Update previous height for next iteration
@@ -457,11 +457,11 @@ class Amazon:
         )  # End of verbose output call
 
         try:  # Attempt to read file with error handling
-            if not self.local_html_path:  # Check if local HTML path is provided
+            if not self.local_html_path:  # Verify if local HTML path is provided
                 print(f"{BackgroundColors.RED}Local HTML path not provided.{Style.RESET_ALL}")  # Alert user path is missing
                 return None  # Return None if path is not set
             
-            if not os.path.exists(self.local_html_path):  # Check if file exists at path
+            if not os.path.exists(self.local_html_path):  # Verify if file exists at path
                 print(f"{BackgroundColors.RED}Local HTML file not found at: {self.local_html_path}{Style.RESET_ALL}")  # Alert user file not found
                 return None  # Return None if file doesn't exist
             
@@ -488,7 +488,7 @@ class Amazon:
         
         for tag, attrs in HTML_SELECTORS["product_name"]:  # Iterate through prioritized selectors
             element = soup.find(tag, attrs)  # Search for element matching selector
-            if element:  # Check if element was found
+            if element:  # Verify if element was found
                 product_name = element.get_text(strip=True)  # Extract and strip whitespace from text
                 product_name = re.sub(r"\s+", " ", product_name)  # Normalize multiple spaces to single space
                 verbose_output(  # Output found product name
@@ -510,7 +510,7 @@ class Amazon:
         :return: Tuple of (integer_part, decimal_part) or None if format is invalid
         """
         
-        if not price_text:  # Check if price_text is empty or None
+        if not price_text:  # Verify if price_text is empty or None
             return None  # Return None for empty input
         
         normalized = price_text.strip()  # Strip leading/trailing whitespace
@@ -518,7 +518,7 @@ class Amazon:
         normalized = normalized.replace("\u00A0", " ").strip()  # Remove non-breaking spaces
         
         match = re.search(r"([0-9.]+)[,.]([0-9]{2})", normalized)  # Match pattern: digits with dots + comma/dot + 2 digits
-        if not match:  # Check if pattern was found
+        if not match:  # Verify if pattern was found
             return None  # Return None if no match found
         
         integer_part_str = match.group(1).replace(".", "").replace(",", "")  # Remove all separators from integer part
@@ -535,7 +535,7 @@ class Amazon:
 
     def detect_international(self, soup: BeautifulSoup) -> bool:
         """
-        Detects if the product is from an international seller by checking for the foreign seller badge.
+        Detects if the product is from an international seller by verifying for the foreign seller badge.
         Looks for the foreign seller badge image or related import tax text.
         
         :param soup: BeautifulSoup object containing the parsed HTML
@@ -543,7 +543,7 @@ class Amazon:
         """
         
         verbose_output(  # Output status message
-            f"{BackgroundColors.GREEN}Checking if product is from international seller...{Style.RESET_ALL}"
+            f"{BackgroundColors.GREEN}Verifying if product is from international seller...{Style.RESET_ALL}"
         )  # End of verbose output call
         
         try:  # Attempt international detection with error handling
@@ -551,7 +551,7 @@ class Amazon:
             
             images = soup.find_all("img", src=True)  # Find all image tags with src attribute
             for img in images:  # Iterate through all images
-                if badge_url in img["src"]:  # Check if badge URL is in image source
+                if badge_url in img["src"]:  # Verify if badge URL is in image source
                     verbose_output(  # Output detection message
                         f"{BackgroundColors.CYAN}International seller badge detected.{Style.RESET_ALL}"
                     )  # End of verbose output call
@@ -566,7 +566,7 @@ class Amazon:
             
             page_text = soup.get_text().lower()  # Get all page text in lowercase
             for pattern in import_text_patterns:  # Iterate through text patterns
-                if pattern.lower() in page_text:  # Check if pattern exists in page text
+                if pattern.lower() in page_text:  # Verify if pattern exists in page text
                     verbose_output(  # Output detection message
                         f"{BackgroundColors.CYAN}International import text detected.{Style.RESET_ALL}"
                     )  # End of verbose output call
@@ -590,7 +590,7 @@ class Amazon:
         :return: Product name with International prefix
         """
         
-        if not product_name.upper().startswith("INTERNATIONAL"):  # Check if name already has international prefix
+        if not product_name.upper().startswith("INTERNATIONAL"):  # Verify if name already has international prefix
             verbose_output(  # Output prefix addition message
                 f"{BackgroundColors.CYAN}Adding International prefix to product name.{Style.RESET_ALL}"
             )  # End of verbose output call
@@ -611,11 +611,11 @@ class Amazon:
         
         for tag, attrs in HTML_SELECTORS["current_price"]:  # Iterate through prioritized selectors
             price_container = soup.find(tag, attrs)  # Search for price container element
-            if price_container:  # Check if container was found
+            if price_container:  # Verify if container was found
                 try:  # Attempt to extract price components
                     price_text = price_container.get_text(strip=True)  # Extract all text from container
                     normalized = self.normalize_brazilian_currency(price_text)  # Normalize Brazilian currency format
-                    if normalized:  # Check if normalization was successful
+                    if normalized:  # Verify if normalization was successful
                         integer_part, decimal_part = normalized  # Unpack normalized tuple
                         verbose_output(  # Output found price
                             f"{BackgroundColors.GREEN}Current price found: {BackgroundColors.CYAN}R${integer_part},{decimal_part}{Style.RESET_ALL}"
@@ -792,7 +792,7 @@ class Amazon:
         
         for tag, attrs in HTML_SELECTORS["description"]:  # Iterate through prioritized selectors
             desc_container = soup.find(tag, attrs)  # Search for description container
-            if desc_container:  # Check if container was found
+            if desc_container:  # Verify if container was found
                 description_parts = []  # Initialize list for description parts
                 
                 for element in desc_container.find_all(["p", "li", "span", "div"]):  # Find all text-containing elements
@@ -800,7 +800,7 @@ class Amazon:
                     if text and len(text) > 10:  # Filter out very short or empty text
                         description_parts.append(text)  # Add text to parts list
                 
-                if description_parts:  # Check if any parts were collected
+                if description_parts:  # Verify if any parts were collected
                     description = " ".join(description_parts)  # Join all parts with spaces
                     description = re.sub(r"\s+", " ", description)  # Normalize multiple spaces
                     verbose_output(  # Output found description preview
@@ -830,14 +830,14 @@ class Amazon:
         
         try:  # Attempt table extraction with error handling
             details_section = soup.find("div", HTML_SELECTORS["detail_section"])  # Find product details section
-            if not details_section:  # Check if section was found
+            if not details_section:  # Verify if section was found
                 verbose_output(  # Output not found message
                     f"{BackgroundColors.YELLOW}Product details section not found.{Style.RESET_ALL}"
                 )  # End of verbose output call
                 return details_dict  # Return empty dictionary
             
             details_table = details_section.find("table", HTML_SELECTORS["detail_table"])  # Find details table
-            if not details_table:  # Check if table was found
+            if not details_table:  # Verify if table was found
                 verbose_output(  # Output not found message
                     f"{BackgroundColors.YELLOW}Product details table not found.{Style.RESET_ALL}"
                 )  # End of verbose output call
@@ -849,7 +849,7 @@ class Amazon:
                     key_cell = row.find("th", {"class": "prodDetSectionEntry"})  # Find key cell
                     value_cell = row.find("td", {"class": "prodDetAttrValue"})  # Find value cell
                     
-                    if key_cell and value_cell:  # Check if both cells exist
+                    if key_cell and value_cell:  # Verify if both cells exist
                         key = key_cell.get_text(strip=True)  # Extract key text
                         value = value_cell.get_text(strip=True)  # Extract value text
                         
@@ -1007,19 +1007,19 @@ class Amazon:
             for video in videos:  # Iterate through each video
                 video_url = None  # Initialize URL variable
 
-                if video.has_attr("src"):  # Check if video has src attribute
+                if video.has_attr("src"):  # Verify if video has src attribute
                     video_url = cast(str, video.get("src", ""))  # Get src attribute value as str
 
                 source_tags = video.find_all("source")  # Find all source tags within video
                 for source in source_tags:  # Iterate through sources
-                    if source.has_attr("src"):  # Check if source has src
+                    if source.has_attr("src"):  # Verify if source has src
                         video_url = cast(str, source.get("src", ""))  # Get source URL as str
                         break  # Use first valid source
                 
-                if video_url:  # Check if URL was found
-                    if video_url.startswith("//"):  # Check if protocol-relative URL
+                if video_url:  # Verify if URL was found
+                    if video_url.startswith("//"):  # Verify if protocol-relative URL
                         video_url = "https:" + video_url  # Add HTTPS protocol
-                    elif video_url.startswith("/"):  # Check if absolute path
+                    elif video_url.startswith("/"):  # Verify if absolute path
                         video_url = "https://www.amazon.com.br" + video_url  # Build complete URL
 
                     if video_url.startswith(("blob:", "data:")):  # Skip browser-local sources that cannot be fetched outside the page context
@@ -1028,7 +1028,7 @@ class Amazon:
                         )  # End of verbose output call
                         continue  # Continue to next video source
                     
-                    if video_url not in seen_urls:  # Check if URL is not duplicate
+                    if video_url not in seen_urls:  # Verify if URL is not duplicate
                         video_urls.append(video_url)  # Add URL to list
                         seen_urls.add(video_url)  # Mark URL as seen
                         verbose_output(  # Output found video
@@ -1053,7 +1053,7 @@ class Amazon:
         :return: None
         """
         
-        if not product_data:  # Check if product data exists
+        if not product_data:  # Verify if product data exists
             print(f"{BackgroundColors.YELLOW}No product data to display.{Style.RESET_ALL}")  # Warn user no data available
             return  # Exit method early
         
@@ -1084,7 +1084,7 @@ class Amazon:
             
             product_name = self.extract_product_name(soup)  # Extract product name
             is_international = self.detect_international(soup)  # Detect international seller
-            if is_international:  # Check if product is international
+            if is_international:  # Verify if product is international
                 product_name = self.prefix_international_name(product_name)  # Add international prefix
             
             cur_int, cur_dec = self.extract_current_price(soup)  # Extract current price parts
@@ -1141,7 +1141,7 @@ class Amazon:
             true_string=f"{BackgroundColors.GREEN}Creating the {BackgroundColors.CYAN}{relative_directory_name}{BackgroundColors.GREEN} directory...{Style.RESET_ALL}"
         )  # End of verbose output call
 
-        if os.path.isdir(full_directory_name):  # Check if directory already exists
+        if os.path.isdir(full_directory_name):  # Verify if directory already exists
             return  # Exit early if directory exists
         try:  # Attempt directory creation
             os.makedirs(full_directory_name)  # Create directory with all parent directories
@@ -1191,9 +1191,9 @@ class Amazon:
         for idx, img in enumerate(img_tags, 1):  # Iterate with counter starting at 1
             try:  # Attempt asset download with error handling
                 img_url = cast(str, img.get("src", ""))  # Get image source URL as str
-                if img_url.startswith("//"):  # Check if protocol-relative URL
+                if img_url.startswith("//"):  # Verify if protocol-relative URL
                     img_url = "https:" + img_url  # Add HTTPS protocol
-                elif img_url.startswith("/"):  # Check if absolute path
+                elif img_url.startswith("/"):  # Verify if absolute path
                     img_url = urljoin(self.product_url, img_url)  # Build complete URL from base
 
                 if not img_url.startswith("http"):  # Skip non-HTTP URLs
@@ -1351,7 +1351,7 @@ class Amazon:
         :return: Text in sentence case
         """
 
-        if not text:  # Check if text is empty or None
+        if not text:  # Verify if text is empty or None
             return text  # Return as-is if empty
 
         sentences = re.split(r"([.!?]\s*)", text)  # Keep the delimiters
@@ -1510,7 +1510,7 @@ class Amazon:
         """
         
         video_path = None  # Initialize video path variable
-        is_hls = video_url.endswith(".m3u8")  # Check if video URL is HLS stream
+        is_hls = video_url.endswith(".m3u8")  # Verify if video URL is HLS stream
         
         try:  # Attempt video download with error handling
             if video_url.startswith(("blob:", "data:")):  # Skip browser-local sources that requests/ffmpeg cannot access
@@ -1519,7 +1519,7 @@ class Amazon:
                 )  # End of verbose output call
                 return None  # Return None because the source cannot be downloaded externally
 
-            if video_url.startswith("file://") or (not video_url.startswith("http") and os.path.exists(video_url)):  # Check if local file
+            if video_url.startswith("file://") or (not video_url.startswith("http") and os.path.exists(video_url)):  # Verify if local file
                 local_video_path = video_url.replace("file://", "")  # Remove file protocol
                 
                 if not os.path.exists(local_video_path):  # Verify file exists
@@ -1541,7 +1541,7 @@ class Amazon:
                 return video_path  # Return path to copied video
             
             elif is_hls:  # Handle HLS stream download
-                if shutil.which("ffmpeg") is None:  # Check if ffmpeg is available
+                if shutil.which("ffmpeg") is None:  # Verify if ffmpeg is available
                     print(f"{BackgroundColors.YELLOW}ffmpeg not found. Cannot download HLS video.{Style.RESET_ALL}")  # Warn user ffmpeg missing
                     return None  # Return None if ffmpeg unavailable
                 
@@ -1568,7 +1568,7 @@ class Amazon:
                     timeout=300  # 5 minute timeout
                 )  # End of subprocess call
                 
-                if result.returncode != 0:  # Check if command failed
+                if result.returncode != 0:  # Verify if command failed
                     print(f"{BackgroundColors.RED}ffmpeg failed: {result.stderr.decode()}{Style.RESET_ALL}")  # Output error message
                     return None  # Return None on failure
                 
@@ -1587,11 +1587,11 @@ class Amazon:
                     head_response.close()  # Close HEAD response to release network resources
                 
                 file_ext = ".mp4"  # Default extension
-                if "mp4" in content_type:  # Check for MP4
+                if "mp4" in content_type:  # Verify for MP4
                     file_ext = ".mp4"  # Set MP4 extension
-                elif "webm" in content_type:  # Check for WebM
+                elif "webm" in content_type:  # Verify for WebM
                     file_ext = ".webm"  # Set WebM extension
-                elif "quicktime" in content_type or "mov" in content_type:  # Check for QuickTime
+                elif "quicktime" in content_type or "mov" in content_type:  # Verify for QuickTime
                     file_ext = ".mov"  # Set MOV extension
                 
                 video_filename = f"video_{video_count}{file_ext}"  # Generate unique filename
@@ -1633,7 +1633,7 @@ class Amazon:
         
         for idx, img_url in enumerate(image_urls, 1):  # Iterate with counter starting at 1
             image_path = self.download_single_image(img_url, output_dir, idx)  # Download image
-            if image_path:  # Check if download succeeded
+            if image_path:  # Verify if download succeeded
                 downloaded_images.append(image_path)  # Add to downloaded list
         
         verbose_output(  # Output success message with count
@@ -1671,7 +1671,7 @@ class Amazon:
 
         for idx, video_url in enumerate(video_urls, 1):  # Iterate with counter starting at 1
             video_path = self.download_single_video(video_url, output_dir, idx, session=session)  # Download video using persistent session and resilient retry flow
-            if video_path:  # Check if download succeeded
+            if video_path:  # Verify if download succeeded
                 downloaded_videos.append(video_path)  # Add to downloaded list
             if idx < len(video_urls):  # Verify whether more videos remain in the current sequential loop
                 pacing_delay = random.uniform(VIDEO_DOWNLOAD_MIN_PACING_SECONDS, VIDEO_DOWNLOAD_MAX_PACING_SECONDS)  # Compute randomized pacing delay between sequential video downloads
@@ -1726,7 +1726,7 @@ class Amazon:
             asset_map = self.collect_assets(self.html_content, output_dir)  # Collect page assets
             
             snapshot_path = self.save_snapshot(self.html_content, output_dir, asset_map)  # Save page snapshot
-            if snapshot_path:  # Check if snapshot was saved
+            if snapshot_path:  # Verify if snapshot was saved
                 downloaded_files.append(snapshot_path)  # Add snapshot to downloaded files
             
             desc_path = self.create_product_description_file(  # Create description file
@@ -1735,7 +1735,7 @@ class Amazon:
                 self.product_data["product_name_safe"],  # Pass canonical directory name for consistent description filename
                 self.url  # Pass original URL
             )  # End of function call
-            if desc_path:  # Check if description file was created
+            if desc_path:  # Verify if description file was created
                 downloaded_files.append(desc_path)  # Add description to downloaded files
             
         except Exception as e:  # Catch any exceptions during media processing
@@ -1758,7 +1758,7 @@ class Amazon:
         )  # End of verbose_output call
         
         try:  # Attempt scraping process with error handling
-            if self.local_html_path:  # Check if offline mode is enabled
+            if self.local_html_path:  # Verify if offline mode is enabled
                 self.html_content = self.read_local_html()  # Read HTML from local file
                 if not self.html_content:  # Validate HTML was read successfully
                     print(f"{BackgroundColors.RED}Failed to read local HTML file.{Style.RESET_ALL}")  # Alert user about read failure
