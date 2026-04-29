@@ -2471,36 +2471,37 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         download_method = click_download_button(download_img)  # Execute download click action.
         confirmation_method = wait_for_download_confirmation(confirmation_img)  # Execute completion polling action.
 
-        post_download_snapshots = snapshot_download_directories(downloads_dirs)  # Capture downloads directory snapshots after download completion.
+        if not confirmation_method is "Timeout":  # Verify whether download confirmation was not detected within the expected time frame.
+            post_download_snapshots = snapshot_download_directories(downloads_dirs)  # Capture downloads directory snapshots after download completion.
 
-        if len(downloads_dirs) > 1:  # Verify whether monitored downloads directories are unresolved.
-            resolved_download_dir = resolve_first_download_directory(downloads_dirs, pre_download_snapshots, post_download_snapshots)  # Resolve monitored downloads directory using first detected file.
+            if len(downloads_dirs) > 1:  # Verify whether monitored downloads directories are unresolved.
+                resolved_download_dir = resolve_first_download_directory(downloads_dirs, pre_download_snapshots, post_download_snapshots)  # Resolve monitored downloads directory using first detected file.
 
-            if resolved_download_dir is not None:  # Verify whether monitored downloads directory resolution succeeded.
-                update_active_download_directory(resolved_download_dir)  # Persist resolved monitored downloads directory in global cache.
-                downloads_dirs[:] = ACTIVE_DOWNLOADS_DIRS  # Update local monitored downloads directories list with resolved cache.
+                if resolved_download_dir is not None:  # Verify whether monitored downloads directory resolution succeeded.
+                    update_active_download_directory(resolved_download_dir)  # Persist resolved monitored downloads directory in global cache.
+                    downloads_dirs[:] = ACTIVE_DOWNLOADS_DIRS  # Update local monitored downloads directories list with resolved cache.
 
-        detected_download_dir, detected_filenames = detect_new_download_from_directories(pre_download_snapshots, post_download_snapshots, downloads_dirs, url)  # Detect downloaded filename and source directory associated with current URL.
+            detected_download_dir, detected_filenames = detect_new_download_from_directories(pre_download_snapshots, post_download_snapshots, downloads_dirs, url)  # Detect downloaded filename and source directory associated with current URL.
 
-        if detected_download_dir != "" and len(downloads_dirs) > 1:  # Verify whether detected directory exists while local list remains unresolved.
-            update_active_download_directory(detected_download_dir)  # Persist detected monitored downloads directory in global cache.
-            downloads_dirs[:] = ACTIVE_DOWNLOADS_DIRS  # Update local monitored downloads directories list with detected cache.
+            if detected_download_dir != "" and len(downloads_dirs) > 1:  # Verify whether detected directory exists while local list remains unresolved.
+                update_active_download_directory(detected_download_dir)  # Persist detected monitored downloads directory in global cache.
+                downloads_dirs[:] = ACTIVE_DOWNLOADS_DIRS  # Update local monitored downloads directories list with detected cache.
 
-        initial_consecutive_download_failures, abort_result = handle_initial_chrome_download_failures(chrome_download_settings_ready, index, detected_filenames, initial_consecutive_download_failures, url, processed_count, url_to_download)  # Verify initial downloads and possibly request manual intervention
+            initial_consecutive_download_failures, abort_result = handle_initial_chrome_download_failures(chrome_download_settings_ready, index, detected_filenames, initial_consecutive_download_failures, url, processed_count, url_to_download)  # Verify initial downloads and possibly request manual intervention
 
-        if abort_result is not None:  # Verify whether handler requested abort after manual intervention request
-            return abort_result  # Return handler-provided abort tuple to stop processing remaining URLs
+            if abort_result is not None:  # Verify whether handler requested abort after manual intervention request
+                return abort_result  # Return handler-provided abort tuple to stop processing remaining URLs
 
-        effective_filename = detected_filenames  # Default: Non-fragmented file case.
+            effective_filename = detected_filenames  # Default: Non-fragmented file case.
 
-        effective_filename, first_fragmented_file_detected, should_continue = handle_fragmented_download(detected_download_dir, detected_filenames, url, first_fragmented_file_detected)  # Execute fragmented ZIP handling logic.
+            effective_filename, first_fragmented_file_detected, should_continue = handle_fragmented_download(detected_download_dir, detected_filenames, url, first_fragmented_file_detected)  # Execute fragmented ZIP handling logic.
 
-        if should_continue:  # Verify whether fragmented processing requested loop continuation.
-            verbose_output(f"{BackgroundColors.YELLOW}[WARNING] Skipping URL mapping update due to fragmented ZIP processing failure for URL: {url}{Style.RESET_ALL}")  # Log mapping skip due to fragmented processing failure with URL details when verbose.
-            continue  # Continue with next URL without updating mapping when fragmented ZIP processing fails.
+            if should_continue:  # Verify whether fragmented processing requested loop continuation.
+                verbose_output(f"{BackgroundColors.YELLOW}[WARNING] Skipping URL mapping update due to fragmented ZIP processing failure for URL: {url}{Style.RESET_ALL}")  # Log mapping skip due to fragmented processing failure with URL details when verbose.
+                continue  # Continue with next URL without updating mapping when fragmented ZIP processing fails.
 
-        associate_url_with_download(url_to_download, url, effective_filename)  # Persist URL to downloaded filename mapping when detection succeeds.
-        update_url_filename_in_files(urls_file, url, effective_filename)  # Update detected filename for the current URL in both main and backup input files.
+            associate_url_with_download(url_to_download, url, effective_filename)  # Persist URL to downloaded filename mapping when detection succeeds.
+            update_url_filename_in_files(urls_file, url, effective_filename)  # Update detected filename for the current URL in both main and backup input files.
 
         close_method = close_extension_download_tab(close_download_tab_img)  # Execute close extension tab action.
         handle_post_download_methods(ext_methods, download_methods, completion_methods, close_methods, extension_method, download_method, confirmation_method, close_method, current_tab)  # Execute extracted method tracking logic.
