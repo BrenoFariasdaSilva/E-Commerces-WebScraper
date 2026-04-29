@@ -54,6 +54,7 @@ Assumptions & Notes:
 """
 
 
+import argparse  # For parsing command-line arguments
 import atexit  # For playing a sound when the program finishes
 import datetime  # For getting the current date and time
 import os  # For running a command in the terminal
@@ -104,6 +105,23 @@ RUN_FUNCTIONS = {
 
 
 # Functions Definitions:
+
+
+def parse_arguments() -> argparse.Namespace:
+    """
+    Parse and return command-line arguments for the compressed archives renamer program.
+
+    :param: None
+    :return: Parsed argument namespace containing all CLI flags.
+    """
+
+    parser = argparse.ArgumentParser(description="E-Commerces WebScraper")  # Initialize argument parser
+
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose debug output (default: False)")  # Register verbose flag that sets True when provided
+
+    args = parser.parse_args()  # Parse command-line arguments
+
+    return args  # Return parsed argument namespace
 
 
 def verbose_output(true_string="", false_string=""):
@@ -476,6 +494,12 @@ def main():
         end="\n",
     )  # Output the welcome message
     start_time = datetime.datetime.now()  # Get the start time of the program
+    
+    args = parse_arguments()  # Parse command-line arguments
+
+    if args.verbose:  # Verify if verbose mode is enabled
+        global VERBOSE  # Set the global VERBOSE variable to True when the --verbose flag is provided
+        VERBOSE = False  # Enable verbose output
     
     print(f"{BackgroundColors.GREEN}Scanning {BackgroundColors.CYAN}{INPUT_DIRECTORY}{BackgroundColors.GREEN} for compressed files...{Style.RESET_ALL}")  # Output scanning message 
     
