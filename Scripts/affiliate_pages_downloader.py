@@ -2526,7 +2526,7 @@ def locate_image(image_path: Path) -> Any:
         return None  # Return None when image file does not exist.
 
     try:  # Attempt image location on screen.
-        return pyautogui.locateOnScreen(str(image_path), confidence=0.8)  # Return located box coordinates.
+        return pyautogui.locateOnScreen(str(image_path), confidence=0.8, grayscale=True)  # Return located box coordinates.
     except Exception:  # Handle image search exception.
         return None  # Return None when image search fails.
 
