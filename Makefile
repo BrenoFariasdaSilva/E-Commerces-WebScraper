@@ -124,6 +124,12 @@ dependencies: $(VENV)
 	@echo "Installing/Updating Python dependencies..."
 	$(PIP) install -r requirements.txt
 
+	@echo "Ensuring Playwright is installed..."
+	$(PIP) install playwright
+
+	@echo "Installing Playwright browser binaries..."
+	$(PYTHON) -m playwright install
+
 # Install Playwright + browser binaries inside venv
 install_playwright: dependencies
 	@echo "Installing Playwright..."
