@@ -988,6 +988,8 @@ def setup_only_renew_amazon_urls(tab_count: int, urls: List[str], urls_file: Pat
     urls, fallback_outputs_mode, fallback_outputs_url_map = resolve_outputs_fallback(urls, affiliate_pattern)  # Resolve fallback scan
 
     tab_count = len(urls)  # Update tab count
+    
+    verbose_output(f"{BackgroundColors.GREEN}[INFO] Total URLs found for Amazon Affiliate Links Renewal: {BackgroundColors.CYAN}{len(urls)}{Style.RESET_ALL}")  # Log final URLs list for renewal
 
     return urls, fallback_outputs_mode, fallback_outputs_url_map, tab_count  # Return final state
 
