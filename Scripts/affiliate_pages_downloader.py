@@ -2565,7 +2565,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
 
         download_method = click_download_button(download_img)  # Execute download click action.
         confirmation_alt_img = confirmation_img.with_name(f"{confirmation_img.stem}-Alternative{confirmation_img.suffix}")  # Build alternative confirmation image path using deterministic naming pattern.
-        watch_for_save_dialog_and_confirmation(save_button_img, confirmation_img)  # Watch and handle optional save dialog while waiting.
+        watch_for_save_dialog_and_confirmation(save_button_img, confirmation_img, confirmation_alt_img)  # Watch and handle optional save dialog while waiting.
         
         # @TODO: Fix this to avoid waiting both in the watch_for_save_dialog_and_confirmation and in the wait_for_download_confirmation when the confirmation image is present, as this causes unnecessary waiting after clicking the download button. And when the watch_for_save_dialog_and_confirmation returns a timeout, it already indicates that the confirmation image was not detected within the expected time frame, so the subsequent wait_for_download_confirmation is redundant in that case. Consider refactoring to combine these waiting mechanisms more efficiently.
         
@@ -2922,13 +2922,14 @@ def click_box_center(box: Tuple[int, int, int, int]) -> None:
     pyautogui.click(center_x, center_y)  # Click center point of the box.
 
 
-def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_img: Path) -> None:
+def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_img: Path, confirmation_alt_img: Path) -> None:
     """
     Watches for the optional Chrome "Save As" dialog and clicks the save button if it appears,
     while also monitoring for the confirmation image to stop early.
 
     :param save_button_img: Path to the save button image.
     :param confirmation_img: Path to the confirmation image.
+    :param confirmation_alt_img: Path to the alternative confirmation image.
     :return: None
     """
     
