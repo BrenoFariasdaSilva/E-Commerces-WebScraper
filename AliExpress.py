@@ -235,7 +235,7 @@ class AliExpress:  # AliExpress scraper class preserving structure and methods
 
         try:  # Attempt to launch browser with error handling
             self.playwright = sync_playwright().start()  # Start Playwright synchronous context manager
-            playwright_obj = cast(Any, self.playwright)  # Cast Playwright instance to Any for static type checkers
+            playwright_obj = cast(Any, self.playwright)  # Cast Playwright instance to Any for static type verifiers
             
             launch_options = {  # Configure browser launch options dictionary
                 "headless": HEADLESS,  # Set headless mode from environment variable
@@ -505,16 +505,16 @@ class AliExpress:  # AliExpress scraper class preserving structure and methods
 
     def detect_international(self, soup: BeautifulSoup) -> bool:
         """
-        Detects if the product is international by checking for the international import declaration text.
+        Detects if the product is international by verifying for the international import declaration text.
         Looks for "Produto International objeto de declaração de importação e sujeito a impostos estaduais e federais"
-        in elements with class="NzLZHV", or falls back to checking "País de Origem" (Country of Origin) field.
+        in elements with class="NzLZHV", or falls back to verifying "País de Origem" (Country of Origin) field.
         
         :param soup: BeautifulSoup object containing the parsed HTML
         :return: True if product is international, False otherwise
         """
         
         verbose_output(  # Log detection attempt
-            f"{BackgroundColors.GREEN}Checking if product is international...{Style.RESET_ALL}"
+            f"{BackgroundColors.GREEN}Verifying if product is international...{Style.RESET_ALL}"
         )  # End of verbose output call
         
         try:  # Attempt to detect international status with error handling
@@ -616,7 +616,7 @@ class AliExpress:  # AliExpress scraper class preserving structure and methods
         :return: Product name with International prefix
         """
         
-        if not product_name.upper().startswith("International"):  # Check if prefix not already present
+        if not product_name.upper().startswith("International"):  # Verify if prefix not already present
             product_name = f"International - {product_name}"  # Add International prefix
             # Normalize whitespace after prefix insertion to avoid accidental double spaces
             product_name = product_name.replace("\u00A0", " ")  # Replace NBSP with normal space
@@ -879,7 +879,7 @@ class AliExpress:  # AliExpress scraper class preserving structure and methods
                 if not isinstance(video, Tag):  # Ensure element is a BeautifulSoup Tag
                     continue  # Skip non-Tag elements
                 video_url = video.get("src") or video.get("data-src")  # Try common attributes
-                if video_url and isinstance(video_url, str) and (video_url.endswith('.mp4') or video_url.endswith('.webm') or 'm3u8' in video_url):  # Check for common video formats
+                if video_url and isinstance(video_url, str) and (video_url.endswith('.mp4') or video_url.endswith('.webm') or 'm3u8' in video_url):  # Verify for common video formats
                     if video_url not in seen_urls:  # Avoid duplicates
                         video_urls.append(video_url)  # Add video URL
                         seen_urls.add(video_url)  # Mark seen
@@ -892,7 +892,7 @@ class AliExpress:  # AliExpress scraper class preserving structure and methods
                     if not isinstance(source, Tag):  # Ensure Tag
                         continue  # Skip non-Tag
                     src = source.get("src") or source.get("data-src")  # Get src
-                    if src and isinstance(src, str) and (src.endswith('.mp4') or src.endswith('.webm') or 'm3u8' in src):  # Check format
+                    if src and isinstance(src, str) and (src.endswith('.mp4') or src.endswith('.webm') or 'm3u8' in src):  # Verify format
                         if src not in seen_urls:  # Avoid duplicates
                             video_urls.append(src)  # Add to list
                             seen_urls.add(src)  # Track seen
@@ -901,7 +901,7 @@ class AliExpress:  # AliExpress scraper class preserving structure and methods
                             )  # End of verbose output call
 
             # Also search for direct links to video files in the page (heuristic)  # catch videos embedded via JS
-            for ext in ('.mp4', '.webm', '.m3u8'):  # Check common extensions
+            for ext in ('.mp4', '.webm', '.m3u8'):  # Verify common extensions
                 for tag in soup.find_all(string=re.compile(re.escape(ext))):  # Find strings containing extension
                     try:  # Attempt to extract URL-like text
                         text = str(tag)  # Convert to string
@@ -1260,7 +1260,7 @@ class AliExpress:  # AliExpress scraper class preserving structure and methods
                 
                 local_img_path = os.path.normpath(os.path.join(html_dir, img_url))  # Resolve local image path
                 
-                if not os.path.exists(local_img_path):  # Check if local image file exists
+                if not os.path.exists(local_img_path):  # Verify if local image file exists
                     verbose_output(  # Log warning about missing file
                         f"{BackgroundColors.YELLOW}Local image file not found: {local_img_path}{Style.RESET_ALL}"
                     )  # End of verbose output call
@@ -1338,14 +1338,14 @@ class AliExpress:  # AliExpress scraper class preserving structure and methods
         """
         
         video_path = None  # Initialize video path variable
-        is_hls = video_url.endswith(".m3u8")  # Check if video URL is HLS stream
+        is_hls = video_url.endswith(".m3u8")  # Verify if video URL is HLS stream
         
         try:  # Attempt to download or copy the video with error handling
             if self.local_html_path and (video_url.startswith("./") or video_url.startswith("../") or not video_url.startswith(("http://", "https://"))):
                 html_dir = os.path.dirname(os.path.abspath(self.local_html_path))  # Get directory of local HTML file
                 local_video_path = os.path.normpath(os.path.join(html_dir, video_url))  # Resolve local video path
                 
-                if not os.path.exists(local_video_path):  # Check if local video file exists
+                if not os.path.exists(local_video_path):  # Verify if local video file exists
                     verbose_output(  # Log warning about missing file
                         f"{BackgroundColors.YELLOW}Local video file not found: {local_video_path}{Style.RESET_ALL}"
                     )  # End of verbose output call
@@ -1372,9 +1372,9 @@ class AliExpress:  # AliExpress scraper class preserving structure and methods
                 
                 video_filename = os.path.basename(urlparse(video_url).path)  # Extract filename from URL
                 if video_filename:  # If filename was extracted
-                    local_video_in_images = os.path.join(images_dir, video_filename)  # Check in images directory
+                    local_video_in_images = os.path.join(images_dir, video_filename)  # Verify in images directory
                     
-                    if os.path.exists(local_video_in_images):  # Check if video exists in images directory
+                    if os.path.exists(local_video_in_images):  # Verify if video exists in images directory
                         verbose_output(  # Log found in images directory
                             f"{BackgroundColors.GREEN}Found video in images/ subdirectory: {video_filename}{Style.RESET_ALL}"
                         )  # End of verbose output call
@@ -1419,7 +1419,7 @@ class AliExpress:  # AliExpress scraper class preserving structure and methods
                         timeout=300  # 5 minute timeout
                     )
                     
-                    if result.returncode == 0:  # Check if command succeeded
+                    if result.returncode == 0:  # Verify if command succeeded
                         verbose_output(  # Log successful download
                             f"{BackgroundColors.GREEN}Downloaded HLS video: {BackgroundColors.CYAN}{filename}{Style.RESET_ALL}"
                         )  # End of verbose output call
