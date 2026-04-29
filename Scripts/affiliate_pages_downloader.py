@@ -165,13 +165,13 @@ RUN_FUNCTIONS = {
 
 def parse_arguments(repo_root: Path) -> argparse.Namespace:
     """
-    Parse and return command-line arguments for the E-Commerces WebScraper.
+    Parse and return command-line arguments for the Affiliate Pages Downloader Automation.
 
     :param repo_root: Root directory of the repository.
     :return: Parsed argument namespace containing all CLI flags.
     """
     
-    parser = argparse.ArgumentParser(description="Affiliate Pages Downloader Automation")  # Initialize argument parser with description.
+    parser = argparse.ArgumentParser(description="Affiliate Pages Downloader Automation - Automates the downloading of affiliate pages, URL renewal, and content management.")  # Initialize argument parser with description.
 
     parser = argparse.ArgumentParser(description="Cross-platform affiliate pages downloader automation")  # Initialize argument parser.
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output for debugging and insights")  # Register verbose flag argument.
