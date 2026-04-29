@@ -199,7 +199,7 @@ class MercadoLivre:
             response = self.session.get(self.url, timeout=10)  # Make a GET request to the URL
             response.raise_for_status()  # Raise an exception for bad status codes
             
-            soup = BeautifulSoup(response.text, "html.parser")  # Parse the HTML content (use str to satisfy type checkers)
+            soup = BeautifulSoup(response.text, "html.parser")  # Parse the HTML content (use str to satisfy type verifiers)
             
             ir_para_produto = soup.find(string=re.compile(r"Ir para produto", re.IGNORECASE))  # Find the "Ir para produto" text
             
@@ -331,7 +331,7 @@ class MercadoLivre:
         """
         
         try:  # Try to prefix the product name
-            if self.product_data.get("is_international"):  # Check if the product is marked as international
+            if self.product_data.get("is_international"):  # Verify if the product is marked as international
                 name = self.product_data.get("name", "") or ""  # Get the current product name
                 if not name.startswith("International - "):  # Avoid double prefixing
                     self.product_data["name"] = f"International - {name}"  # Prefix the name
@@ -520,7 +520,7 @@ class MercadoLivre:
                 html_text = response.text  # Get the HTML content from response
                 self.html_content = html_text  # Store for later use
             
-            soup = BeautifulSoup(html_text, "html.parser")  # Parse the HTML content (use str to satisfy type checkers)
+            soup = BeautifulSoup(html_text, "html.parser")  # Parse the HTML content (use str to satisfy type verifiers)
             
             self.product_data["name"] = self.extract_product_name(soup)  # Extract product name
 
@@ -694,7 +694,7 @@ class MercadoLivre:
         
         response = session.get(product_url, timeout=10)  # Make a GET request to the product URL
         response.raise_for_status()  # Raise exception for bad status
-        soup = BeautifulSoup(response.text, "html.parser")  # Parse the HTML content (use str to satisfy type checkers)
+        soup = BeautifulSoup(response.text, "html.parser")  # Parse the HTML content (use str to satisfy type verifiers)
         
         return soup  # Return the parsed soup
 
@@ -704,7 +704,7 @@ class MercadoLivre:
         Safely retrieves the value of the first existing attribute from a BeautifulSoup Tag.
         
         :param tag: The BeautifulSoup Tag object to retrieve attributes from
-        :param attrs: A list of attribute names to check in order of priority
+        :param attrs: A list of attribute names to verify in order of priority
         :return: The value of the first found attribute as a string, or None if none found
         """
         
@@ -824,7 +824,7 @@ class MercadoLivre:
                         )
             else:  # If JSON not found, fall back to HTML parsing
                 verbose_output(
-                    f"{BackgroundColors.YELLOW}__PRELOADED_STATE__ not found, checking HTML...{Style.RESET_ALL}"
+                    f"{BackgroundColors.YELLOW}__PRELOADED_STATE__ not found, verifying HTML...{Style.RESET_ALL}"
                 )
                 
                 gallery_column = soup.find("div", **HTML_SELECTORS["gallery_column"])
@@ -935,14 +935,14 @@ class MercadoLivre:
         
         video_path = None  # Path to the downloaded video file
         
-        is_hls = video_url.endswith(".m3u8")  # Check if the video URL is an HLS stream (based on .m3u8 extension)
+        is_hls = video_url.endswith(".m3u8")  # Verify if the video URL is an HLS stream (based on .m3u8 extension)
         
         try:  # Try to download or copy the video
-            if self.local_html_path and (video_url.startswith("./") or video_url.startswith("../") or not video_url.startswith(("http://", "https://"))):  # Check if this is a local file path (when using local_html_path)
+            if self.local_html_path and (video_url.startswith("./") or video_url.startswith("../") or not video_url.startswith(("http://", "https://"))):  # Verify if this is a local file path (when using local_html_path)
                 html_dir = os.path.dirname(os.path.abspath(self.local_html_path))  # Get the directory of the local HTML file
                 local_video_path = os.path.normpath(os.path.join(html_dir, video_url))  # Resolve the local video path
                 
-                if not os.path.exists(local_video_path):  # Check if the local video file exists
+                if not os.path.exists(local_video_path):  # Verify if the local video file exists
                     verbose_output(
                         f"{BackgroundColors.YELLOW}Local video file not found: {local_video_path}{Style.RESET_ALL}"
                     )  # Output a warning if the local video file is not found
