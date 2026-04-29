@@ -2375,7 +2375,7 @@ def move_downloaded_file_for_url(downloads_dirs: List[str], destination_dir: Pat
     :return: Final moved file path as string.
     """
 
-    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Attempting to move downloaded file for URL: {url} with effective filename: {effective_filename} from {BackgroundColors.GREEN}{downloads_dirs}{Style.RESET_ALL} to {BackgroundColors.GREEN}{destination_dir}{Style.RESET_ALL}{Style.RESET_ALL}")  # Log entry into file move operation with details.
+    verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Attempting to move downloaded file for URL: {BackgroundColors.CYAN}{url}{BackgroundColors.GREEN} with effective filename: {effective_filename} from {BackgroundColors.CYAN}{downloads_dirs}{BackgroundColors.GREEN} to {BackgroundColors.CYAN}{destination_dir}{Style.RESET_ALL}{Style.RESET_ALL}")  # Log entry into file move operation with details.
 
     if effective_filename == "":  # Verify if effective filename is empty before attempting move.
         return ""  # Return empty string when no file to move.
