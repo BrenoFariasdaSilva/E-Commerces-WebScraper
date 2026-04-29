@@ -153,8 +153,8 @@ Icon? # match Icon<CR>
 **/desktop.ini
 
 # Ignore the Compressed Files
-**/.zip
-**/.rar
+**/*.zip
+**/*.rar
 **/*.gz
 **/*.7z
 **/*.tar.gz
