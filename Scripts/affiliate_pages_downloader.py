@@ -2776,7 +2776,7 @@ def open_url_in_new_tab(url: str, opened_tabs: int) -> int:
     time.sleep(0.1)  # Wait after typing URL.
     pyautogui.press("enter")  # Navigate to URL.
 
-    time.sleep(7)  # Wait for page loading.
+    time.sleep(3)  # Wait for page loading.
 
     return opened_tabs  # Return updated opened tabs count.
 
