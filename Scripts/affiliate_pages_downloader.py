@@ -55,8 +55,10 @@ Assumptions & Notes:
 
 import argparse  # Parse command-line arguments.
 import atexit  # Register post-execution callback functions.
+import cv2  # Import OpenCV for color conversion.
 import datetime  # Capture execution timestamps.
 import json  # Handle JSON data for Chrome profile resolution.
+import numpy as np  # Import NumPy for array conversion.
 import os  # Execute operating-system commands.
 import platform  # Identify active operating system.
 import pyautogui  # Automate keyboard and mouse interactions.
@@ -2562,6 +2564,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         verbose_output(f"{BackgroundColors.CYAN}Enable permission action: {enable_permission_method}{Style.RESET_ALL}")  # Log enable-permission action when verbose.
 
         download_method = click_download_button(download_img)  # Execute download click action.
+        confirmation_alt_img = confirmation_img.with_name(f"{confirmation_img.stem}-Alternative{confirmation_img.suffix}")  # Build alternative confirmation image path using deterministic naming pattern.
         watch_for_save_dialog_and_confirmation(save_button_img, confirmation_img)  # Watch and handle optional save dialog while waiting.
         
         # @TODO: Fix this to avoid waiting both in the watch_for_save_dialog_and_confirmation and in the wait_for_download_confirmation when the confirmation image is present, as this causes unnecessary waiting after clicking the download button. And when the watch_for_save_dialog_and_confirmation returns a timeout, it already indicates that the confirmation image was not detected within the expected time frame, so the subsequent wait_for_download_confirmation is redundant in that case. Consider refactoring to combine these waiting mechanisms more efficiently.
