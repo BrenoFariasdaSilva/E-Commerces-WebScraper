@@ -2567,7 +2567,6 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         # @TODO: Fix this to avoid waiting both in the watch_for_save_dialog_and_confirmation and in the wait_for_download_confirmation when the confirmation image is present, as this causes unnecessary waiting after clicking the download button. And when the watch_for_save_dialog_and_confirmation returns a timeout, it already indicates that the confirmation image was not detected within the expected time frame, so the subsequent wait_for_download_confirmation is redundant in that case. Consider refactoring to combine these waiting mechanisms more efficiently.
         
         # @TODO: Implement a function to be called in long waits, like in watch_for_save_dialog_and_confirmation and/or wait_for_download_confirmation to, every 60s, move the cursor like a pixel to prevent screen lock.
-        confirmation_method = wait_for_download_confirmation(confirmation_img)  # Execute completion polling action.
 
         if confirmation_method != "Timeout":  # Verify whether download confirmation was not detected within the expected time frame.
             post_download_snapshots = snapshot_download_directories(downloads_dirs)  # Capture downloads directory snapshots after download completion.
