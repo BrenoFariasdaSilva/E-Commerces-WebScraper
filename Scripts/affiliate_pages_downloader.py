@@ -467,13 +467,12 @@ def click_box_center(box: Tuple[int, int, int, int]) -> None:
     :return: None
     """
     
-    # @TODO: Implement a function to the move cursor to place where it detected the image before the click, for debug/trackability reasons. It must be done for every pyautogui.click in the file.
-
     x, y, w, h = box  # Unpack bounding box tuple.
 
     center_x = x + (w // 2)  # Compute center X coordinate of detected box.
     center_y = y + (h // 2)  # Compute center Y coordinate of detected box.
 
+    pyautogui.moveTo(center_x, center_y)  # Move cursor to detected center for traceability.
     pyautogui.click(center_x, center_y)  # Click center point of the box.
 
 
