@@ -400,7 +400,7 @@ class Shein:
         :return: Product name string or "Unknown Product" if not found
         """
 
-        if soup is None:  # Guard against None to satisfy static checkers and avoid attribute access on None
+        if soup is None:  # Guard against None to satisfy static verifiers and avoid attribute access on None
             return "Unknown Product"  # Return default when no soup provided
         for tag, attrs in HTML_SELECTORS["product_name"]:  # Iterate through each selector combination from centralized dictionary
             name_element = soup.find(tag, attrs if attrs else None)  # Search for element matching current selector
@@ -833,7 +833,7 @@ class Shein:
                 if not script_tag.string:  # Skip empty script nodes
                     continue  # Continue to next script tag
                 script_content = str(script_tag.string)  # Convert content to string for searching
-                if '"goods_desc"' in script_content or "'goods_desc'" in script_content:  # Quick existence check
+                if '"goods_desc"' in script_content or "'goods_desc'" in script_content:  # Quick existence verification before attempting parse
                     try:  # Attempt to parse JSON and extract goods_desc safely
                         json_obj = json.loads(script_content)  # Parse JSON content from script tag
                         def _find_goods_desc(obj):  # Recursive helper to locate goods_desc field
@@ -878,7 +878,7 @@ class Shein:
     def detect_international(self, soup=None) -> bool:
         """
         Detects whether the product has only international shipping available.
-        Checks for "Envio Nacional" (National Shipping) availability.
+        Verifies for "Envio Nacional" (National Shipping) availability.
         If "Envio Nacional" is sold out or not available, and "International" is active/available, returns True.
 
         :param soup: BeautifulSoup object containing the parsed HTML
@@ -1437,7 +1437,7 @@ class Shein:
         sentences = re.split(r"([.!?]\s*)", text)  # Split text into sentences while keeping delimiters
         result = []  # Initialize list to hold processed sentences
         for i, sentence in enumerate(sentences):  # Iterate through each sentence with index for processing
-            if sentence.strip():  # Check if sentence has non-whitespace content before processing
+            if sentence.strip():  # Verify if sentence has non-whitespace content before processing
                 if i % 2 == 0:  # Process only the actual sentences, not the delimiters
                     sentence = sentence.strip()  # Remove leading and trailing whitespace from sentence
                     if sentence:  # Validate that sentence is not empty after stripping
