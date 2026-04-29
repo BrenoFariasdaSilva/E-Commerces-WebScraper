@@ -3860,7 +3860,7 @@ def maybe_show_messagebox(title: str, message: str) -> None:
         pass  # Skip messagebox display on exception.
 
 
-def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bool = True, renew_amazon_affiliate: bool = False, only_renew_amazon_urls: bool = False) -> int:
+def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bool = True, renew_amazon_affiliate: bool = False, only_renew_amazon_urls: bool = False, process_only_unlinked_urls: bool = False) -> int:
     """
     Runs the affiliate pages automation workflow.
 
@@ -3870,6 +3870,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
     :param headerless: Whether to suppress GUI messagebox when True.
     :param renew_amazon_affiliate: Override global renewal flag when True.
     :param only_renew_amazon_urls: Override global only-renew mode when True.
+    :param process_only_unlinked_urls: Whether to filter URLs against existing report links and process only unlinked URLs when True.
     :return: Exit code where 0 means success and 1 means failure.
     """
 
@@ -3932,7 +3933,9 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
         start_tick = time.time()  # Capture workflow start timestamp.
         url_to_download: Dict[str, str] = {}  # Initialize URL to downloaded filename mapping dictionary.
         
-        # @TODO: Implement a rule for filtering the urls to process in process_urls_with_download_tracking function to only process the non-file-linked ones, in case of --process_only_unlinked_urls cli arg is used.
+        if process_only_unlinked_urls:  # Verify whether only unlinked URLs must be processed.
+            existing_report_urls = set()  # Load existing linked urls from report file for filtering.
+            urls = [url for url in urls if url not in existing_report_urls]  # Filter already linked urls from processing list.
         
         processed_count, url_to_download, process_success = process_urls_with_download_tracking(urls, urls_file, tab_count, downloads_dirs, extension_img, download_img, enable_permission_img, confirmation_img, close_download_tab_img, mercado_livre_img, share_button_img, save_button_img, ext_methods, download_methods, completion_methods, close_methods, chrome_download_settings_ready, renew_amazon_affiliate, only_renew_amazon_urls)  # Process URLs with download tracking and retrieve mapping details.
         
@@ -4118,7 +4121,7 @@ def main():
     
     update_chrome_profile(CHROME_PROFILE_DISPLAY_NAME)  # Resolve and set CHROME_PROFILE_DIRECTORY using configured display name with Default fallback.
 
-    exit_code = run(args.tab_count, args.urls_file, args.assets_dir, args.headerless, args.renew_amazon_affiliate_url, ONLY_RENEW_AMAZON_AFFILIATE_URLS)  # Execute automation flow with headerless option, renewal override, only-renew mode, and unlinked URLs processing.
+    exit_code = run(args.tab_count, args.urls_file, args.assets_dir, args.headerless, args.renew_amazon_affiliate_url, ONLY_RENEW_AMAZON_AFFILIATE_URLS, args.process_unlinked_urls)  # Execute automation flow with headerless option, renewal override, only-renew mode, and unlinked URLs processing.
 
     finish_time = datetime.datetime.now()  # Capture program finish timestamp.
     print(f"{BackgroundColors.GREEN}Start time: {BackgroundColors.CYAN}{start_time.strftime('%d/%m/%Y - %H:%M:%S')}\n{BackgroundColors.GREEN}Finish time: {BackgroundColors.CYAN}{finish_time.strftime('%d/%m/%Y - %H:%M:%S')}\n{BackgroundColors.GREEN}Execution time: {BackgroundColors.CYAN}{calculate_execution_time(start_time, finish_time)}{Style.RESET_ALL}")  # Print execution timing summary.
