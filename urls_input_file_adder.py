@@ -37,6 +37,7 @@ Assumptions & Notes:
 """
 
 
+import argparse  # For parsing command-line arguments
 import atexit  # For playing a sound when the program finishes
 import datetime  # For getting the current date and time
 import os  # For running a command in the terminal
@@ -85,6 +86,21 @@ RUN_FUNCTIONS = {
 
 
 # Functions Definitions:
+
+
+def parse_arguments() -> argparse.Namespace:
+    """
+    Parse and return command-line arguments for the urls input file adder.
+
+    :param: None
+    :return: Parsed argument namespace containing all CLI flags.
+    """
+
+    parser = argparse.ArgumentParser(description="URLs Input File Adder - Reads urls.txt, validates URLs, appends ZIP filenames, and overwrites the file.")  # Create argument parser with description
+
+    args = parser.parse_args()  # Parse command-line arguments
+
+    return args  # Return parsed argument namespace
 
 
 def verbose_output(true_string="", false_string=""):
@@ -345,6 +361,8 @@ def main():
     )  # Output the welcome message
     start_time = datetime.datetime.now()  # Get the start time of the program
     
+    args = parse_arguments()  # Parse command-line arguments
+
     input_dir, urls_path = resolve_input_paths(INPUT_DIRECTORY, URLS_FILENAME)  # Resolve input directory and urls path
 
     if urls_path is None:  # Verify result from path resolution
