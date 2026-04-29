@@ -499,9 +499,7 @@ def activate_window_with_fallback(target_window: Any) -> bool:
         top = int(getattr(target_window, "top", 0))  # Retrieve window top coordinate.
         width = int(getattr(target_window, "width", 0))  # Retrieve window width value.
         height = int(getattr(target_window, "height", 0))  # Retrieve window height value.
-        center_x = left + max(1, width // 2)  # Compute safe window center X coordinate.
-        center_y = top + max(1, height // 2)  # Compute safe window center Y coordinate.
-        pyautogui.click(center_x, center_y)  # Focus window by clicking inside it.
+        click_box_center(target_window)  # Focus window by clicking inside it.
         time.sleep(0.2)  # Wait after focus click.
         target_window.activate()  # Retry window activation after focus click.
         time.sleep(0.2)  # Wait after activation retry.
@@ -3018,9 +3016,7 @@ def click_enable_permission(enable_img: Path) -> str:
         box = locate_image(enable_img)  # Locate enable-permission image on screen.
 
         if box is not None:  # Verify image was found before clicking.
-            center_x = int(getattr(box, "left", 0) + (getattr(box, "width", 0) / 2))  # Compute horizontal center of matched box.
-            center_y = int(getattr(box, "top", 0) + (getattr(box, "height", 0) / 2))  # Compute vertical center of matched box.
-            pyautogui.click(center_x, center_y)  # Click center point of matched box.
+            click_box_center(box)  # Click center of detected enable-permission button box.
             return "ImageSearch"  # Return image search method label when clicked.
 
         time.sleep(0.1)  # Wait before retrying image search when not found.
@@ -3171,9 +3167,7 @@ def click_go_to_product_button(mercado_livre_img: Path) -> str:
     box = locate_image(mercado_livre_img)  # Locate MercadoLivre image on screen.
 
     if box is not None:  # Verify image was found.
-        center_x = int(getattr(box, "left", 0) + (getattr(box, "width", 0) / 2))  # Compute horizontal center of matched box.
-        center_y = int(getattr(box, "top", 0) + (getattr(box, "height", 0) / 2))  # Compute vertical center of matched box.
-        pyautogui.click(center_x, center_y)  # Click center point of matched MercadoLivre image box.
+        click_box_center(box)  # Click center of detected box to go to product page.
         time.sleep(5)  # Wait for page transition after clicking the product button.
 
         return "MercadoLivre Go To Product"  # Return action performed status.
@@ -3302,9 +3296,7 @@ def click_share_affiliate_url_button(share_button_img: Path) -> str:
         box = locate_image_in_region(share_button_img, search_region)  # Attempt to locate share affiliate URL button image inside active window region.
 
         if box is not None:  # Verify if share affiliate URL image was detected.
-            center_x = int(getattr(box, "left", 0) + (getattr(box, "width", 0) / 2))  # Compute horizontal center of matched box.
-            center_y = int(getattr(box, "top", 0) + (getattr(box, "height", 0) / 2))  # Compute vertical center of matched box.
-            pyautogui.click(center_x, center_y)  # Click center point of matched image box.
+            click_box_center(box)  # Click center of detected share button box to trigger URL copy action.
             time.sleep(0.5)  # Wait briefly after image-based click.
             verbose_output(f"{BackgroundColors.CYAN}Used image: {share_button_img.name}{Style.RESET_ALL}")  # Print name of used image.
             return "ImageSearch"  # Return image search method label for image.
