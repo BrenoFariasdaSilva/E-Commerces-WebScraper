@@ -1385,6 +1385,7 @@ def detect_split_zip_fragment_start(filename: str) -> Tuple[bool, str]:
     base_name = Path(filename).stem  # Extract the base name without the .zNN extension for downstream polling of the expected final ZIP file.
 
     if not is_fragment:  # Verify whether filename ends with .zNN fragmented archive suffix.
+        verbose_output(f"{BackgroundColors.CYAN}[DEBUG] No ZIP fragment detected in filename: {filename}{Style.RESET_ALL}")  # Log absence of fragmentation when filename does not match .zNN pattern.
         return False, ""  # Return not-fragmented when filename does not match .zNN pattern.
 
     base_name = Path(filename).stem  # Extract base name without the .zNN extension.
