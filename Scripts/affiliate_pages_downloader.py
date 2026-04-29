@@ -1647,15 +1647,32 @@ def run_zip_merge_java(jar_path: Path, zip_files: List[Path], output_zip: Path) 
     output_zip_str = output_zip.resolve().as_posix()  # Normalize output ZIP path to POSIX format for Java compatibility.
 
     zip_files_str = [
-        p.resolve().as_posix() for p in zip_files if str(p).lower().endswith(".zip")
-    ]  # Normalize all ZIP fragment paths to POSIX format for consistent CLI handling.
+        p.resolve().as_posix()
+        for p in zip_files
+        if re.search(r"\.z\d{2}$", str(p).lower())
+    ]  # Collect ZIP fragments (.z01, .z02, etc.) and normalize paths.
+
+    def _extract_fragment_index(path: str) -> int:
+        match = re.search(r"\.z(\d{2})$", path.lower())  # Extract fragment index safely.
+        return int(match.group(1)) if match else 0  # Return numeric index or fallback.
+
+    zip_files_str = sorted(
+        zip_files_str,
+        key=_extract_fragment_index
+    )  # Sort fragments in correct numeric order for Java merge.
+
+    zip_files_str += [
+        p.resolve().as_posix()
+        for p in zip_files
+        if str(p).lower().endswith(".zip") and not re.search(r"\.z\d{2}\.zip$", str(p).lower())
+    ]  # Append final ZIP file(s) after all fragments.
 
     command = ["java", "-jar", jar_path_str]  # Initialize Java base command with JAR execution.
 
     if VERBOSE:  # Verify whether verbose mode is enabled for debugging output.
         command.append("--log=DEBUG")  # Append verbose logging argument in correct CLI position.
 
-    command.append(output_zip_str)  # Append output ZIP path as first positional argument after flags.
+    command.append(output_zip_str)  # Append output ZIP path as after optional logging argument but before the list of input ZIP fragments.
     command.extend(zip_files_str)  # Append all ZIP fragment inputs to command.
 
     verbose_output(f"{BackgroundColors.CYAN}[DEBUG] Executing Java merge fragment zip file command: {' '.join(command)}{Style.RESET_ALL}")  # Log the exact Java command being executed
