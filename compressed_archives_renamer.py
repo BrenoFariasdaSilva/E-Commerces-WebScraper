@@ -251,6 +251,11 @@ def parse_url_entries(input_file_path: str) -> list[tuple[str, Optional[str]]]:
     """
 
     raw_lines = load_urls_to_process(input_file_path)  # Load raw lines from the URLs input file
+    
+    if raw_lines is None:  # Verify if loading lines failed due to file issues
+        print(f"{BackgroundColors.RED}Error: Failed to read URLs from file: {BackgroundColors.CYAN}{input_file_path}{BackgroundColors.RED}. Please ensure the file exists and is readable in that specified path. Be careful with the parent directory of the file as well.{Style.RESET_ALL}")  # Print file read error with details and suggestions.
+        return []  # Return empty list when lines cannot be loaded
+    
     preprocessed_lines = preprocess_urls(raw_lines)  # Preprocess the raw lines to clean and sort them
     url_entries: list[tuple[str, Optional[str]]] = []  # Initialize list to hold parsed URL entries
 
