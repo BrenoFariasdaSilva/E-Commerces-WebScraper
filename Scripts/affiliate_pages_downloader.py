@@ -2703,6 +2703,25 @@ def match_template_multi_scale(screen: Any, template: Any, scales: list[float]) 
     return best_match, best_val  # Return match and confidence.
 
 
+def validate_match(best_match: Any, best_val: float, threshold: float = 0.9) -> Any:
+    """
+    Validates match quality against threshold.
+
+    :param best_match: Match result tuple.
+    :param best_val: Confidence score.
+    :param threshold: Minimum allowed confidence.
+    :return: Validated match or None.
+    """
+
+    if best_match is None:  # Verify match existence.
+        return None  # Return None when no match found.
+
+    if best_val < threshold:  # Verify confidence threshold.
+        return None  # Reject weak matches.
+
+    return best_match  # Return valid match.
+
+
 def get_screen_dimensions() -> Tuple[int, int]:
     """
     Retrieves current screen dimensions.
