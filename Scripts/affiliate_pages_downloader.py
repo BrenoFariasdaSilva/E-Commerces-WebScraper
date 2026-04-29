@@ -2569,6 +2569,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         # @TODO: Implement a function to be called in long waits, like in watch_for_save_dialog_and_confirmation and/or wait_for_download_confirmation to, every 60s, move the cursor like a pixel to prevent screen lock.
 
         if confirmation_method != "Timeout":  # Verify whether download confirmation was not detected within the expected time frame.
+            # @TODO: Dispatch this to a new function and thread/core in order for the code to jump to the next url and handle the download detection and mapping asynchronously while the current thread continues processing the next URLs and handling their downloads in parallel, which would significantly improve the overall processing time when dealing with a large number of URLs and downloads.
             post_download_snapshots = snapshot_download_directories(downloads_dirs)  # Capture downloads directory snapshots after download completion.
 
             if len(downloads_dirs) > 1:  # Verify whether monitored downloads directories are unresolved.
