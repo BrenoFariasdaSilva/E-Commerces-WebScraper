@@ -281,7 +281,7 @@ The scraper will reuse your authenticated session without requiring credentials 
    make run
    ```
 
-3. **Check Outputs**
+3. **Verify Outputs**
 
    Results are saved in `Outputs/` directory organized by platform and product name.
 
@@ -555,7 +555,7 @@ PLATFORMS_MAP = {
 }
 ```
 
-Detection logic checks for platform-specific domain keywords in the URL and routes to the appropriate scraper class.
+Detection logic verifies for platform-specific domain keywords in the URL and routes to the appropriate scraper class.
 
 ### Path Resolution
 
@@ -621,11 +621,11 @@ Optional arguments:
 
 **Issue**: `Unable to open user data directory`
 - **Cause**: Chrome is already running with the same profile
-- **Solution**: Close all Chrome windows and check Task Manager for lingering chrome.exe processes
+- **Solution**: Close all Chrome windows and verify Task Manager for lingering chrome.exe processes
 
 **Issue**: `No product data extracted`
 - **Cause**: Not logged in, website structure changed, or anti-bot detection
-- **Solution**: Verify login status in Chrome, try with `HEADLESS=False`, check logs for selector errors
+- **Solution**: Verify login status in Chrome, try with `HEADLESS=False`, verify logs for selector errors
 
 **Issue**: `playwright._impl._api_types.Error: Executable doesn't exist`
 - **Cause**: Playwright browsers not installed
@@ -633,7 +633,7 @@ Optional arguments:
 
 **Issue**: `Could not resolve local HTML path`
 - **Cause**: Local HTML file or directory not found
-- **Solution**: Verify file paths, ensure `./Inputs/` prefix is correct, check zip file integrity
+- **Solution**: Verify file paths, ensure `./Inputs/` prefix is correct, verify zip file integrity
 
 **Issue**: `Rate limiting or IP blocking`
 - **Cause**: Too many requests in short time
