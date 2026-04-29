@@ -163,6 +163,29 @@ RUN_FUNCTIONS = {
 # Functions Definitions:
 
 
+def parse_arguments(repo_root: Path) -> argparse.Namespace:
+    """
+    Parse and return command-line arguments for the E-Commerces WebScraper.
+
+    :param repo_root: Root directory of the repository.
+    :return: Parsed argument namespace containing all CLI flags.
+    """
+    
+    parser = argparse.ArgumentParser(description="Affiliate Pages Downloader Automation")  # Initialize argument parser with description.
+
+    parser = argparse.ArgumentParser(description="Cross-platform affiliate pages downloader automation")  # Initialize argument parser.
+    parser.add_argument("--tab-count", type=int, default=0, help="Number of URLs/tabs to process (0 = use all URLs from Inputs/urls.txt)")  # Register tab-count argument.
+    parser.add_argument("--urls-file", type=Path, default=repo_root / "Inputs" / "urls.txt", help="Path to URLs input file")  # Register urls-file argument.
+    parser.add_argument("--assets-dir", type=Path, default=repo_root / ".assets" / "Browser", help="Directory containing image assets")  # Register assets-dir argument.
+    parser.add_argument("--headerless", type=lambda s: str(s).lower() in ("true", "1", "yes", "y"), default=True, help="Whether to suppress GUI messagebox (default: True)")  # Register headerless argument with boolean conversion
+    parser.add_argument("--renew-amazon-affiliate-url", action="store_true", default=False, help="Enable Amazon affiliate URL renewal attempts (default: False)")  # Register renewal override argument
+    parser.add_argument("--only-renew-amazon-urls", nargs="?", const="true", default=None, help="Enable mode that only renews Amazon affiliate URLs without downloading content")  # Register only-renew mode argument with optional truthy value.
+
+    args = parser.parse_args()  # Parse command-line arguments
+
+    return args  # Return parsed argument namespace
+
+
 def resolve_chrome_profile_directory(display_name: str) -> str | None:
     """
     Resolve Chrome profile directory folder (e.g. "Profile 1" or "Default")
