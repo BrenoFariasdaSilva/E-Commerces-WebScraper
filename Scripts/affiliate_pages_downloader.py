@@ -459,20 +459,23 @@ def select_chrome_window(chrome_windows: List[Any]) -> Any:
     return sorted_windows[0] if len(sorted_windows) > 0 else None  # Return first deterministic candidate when available.
 
 
-def click_box_center(box: Tuple[int, int, int, int]) -> None:
+def click_box_center(box: Tuple[int, int, int, int], move_cursor: bool = True) -> None:
     """
     Clicks the center of a detected bounding box.
 
     :param box: Bounding box tuple (x, y, width, height).
+    :param move_cursor: Flag indicating whether to move cursor before clicking.
     :return: None
     """
     
     x, y, w, h = box  # Unpack bounding box tuple.
 
-    center_x = x + (w // 2)  # Compute center X coordinate of detected box.
-    center_y = y + (h // 2)  # Compute center Y coordinate of detected box.
+    center_x = x + (w // 2)  # Compute center x coordinate of detected box.
+    center_y = y + (h // 2)  # Compute center y coordinate of detected box.
 
-    pyautogui.moveTo(center_x, center_y)  # Move cursor to detected center for traceability.
+    if move_cursor:  # Verify whether cursor movement before click is enabled.
+        pyautogui.moveTo(center_x, center_y)  # Move cursor to detected center for traceability.
+    
     pyautogui.click(center_x, center_y)  # Click center point of the box.
 
 
