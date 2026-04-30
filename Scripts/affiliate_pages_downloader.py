@@ -138,6 +138,7 @@ DOWNLOAD_SETTINGS_STATE_TOGGLE_1_ON = "Toggle 1 On"  # Define state label for th
 DOWNLOAD_SETTINGS_STATE_TOGGLE_2_ON = "Toggle 2 On"  # Define state label for the second downloads settings toggle enabled.
 DOWNLOAD_SETTINGS_STATE_BOTH_TOGGLES_ON = "Both Toggles On"  # Define state label for both downloads settings toggles enabled.
 DOWNLOAD_SETTINGS_STATE_UNKNOWN = "Unknown"  # Define state label for an unresolved downloads settings configuration.
+MAX_DOWNLOAD_RETRY_ATTEMPTS = 2  # Define maximum number of download attempts per URL including the initial attempt.
 
 TARGET_CHROME_TITLE = ""  # Store selected Chrome window title for reuse.
 ACTIVE_CHROME_BOUNDS = {"left": 0, "top": 0, "width": 0, "height": 0}  # Store active Chrome window bounds for coordinate calculations.
