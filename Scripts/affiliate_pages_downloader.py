@@ -2550,9 +2550,11 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
 
     first_fragmented_file_detected = False  # Flag to track whether the first fragmented file detection has occurred for initial failure handling.
 
-    # @TODO: Implement a retry method for failed url download of the zip file, that is, closes the extension tab, close the tab, closes the browser window (to avoid caches stuff), wait 1s, then open a new taba to process the same url and retry it once more. It would manipulate this loop (for index, url in enumerate(tqdm(urls, total=len(urls), desc="Processing URLs", bar_format=bar_format), start=1):  # Initialize tqdm with custom colored bar_format and enumerate indexing.), in order to do a "continue" but in a way that makes it reprocess the current url.
-
     for index, url in enumerate(tqdm(urls, total=len(urls), desc="Processing URLs", bar_format=bar_format), start=1):  # Initialize tqdm with custom colored bar_format and enumerate indexing
+        retry_attempt = 1  # Initialize retry counter for current URL execution.
+        success = False  # Initialize success flag for current URL processing.
+        fragmented_skip = False  # Initialize fragmented skip flag for for-loop continuation after while-loop exit.
+
         if not activate_automation_window():  # Verify if automation window activation succeeds before URL navigation.
             return processed_count, url_to_download, False  # Return failure state when activation fails.
 
@@ -2567,73 +2569,101 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
             if renewal_success and renewed_url != original_url:  # Verify whether renewal succeeded and URL actually changed before applying file updates.
                 apply_renewed_url_to_files(original_url, renewed_url, urls_file)  # Apply renewed URL to both main and backup input files.
 
+        # @TODO: FIx this, as this depends on renewal_sucess. If the renewal fails, it must try again 
         if only_renew_amazon_urls:  # Verify whether only-renew mode is active for Amazon URLs.
             opened_tabs = handle_only_renew_amazon_urls(opened_tabs)  # Execute extracted only-renew tab handling logic.
             processed_count += 1  # Increment processed counter.
-            continue  # Continue loop without executing download-specific workflow.
-
-        pre_download_snapshots = snapshot_download_directories(downloads_dirs)  # Capture downloads directory snapshots before URL processing.
-
-        click_go_to_product_button(mercado_livre_img)  # Execute MercadoLivre button action when available.
-
-        extension_method = click_image_or_coords(extension_img, EXTENSION_X_REF, EXTENSION_Y_REF)  # Execute extension click action with scaled fallback coordinates.
+            break  # Continue loop without executing download-specific workflow.
         
-        px, py = compute_extension_cursor_position()  # Compute cursor position based on current browser/window size.
-        pyautogui.moveTo(px, py, duration=0.12)  # Move cursor to computed extension position to prepare for scrolling.
-        time.sleep(0.05)  # Wait briefly after moving cursor to allow UI to stabilize before scrolling.
-        scroll_extension_tab_to_start_button()  # Scroll at cursor position to reveal the Start download button on low-resolution screens.
-        
-        enable_permission_method = click_enable_permission(enable_permission_img)  # Attempt to click optional extension enable permission button using passed asset variable.
-        
-        verbose_output(f"{BackgroundColors.GREEN}Enable permission action: {BackgroundColors.CYAN}{enable_permission_method}{BackgroundColors.GREEN}{Style.RESET_ALL}")  # Log enable-permission action when verbose.
-
-        download_method = click_download_button(download_img)  # Execute download click action.
-        confirmation_alt_img = confirmation_img.with_name(f"{confirmation_img.stem}-Alternative{confirmation_img.suffix}")  # Build alternative confirmation image path using deterministic naming pattern.
-        confirmation_method = watch_for_save_dialog_and_confirmation(save_button_img, confirmation_img, confirmation_alt_img)  # Watch and handle optional save dialog while waiting.
-
-        if confirmation_method != "Timeout":  # Verify whether download confirmation was not detected within the expected time frame.
+        while retry_attempt <= MAX_DOWNLOAD_RETRY_ATTEMPTS:  # Execute download attempt up to maximum retry limit.
+            pre_download_snapshots = snapshot_download_directories(downloads_dirs)  # Capture downloads directory snapshots before URL processing.
             
-            # @TODO: Dispatch this to a new function and thread/core in order for the code to jump to the next url and handle the download detection and mapping asynchronously while the current thread continues processing the next URLs and handling their downloads in parallel, which would significantly improve the overall processing time when dealing with a large number of URLs and downloads.
+            click_go_to_product_button(mercado_livre_img)  # Execute MercadoLivre button action when available.
             
-            wait_for_download_file_stabilization(downloads_dirs)  # Wait for file to finish writing and remove temporary extensions.
-            post_download_snapshots = snapshot_download_directories(downloads_dirs)  # Capture downloads directory snapshots after download completion.
+            extension_method = click_image_or_coords(extension_img, EXTENSION_X_REF, EXTENSION_Y_REF)  # Execute extension click action with scaled fallback coordinates.
+                
+            px, py = compute_extension_cursor_position()  # Compute cursor position based on current browser/window size.
+            pyautogui.moveTo(px, py, duration=0.12)  # Move cursor to computed extension position to prepare for scrolling.
+            time.sleep(0.05)  # Wait briefly after moving cursor to allow UI to stabilize before scrolling.
+            scroll_extension_tab_to_start_button()  # Scroll at cursor position to reveal the Start download button on low-resolution screens.
+            
+            enable_permission_method = click_enable_permission(enable_permission_img)  # Attempt to click optional extension enable permission button using passed asset variable.
+            
+            verbose_output(f"{BackgroundColors.GREEN}Enable permission action: {BackgroundColors.CYAN}{enable_permission_method}{BackgroundColors.GREEN}{Style.RESET_ALL}")  # Log enable-permission action when verbose.
 
-            if len(downloads_dirs) > 1:  # Verify whether monitored downloads directories are unresolved.
-                resolved_download_dir = resolve_first_download_directory(downloads_dirs, pre_download_snapshots, post_download_snapshots)  # Resolve monitored downloads directory using first detected file.
+            download_method = click_download_button(download_img)  # Execute download click action.
+            confirmation_alt_img = confirmation_img.with_name(f"{confirmation_img.stem}-Alternative{confirmation_img.suffix}")  # Build alternative confirmation image path using deterministic naming pattern.
+            confirmation_method = watch_for_save_dialog_and_confirmation(save_button_img, confirmation_img, confirmation_alt_img)  # Watch and handle optional save dialog while waiting.
 
-                if resolved_download_dir is not None:  # Verify whether monitored downloads directory resolution succeeded.
-                    update_active_download_directory(resolved_download_dir)  # Persist resolved monitored downloads directory in global cache.
-                    downloads_dirs[:] = ACTIVE_DOWNLOADS_DIRS  # Update local monitored downloads directories list with resolved cache.
+            download_failed = confirmation_method == "Timeout"  # Set download failure flag based on confirmation timeout result.
+            
+            if not download_failed:  # Execute post-download detection when confirmation succeeded.
+                # @TODO: Dispatch this to a new function and thread/core in order for the code to jump to the next url and handle the download detection and mapping asynchronously while the current thread continues processing the next URLs and handling their downloads in parallel, which would significantly improve the overall processing time when dealing with a large number of URLs and downloads.
+                
+                wait_for_download_file_stabilization(downloads_dirs)  # Wait for file to finish writing and remove temporary extensions.
+                post_download_snapshots = snapshot_download_directories(downloads_dirs)  # Capture downloads directory snapshots after download completion.
+                
+                if len(downloads_dirs) > 1:  # Verify whether monitored downloads directories are unresolved.
+                    resolved_download_dir = resolve_first_download_directory(downloads_dirs, pre_download_snapshots, post_download_snapshots)  # Resolve monitored downloads directory using first detected file.
+                    
+                    if resolved_download_dir is not None:  # Verify whether monitored downloads directory resolution succeeded.
+                        update_active_download_directory(resolved_download_dir)  # Persist resolved monitored downloads directory in global cache.
+                        downloads_dirs[:] = ACTIVE_DOWNLOADS_DIRS  # Update local monitored downloads directories list with resolved cache.
+                        
+                detected_download_dir, detected_filenames = detect_new_download_from_directories(pre_download_snapshots, post_download_snapshots, downloads_dirs, url)  # Detect downloaded filename and source directory associated with current URL.
+                
+                if detected_download_dir != "" and len(downloads_dirs) > 1:  # Verify whether detected directory exists while local list remains unresolved.
+                    update_active_download_directory(detected_download_dir)  # Persist detected monitored downloads directory in global cache.
+                    downloads_dirs[:] = ACTIVE_DOWNLOADS_DIRS  # Update local monitored downloads directories list with detected cache.
+                
+                initial_consecutive_download_failures, abort_result = handle_initial_chrome_download_failures(chrome_download_settings_ready, index, detected_filenames, initial_consecutive_download_failures, url, processed_count, url_to_download)  # Verify initial downloads and possibly request manual intervention.
+                
+                if abort_result is not None:  # Verify whether handler requested abort after manual intervention request.
+                    return abort_result  # Return handler-provided abort tuple to stop processing remaining URLs.
+                
+                if detected_filenames == "":  # Verify whether file detection failed after confirmation succeeded.
+                    download_failed = True  # Mark download as failed when no file was detected after confirmation.
+                else:  # Execute success path when file was detected after confirmation.
+                    effective_filename = detected_filenames  # Default: Non-fragmented file case.
+                    
+                    effective_filename, first_fragmented_file_detected, should_continue = handle_fragmented_download(detected_download_dir, detected_filenames, url, first_fragmented_file_detected)  # Execute fragmented ZIP handling logic.
+                    
+                    if should_continue:  # Verify whether fragmented processing requested loop continuation.
+                        verbose_output(f"{BackgroundColors.YELLOW}[WARNING] Skipping URL mapping update due to fragmented ZIP processing failure for URL: {url}{Style.RESET_ALL}")  # Log mapping skip due to fragmented processing failure with URL details when verbose.
+                        fragmented_skip = True  # Mark fragmented skip flag for outer for-loop continuation without processed_count increment.
+                        break  # Exit while loop without closing tabs, preserving original fragmented skip behavior.
+                    
+                    associate_url_with_download(url_to_download, url, effective_filename)  # Persist URL to downloaded filename mapping when detection succeeds.
+                    update_url_filename_in_files(urls_file, url, effective_filename)  # Update detected filename for the current URL in both main and backup input files.
+                    effective_filename = move_downloaded_file_for_url(downloads_dirs, urls_file.resolve().parent, url, effective_filename, url_to_download)  # Move downloaded file for current URL and update mapping with new location.
+                    success = True  # Mark download as successful for processed_count increment after while loop.
+                    
+            close_method = close_extension_download_tab(close_download_tab_img)  # Execute close extension tab action.
+            handle_post_download_methods(ext_methods, download_methods, completion_methods, close_methods, extension_method, download_method, confirmation_method, close_method, current_tab)  # Execute extracted method tracking logic.
+            opened_tabs = safely_close_product_tab(opened_tabs)  # Execute safe tab closure logic and update opened tabs counter.
 
-            detected_download_dir, detected_filenames = detect_new_download_from_directories(pre_download_snapshots, post_download_snapshots, downloads_dirs, url)  # Detect downloaded filename and source directory associated with current URL.
+            if download_failed:  # Execute retry or exhaustion handling when download failed.
+                retry_attempt += 1  # Increment retry counter before evaluating retry eligibility.
 
-            if detected_download_dir != "" and len(downloads_dirs) > 1:  # Verify whether detected directory exists while local list remains unresolved.
-                update_active_download_directory(detected_download_dir)  # Persist detected monitored downloads directory in global cache.
-                downloads_dirs[:] = ACTIVE_DOWNLOADS_DIRS  # Update local monitored downloads directories list with detected cache.
+                if retry_attempt <= MAX_DOWNLOAD_RETRY_ATTEMPTS:  # Verify whether retry is still within allowed attempts.
+                    print(f"{BackgroundColors.YELLOW}[WARNING] Download failed for URL: {BackgroundColors.CYAN}{url}{BackgroundColors.YELLOW}. Retrying attempt {BackgroundColors.CYAN}{retry_attempt}{BackgroundColors.YELLOW}/{BackgroundColors.CYAN}{MAX_DOWNLOAD_RETRY_ATTEMPTS}{BackgroundColors.YELLOW}.{Style.RESET_ALL}")  # Log retry warning with current attempt count.
+                    context_ready = reset_browser_context_for_retry(close_download_tab_img)  # Reset browser context by closing window and reopening automation environment.
+                    opened_tabs = 0  # Reset opened tabs counter after browser window closure during retry.
 
-            initial_consecutive_download_failures, abort_result = handle_initial_chrome_download_failures(chrome_download_settings_ready, index, detected_filenames, initial_consecutive_download_failures, url, processed_count, url_to_download)  # Verify initial downloads and possibly request manual intervention
+                    if context_ready:  # Verify browser context readiness before reopening URL for retry.
+                        opened_tabs = open_url_in_new_tab(url, opened_tabs)  # Reopen URL in new tab for retry attempt.
+                    continue  # Continue while loop for retry attempt execution.
+                print(f"{BackgroundColors.YELLOW}[WARNING] Download failed for URL: {BackgroundColors.CYAN}{url}{BackgroundColors.YELLOW} after {BackgroundColors.CYAN}{MAX_DOWNLOAD_RETRY_ATTEMPTS}{BackgroundColors.YELLOW} attempts. Moving to next URL.{Style.RESET_ALL}")  # Log final failure after exhausting all retry attempts.
+                break  # Exit while loop after exhausting all retry attempts.
+            break  # Exit while loop on successful download completion.
 
-            if abort_result is not None:  # Verify whether handler requested abort after manual intervention request
-                return abort_result  # Return handler-provided abort tuple to stop processing remaining URLs
+        if fragmented_skip:  # Verify whether fragmented skip was requested during download attempt.
+            continue  # Continue for loop without processed_count increment for fragmented ZIP skip.
 
-            effective_filename = detected_filenames  # Default: Non-fragmented file case.
+        if not success:  # Verify whether download ultimately failed after all retry attempts.
+            continue  # Continue for loop without processed_count increment for failed URLs.
 
-            effective_filename, first_fragmented_file_detected, should_continue = handle_fragmented_download(detected_download_dir, detected_filenames, url, first_fragmented_file_detected)  # Execute fragmented ZIP handling logic.
-
-            if should_continue:  # Verify whether fragmented processing requested loop continuation.
-                verbose_output(f"{BackgroundColors.YELLOW}[WARNING] Skipping URL mapping update due to fragmented ZIP processing failure for URL: {url}{Style.RESET_ALL}")  # Log mapping skip due to fragmented processing failure with URL details when verbose.
-                continue  # Continue with next URL without updating mapping when fragmented ZIP processing fails.
-
-            associate_url_with_download(url_to_download, url, effective_filename)  # Persist URL to downloaded filename mapping when detection succeeds.
-            update_url_filename_in_files(urls_file, url, effective_filename)  # Update detected filename for the current URL in both main and backup input files.
-            effective_filename = move_downloaded_file_for_url(downloads_dirs, urls_file.resolve().parent, url, effective_filename, url_to_download)  # Move downloaded file for current URL and update mapping with new location
-
-        close_method = close_extension_download_tab(close_download_tab_img)  # Execute close extension tab action.
-        handle_post_download_methods(ext_methods, download_methods, completion_methods, close_methods, extension_method, download_method, confirmation_method, close_method, current_tab)  # Execute extracted method tracking logic.
-        
-        opened_tabs = safely_close_product_tab(opened_tabs)  # Execute extracted safe tab closure logic and update opened tabs counter.
-
-        processed_count += 1  # Increment processed counter.
+        processed_count += 1  # Increment processed counter for successfully completed URLs.
 
     url_to_download = dict(sorted(url_to_download.items(), key=lambda item: item[0].lower()))  # Sort URL mapping dictionary by keys alphabetically in a case-insensitive manner
 
