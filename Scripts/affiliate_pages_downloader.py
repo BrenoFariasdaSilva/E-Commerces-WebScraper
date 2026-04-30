@@ -3289,6 +3289,39 @@ def safely_close_product_tab(opened_tabs: int) -> int:
     return opened_tabs  # Return updated opened tabs counter.
 
 
+def reset_browser_context_for_retry(close_download_tab_img: Path) -> bool:
+    """
+    Resets the browser context for a download retry by closing tabs and reopening the automation window.
+
+    :param close_download_tab_img: Path to close extension download tab image.
+    :return: True when the fresh automation context is ready, otherwise False.
+    """
+
+    close_extension_download_tab(close_download_tab_img)  # Close extension download tab before browser window reset.
+
+    try:  # Attempt to close the current browser tab before window teardown.
+        pyautogui.hotkey("ctrl", "w")  # Close current browser tab via hotkey.
+        time.sleep(0.3)  # Wait after tab closure to allow browser to stabilize.
+    except Exception as e:  # Handle tab closure failure without interrupting retry flow.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to close browser tab during retry reset: {e}{Style.RESET_ALL}")  # Log warning when tab closure fails during retry.
+
+    try:  # Attempt to close the current browser window to clear cached state.
+        current_os = platform.system().lower()  # Detect current operating system for window close hotkey selection.
+
+        if current_os == "darwin":  # Verify macOS for Command+Q hotkey.
+            pyautogui.hotkey("command", "q")  # Send Command+Q to quit Chrome on macOS.
+        else:  # Use Control+Shift+W on Windows/Linux to close the current window.
+            pyautogui.hotkey("ctrl", "shift", "w")  # Send Control+Shift+W to close current Chrome window on Windows/Linux.
+
+        time.sleep(0.6)  # Wait after close hotkey to allow window teardown.
+    except Exception as e:  # Handle window closure failure without interrupting retry flow.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to close browser window during retry reset: {e}{Style.RESET_ALL}")  # Log warning when window closure fails during retry.
+
+    time.sleep(1)  # Wait one second before reopening the browser context to avoid residual state.
+    context_ready = prepare_dedicated_chrome_window_for_automation()  # Reopen fresh dedicated Chrome automation window.
+    return context_ready  # Return browser context readiness status.
+
+
 def join_array(values: List[int]) -> str:
     """
     Joins integer list into comma-separated string.
