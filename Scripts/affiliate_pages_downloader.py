@@ -2179,6 +2179,28 @@ def detect_new_download_from_directories(before_snapshots: Dict[str, Dict[str, f
     return selected_dir, selected_filename  # Return detected directory and filename.
 
 
+def filter_and_delete_detected_filenames(detected_filename: str, delete_temp_files: bool = True) -> str:
+    """
+    Filters detected filenames to remove temporary or invalid entries.
+
+    :param detected_filename: Detected filename to be filtered.
+    :param delete_temp_files: Flag indicating whether to attempt deletion of detected temporary files.
+    :return: Filtered filename or empty string if invalid.
+    """
+    
+    if detected_filename.endswith(".tmp"):  # If the detected file is a temporary file.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Detected filename appears to be a temporary file and will be ignored: {BackgroundColors.CYAN}{detected_filename}{Style.RESET_ALL}")  # Log warning about temporary file detection.
+        try:
+            if delete_temp_files:  # Check if deletion of temporary files is enabled before attempting to delete.
+                os.remove(detected_filename)  # Attempt to delete the temporary file to prevent future false detections.
+                verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Temporary file deleted: {BackgroundColors.CYAN}{detected_filename}{BackgroundColors.GREEN}{Style.RESET_ALL}")  # Log successful deletion of temporary file.
+        except Exception as e:  # Handle potential failures during file deletion.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Failed to delete temporary file: {BackgroundColors.CYAN}{detected_filename}{Style.RESET_ALL} - {e}")  # Log failure to delete temporary file for visibility.
+        return ""  # Return empty string for temporary files.
+
+    return detected_filename  # Return original filename if valid.
+
+
 def detect_new_download_file(before_snapshot: Dict[str, float], after_snapshot: Dict[str, float], url: str) -> str:
     """
     Detects new downloaded filename by comparing two snapshots.
@@ -2613,6 +2635,8 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
                         downloads_dirs[:] = ACTIVE_DOWNLOADS_DIRS  # Update local monitored downloads directories list with resolved cache.
                         
                 detected_download_dir, detected_filenames = detect_new_download_from_directories(pre_download_snapshots, post_download_snapshots, downloads_dirs, url)  # Detect downloaded filename and source directory associated with current URL.
+                
+                detected_filenames = filter_and_delete_detected_filenames(detected_filenames)  # Filter detected filenames to remove temporary or invalid entries.
                 
                 if detected_download_dir != "" and len(downloads_dirs) > 1:  # Verify whether detected directory exists while local list remains unresolved.
                     update_active_download_directory(detected_download_dir)  # Persist detected monitored downloads directory in global cache.
