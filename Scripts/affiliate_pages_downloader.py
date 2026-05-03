@@ -2589,6 +2589,8 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
             
             enable_permission_method = click_enable_permission(enable_permission_img)  # Attempt to click optional extension enable permission button using passed asset variable.
             
+            scroll_extension_tab_to_start_button()  # Scroll again after potential permission click to ensure the Start download button is visible regardless of permission prompt presence or screen size.
+            
             verbose_output(f"{BackgroundColors.GREEN}Enable permission action: {BackgroundColors.CYAN}{enable_permission_method}{BackgroundColors.GREEN}{Style.RESET_ALL}")  # Log enable-permission action when verbose.
 
             download_method = click_download_button(download_img)  # Execute download click action.
@@ -3041,7 +3043,9 @@ def click_download_button(download_img: Path) -> str:
     """
 
     start = time.time()  # Store start timestamp for retry window.
-
+    
+    scroll_extension_tab_to_start_button()  # Ensure the download button is visible by scrolling the extension tab before attempting to locate the download button image.
+    
     while time.time() - start < 3.0:  # Repeat until timeout window expires.
         box = locate_image(download_img)  # Locate download image on screen.
 
