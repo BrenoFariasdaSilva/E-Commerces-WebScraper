@@ -3138,7 +3138,7 @@ def prevent_screen_lock(last_move_ts: float, interval_seconds: float = 50.0) -> 
     return last_move_ts  # Return unchanged timestamp when interval not reached.
 
 
-def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_img: Path, confirmation_alt_img: Path) -> str:
+def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_img: Path, confirmation_alt_img: Path, failed_file_download_img: Path) -> str:
     """
     Watches for the optional Chrome "Save As" dialog and clicks the save button if it appears,
     while also monitoring for the confirmation image to stop early.
@@ -3146,6 +3146,7 @@ def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_i
     :param save_button_img: Path to the save button image.
     :param confirmation_img: Path to the confirmation image.
     :param confirmation_alt_img: Path to the alternative confirmation image.
+    :param failed_file_download_img: Path to the failed file download image.
     :return: Detection status string.
     """
     
@@ -3177,6 +3178,10 @@ def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_i
                 time.sleep(0.1)  # Wait briefly to allow UI to process click before sending key event.
                 pyautogui.press("enter")  # Confirm save action via Enter key when required.
             return "Image Detected"  # Return confirmation detection method.
+        
+        if enhanced_locate_image(failed_file_download_img) is not None:  # Verify for failed file download image to allow early exit with failure status when detected.
+            print(f"{BackgroundColors.RED}[DEBUG] Detected failed file download image during save dialog watch; exiting early with failure status.{Style.RESET_ALL}")  # Log early exit due to download failure detection.
+            return "Download Failed"  # Return download failure status.
 
         time.sleep(1)  # Wait 1 second before next verification cycle.
 
