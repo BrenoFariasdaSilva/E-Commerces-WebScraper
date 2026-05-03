@@ -3132,6 +3132,8 @@ def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_i
         last_cursor_move_ts = prevent_screen_lock(last_cursor_move_ts)  # Periodically move cursor to prevent screen lock.
 
         box = enhanced_locate_image(save_button_img)  # Attempt to locate the optional save button image on screen.
+        pyautogui.press("enter")  # Confirm save action via Enter key when required.
+        
         if box is not None:  # Verify image was found.
             verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Save button detected; clicking to confirm download.{Style.RESET_ALL}")  # Log save button detection and click action.
             click_box_center(box)  # Click center of detected save button box.
