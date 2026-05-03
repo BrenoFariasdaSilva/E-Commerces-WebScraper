@@ -2620,7 +2620,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
 
             download_method = click_download_button(download_img)  # Execute download click action.
             confirmation_alt_img = confirmation_img.with_name(f"{confirmation_img.stem}-Alternative{confirmation_img.suffix}")  # Build alternative confirmation image path using deterministic naming pattern.
-            confirmation_method = watch_for_save_dialog_and_confirmation(save_button_img, confirmation_img, confirmation_alt_img)  # Watch and handle optional save dialog while waiting.
+            confirmation_method = watch_for_save_dialog_and_confirmation(save_button_img, confirmation_img, confirmation_alt_img, failed_file_download_img)  # Watch and handle optional save dialog while waiting.
 
             download_failed = confirmation_method == "Timeout"  # Set download failure flag based on confirmation timeout result.
             
