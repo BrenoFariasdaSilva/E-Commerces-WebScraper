@@ -2622,7 +2622,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
             confirmation_alt_img = confirmation_img.with_name(f"{confirmation_img.stem}-Alternative{confirmation_img.suffix}")  # Build alternative confirmation image path using deterministic naming pattern.
             confirmation_method = watch_for_save_dialog_and_confirmation(save_button_img, confirmation_img, confirmation_alt_img, failed_file_download_img)  # Watch and handle optional save dialog while waiting.
 
-            download_failed = confirmation_method == "Timeout"  # Set download failure flag based on confirmation timeout result.
+            download_failed = confirmation_method == "Timeout" or confirmation_method == "Download Failed"  # Set download failure flag based on confirmation timeout or failed download result.
             
             if not download_failed:  # Execute post-download detection when confirmation succeeded.
                 # @TODO: Dispatch this to a new function and thread/core in order for the code to jump to the next url and handle the download detection and mapping asynchronously while the current thread continues processing the next URLs and handling their downloads in parallel, which would significantly improve the overall processing time when dealing with a large number of URLs and downloads.
