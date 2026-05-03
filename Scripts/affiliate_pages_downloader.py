@@ -2531,7 +2531,7 @@ def apply_renewed_url_to_files(original_url: str, renewed_url: str, urls_file: P
         update_urls_txt_with_new_amazon_url(original_url, renewed_url, backup_file)  # Replace original URL with renewed URL in the backup URLs input file.
 
 
-def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_count: int, downloads_dirs: List[str], extension_img: Path, download_img: Path, enable_permission_img: Path, confirmation_img: Path, close_download_tab_img: Path, mercado_livre_img: Path, share_button_img: Path, save_button_img: Path, ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]], chrome_download_settings_ready: bool, renew_amazon_affiliate: bool = False, only_renew_amazon_urls: bool = False) -> Tuple[int, Dict[str, str], bool]:
+def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_count: int, downloads_dirs: List[str], extension_img: Path, download_img: Path, enable_permission_img: Path, confirmation_img: Path, failed_file_download_img: Path, close_download_tab_img: Path, mercado_livre_img: Path, share_button_img: Path, save_button_img: Path, ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]], chrome_download_settings_ready: bool, renew_amazon_affiliate: bool = False, only_renew_amazon_urls: bool = False) -> Tuple[int, Dict[str, str], bool]:
     """
     Processes URLs while tracking downloaded files by directory snapshots.
 
@@ -2543,6 +2543,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
     :param download_img: Path to download button image.
     :param enable_permission_img: Path to optional extension enable-permission image.
     :param confirmation_img: Path to download confirmation image.
+    :param failed_file_download_img: Path to failed file download image indicating download failure.
     :param close_download_tab_img: Path to close extension tab image.
     :param mercado_livre_img: Path to MercadoLivre go-to-product image.
     :param share_button_img: Path to ShareAffiliateURL button image for Amazon URL renewal.
@@ -4038,7 +4039,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
             existing_report_urls = set()  # Load existing linked urls from report file for filtering.
             urls = [url for url in urls if url not in existing_report_urls]  # Filter already linked urls from processing list.
         
-        processed_count, url_to_download, process_success = process_urls_with_download_tracking(urls, urls_file, tab_count, downloads_dirs, extension_img, download_img, enable_permission_img, confirmation_img, close_download_tab_img, mercado_livre_img, share_button_img, save_button_img, ext_methods, download_methods, completion_methods, close_methods, chrome_download_settings_ready, renew_amazon_affiliate, only_renew_amazon_urls)  # Process URLs with download tracking and retrieve mapping details.
+        processed_count, url_to_download, process_success = process_urls_with_download_tracking(urls, urls_file, tab_count, downloads_dirs, extension_img, download_img, enable_permission_img, confirmation_img, failed_file_download_img, close_download_tab_img, mercado_livre_img, share_button_img, save_button_img, ext_methods, download_methods, completion_methods, close_methods, chrome_download_settings_ready, renew_amazon_affiliate, only_renew_amazon_urls)  # Process URLs with download tracking and retrieve mapping details.
         
         verbose_output(f"{BackgroundColors.GREEN}URL to Downloaded Filename Mapping:\n{BackgroundColors.CYAN}" + "\n".join(f'    "{k}": "{v}"' for k, v in url_to_download.items()) + f"{Style.RESET_ALL}")  # Print URL to downloaded filename mapping details when verbose enabled.
 
