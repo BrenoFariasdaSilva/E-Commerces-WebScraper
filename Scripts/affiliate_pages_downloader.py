@@ -3024,6 +3024,7 @@ def handle_amazon_affiliate_url(current_tab: int, url: str, share_button_img: Pa
     time.sleep(1)  # Wait briefly after scrolling to allow UI to stabilize before renewal attempt.
 
     renewal_success = False  # Initialize renewal success flag.
+    old_url = url  # Preserve original URL for comparison after renewal attempt.
     renewed_url = url  # Initialize renewed URL with original URL.
 
     if renew_amazon_affiliate or RENEW_AMAZON_AFFILIATE_URL:  # Verify whether renewal is enabled via arg or global flag before attempting renewal.
@@ -3033,9 +3034,9 @@ def handle_amazon_affiliate_url(current_tab: int, url: str, share_button_img: Pa
 
     if VERBOSE:  # Verify whether verbose logging is enabled for renewal status reporting.
         if renewal_success:  # Verify whether renewal succeeded before logging success message.
-            print(f"{BackgroundColors.GREEN}Amazon URL renewed successfully for tab {BackgroundColors.CYAN}{current_tab}{BackgroundColors.GREEN} from {BackgroundColors.CYAN}{url}{BackgroundColors.GREEN} to {BackgroundColors.CYAN}{renewed_url}{Style.RESET_ALL}")  # Log successful renewal with details and green background.
+            print(f"{BackgroundColors.GREEN}Amazon URL renewed successfully for tab {BackgroundColors.CYAN}{current_tab}{BackgroundColors.GREEN} from {BackgroundColors.CYAN}{old_url}{BackgroundColors.GREEN} to {BackgroundColors.CYAN}{renewed_url}{Style.RESET_ALL}")  # Log successful renewal with details and green background.
         else:  # Otherwise renewal failed, log failure message.
-            print(f"{BackgroundColors.RED}Amazon URL renewal failed for tab {BackgroundColors.CYAN}{current_tab}{BackgroundColors.RED} from {BackgroundColors.CYAN}{url}{BackgroundColors.RED} to {BackgroundColors.CYAN}{renewed_url}{Style.RESET_ALL}")  # Log failed renewal with details and red background.
+            print(f"{BackgroundColors.RED}Amazon URL renewal failed for tab {BackgroundColors.CYAN}{current_tab}{BackgroundColors.RED} from {BackgroundColors.CYAN}{old_url}{BackgroundColors.RED} to {BackgroundColors.CYAN}{renewed_url}{Style.RESET_ALL}")  # Log failed renewal with details and red background.
 
     return url, renewal_success, renewed_url  # Return updated URL, success flag, and renewed URL.
 
