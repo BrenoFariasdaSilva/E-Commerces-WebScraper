@@ -2991,6 +2991,7 @@ def open_url_in_new_tab(url: str, opened_tabs: int) -> int:
 
     return opened_tabs  # Return updated opened tabs count.
 
+
 def scroll_window_to_top_center() -> None:
     """
     Scrolls the active window to the top center.
