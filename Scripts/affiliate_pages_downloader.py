@@ -2934,15 +2934,19 @@ def compute_extension_cursor_position() -> Tuple[int, int]:
     :return: Tuple of X and Y coordinates to position the cursor for extension tab scrolling.
     """
 
-    screen_width, screen_height = get_screen_dimensions()  # Retrieve current screen width and height from pyautogui.
+    window_bounds = get_active_window_bounds()  # Retrieve active Chrome window bounds for absolute coordinate computation.
+    window_left = window_bounds["left"]  # Extract active window left offset for absolute X positioning.
+    window_top = window_bounds["top"]  # Extract active window top offset for absolute Y positioning.
+    window_width = max(1, window_bounds["width"])  # Extract active window width for relative position computation.
+    window_height = max(1, window_bounds["height"])  # Extract active window height for vertical center computation.
 
-    ninth_segment_start = int(screen_width * 0.8)  # Compute start of the ninth decile of the screen width.
+    ninth_segment_start = int(window_width * 0.8)  # Compute start of the ninth decile of the window width.
 
-    ninth_segment_end = int(screen_width * 0.9)  # Compute end of the ninth decile of the screen width.
+    ninth_segment_end = int(window_width * 0.9)  # Compute end of the ninth decile of the window width.
 
-    target_x = int((ninth_segment_start + ninth_segment_end) / 2)  # Compute center X inside the ninth decile (85% of width).
+    target_x = window_left + int((ninth_segment_start + ninth_segment_end) / 2)  # Compute absolute center X inside the ninth decile offset by window position.
 
-    target_y = int(screen_height / 2)  # Compute vertical center Y of the screen.
+    target_y = window_top + int(window_height / 2)  # Compute absolute vertical center Y offset by window position.
 
     return target_x, target_y  # Return computed cursor coordinates for extension interactions.
 
