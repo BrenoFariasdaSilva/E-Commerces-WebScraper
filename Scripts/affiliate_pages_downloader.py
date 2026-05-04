@@ -1042,8 +1042,8 @@ def get_chrome_download_settings_region() -> Tuple[int, int, int, int] | None:
     """
 
     window_bounds = get_active_window_bounds()  # Retrieve active Chrome window bounds for region capture.
-    left = max(0, int(window_bounds.get("left", 0)))  # Resolve safe left coordinate for region capture.
-    top = max(0, int(window_bounds.get("top", 0)))  # Resolve safe top coordinate for region capture.
+    left = int(window_bounds.get("left", 0))  # Resolve left coordinate for region capture, preserving negative secondary-monitor offsets.
+    top = int(window_bounds.get("top", 0))  # Resolve top coordinate for region capture, preserving negative secondary-monitor offsets.
     width = max(1, int(window_bounds.get("width", 0)))  # Resolve safe width for region capture.
     height = max(1, int(window_bounds.get("height", 0)))  # Resolve safe height for region capture.
 
