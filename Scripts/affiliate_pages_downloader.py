@@ -4312,6 +4312,9 @@ def main():
     if args.only_renew_amazon_urls is not None and str(args.only_renew_amazon_urls).lower() in ("true", "1"):  # Verify whether argparse includes truthy only-renew value.
         ONLY_RENEW_AMAZON_AFFILIATE_URLS = True  # Enable global only-renew mode when argparse value is truthy.
 
+    global USE_MAIN_MONITOR  # Reference global monitor selection flag for CLI override.
+    USE_MAIN_MONITOR = args.main_monitor  # Set monitor selection based on parsed CLI argument.
+
     update_chrome_profile(CHROME_PROFILE_DISPLAY_NAME)  # Resolve and set CHROME_PROFILE_DIRECTORY using configured display name with Default fallback.
 
     exit_code = run(args.tab_count, args.urls_file, args.assets_dir, args.headerless, args.renew_amazon_affiliate_url, ONLY_RENEW_AMAZON_AFFILIATE_URLS, args.process_only_unlinked_urls)  # Execute automation flow with headerless option, renewal override, only-renew mode, and unlinked URLs processing.
