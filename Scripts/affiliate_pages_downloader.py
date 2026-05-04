@@ -539,7 +539,7 @@ def activate_window_with_fallback(target_window: Any) -> bool:
         return False  # Return failure status when all activation strategies fail.
 
 
-def get_primary_monitor_bounds() -> Tuple[int, int, int, int]:
+def get_desired_monitor_bounds() -> Tuple[int, int, int, int]:
     """
     Retrieves primary monitor bounds from screen size.
 
@@ -592,7 +592,7 @@ def relocate_window_to_primary_monitor(target_window: Any) -> bool:
         return False  # Return failure status when target window is missing.
 
     try:  # Attempt primary monitor relocation logic.
-        primary_left, primary_top, primary_right, primary_bottom = get_primary_monitor_bounds()  # Retrieve primary monitor bounds.
+        primary_left, primary_top, primary_right, primary_bottom = get_desired_monitor_bounds()  # Retrieve primary monitor bounds.
 
         if not is_window_outside_primary_monitor(target_window, (primary_left, primary_top, primary_right, primary_bottom)):  # Verify whether relocation is required.
             return True  # Return success when window is already on primary monitor.
@@ -2850,7 +2850,7 @@ def get_screen_dimensions() -> Tuple[int, int]:
     :return: Tuple of target monitor width and height in pixels.
     """
 
-    left, top, right, bottom = get_primary_monitor_bounds()  # Retrieve target monitor bounds from monitor selection logic.
+    left, top, right, bottom = get_desired_monitor_bounds()  # Retrieve target monitor bounds from monitor selection logic.
     return max(1, right - left), max(1, bottom - top)  # Return target monitor width and height derived from bounds.
 
 
