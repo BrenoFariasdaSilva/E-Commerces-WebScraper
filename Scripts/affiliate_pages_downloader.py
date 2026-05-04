@@ -2756,13 +2756,14 @@ def get_scale_factors() -> list[float]:
     return [0.5, 0.75, 1.0, 1.25, 1.5]  # Return supported scaling values.
 
 
-def match_template_multi_scale(screen: Any, template: Any, scales: list[float]) -> Any:
+def match_template_multi_scale(screen: Any, template: Any, scales: list[float], verbose=False) -> Any:
     """
     Performs multi-scale template matching.
 
     :param screen: Grayscale screenshot.
     :param template: Grayscale template image.
     :param scales: Scale factors to test.
+    :param verbose: Flag to enable verbose output.
     :return: Best match result or None.
     """
 
@@ -2779,7 +2780,8 @@ def match_template_multi_scale(screen: Any, template: Any, scales: list[float]) 
         _, max_val, _, max_loc = cv2.minMaxLoc(result)  # Extract best result.
 
         if max_val > best_val:  # Verify improvement.
-            verbose_output(f"{BackgroundColors.GREEN}[DEBUG] New best match found at scale {BackgroundColors.CYAN}{scale}{BackgroundColors.GREEN} with confidence {BackgroundColors.CYAN}{max_val:.4f}{Style.RESET_ALL}")  # Log new best match details when verbose.
+            if verbose:
+                verbose_output(f"{BackgroundColors.GREEN}[DEBUG] New best match found at scale {BackgroundColors.CYAN}{scale}{BackgroundColors.GREEN} with confidence {BackgroundColors.CYAN}{max_val:.4f}{Style.RESET_ALL}")  # Log new best match details when verbose.
             best_val = max_val  # Update score.
             best_match = (max_loc, resized.shape[::-1])  # Store match.
 
