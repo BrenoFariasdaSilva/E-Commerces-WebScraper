@@ -3118,8 +3118,6 @@ def prevent_screen_lock(last_move_ts: float, interval_seconds: float = 50.0) -> 
     :param interval_seconds: Minimum seconds between cursor movements.
     :return: Updated timestamp of last cursor movement.
     """
-    
-    verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Verifying screen lock prevention at interval of {BackgroundColors.CYAN}{interval_seconds}{BackgroundColors.GREEN} seconds...{Style.RESET_ALL}")  # Log entry into screen lock prevention with interval details when verbose.
 
     current_time = time.time()  # Capture current timestamp for interval comparison.
 
