@@ -143,6 +143,7 @@ MAX_DOWNLOAD_RETRY_ATTEMPTS = 2  # Define maximum number of download attempts pe
 TARGET_CHROME_TITLE = ""  # Store selected Chrome window title for reuse.
 ACTIVE_CHROME_BOUNDS = {"left": 0, "top": 0, "width": 0, "height": 0}  # Store active Chrome window bounds for coordinate calculations.
 DEDICATED_AUTOMATION_HWND: int = 0  # Store OS window handle of dedicated automation Chrome window for tab lifecycle isolation.
+USE_MAIN_MONITOR: bool = False  # Control whether UI operations target the primary monitor instead of a secondary monitor.
 
 # Logger Setup:
 logger = Logger(f"./Logs/{Path(__file__).stem}.log", clean=True)  # Create a Logger instance
@@ -4309,7 +4310,7 @@ def main():
 
     if args.only_renew_amazon_urls is not None and str(args.only_renew_amazon_urls).lower() in ("true", "1"):  # Verify whether argparse includes truthy only-renew value.
         ONLY_RENEW_AMAZON_AFFILIATE_URLS = True  # Enable global only-renew mode when argparse value is truthy.
-    
+
     update_chrome_profile(CHROME_PROFILE_DISPLAY_NAME)  # Resolve and set CHROME_PROFILE_DIRECTORY using configured display name with Default fallback.
 
     exit_code = run(args.tab_count, args.urls_file, args.assets_dir, args.headerless, args.renew_amazon_affiliate_url, ONLY_RENEW_AMAZON_AFFILIATE_URLS, args.process_only_unlinked_urls)  # Execute automation flow with headerless option, renewal override, only-renew mode, and unlinked URLs processing.
