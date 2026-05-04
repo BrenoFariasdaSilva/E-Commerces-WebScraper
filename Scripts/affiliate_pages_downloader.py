@@ -2872,7 +2872,11 @@ def capture_screen_grayscale() -> Any:
     :return: Grayscale screenshot as numpy array.
     """
 
-    screen = pyautogui.screenshot()  # Capture current screen.
+    try:  # Attempt all-monitor screenshot capture for full virtual desktop coverage.
+        vd_left, vd_top, vd_right, vd_bottom = get_virtual_desktop_bounds()  # Retrieve full virtual desktop bounds for all-screen capture.
+        screen = ImageGrab.grab(bbox=(vd_left, vd_top, vd_right, vd_bottom), all_screens=True)  # Capture full virtual desktop across all monitors.
+    except Exception:  # Fall back to primary monitor capture on failure.
+        screen = pyautogui.screenshot()  # Capture primary monitor screen as fallback.
 
     return cv2.cvtColor(np.array(screen), cv2.COLOR_RGB2GRAY)  # Convert to grayscale and return.
 
