@@ -4210,6 +4210,15 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
     if not activate_chrome_window():  # Verify Chrome activation before sending hotkeys.
         return 1  # Return failure exit code when activation fails.
 
+    profile_path = CHROME_PROFILE_DIRECTORY if CHROME_PROFILE_DIRECTORY is not None else resolve_chrome_profile_with_fallback(CHROME_PROFILE_DISPLAY_NAME)  # Resolve target profile directory for scoped reposition.
+    bounds = get_desired_monitor_bounds()  # Resolve target monitor bounds tuple for scoped reposition.
+    hwnd = get_chrome_window_by_profile(profile_path) if profile_path is not None else None  # Resolve target-profile Chrome HWND when profile is available.
+
+    if hwnd is not None:  # Verify target-profile HWND availability before reposition.
+        move_chrome_window_to_bounds(hwnd, bounds)  # Reposition only the target-profile Chrome window.
+    else:  # Handle missing target-profile HWND without fallback movement.
+        verbose_output(f"{BackgroundColors.YELLOW}[WARNING] Chrome window with target profile not found. Skipping reposition.{Style.RESET_ALL}")  # Emit scoped reposition warning when verbose mode is enabled.
+
     dedicated_created = False  # Track dedicated automation window creation state.
     
     if not prepare_dedicated_chrome_window_for_automation():  # Verify dedicated Chrome window preparation before opening automation tabs.
