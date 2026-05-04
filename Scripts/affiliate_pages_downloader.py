@@ -1088,12 +1088,11 @@ def locate_image_in_region(image_path: Path, region: Tuple[int, int, int, int] |
         return None  # Return None when image search fails.
 
 
-def locate_image_variants(image_paths: List[Path], region: Tuple[int, int, int, int] | None) -> Any:
+def locate_image_variants(image_paths: List[Path]) -> Any:
     """
     Attempts to locate an image from multiple candidate variant paths.
 
     :param image_paths: List of image file paths to test in sequence.
-    :param region: Optional screen region tuple used during image search.
     :return: Bounding box when any variant matches, otherwise None.
     """
 
@@ -1102,7 +1101,7 @@ def locate_image_variants(image_paths: List[Path], region: Tuple[int, int, int, 
             print(f"{BackgroundColors.RED}Image file not found: {BackgroundColors.GREEN}{image_path}{Style.RESET_ALL}")  # Log missing image file for diagnostic purposes.
             continue  # Skip to next image variant when current file does not exist.
 
-        box = locate_image_in_region(image_path, region)  # Attempt to locate the current image variant in the capture region.
+        box = locate_image(image_path)  # Attempt to locate the current image variant in the capture region.
 
         if box is not None:  # Verify whether the current image variant was successfully detected.
             return box  # Return matched bounding box immediately upon first successful match.
@@ -1121,7 +1120,6 @@ def detect_chrome_download_settings_state(correct_imgs: List[Path], wrong_toggle
     :return: Tuple containing the detected state label and matched bounding box.
     """
 
-    region = get_chrome_download_settings_region()  # Resolve the Chrome downloads settings capture region.
     image_candidates = [  # Define ordered image candidate groups for state detection.
         (DOWNLOAD_SETTINGS_STATE_CORRECT, correct_imgs),  # Define the correct settings-state variants.
         (DOWNLOAD_SETTINGS_STATE_TOGGLE_1_ON, wrong_toggle_1_imgs),  # Define the Toggle 1 enabled variants.
@@ -1130,7 +1128,7 @@ def detect_chrome_download_settings_state(correct_imgs: List[Path], wrong_toggle
     ]  # Finalize ordered image candidate groups for state detection.
 
     for state_name, image_paths in image_candidates:  # Iterate downloads settings state candidates in priority order.
-        box = locate_image_variants(image_paths, region)  # Attempt to locate any color variant of the current state image.
+        box = locate_image_variants(image_paths)  # Attempt to locate any color variant of the current state image.
 
         if box is not None:  # Verify whether the current state was successfully detected from any color variant.
             return state_name, box  # Return the detected downloads settings state and bounding box.
@@ -1260,11 +1258,10 @@ def verify_chrome_download_settings_correct_state(correct_imgs: List[Path]) -> b
     :return: True when the correct settings state is detected, otherwise False.
     """
 
-    region = get_chrome_download_settings_region()  # Resolve the Chrome downloads settings capture region for verification.
     move_cursor_to_active_window_center()  # Move the cursor away from the downloads settings block before verification.
 
     for _ in range(DOWNLOAD_SETTINGS_VERIFICATION_ATTEMPTS):  # Iterate the configured number of final-state verification attempts.
-        if locate_image_variants(correct_imgs, region) is not None:  # Verify whether any correct downloads settings image variant is now detected.
+        if locate_image_variants(correct_imgs) is not None:  # Verify whether any correct downloads settings image variant is now detected.
             return True  # Return success when the correct downloads settings state is detected.
 
         time.sleep(DOWNLOAD_SETTINGS_VERIFICATION_WAIT_SECONDS)  # Wait before retrying final-state verification.
