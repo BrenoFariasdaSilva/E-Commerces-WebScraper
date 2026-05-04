@@ -602,14 +602,19 @@ def detect_secondary_monitor_bounds(primary_bounds: Tuple[int, int, int, int]) -
 
 def get_desired_monitor_bounds() -> Tuple[int, int, int, int]:
     """
-    Retrieves primary monitor bounds from screen size.
+    Retrieves target monitor bounds based on the USE_MAIN_MONITOR setting.
 
     :param: None.
-    :return: Tuple of primary monitor bounds as left, top, right, bottom.
+    :return: Tuple of target monitor bounds as left, top, right, bottom.
     """
 
     screen_size = pyautogui.size()  # Retrieve primary monitor size from pyautogui backend.
-    return 0, 0, int(screen_size.width), int(screen_size.height)  # Return primary monitor bounds tuple.
+    primary_bounds = 0, 0, int(screen_size.width), int(screen_size.height)  # Build primary monitor bounds tuple.
+
+    if USE_MAIN_MONITOR:  # Verify whether primary monitor is explicitly selected.
+        return primary_bounds  # Return primary monitor bounds when main monitor flag is set.
+
+    return detect_secondary_monitor_bounds(primary_bounds)  # Return secondary monitor bounds when available, otherwise primary bounds.
 
 
 def is_window_outside_primary_monitor(target_window: Any, primary_bounds: Tuple[int, int, int, int]) -> bool:
