@@ -2999,9 +2999,10 @@ def scroll_window_to_top_center() -> None:
     """
 
     try:  # Guard against unexpected errors during UI automation
-        current_width, current_height = get_screen_dimensions()  # Retrieve current screen dimensions.
-        center_x, center_y = current_width // 2, current_height // 2  # Compute center coordinates for the active window.
-        pyautogui.moveTo(center_x, center_y, duration=0.12)  # Move cursor to center of screen to prepare for input.
+        window_bounds = get_active_window_bounds()  # Retrieve active Chrome window bounds for absolute center computation.
+        center_x = window_bounds["left"] + window_bounds["width"] // 2  # Compute absolute horizontal center of active window.
+        center_y = window_bounds["top"] + window_bounds["height"] // 2  # Compute absolute vertical center of active window.
+        pyautogui.moveTo(center_x, center_y, duration=0.12)  # Move cursor to center of active window to prepare for input.
         time.sleep(0.05)  # Wait briefly after moving cursor for UI stability.
         time.sleep(0.05)  # Wait briefly after click to allow window focus to settle.
         pyautogui.keyDown("home")  # Press and hold Home key to move content to top.
