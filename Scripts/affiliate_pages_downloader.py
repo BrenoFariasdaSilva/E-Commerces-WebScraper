@@ -2968,7 +2968,8 @@ def enhanced_locate_image(image_path: Path, threshold: float = 0.90) -> Any:
 
         (x, y), (w, h) = validated_match  # Unpack match result.
 
-        return (x, y, w, h)  # Return bounding box result.
+        vd_left, vd_top, _, _ = get_virtual_desktop_bounds()  # Retrieve virtual desktop origin for coordinate conversion.
+        return Box(left=vd_left + x, top=vd_top + y, width=w, height=h)  # Return virtual desktop coordinates as Box for matched result.
     except Exception:  # Handle image search exception.
         return None  # Return None when image search fails.
 
