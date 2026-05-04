@@ -603,21 +603,24 @@ def activate_window_with_fallback(target_window: Any) -> bool:
         return True  # Return success status to preserve execution flow without focus operations.
 
 
-def monitor_enum_callback(hMonitor, hdcMonitor, lprcMonitor, dwData, monitor_rects: List[Tuple[int, int, int, int]]) -> bool:
+def monitor_enum_callback(hMonitor, hdcMonitor, lprcMonitor, dwData) -> bool:
     """
     Callback function for Windows monitor enumeration that collects monitor bounds.
     
     :param hMonitor: Handle to the monitor being enumerated.
     :param hdcMonitor: Handle to the monitor's device context (unused).
     :param lprcMonitor: Pointer to a RECT structure containing the monitor's bounds.
-    :param dwData: User-defined data passed to EnumDisplayMonitors (unused).
-    :param monitor_rects: List to collect monitor bounds as tuples of (left, top, right, bottom).
+    :param dwData: User-defined LPARAM value carrying the monitor bounds list reference.
     :return: True to continue enumeration, False to stop.
     """
-    
-    rect = lprcMonitor.contents  # Dereference RECT structure from pointer.
-    monitor_rects.append((int(rect.left), int(rect.top), int(rect.right), int(rect.bottom)))  # Append collected monitor bounds to list.
-    return True  # Return True to continue monitor enumeration.
+
+    try:  # Attempt monitor bounds append using LPARAM-carried list reference.
+        monitor_rects_obj = ctypes.cast(ctypes.c_void_p(dwData), ctypes.POINTER(ctypes.py_object)).contents.value  # Resolve monitor bounds list from LPARAM payload.
+        rect = lprcMonitor.contents  # Dereference RECT structure from pointer.
+        monitor_rects_obj.append((int(rect.left), int(rect.top), int(rect.right), int(rect.bottom)))  # Append collected monitor bounds to list.
+        return True  # Return True to continue monitor enumeration.
+    except Exception:  # Handle callback payload resolution failures.
+        return True  # Return True to avoid interrupting monitor enumeration on callback failure.
 
 
 def detect_secondary_monitor_bounds(primary_bounds: Tuple[int, int, int, int]) -> Tuple[int, int, int, int]:
