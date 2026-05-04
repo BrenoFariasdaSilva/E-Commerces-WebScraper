@@ -3473,9 +3473,6 @@ def get_fallback_screen_dimensions(reference_width: int, reference_height: int) 
     :return: Tuple of current screen width and height.
     """
 
-    try: import pyautogui  # Attempt to import pyautogui for screen size retrieval.
-    except Exception: return reference_width, reference_height  # Return reference dimensions if import fails.
-
     try: return get_screen_dimensions()  # Retrieve current screen dimensions using pyautogui backend.
     except Exception: return reference_width, reference_height  # Return reference dimensions if retrieval fails.
 
