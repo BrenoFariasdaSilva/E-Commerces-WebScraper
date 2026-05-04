@@ -3616,7 +3616,7 @@ def is_valid_affiliate_url(url: str) -> bool:
     return True  # Return validation success when all strict affiliate constraints pass.
 
 
-def wait_for_valid_affiliate_url(previous_url: str, timeout: int) -> str:
+def wait_for_valid_affiliate_url(previous_url: str, timeout: int = 5) -> str:
     """
     Wait for a valid renewed affiliate URL that differs from previous URL.
 
@@ -3939,7 +3939,7 @@ def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, urls_fi
 
     time.sleep(1)  # Wait for menu to appear after button click.
 
-    copied_url = wait_for_valid_affiliate_url(current_url, 8)  # Wait for a valid renewed affiliate URL from clipboard.
+    copied_url = wait_for_valid_affiliate_url(current_url, 5)  # Wait for a valid renewed affiliate URL from clipboard.
     if not copied_url:  # Verify if clipboard retrieval succeeded.
         verbose_output(f"{BackgroundColors.RED}Failed to retrieve valid renewed URL from clipboard{Style.RESET_ALL}")  # Log clipboard retrieval failure when verbose enabled.
         return False, current_url  # Return failure and original URL when clipboard is empty.
