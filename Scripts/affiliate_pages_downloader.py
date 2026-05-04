@@ -3847,7 +3847,7 @@ def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, urls_fi
     :return: Tuple containing True if renewal succeeded, otherwise False, and the new URL if successful or the original URL if failed.
     """
 
-    verbose_output(f"{BackgroundColors.GREEN}Initiating Amazon affiliate URL renewal for: {current_url}{Style.RESET_ALL}")  # Log renewal workflow start when verbose enabled.
+    verbose_output(f"{BackgroundColors.GREEN}Initiating {BackgroundColors.CYAN}Amazon affiliate URL Renewal{BackgroundColors.GREEN} for: {BackgroundColors.CYAN}{current_url}{Style.RESET_ALL}")  # Log renewal workflow start when verbose enabled.
 
     click_method = click_share_affiliate_url_button(share_button_img)  # Click share affiliate URL button using image or fallback coordinates.
     verbose_output(f"{BackgroundColors.YELLOW}Clicked share button using: {click_method}{Style.RESET_ALL}")  # Log which click method was used when verbose enabled.
