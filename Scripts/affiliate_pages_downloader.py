@@ -2829,7 +2829,7 @@ def enhanced_locate_image(image_path: Path, threshold: float = 0.90) -> Any:
         screen = capture_screen_grayscale()  # Capture grayscale screen.
         scales = get_scale_factors()  # Retrieve scale factors.
 
-        best_match, best_val = match_template_multi_scale(screen, template, scales)  # Perform multi-scale matching.
+        best_match, best_val = match_template_multi_scale(screen, template, scales, verbose=False)  # Perform multi-scale matching.
         validated_match = validate_match(best_match, best_val, threshold=threshold)  # Validate match confidence.
 
         if validated_match is None:  # Verify match validity.
