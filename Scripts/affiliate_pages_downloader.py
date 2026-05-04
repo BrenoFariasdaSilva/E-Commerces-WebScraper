@@ -55,6 +55,8 @@ Assumptions & Notes:
 
 import argparse  # Parse command-line arguments.
 import atexit  # Register post-execution callback functions.
+import ctypes  # Import ctypes for Windows monitor enumeration.
+import ctypes.wintypes  # Import ctypes.wintypes for RECT structure access.
 import cv2  # Import OpenCV for color conversion.
 import datetime  # Capture execution timestamps.
 import json  # Handle JSON data for Chrome profile resolution.
@@ -1067,6 +1069,41 @@ def diagnose_screenshot_capability() -> Tuple[bool, str]:
     except Exception as e:  # Handle screenshot diagnostic exceptions.
         error_details = traceback.format_exc()  # Capture full exception traceback for diagnostic purposes.
         return False, f"Screenshot failed: {str(e)} | Traceback: {error_details}"  # Return failure with diagnostic details.
+
+
+def get_virtual_desktop_bounds() -> Tuple[int, int, int, int]:
+    """
+    Retrieves the bounding rectangle covering all connected monitors as a virtual desktop.
+
+    :param: None.
+    :return: Tuple of left, top, right, bottom spanning the full virtual desktop across all monitors.
+    """
+
+    try:  # Attempt Windows monitor enumeration to resolve full virtual desktop bounds.
+        monitor_rects: List[Tuple[int, int, int, int]] = []  # Initialize monitor bounds collection.
+
+        MonitorEnumProc = ctypes.WINFUNCTYPE(  # Define monitor enumeration callback signature.
+            ctypes.c_bool,  # Return type: BOOL for continuation control.
+            ctypes.c_void_p,  # HMONITOR handle argument.
+            ctypes.c_void_p,  # HDC handle argument.
+            ctypes.POINTER(ctypes.wintypes.RECT),  # LPRECT pointer to monitor rectangle.
+            ctypes.c_ssize_t,  # LPARAM user data argument.
+        )  # Finalize Windows MONITORENUMPROC callback type definition.
+
+        callback_func = MonitorEnumProc(monitor_enum_callback)  # Create stable callback reference to prevent garbage collection.
+        ctypes.windll.user32.EnumDisplayMonitors(None, None, callback_func, 0)  # Enumerate all connected display monitors.
+
+        if monitor_rects:  # Verify whether any monitor bounds were collected.
+            vd_left = min(r[0] for r in monitor_rects)  # Compute virtual desktop left boundary from all monitor origins.
+            vd_top = min(r[1] for r in monitor_rects)  # Compute virtual desktop top boundary from all monitor origins.
+            vd_right = max(r[2] for r in monitor_rects)  # Compute virtual desktop right boundary from all monitor extents.
+            vd_bottom = max(r[3] for r in monitor_rects)  # Compute virtual desktop bottom boundary from all monitor extents.
+            return vd_left, vd_top, vd_right, vd_bottom  # Return full virtual desktop bounding rectangle.
+    except Exception:  # Handle monitor enumeration failures gracefully.
+        pass  # Continue to fallback when enumeration fails.
+
+    screen_size = pyautogui.size()  # Retrieve primary monitor size as fallback.
+    return 0, 0, int(screen_size.width), int(screen_size.height)  # Return primary monitor bounds as virtual desktop fallback.
 
 
 def locate_image_in_region(image_path: Path, region: Tuple[int, int, int, int] | None, confidence: float = 0.9) -> Any:
