@@ -73,6 +73,8 @@ import tkinter as tk  # Import tkinter module.
 import traceback  # Import traceback module for detailed exception reporting.
 from colorama import Style  # Reset ANSI style output.
 from pathlib import Path  # Build and resolve filesystem paths.
+from PIL import ImageGrab  # Import PIL ImageGrab for multi-monitor screenshot capture.
+from pyscreeze import Box  # Import Box namedtuple for image location results.
 from tkinter import messagebox  # Import tkinter messagebox utility.
 from tqdm import tqdm  # Import tqdm progress bar iterator.
 from typing import Any, Dict, List, Optional, Tuple  # Provide typing annotations for containers and dynamic objects.
@@ -1184,11 +1186,39 @@ def locate_image_in_region(image_path: Path, region: Tuple[int, int, int, int] |
         print(f"{BackgroundColors.RED}[DEBUG] Image file not found: {image_path}{Style.RESET_ALL}")  # Log missing image file for diagnostic purposes.
         return None  # Return None when image file does not exist.
 
-    try:  # Attempt image location on screen using an optional capture region.
-        if region is not None:  # Verify whether a capture region was provided for the image search.
-            return pyautogui.locateOnScreen(str(image_path), region=region, confidence=confidence)  # Return located box coordinates inside the provided region.
+    try:  # Attempt image location on screen using multi-monitor capture.
+        template = cv2.imread(str(image_path), cv2.IMREAD_GRAYSCALE)  # Load template image in grayscale for matching.
 
-        return pyautogui.locateOnScreen(str(image_path), confidence=confidence)  # Return located box coordinates from the full screen.
+        if template is None:  # Verify template loading success.
+            return None  # Return None when template loading fails.
+
+        vd_left, vd_top, vd_right, vd_bottom = get_virtual_desktop_bounds()  # Retrieve full virtual desktop bounds for coordinate conversion.
+
+        if region is not None:  # Verify whether a capture region was provided for the image search.
+            reg_left, reg_top, reg_width, reg_height = region  # Unpack region components for bounded capture.
+            screenshot = ImageGrab.grab(bbox=(reg_left, reg_top, reg_left + reg_width, reg_top + reg_height), all_screens=True)  # Capture specified region across all monitors.
+            screen_gray = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2GRAY)  # Convert region screenshot to grayscale for matching.
+            result = cv2.matchTemplate(screen_gray, template, cv2.TM_CCOEFF_NORMED)  # Perform normalized cross-correlation template matching.
+            _, max_val, _, max_loc = cv2.minMaxLoc(result)  # Extract best match location and confidence score.
+
+            if max_val < confidence:  # Verify match confidence meets threshold.
+                return None  # Return None when match confidence is insufficient.
+
+            x_img, y_img = max_loc  # Unpack image-space match coordinates.
+            h_t, w_t = template.shape[:2]  # Extract template height and width for bounding box.
+            return Box(left=reg_left + x_img, top=reg_top + y_img, width=w_t, height=h_t)  # Return virtual desktop coordinates as Box for region match.
+
+        screenshot = ImageGrab.grab(bbox=(vd_left, vd_top, vd_right, vd_bottom), all_screens=True)  # Capture full virtual desktop across all monitors.
+        screen_gray = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2GRAY)  # Convert full screenshot to grayscale for matching.
+        result = cv2.matchTemplate(screen_gray, template, cv2.TM_CCOEFF_NORMED)  # Perform normalized cross-correlation template matching.
+        _, max_val, _, max_loc = cv2.minMaxLoc(result)  # Extract best match location and confidence score.
+
+        if max_val < confidence:  # Verify match confidence meets threshold.
+            return None  # Return None when match confidence is insufficient.
+
+        x_img, y_img = max_loc  # Unpack image-space match coordinates.
+        h_t, w_t = template.shape[:2]  # Extract template height and width for bounding box.
+        return Box(left=vd_left + x_img, top=vd_top + y_img, width=w_t, height=h_t)  # Return virtual desktop coordinates as Box for full-screen match.
     except Exception:  # Handle image search exceptions.
         return None  # Return None when image search fails.
 
