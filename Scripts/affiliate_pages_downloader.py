@@ -3432,8 +3432,8 @@ def click_share_affiliate_url_button(share_button_img: Path) -> str:
         print(f"{BackgroundColors.YELLOW}[WARNING] Unable to activate Chrome window before Share Affiliate URL button detection.{Style.RESET_ALL}")  # Log warning when Chrome activation fails before share-button search.
 
     window_bounds = get_active_window_bounds()  # Retrieve active Chrome window bounds for region-constrained image search.
-    region_left = max(0, int(window_bounds.get("left", 0)))  # Resolve safe left coordinate for region-constrained image search.
-    region_top = max(0, int(window_bounds.get("top", 0)))  # Resolve safe top coordinate for region-constrained image search.
+    region_left = int(window_bounds.get("left", 0))  # Resolve left coordinate for region-constrained image search, preserving negative secondary-monitor offsets.
+    region_top = int(window_bounds.get("top", 0))  # Resolve top coordinate for region-constrained image search, preserving negative secondary-monitor offsets.
     region_width = max(1, int(window_bounds.get("width", 0)))  # Resolve safe width for region-constrained image search.
     region_height = max(1, int(window_bounds.get("height", 0)))  # Resolve safe height for region-constrained image search.
     search_region = (region_left, region_top, region_width, region_height)  # Build active Chrome window region tuple for share-button image search.
