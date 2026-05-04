@@ -743,45 +743,6 @@ def relocate_window_to_primary_monitor(target_window: Any) -> bool:
         return False  # Return failure status on relocation exception.
 
 
-def detach_tab_to_new_window() -> bool:
-    """
-    Opens a new Chrome window to recover primary-monitor focus.
-
-    :param: None.
-    :return: True when a new Chrome window is activated on primary monitor, otherwise False.
-    """
-
-    previous_windows = get_chrome_windows()  # Capture current Chrome windows before creating a new window.
-    previous_titles = {str(getattr(window, "title", "")) for window in previous_windows}  # Capture current Chrome window titles for delta detection.
-
-    try:  # Attempt fallback new-window strategy.
-        pyautogui.hotkey("ctrl", "n")  # Open a new Chrome window as fallback strategy.
-        time.sleep(0.8)  # Wait for new Chrome window creation.
-    except Exception:  # Handle shortcut execution failure.
-        return False  # Return failure when fallback shortcut cannot be executed.
-
-    refreshed_windows = get_chrome_windows()  # Refresh Chrome windows list after fallback shortcut.
-    target_window = None  # Initialize fallback target window reference.
-
-    for window in refreshed_windows:  # Iterate refreshed Chrome windows for new window detection.
-        title = str(getattr(window, "title", ""))  # Retrieve current window title.
-
-        if title not in previous_titles:  # Verify whether current window title was not present previously.
-            target_window = window  # Select newly detected window candidate.
-            break  # Stop iteration after selecting first new candidate.
-
-    if target_window is None and len(refreshed_windows) > 0:  # Verify fallback target is still unresolved.
-        target_window = select_chrome_window(refreshed_windows)  # Resolve deterministic fallback target from refreshed list.
-
-    if target_window is None:  # Verify fallback target availability.
-        return False  # Return failure when no fallback window is available.
-
-    if not activate_window_with_fallback(target_window):  # Verify activation for fallback window.
-        return False  # Return failure when fallback window activation fails.
-
-    return relocate_window_to_primary_monitor(target_window)  # Return relocation status for fallback window.
-
-
 def ensure_chrome_on_primary_monitor(target_window: Any) -> bool:
     """
     Ensures active Chrome window is usable on the primary monitor.
@@ -795,8 +756,7 @@ def ensure_chrome_on_primary_monitor(target_window: Any) -> bool:
     if relocation_result:  # Verify relocation was successful or not required.
         return True  # Return success when active window is already usable on primary monitor.
 
-    print(f"{BackgroundColors.YELLOW}[DEBUG] Attempting fallback tab extraction strategy for Chrome window focus recovery.{Style.RESET_ALL}")  # Log fallback activation path.
-    return detach_tab_to_new_window()  # Return fallback tab extraction strategy result.
+    return False  # Return failure without fallback when profile-scoped relocation is unavailable.
 
 
 def prepare_dedicated_chrome_window_for_automation() -> bool:
@@ -859,20 +819,7 @@ def prepare_dedicated_chrome_window_for_automation() -> bool:
                 if DEDICATED_AUTOMATION_HWND != 0:  # Verify whether dedicated window handle was captured successfully.
                     return True  # Return success after dedicated profile window preparation.
 
-    detach_result = detach_tab_to_new_window()  # Open and activate a dedicated Chrome window for automation as fallback path.
-
-    if not detach_result:  # Verify whether dedicated Chrome window preparation failed.
-        print(f"{BackgroundColors.RED}Failed to prepare dedicated Chrome window for automation. Aborting to preserve user tabs.{Style.RESET_ALL}")  # Log dedicated-window preparation failure.
-        return False  # Return failure status when dedicated automation window is unavailable.
-
-    try:  # Attempt to capture the dedicated automation window OS handle for reliable re-activation.
-        get_active_window = getattr(pyautogui, "getActiveWindow", None)  # Resolve optional active-window API for handle capture.
-        active_window = get_active_window() if callable(get_active_window) else None  # Retrieve active window reference after dedicated window creation.
-        DEDICATED_AUTOMATION_HWND = int(getattr(active_window, "_hWnd", 0)) if active_window is not None else 0  # Extract and persist OS window handle from the newly created dedicated automation window.
-    except Exception:  # Handle dedicated window handle capture failures.
-        DEDICATED_AUTOMATION_HWND = 0  # Reset handle on capture failure to prevent stale automation references.
-
-    return True  # Return success status when dedicated automation window is ready.
+    return False  # Return failure status when dedicated window cannot be resolved without fallback.
 
 
 def close_dedicated_automation_window() -> bool:
