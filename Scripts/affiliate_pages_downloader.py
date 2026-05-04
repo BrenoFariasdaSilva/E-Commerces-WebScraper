@@ -2668,7 +2668,8 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
                     success = True  # Mark download as successful for processed_count increment after while loop.
                     
             close_method = close_extension_download_tab(close_download_tab_img)  # Execute close extension tab action.
-            handle_post_download_methods(ext_methods, download_methods, completion_methods, close_methods, extension_method, download_method, confirmation_method, close_method, current_tab)  # Execute extracted method tracking logic.
+            if not download_failed:  # Execute post-download tab closure only when download was not marked as failed to allow for retry attempts without reopening the URL.
+                handle_post_download_methods(ext_methods, download_methods, completion_methods, close_methods, extension_method, download_method, confirmation_method, close_method, current_tab)  # Execute extracted method tracking logic.
             opened_tabs = safely_close_product_tab(opened_tabs)  # Execute safe tab closure logic and update opened tabs counter.
 
             if download_failed:  # Execute retry or exhaustion handling when download failed.
