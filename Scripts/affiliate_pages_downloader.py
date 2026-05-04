@@ -3527,7 +3527,6 @@ def execute_fallback_click(click_x: int, click_y: int) -> str:
     """
 
     try:
-        import pyautogui  # Import pyautogui for click action.
         pyautogui.click(click_x, click_y)  # Click at computed fallback coordinates.
         time.sleep(0.5)  # Wait briefly after fallback click.
         verbose_output(f"{BackgroundColors.YELLOW}[COORDS] Used fallback coordinates: ({click_x}, {click_y}){Style.RESET_ALL}")  # Print fallback coordinates used.
