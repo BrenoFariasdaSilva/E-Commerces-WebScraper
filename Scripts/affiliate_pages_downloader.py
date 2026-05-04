@@ -2844,14 +2844,14 @@ def enhanced_locate_image(image_path: Path, threshold: float = 0.90) -> Any:
 
 def get_screen_dimensions() -> Tuple[int, int]:
     """
-    Retrieves current screen dimensions.
+    Retrieves target monitor dimensions based on the USE_MAIN_MONITOR setting.
 
     :param: None.
-    :return: Tuple of screen width and height in pixels.
+    :return: Tuple of target monitor width and height in pixels.
     """
 
-    screen_size = pyautogui.size()  # Retrieve primary monitor size from pyautogui backend.
-    return int(screen_size.width), int(screen_size.height)  # Return screen dimensions as tuple.
+    left, top, right, bottom = get_primary_monitor_bounds()  # Retrieve target monitor bounds from monitor selection logic.
+    return max(1, right - left), max(1, bottom - top)  # Return target monitor width and height derived from bounds.
 
 
 def scale_coordinate_to_screen(reference_x: float, reference_y: float) -> Tuple[int, int]:
