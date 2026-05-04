@@ -3025,7 +3025,6 @@ def handle_amazon_affiliate_url(current_tab: int, url: str, share_button_img: Pa
     """
 
     scroll_window_to_top_center()  # Scroll active window to top center to reveal the share button image.
-    time.sleep(1)  # Wait briefly after scrolling to allow UI to stabilize before renewal attempt.
 
     renewal_success = False  # Initialize renewal success flag.
     old_url = url  # Preserve original URL for comparison after renewal attempt.
