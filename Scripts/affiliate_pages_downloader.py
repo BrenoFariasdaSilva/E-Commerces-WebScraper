@@ -490,6 +490,36 @@ def get_chrome_window_by_profile(profile_path: str) -> Optional[int]:
     return None  # Return None when no Chrome HWND matches the provided profile directory.
 
 
+def move_chrome_window_to_bounds(hwnd: int, bounds: Tuple[int, int, int, int]) -> None:
+    """
+    Move a single Chrome window identified by HWND into the provided bounds rectangle.
+
+    :param hwnd: Target Chrome window handle.
+    :param bounds: Target rectangle as (left, top, right, bottom).
+    :return: None.
+    """
+
+    if int(hwnd) == 0:  # Verify HWND value is valid before positioning.
+        return  # Return immediately when HWND is invalid.
+
+    if platform.system().lower() != "windows":  # Verify Windows platform before Win32 positioning call.
+        return  # Return immediately when Win32 positioning is unsupported.
+
+    if not isinstance(bounds, tuple) or len(bounds) != 4:  # Verify bounds tuple shape before coordinate extraction.
+        return  # Return immediately when bounds tuple is invalid.
+
+    left, top, right, bottom = bounds  # Unpack bounds tuple into edge coordinates.
+    width = max(1, int(right) - int(left))  # Compute safe target width from bounds.
+    height = max(1, int(bottom) - int(top))  # Compute safe target height from bounds.
+    SWP_NOZORDER = 0x0004  # Define SetWindowPos flag to preserve current Z-order.
+
+    try:  # Attempt Win32 SetWindowPos call for the provided HWND only.
+        ctypes.windll.user32.SetWindowPos(ctypes.wintypes.HWND(int(hwnd)), ctypes.wintypes.HWND(0), int(left), int(top), int(width), int(height), SWP_NOZORDER)  # Move and size the target HWND to requested bounds.
+        time.sleep(0.2)  # Wait briefly after window reposition call.
+    except Exception:  # Handle Win32 positioning failures.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to reposition Chrome window for the target profile.{Style.RESET_ALL}")  # Log profile-scoped reposition failure.
+
+
 def select_chrome_window(chrome_windows: List[Any]) -> Any:
     """
     Selects a deterministic Chrome window target.
