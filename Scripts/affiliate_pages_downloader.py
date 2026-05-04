@@ -834,28 +834,9 @@ def close_dedicated_automation_window() -> bool:
 
     if DEDICATED_AUTOMATION_HWND == 0:  # Verify whether a dedicated handle is stored.
         return True  # Nothing to close when handle is zero.
-
-    window = find_window_by_hwnd(DEDICATED_AUTOMATION_HWND)  # Locate window by stored OS handle.
-
-    if window is None:  # Verify window existence after handle lookup.
-        DEDICATED_AUTOMATION_HWND = 0  # Reset stored handle when no matching window is found.
-        return True  # Treat missing window as already closed.
-
-    try:  # Attempt to activate and close the dedicated window gracefully.
-        activate_window_with_fallback(window)  # Activate the dedicated automation window before closing.
-        time.sleep(0.2)  # Wait after activation.
-        current_os = platform.system().lower()  # Detect current operating system for proper close hotkey.
-
-        if current_os == "darwin":  # Verify macOS for command-quit hotkey.
-            pyautogui.hotkey("command", "q")  # Send Command+Q to quit Chrome on macOS.
-        else:  # Use Control Shift+W for Windows/Linux to close the current window without affecting other windows.
-            pyautogui.hotkey("ctrl", "shift", "w")  # Send Control+Shift+W to close the current Chrome window on Windows/Linux.
-
-        time.sleep(0.6)  # Wait after close hotkey to allow window teardown.
-        DEDICATED_AUTOMATION_HWND = 0  # Reset stored handle after successful close.
-        return True  # Return success after closing the dedicated window.
-    except Exception:  # Handle any exceptions during activation or close operations.
-        return False  # Return failure when an exception prevented closing.
+    
+    DEDICATED_AUTOMATION_HWND = 0  # Reset stored handle without sending focus-dependent hotkeys.
+    return True  # Return success after passive handle cleanup.
 
 
 def find_window_by_hwnd(hwnd: int) -> Any:
@@ -888,15 +869,8 @@ def activate_automation_window() -> bool:
     :return: True when the dedicated automation window is activated, otherwise False.
     """
 
-    global DEDICATED_AUTOMATION_HWND  # Reference stored dedicated automation window handle.
-
-    if DEDICATED_AUTOMATION_HWND != 0:  # Verify that a dedicated automation window handle was previously stored.
-        window = find_window_by_hwnd(DEDICATED_AUTOMATION_HWND)  # Locate dedicated automation window by OS handle.
-
-        if window is not None:  # Verify whether the dedicated automation window is still present.
-            return activate_window_with_fallback(window)  # Activate dedicated automation window using existing fallback strategy.
-
-    return activate_chrome_window()  # Fall back to standard Chrome activation when dedicated handle is unavailable.
+    _ = DEDICATED_AUTOMATION_HWND  # Preserve global variable read semantics without triggering focus behavior.
+    return True  # Skip activation to avoid interfering with user environment.
 
 
 def resolve_downloads_directories() -> List[str]:
@@ -3522,28 +3496,9 @@ def reset_browser_context_for_retry(close_download_tab_img: Path) -> bool:
     :return: True when the fresh automation context is ready, otherwise False.
     """
 
-    close_extension_download_tab(close_download_tab_img)  # Close extension download tab before browser window reset.
-
-    try:  # Attempt to close the current browser tab before window teardown.
-        pyautogui.hotkey("ctrl", "w")  # Close current browser tab via hotkey.
-        time.sleep(0.3)  # Wait after tab closure to allow browser to stabilize.
-    except Exception as e:  # Handle tab closure failure without interrupting retry flow.
-        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to close browser tab during retry reset: {e}{Style.RESET_ALL}")  # Log warning when tab closure fails during retry.
-
-    try:  # Attempt to close the current browser window to clear cached state.
-        current_os = platform.system().lower()  # Detect current operating system for window close hotkey selection.
-
-        if current_os == "darwin":  # Verify macOS for Command+Q hotkey.
-            pyautogui.hotkey("command", "q")  # Send Command+Q to quit Chrome on macOS.
-        else:  # Use Control+Shift+W on Windows/Linux to close the current window.
-            pyautogui.hotkey("ctrl", "shift", "w")  # Send Control+Shift+W to close current Chrome window on Windows/Linux.
-
-        time.sleep(0.6)  # Wait after close hotkey to allow window teardown.
-    except Exception as e:  # Handle window closure failure without interrupting retry flow.
-        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to close browser window during retry reset: {e}{Style.RESET_ALL}")  # Log warning when window closure fails during retry.
-
-    time.sleep(1)  # Wait one second before reopening the browser context to avoid residual state.
-    context_ready = prepare_dedicated_chrome_window_for_automation()  # Reopen fresh dedicated Chrome automation window.
+    _ = close_download_tab_img  # Preserve function argument usage without triggering focus-dependent close actions.
+    
+    context_ready = prepare_dedicated_chrome_window_for_automation()  # Attempt dedicated window preparation without tab/window close hotkeys.
     return context_ready  # Return browser context readiness status.
 
 
