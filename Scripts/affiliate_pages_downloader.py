@@ -2812,7 +2812,7 @@ def enhanced_locate_image(image_path: Path, threshold: float = 0.90) -> Any:
     :return: Box location when found, otherwise None.
     """
     
-    verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Attempting to locate image with enhanced method: {image_path}{Style.RESET_ALL}")  # Log entry into enhanced image location with target path details when verbose.
+    verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Attempting to locate image with enhanced method: {BackgroundColors.CYAN}{image_path}{Style.RESET_ALL}")  # Log entry into enhanced image location with target path details when verbose.
 
     if not image_path.exists():  # Verify image file existence.
         return None  # Return None when image file does not exist.
@@ -3443,7 +3443,7 @@ def click_share_affiliate_url_button(share_button_img: Path) -> str:
         if box is not None:  # Verify if share affiliate URL image was detected.
             click_box_center(box)  # Click center of detected share button box to trigger URL copy action.
             time.sleep(0.5)  # Wait briefly after image-based click.
-            verbose_output(f"{BackgroundColors.GREEN}Used image: {BackgroundColors.CYAN}{share_button_img.name}{BackgroundColors.GREEN}{Style.RESET_ALL}")  # Print name of used image.
+            verbose_output(f"{BackgroundColors.GREEN}Clicked share button using image: {BackgroundColors.CYAN}{share_button_img.name}{BackgroundColors.GREEN}{Style.RESET_ALL}")  # Print name of used image.
             return "ImageSearch"  # Return image search method label for image.
         time.sleep(0.2)  # Wait before retrying image search.
 
@@ -3881,7 +3881,7 @@ def replace_url_in_file(filepath: str, old_url: str, new_url: str) -> None:
     updated_text = text.replace(old_url, new_url)  # Replace all occurrences of old URL with new URL.
 
     if updated_text == text:  # Verify whether content changed after replacement attempt.
-        verbose_output(f"{BackgroundColors.YELLOW}[WARNING] No URL replacement needed in file: {BackgroundColors.CYAN}{filepath_obj}{Style.RESET_ALL}")  # Print no-change replacement warning.
+        verbose_output(f"{BackgroundColors.GREEN} No URL replacement needed in file: {BackgroundColors.CYAN}{filepath_obj}{Style.RESET_ALL}")  # Print no-change replacement warning.
         return  # Return early when no replacement occurred.
 
     try:  # Attempt to persist modified file content.
@@ -3935,7 +3935,6 @@ def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, urls_fi
     verbose_output(f"{BackgroundColors.GREEN}Initiating {BackgroundColors.CYAN}Amazon affiliate URL Renewal{BackgroundColors.GREEN} for: {BackgroundColors.CYAN}{current_url}{Style.RESET_ALL}")  # Log renewal workflow start when verbose enabled.
 
     click_method = click_share_affiliate_url_button(share_button_img)  # Click share affiliate URL button using image or fallback coordinates.
-    verbose_output(f"{BackgroundColors.YELLOW}Clicked share button using: {click_method}{Style.RESET_ALL}")  # Log which click method was used when verbose enabled.
 
     time.sleep(1)  # Wait for menu to appear after button click.
 
@@ -3962,7 +3961,7 @@ def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, urls_fi
 
         outputs_dir = resolve_outputs_directory()  # Resolve Outputs directory path from project root.
         replace_url_recursively(outputs_dir, current_url, copied_url)  # Replace renewed Amazon URL recursively inside Outputs files.
-        verbose_output(f"{BackgroundColors.GREEN}Amazon URL successfully renewed from {current_url} to {copied_url}{Style.RESET_ALL}")  # Log successful renewal completion when verbose enabled.
+        verbose_output(f"{BackgroundColors.GREEN}Amazon URL successfully renewed from {BackgroundColors.CYAN}{current_url}{BackgroundColors.GREEN} to {BackgroundColors.CYAN}{copied_url}{Style.RESET_ALL}")  # Log successful renewal completion when verbose enabled.
 
         print_url_update(current_url, copied_url)  # Print colored OLD and NEW URL output to terminal for visibility.
         if ONLY_RENEW_AMAZON_AFFILIATE_URLS:  # Verify if running in renew-only mode.
