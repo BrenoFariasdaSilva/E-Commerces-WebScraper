@@ -722,41 +722,24 @@ def relocate_window_to_primary_monitor(target_window: Any) -> bool:
     :return: True when relocation is not required or succeeds, otherwise False.
     """
 
-    if target_window is None:  # Verify window reference exists before relocation.
-        return False  # Return failure status when target window is missing.
+    _ = target_window  # Preserve function signature usage while relocation is profile-scoped.
 
-    try:  # Attempt primary monitor relocation logic.
-        primary_left, primary_top, primary_right, primary_bottom = get_desired_monitor_bounds()  # Retrieve primary monitor bounds.
+    profile_path = CHROME_PROFILE_DIRECTORY if CHROME_PROFILE_DIRECTORY is not None else resolve_chrome_profile_with_fallback(CHROME_PROFILE_DISPLAY_NAME)  # Resolve target Chrome profile directory for scoped movement.
 
-        if not is_window_outside_primary_monitor(target_window, (primary_left, primary_top, primary_right, primary_bottom)):  # Verify whether relocation is required.
-            return True  # Return success when window is already on primary monitor.
+    if profile_path is None:  # Verify profile directory is available before HWND lookup.
+        return False  # Return failure when profile directory resolution fails.
 
-        move_to_function = getattr(target_window, "moveTo", None)  # Resolve moveTo method for window relocation.
+    hwnd = get_chrome_window_by_profile(profile_path)  # Resolve HWND for the configured Chrome profile only.
 
-        if not callable(move_to_function):  # Verify moveTo method availability.
-            print(f"{BackgroundColors.YELLOW}[WARNING] Window relocation API is unavailable for Chrome window.{Style.RESET_ALL}")  # Log relocation API warning.
-            return False  # Return failure when relocation API is unavailable.
+    if hwnd is None:  # Verify target-profile Chrome window exists before movement.
+        return False  # Return failure when no Chrome window matches the target profile.
 
-        width = max(1, int(getattr(target_window, "width", 1)))  # Retrieve current window width using safe minimum value.
-        height = max(1, int(getattr(target_window, "height", 1)))  # Retrieve current window height using safe minimum value.
-        primary_width = max(1, primary_right - primary_left)  # Compute primary monitor width.
-        primary_height = max(1, primary_bottom - primary_top)  # Compute primary monitor height.
-        target_left = primary_left if width >= primary_width else max(primary_left, min(int(getattr(target_window, "left", primary_left)), primary_right - width))  # Compute relocated left coordinate while preserving size when possible.
-        target_top = primary_top if height >= primary_height else max(primary_top, min(int(getattr(target_window, "top", primary_top)), primary_bottom - height))  # Compute relocated top coordinate while preserving size when possible.
-        move_to_function(target_left, target_top)  # Move window into primary monitor bounds.
-        time.sleep(0.2)  # Wait after relocation operation.
-
-        resize_to_function = getattr(target_window, "resizeTo", None)  # Resolve resizeTo method for oversized window fallback.
-
-        if callable(resize_to_function) and (width > primary_width or height > primary_height):  # Verify resize is required and supported.
-            resize_to_function(min(width, primary_width), min(height, primary_height))  # Resize only when window exceeds primary monitor dimensions.
-            time.sleep(0.2)  # Wait after resize operation.
-
-        target_window.activate()  # Re-activate window after relocation.
-        time.sleep(0.2)  # Wait after re-activation.
-        return True  # Return success when relocation flow completes.
-    except Exception:  # Handle relocation failures.
-        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to relocate Chrome window to the primary monitor.{Style.RESET_ALL}")  # Log relocation failure warning.
+    try:  # Attempt profile-scoped movement into desired monitor bounds.
+        primary_left, primary_top, primary_right, primary_bottom = get_desired_monitor_bounds()  # Retrieve desired monitor bounds.
+        move_chrome_window_to_bounds(hwnd, (primary_left, primary_top, primary_right, primary_bottom))  # Move only the target-profile Chrome window.
+        return True  # Return success after profile-scoped movement call.
+    except Exception:  # Handle profile-scoped relocation failures.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to relocate Chrome window to the desired monitor bounds.{Style.RESET_ALL}")  # Log profile-scoped relocation failure warning.
         return False  # Return failure status on relocation exception.
 
 
