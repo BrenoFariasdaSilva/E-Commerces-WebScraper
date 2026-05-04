@@ -558,6 +558,48 @@ def monitor_enum_callback(hMonitor, hdcMonitor, lprcMonitor, dwData, monitor_rec
     return True  # Return True to continue monitor enumeration.
 
 
+def detect_secondary_monitor_bounds(primary_bounds: Tuple[int, int, int, int]) -> Tuple[int, int, int, int]:
+    """
+    Detects bounds of any secondary monitor using platform-specific enumeration.
+
+    :param primary_bounds: Primary monitor bounds as left, top, right, bottom fallback.
+    :return: Secondary monitor bounds when available, otherwise primary bounds as fallback.
+    """
+
+    current_os = platform.system().lower()  # Retrieve normalized operating system name.
+
+    try:  # Attempt platform-specific monitor enumeration for secondary detection.
+        if current_os != "windows":  # Verify whether Windows-specific enumeration is applicable.
+            return primary_bounds  # Return primary bounds when not on Windows.
+
+        monitor_rects: List[Tuple[int, int, int, int]] = []  # Initialize monitor bounds collection.
+
+        MonitorEnumProc = ctypes.WINFUNCTYPE(  # Define monitor enumeration callback signature.
+            ctypes.c_bool,  # Return type: BOOL for continuation control.
+            ctypes.c_void_p,  # HMONITOR handle argument.
+            ctypes.c_void_p,  # HDC handle argument.
+            ctypes.POINTER(ctypes.wintypes.RECT),  # LPRECT pointer to monitor rectangle.
+            ctypes.c_ssize_t,  # LPARAM user data argument.
+        )  # Finalize Windows MONITORENUMPROC callback type definition.
+
+        callback_func = MonitorEnumProc(monitor_enum_callback)  # Create stable callback reference to prevent garbage collection.
+        ctypes.windll.user32.EnumDisplayMonitors(None, None, callback_func, 0)  # Enumerate all connected display monitors.
+
+        if len(monitor_rects) <= 1:  # Verify whether multiple monitors were detected.
+            return primary_bounds  # Return primary bounds when only one monitor is present.
+
+        prim_left, prim_top, prim_right, prim_bottom = primary_bounds  # Unpack primary monitor bounds for comparison.
+
+        for rect in monitor_rects:  # Iterate enumerated monitor bounds to locate secondary.
+            if rect != (prim_left, prim_top, prim_right, prim_bottom):  # Verify whether current monitor differs from primary.
+                return rect  # Return first non-primary monitor bounds as secondary target.
+
+    except Exception:  # Handle monitor enumeration failures gracefully.
+        pass  # Continue to fallback when platform enumeration fails.
+
+    return primary_bounds  # Return primary bounds as fallback when secondary detection is unavailable.
+
+
 def get_desired_monitor_bounds() -> Tuple[int, int, int, int]:
     """
     Retrieves primary monitor bounds from screen size.
