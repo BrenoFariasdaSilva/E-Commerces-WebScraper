@@ -3438,16 +3438,101 @@ def click_share_affiliate_url_button(share_button_img: Path) -> str:
     max_verifications = 60  # Define maximum number of image-detection retries.
 
     for _ in range(max_verifications):  # Iterate through share-button detection attempts.
-        box = locate_image_in_region(share_button_img, search_region)  # Attempt to locate share affiliate URL button image inside active window region.
+        box = locate_image(share_button_img)  # Attempt to locate share affiliate URL button image without region constraint for higher detection reliability at the cost of potential false positives outside the window.
 
         if box is not None:  # Verify if share affiliate URL image was detected.
             click_box_center(box)  # Click center of detected share button box to trigger URL copy action.
             time.sleep(0.5)  # Wait briefly after image-based click.
             verbose_output(f"{BackgroundColors.GREEN}Used image: {BackgroundColors.CYAN}{share_button_img.name}{BackgroundColors.GREEN}{Style.RESET_ALL}")  # Print name of used image.
             return "ImageSearch"  # Return image search method label for image.
+        time.sleep(0.2)  # Wait before retrying image search.
 
-    verbose_output(f"{BackgroundColors.YELLOW}Share affiliate URL button images not found: {BackgroundColors.CYAN}{share_button_img.name}{BackgroundColors.YELLOW}{Style.RESET_ALL}")  # Print warning when neither image was detected.
-    return "Not Found"  # Return not found status when no image matched.
+    # Reference values: Screen: 1491, 159; Window: 621, -36; Client: 613, -67 (default)
+    REFERENCE_SCREEN_WIDTH = 1920  # Set reference screen width for scaling.
+    REFERENCE_SCREEN_HEIGHT = 1080  # Set reference screen height for scaling.
+    REFERENCE_X = 1491  # Set reference X coordinate for share button.
+    REFERENCE_Y = 159  # Set reference Y coordinate for share button.
+
+    screen_width, screen_height = get_fallback_screen_dimensions(REFERENCE_SCREEN_WIDTH, REFERENCE_SCREEN_HEIGHT)  # Retrieve current screen dimensions with fallback.
+
+    scaled_x, scaled_y = compute_scaled_coordinates(REFERENCE_X, REFERENCE_Y, screen_width, screen_height, REFERENCE_SCREEN_WIDTH, REFERENCE_SCREEN_HEIGHT)  # Compute scaled coordinates for current screen.
+
+    click_x, click_y = adjust_coordinates_for_window_offset(scaled_x, scaled_y, window_bounds)  # Adjust coordinates for window offset.
+
+    return execute_fallback_click(click_x, click_y)
+
+
+def get_fallback_screen_dimensions(reference_width: int, reference_height: int) -> tuple:
+    """
+    Retrieve current screen dimensions with fallback to reference values.
+
+    :param reference_width: Reference screen width for scaling.
+    :param reference_height: Reference screen height for scaling.
+    :return: Tuple of current screen width and height.
+    """
+
+    try: import pyautogui  # Attempt to import pyautogui for screen size retrieval.
+    except Exception: return reference_width, reference_height  # Return reference dimensions if import fails.
+
+    try: return get_screen_dimensions()  # Retrieve current screen dimensions using pyautogui backend.
+    except Exception: return reference_width, reference_height  # Return reference dimensions if retrieval fails.
+
+
+def compute_scaled_coordinates(reference_x: int, reference_y: int, screen_width: int, screen_height: int, reference_width: int, reference_height: int) -> tuple:
+    """
+    Compute scaled coordinates for current screen dimensions.
+
+    :param reference_x: Reference X coordinate for scaling.
+    :param reference_y: Reference Y coordinate for scaling.
+    :param screen_width: Current screen width.
+    :param screen_height: Current screen height.
+    :param reference_width: Reference screen width.
+    :param reference_height: Reference screen height.
+    :return: Tuple of scaled X and Y coordinates.
+    """
+
+    scale_x = screen_width / reference_width  # Compute horizontal scaling factor.
+    scale_y = screen_height / reference_height  # Compute vertical scaling factor.
+    scaled_x = int(reference_x * scale_x)  # Apply horizontal scaling to reference X coordinate.
+    scaled_y = int(reference_y * scale_y)  # Apply vertical scaling to reference Y coordinate.
+    return scaled_x, scaled_y  # Return tuple of scaled coordinates.
+
+
+def adjust_coordinates_for_window_offset(scaled_x: int, scaled_y: int, window_bounds: dict) -> tuple:
+    """
+    Adjust scaled coordinates for window offset.
+
+    :param scaled_x: Scaled X coordinate.
+    :param scaled_y: Scaled Y coordinate.
+    :param window_bounds: Dictionary with window left and top offsets.
+    :return: Tuple of adjusted X and Y coordinates.
+    """
+
+    offset_x = window_bounds.get("left", 0)  # Retrieve window left offset.
+    offset_y = window_bounds.get("top", 0)  # Retrieve window top offset.
+    click_x = offset_x + scaled_x  # Adjust X coordinate relative to window left edge.
+    click_y = offset_y + scaled_y  # Adjust Y coordinate relative to window top edge.
+    return click_x, click_y  # Return tuple of adjusted coordinates.
+
+
+def execute_fallback_click(click_x: int, click_y: int) -> str:
+    """
+    Execute click at fallback coordinates with error handling.
+
+    :param click_x: X coordinate for click action.
+    :param click_y: Y coordinate for click action.
+    :return: String indicating click result.
+    """
+
+    try:
+        import pyautogui  # Import pyautogui for click action.
+        pyautogui.click(click_x, click_y)  # Click at computed fallback coordinates.
+        time.sleep(0.5)  # Wait briefly after fallback click.
+        verbose_output(f"{BackgroundColors.YELLOW}[COORDS] Used fallback coordinates: ({click_x}, {click_y}){Style.RESET_ALL}")  # Print fallback coordinates used.
+        return "Coordinates"  # Return coordinates method label.
+    except Exception as e:
+        verbose_output(f"{BackgroundColors.RED}[ERROR] Failed to click fallback coordinates: {e}{Style.RESET_ALL}")  # Print error if click fails.
+        return "Not Found"  # Return not found status if click fails.
 
 
 def get_url_from_clipboard() -> str:
