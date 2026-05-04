@@ -430,6 +430,66 @@ def get_chrome_windows() -> List[Any]:
     return chrome_windows  # Return filtered Chrome windows.
 
 
+def get_chrome_window_by_profile(profile_path: str) -> Optional[int]:
+    """
+    Resolve a Chrome HWND only when the process command line matches the provided profile directory.
+
+    :param profile_path: Chrome profile directory name expected in process arguments (e.g. "Default" or "Profile 1").
+    :return: Matching HWND as int when found, otherwise None.
+    """
+
+    normalized_profile_path = str(profile_path).strip()  # Normalize incoming profile directory text.
+
+    if normalized_profile_path == "":  # Verify profile text is available before scanning windows.
+        return None  # Return None when no profile directory was provided.
+
+    if platform.system().lower() != "windows":  # Verify Windows platform before using Win32 APIs.
+        return None  # Return None when profile-bound HWND scan is unsupported on current platform.
+
+    chrome_windows = get_chrome_windows()  # Retrieve visible non-minimized Chrome windows for filtering.
+    user32 = ctypes.windll.user32  # Resolve Win32 user32 DLL for PID lookup from HWND.
+
+    for window in chrome_windows:  # Iterate Chrome windows to evaluate process command line per HWND.
+        hwnd = int(getattr(window, "_hWnd", 0))  # Retrieve HWND from the current Chrome window object.
+
+        if hwnd == 0:  # Verify HWND is valid before querying process metadata.
+            continue  # Skip windows without a valid HWND.
+
+        pid = ctypes.wintypes.DWORD(0)  # Initialize PID container for GetWindowThreadProcessId output.
+        user32.GetWindowThreadProcessId(ctypes.wintypes.HWND(hwnd), ctypes.byref(pid))  # Resolve owning PID from HWND.
+
+        if int(pid.value) == 0:  # Verify PID resolution succeeded for current HWND.
+            continue  # Skip windows when PID could not be resolved.
+
+        try:  # Attempt retrieval of process command line for profile argument matching.
+            cmd = [
+                "powershell",  # Use PowerShell executable to read Win32 process metadata.
+                "-NoProfile",  # Disable profile loading to keep command deterministic.
+                "-Command",  # Provide inline command expression.
+                f"$p = Get-CimInstance Win32_Process -Filter \"ProcessId = {int(pid.value)}\" ; if ($null -ne $p) {{ $p.CommandLine }}",  # Query process command line by PID.
+            ]  # Finalize PowerShell command array for subprocess execution.
+            result = subprocess.run(cmd, capture_output=True, text=True)  # Execute process metadata query command.
+            process_command_line = str(result.stdout).strip()  # Normalize process command line text.
+        except Exception:  # Handle process metadata retrieval failures.
+            continue  # Skip current window when command line cannot be resolved.
+
+        if process_command_line == "":  # Verify command line text is available for profile matching.
+            continue  # Skip windows without command line data.
+
+        normalized_command_line = process_command_line.lower()  # Normalize command line for case-insensitive matching.
+        normalized_profile = normalized_profile_path.lower()  # Normalize expected profile directory name for matching.
+        profile_tokens = [
+            f'--profile-directory="{normalized_profile}"',  # Build double-quoted profile argument token.
+            f"--profile-directory='{normalized_profile}'",  # Build single-quoted profile argument token.
+            f"--profile-directory={normalized_profile}",  # Build unquoted profile argument token.
+        ]  # Finalize accepted profile argument token variants.
+
+        if any(token in normalized_command_line for token in profile_tokens):  # Verify command line includes expected profile argument.
+            return hwnd  # Return matching HWND immediately when profile token is found.
+
+    return None  # Return None when no Chrome HWND matches the provided profile directory.
+
+
 def select_chrome_window(chrome_windows: List[Any]) -> Any:
     """
     Selects a deterministic Chrome window target.
