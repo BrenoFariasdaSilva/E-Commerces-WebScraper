@@ -4009,7 +4009,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
 
     urls = urls[:tab_count]  # Limit URL list to requested tab count.
 
-    extension_img, download_img, enable_permission_img, confirmation_img, close_download_tab_img, mercado_livre_img, share_button_img, save_button_img, failed_file_download_img = setup_image_paths(assets_dir)  # Initialize all required UI image asset paths from assets directory
+    extension_img, download_img, enable_permission_img, confirmation_img, failed_file_download_img, close_download_tab_img, mercado_livre_img, share_button_img, save_button_img = setup_image_paths(assets_dir)  # Initialize all required UI image asset paths from assets directory
 
     print(f"{BackgroundColors.GREEN}Starting automation immediately and activating Chrome window.{Style.RESET_ALL}")  # Print immediate start message.
 
