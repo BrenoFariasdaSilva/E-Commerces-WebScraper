@@ -186,6 +186,7 @@ def parse_arguments(repo_root: Path) -> argparse.Namespace:
     parser.add_argument("--headerless", type=lambda s: str(s).lower() in ("true", "1", "yes", "y"), default=True, help="Whether to suppress GUI messagebox (default: True)")  # Register headerless argument with boolean conversion
     parser.add_argument("--renew-amazon-affiliate-url", action="store_true", default=True, help="Enable Amazon affiliate URL renewal attempts (default: True)")  # Register renewal override argument
     parser.add_argument("--only-renew-amazon-urls", nargs="?", const="true", default=None, help="Enable mode that only renews Amazon affiliate URLs without downloading content")  # Register only-renew mode argument with optional truthy value.
+    parser.add_argument("--main-monitor", action="store_true", default=False, help="Route all UI operations to the primary monitor (default: False uses secondary monitor when available)")  # Register main-monitor flag argument.
 
     args = parser.parse_args()  # Parse command-line arguments
 
