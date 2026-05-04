@@ -2843,8 +2843,24 @@ def locate_image(image_path: Path) -> Any:
     if not image_path.exists():  # Verify image file existence.
         return None  # Return None when image file does not exist.
 
-    try:  # Attempt image location on screen.
-        return pyautogui.locateOnScreen(str(image_path), confidence=0.9, grayscale=True)  # Return located box coordinates.
+    try:  # Attempt image location on screen using multi-monitor capture.
+        template = cv2.imread(str(image_path), cv2.IMREAD_GRAYSCALE)  # Load template image in grayscale for matching.
+
+        if template is None:  # Verify template loading success.
+            return None  # Return None when template loading fails.
+
+        vd_left, vd_top, vd_right, vd_bottom = get_virtual_desktop_bounds()  # Retrieve full virtual desktop bounds for coordinate conversion.
+        screenshot = ImageGrab.grab(bbox=(vd_left, vd_top, vd_right, vd_bottom), all_screens=True)  # Capture full virtual desktop across all monitors.
+        screen_gray = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2GRAY)  # Convert screenshot to grayscale for template matching.
+        result = cv2.matchTemplate(screen_gray, template, cv2.TM_CCOEFF_NORMED)  # Perform normalized cross-correlation template matching.
+        _, max_val, _, max_loc = cv2.minMaxLoc(result)  # Extract best match location and confidence score.
+
+        if max_val < 0.9:  # Verify match confidence meets threshold.
+            return None  # Return None when match confidence is insufficient.
+
+        x_img, y_img = max_loc  # Unpack image-space match coordinates.
+        h_t, w_t = template.shape[:2]  # Extract template height and width for bounding box.
+        return Box(left=vd_left + x_img, top=vd_top + y_img, width=w_t, height=h_t)  # Return virtual desktop coordinates as Box for matched result.
     except Exception:  # Handle image search exception.
         return None  # Return None when image search fails.
 
