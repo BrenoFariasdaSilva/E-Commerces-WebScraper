@@ -1127,7 +1127,10 @@ def get_virtual_desktop_bounds() -> Tuple[int, int, int, int]:
         )  # Finalize Windows MONITORENUMPROC callback type definition.
 
         callback_func = MonitorEnumProc(monitor_enum_callback)  # Create stable callback reference to prevent garbage collection.
-        ctypes.windll.user32.EnumDisplayMonitors(None, None, callback_func, 0)  # Enumerate all connected display monitors.
+        monitor_rects_box = ctypes.py_object(monitor_rects)  # Wrap monitor bounds list into a Python-object carrier for LPARAM transport.
+        monitor_rects_ptr = ctypes.cast(ctypes.pointer(monitor_rects_box), ctypes.c_void_p)  # Cast Python-object carrier pointer to void pointer for LPARAM.
+        lparam_value = int(monitor_rects_ptr.value) if monitor_rects_ptr.value is not None else 0  # Convert LPARAM pointer payload to non-optional integer value.
+        ctypes.windll.user32.EnumDisplayMonitors(None, None, callback_func, ctypes.c_ssize_t(lparam_value))  # Enumerate all connected display monitors with LPARAM payload.
 
         if monitor_rects:  # Verify whether any monitor bounds were collected.
             vd_left = min(r[0] for r in monitor_rects)  # Compute virtual desktop left boundary from all monitor origins.
