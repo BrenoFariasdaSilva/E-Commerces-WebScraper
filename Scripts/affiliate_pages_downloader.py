@@ -541,6 +541,23 @@ def activate_window_with_fallback(target_window: Any) -> bool:
         return False  # Return failure status when all activation strategies fail.
 
 
+def monitor_enum_callback(hMonitor, hdcMonitor, lprcMonitor, dwData, monitor_rects: List[Tuple[int, int, int, int]]) -> bool:
+    """
+    Callback function for Windows monitor enumeration that collects monitor bounds.
+    
+    :param hMonitor: Handle to the monitor being enumerated.
+    :param hdcMonitor: Handle to the monitor's device context (unused).
+    :param lprcMonitor: Pointer to a RECT structure containing the monitor's bounds.
+    :param dwData: User-defined data passed to EnumDisplayMonitors (unused).
+    :param monitor_rects: List to collect monitor bounds as tuples of (left, top, right, bottom).
+    :return: True to continue enumeration, False to stop.
+    """
+    
+    rect = lprcMonitor.contents  # Dereference RECT structure from pointer.
+    monitor_rects.append((int(rect.left), int(rect.top), int(rect.right), int(rect.bottom)))  # Append collected monitor bounds to list.
+    return True  # Return True to continue monitor enumeration.
+
+
 def get_desired_monitor_bounds() -> Tuple[int, int, int, int]:
     """
     Retrieves primary monitor bounds from screen size.
