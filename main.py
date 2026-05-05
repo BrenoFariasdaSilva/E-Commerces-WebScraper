@@ -1216,6 +1216,8 @@ def scrape_product(url, timestamped_output_dir, local_html_path=None):
         
         if not product_data:  # If scraping failed
             return None, None, None, None, None, None  # Return None values
+
+        product_data = ensure_product_data_url_first(product_data, url)  # Ensure source URL exists and is the first key in product_data
         
         product_name = product_data.get("name", "Unknown Product")  # Get product name
         if isinstance(product_name, str):  # Ensure we operate only on strings
@@ -3188,15 +3190,39 @@ def handle_validation(product_data: dict, product_directory: str, description_fi
     return True  # Return True to signal valid product data
 
 
-def save_product_data_json(product_data: dict, product_dir: str) -> bool:
+def ensure_product_data_url_first(product_data: dict, url: str) -> dict:
+    """
+    Ensure product_data contains the source URL as the first key.
+
+    :param product_data: Dictionary containing product data fields.
+    :param url: Original source URL used to process this product.
+    :return: Normalized dictionary with "url" as the first key.
+    """
+
+    normalized_product_data = {"url": url}  # Initialize normalized dictionary guaranteeing URL as the first key
+
+    if not isinstance(product_data, dict):  # Verify if provided product_data is not a dictionary
+        return normalized_product_data  # Return normalized dictionary with URL only when input is invalid
+
+    for key, value in product_data.items():  # Iterate through original fields preserving insertion order
+        if key == "url":  # Verify if current key is URL to avoid duplicate insertion
+            continue  # Skip original URL key because normalized dictionary already contains source URL
+        normalized_product_data[key] = value  # Append existing key-value pair preserving original order after URL
+
+    return normalized_product_data  # Return normalized dictionary with URL as first key
+
+
+def save_product_data_json(product_data: dict, product_dir: str, url: str) -> bool:
     """
     Save the product data dictionary as product_data.json in the product directory.
 
     :param product_data: Dictionary of scraped product data fields to persist.
     :param product_dir: Absolute path to the product output directory.
+    :param url: Original source URL used to process this product.
     :return: True if file was saved successfully, False otherwise.
     """
 
+    product_data = ensure_product_data_url_first(product_data, url)  # Normalize product_data so URL is present and first before export
     json_path = os.path.join(product_dir, "product_data.json")  # Build full path to the product data JSON file
     product_name = product_data.get("product_name_safe", product_data.get("product_name", "unknown"))  # Resolve product name for logging
 
@@ -3392,7 +3418,7 @@ def process_single_url(url: str, local_html_path, index: int, total_urls: int, a
         if not handle_validation(product_data, product_directory, description_file, url):  # Validate product information before Gemini processing
             break  # Stop retry loop because data is invalid and retrying directory creation is not meaningful
 
-        save_product_data_json(product_data, final_product_directory_path)  # Persist product data to JSON for future local mode regeneration
+        save_product_data_json(product_data, final_product_directory_path, url)  # Persist product data to JSON for future local mode regeneration
 
         success = handle_gemini_processing(product_description, description_file, product_data, url, api_keys)  # Execute Gemini AI marketing text generation with key rotation
 
