@@ -378,12 +378,7 @@ def activate_chrome_window() -> bool:
         print(f"{BackgroundColors.RED}Failed to activate Chrome window. Keep Chrome focused manually and retry.{Style.RESET_ALL}")  # Print activation failure message.
         return False  # Return failure status after activation attempts.
 
-    ensure_result = ensure_chrome_on_primary_monitor(target_window)  # Ensure active Chrome window is usable on the primary monitor.
-
     move_cursor_to_active_window_center()  # Move cursor to the center of the active Chrome window for safety and potential rendering updates.
-
-    if not ensure_result:  # Verify if monitor-placement assurance failed.
-        print(f"{BackgroundColors.YELLOW}[WARNING] Chrome window relocation fallback did not complete. Continuing with current active window.{Style.RESET_ALL}")  # Log relocation fallback warning without interrupting workflow.
 
     return True  # Return success status after activation and relocation flow.
 
