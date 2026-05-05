@@ -763,58 +763,74 @@ def prepare_dedicated_chrome_window_for_automation() -> bool:
     """
 
     global DEDICATED_AUTOMATION_HWND  # Reference global dedicated automation window handle.
+    global ACTIVE_CHROME_BOUNDS  # Reference global active Chrome window bounds cache.
 
-    existing_windows = get_chrome_windows()  # Capture existing Chrome windows before opening the dedicated profile window.
+    existing_windows = get_chrome_windows()  # Capture existing Chrome windows before opening any new window.
     existing_hwnds = {int(getattr(window, "_hWnd", 0)) for window in existing_windows if int(getattr(window, "_hWnd", 0)) != 0}  # Capture existing Chrome window handles for delta detection.
-    launch_attempts = 1 if len(existing_windows) > 0 else 2  # Define profile-window launch count to avoid changing an existing user window.
-    launch_result = False  # Initialize aggregated launch result flag.
 
-    for _ in range(launch_attempts):  # Iterate configured launch attempts for dedicated-window preparation.
-        current_launch_result = open_chrome_with_profile(CHROME_PROFILE_DISPLAY_NAME)  # Open Chrome window with the configured profile.
+    any_window_open = len(existing_windows) > 0  # Detect whether any Chrome window is already open to determine launch count.
+    target_bounds = get_desired_monitor_bounds()  # Retrieve target monitor bounds once for placement of both user and automation windows.
 
-        if current_launch_result:  # Verify whether current launch attempt was dispatched successfully.
-            launch_result = True  # Persist successful launch status for post-launch selection flow.
+    max_detection_attempts = 10  # Define maximum attempts to detect each newly opened window.
+    detection_wait_seconds = 0.5  # Define wait time in seconds between detection attempts.
 
-    if launch_result:  # Verify whether profile-aware dedicated window launch succeeded.
-        refreshed_windows = get_chrome_windows()  # Retrieve Chrome windows after dedicated profile launch.
-        dedicated_window = None  # Initialize dedicated window reference for activation and handle capture.
-        new_windows = []  # Initialize collection for newly opened Chrome windows.
+    if not any_window_open:  # Handle profile initialization case where user window must be opened and placed on the target monitor first.
+        open_chrome_with_profile(CHROME_PROFILE_DISPLAY_NAME)  # Open the first Chrome window for profile initialization.
 
-        for window in refreshed_windows:  # Iterate refreshed Chrome windows to find the newly opened profile window.
-            window_hwnd = int(getattr(window, "_hWnd", 0))  # Retrieve current Chrome window handle.
+        user_new_windows = []  # Initialize new windows collection for user window detection.
 
-            if window_hwnd != 0 and window_hwnd not in existing_hwnds:  # Verify whether current window handle belongs to a newly opened window.
-                new_windows.append(window)  # Append newly opened Chrome window candidate.
+        for _ in range(max_detection_attempts):  # Iterate detection attempts until user window is found.
+            refreshed_windows = get_chrome_windows()  # Retrieve Chrome windows after first launch for delta comparison.
+            user_new_windows = [window for window in refreshed_windows if int(getattr(window, "_hWnd", 0)) != 0 and int(getattr(window, "_hWnd", 0)) not in existing_hwnds]  # Collect newly opened Chrome windows by HWND delta comparison.
 
-        if len(new_windows) > 0:  # Verify whether at least one newly opened Chrome window was found.
-            dedicated_window = max(new_windows, key=lambda window: int(getattr(window, "_hWnd", 0)))  # Select the newest launched Chrome window candidate by OS handle.
+            if len(user_new_windows) > 0:  # Verify whether the user window was detected after launch.
+                break  # Exit detection loop immediately upon first successful detection.
 
-        if dedicated_window is None:  # Verify whether dedicated window was not found by handle delta.
-            get_active_window = getattr(pyautogui, "getActiveWindow", None)  # Resolve optional active-window API for fallback selection.
-            active_window = get_active_window() if callable(get_active_window) else None  # Retrieve active desktop window as fallback dedicated candidate.
-            active_title = str(getattr(active_window, "title", "")).lower() if active_window is not None else ""  # Retrieve and normalize active window title for Chrome validation.
+            time.sleep(detection_wait_seconds)  # Wait before retrying user window detection.
 
-            if active_window is not None and "chrome" in active_title:  # Verify whether active window is a Chrome window for fallback dedicated selection.
-                dedicated_window = active_window  # Select active Chrome window as dedicated automation window.
+        if len(user_new_windows) > 0:  # Verify user window was detected before placement.
+            user_hwnd = int(getattr(user_new_windows[0], "_hWnd", 0))  # Retrieve HWND from the detected user profile window.
 
-        if dedicated_window is not None:  # Verify whether dedicated profile window candidate is available for activation.
-            activation_result = activate_window_with_fallback(dedicated_window)  # Activate the dedicated profile window before storing its handle.
+            if user_hwnd != 0:  # Verify HWND is valid before moving user profile window.
+                move_chrome_window_to_bounds(user_hwnd, target_bounds)  # Place the user profile window on the target monitor.
 
-            if activation_result:  # Verify whether dedicated profile window activation succeeded.
-                relocation_result = ensure_chrome_on_primary_monitor(dedicated_window)  # Ensure dedicated profile window is relocated to the primary monitor before automation.
+        existing_hwnds = {int(getattr(window, "_hWnd", 0)) for window in get_chrome_windows() if int(getattr(window, "_hWnd", 0)) != 0}  # Refresh HWND snapshot to include the user window before opening the automation window.
 
-                if not relocation_result:  # Verify whether relocation fallback failed for dedicated profile window.
-                    print(f"{BackgroundColors.YELLOW}[WARNING] Dedicated profile window relocation did not complete. Continuing with current active window.{Style.RESET_ALL}")  # Log dedicated-window relocation warning without interrupting workflow.
+    open_chrome_with_profile(CHROME_PROFILE_DISPLAY_NAME)  # Open the dedicated automation window.
 
-                try:  # Attempt to capture dedicated profile window handle after activation.
-                    DEDICATED_AUTOMATION_HWND = int(getattr(dedicated_window, "_hWnd", 0))  # Persist dedicated automation OS window handle.
-                except Exception:  # Handle dedicated window handle capture exception.
-                    DEDICATED_AUTOMATION_HWND = 0  # Reset dedicated window handle when capture fails.
+    new_windows = []  # Initialize new windows collection for automation window detection retries.
 
-                if DEDICATED_AUTOMATION_HWND != 0:  # Verify whether dedicated window handle was captured successfully.
-                    return True  # Return success after dedicated profile window preparation.
+    for _ in range(max_detection_attempts):  # Iterate detection attempts until automation window is found.
+        refreshed_windows = get_chrome_windows()  # Retrieve Chrome windows after automation launch for delta comparison.
+        new_windows = [window for window in refreshed_windows if int(getattr(window, "_hWnd", 0)) != 0 and int(getattr(window, "_hWnd", 0)) not in existing_hwnds]  # Collect newly opened Chrome windows by HWND delta comparison.
 
-    return False  # Return failure status when dedicated window cannot be resolved without fallback.
+        if len(new_windows) > 0:  # Verify whether any new window was detected after launch.
+            break  # Exit detection loop immediately upon first successful detection.
+
+        time.sleep(detection_wait_seconds)  # Wait before retrying window detection.
+
+    if len(new_windows) == 0:  # Verify whether the automation window was found after all detection attempts.
+        print(f"{BackgroundColors.RED}[WARNING] No new Chrome window detected after profile-aware launch. Automation cannot continue.{Style.RESET_ALL}")  # Log detection failure when no new window appears after all attempts.
+        return False  # Return failure when no new automation window was detected.
+
+    automation_window = max(new_windows, key=lambda window: int(getattr(window, "_hWnd", 0)))  # Select the most recently opened Chrome window as the dedicated automation window using maximum HWND.
+    automation_hwnd = int(getattr(automation_window, "_hWnd", 0))  # Retrieve HWND from the selected automation window.
+
+    if automation_hwnd == 0:  # Verify HWND is valid before window movement and bounds capture.
+        print(f"{BackgroundColors.RED}[WARNING] Invalid HWND detected for new automation window. Automation cannot continue.{Style.RESET_ALL}")  # Log invalid HWND error when HWND is zero.
+        return False  # Return failure when HWND is invalid.
+
+    move_chrome_window_to_bounds(automation_hwnd, target_bounds)  # Move ONLY the newly created automation window to the target monitor.
+
+    bounds_left = target_bounds[0]  # Extract left coordinate from target monitor bounds tuple.
+    bounds_top = target_bounds[1]  # Extract top coordinate from target monitor bounds tuple.
+    bounds_width = max(1, target_bounds[2] - target_bounds[0])  # Compute width from target monitor bounds tuple.
+    bounds_height = max(1, target_bounds[3] - target_bounds[1])  # Compute height from target monitor bounds tuple.
+    ACTIVE_CHROME_BOUNDS = {"left": bounds_left, "top": bounds_top, "width": bounds_width, "height": bounds_height}  # Update cached bounds to reflect the automation window position on the target monitor.
+
+    DEDICATED_AUTOMATION_HWND = automation_hwnd  # Persist dedicated automation OS window handle for lifecycle management.
+    move_cursor_to_active_window_center()  # Move cursor to the center of the automation window to establish interaction context.
+    return True  # Return success after dedicated automation window preparation completes.
 
 
 def close_dedicated_automation_window() -> bool:
