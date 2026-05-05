@@ -1207,11 +1207,12 @@ def locate_image_in_region(image_path: Path, region: Tuple[int, int, int, int] |
         return None  # Return None when image search fails.
 
 
-def locate_image_variants(image_paths: List[Path]) -> Any:
+def locate_image_variants(image_paths: List[Path], region: Tuple[int, int, int, int] | None = None) -> Any:
     """
     Attempts to locate an image from multiple candidate variant paths.
 
     :param image_paths: List of image file paths to test in sequence.
+    :param region: Optional screen region tuple used to constrain image search to a specific area.
     :return: Bounding box when any variant matches, otherwise None.
     """
 
@@ -1220,7 +1221,7 @@ def locate_image_variants(image_paths: List[Path]) -> Any:
             print(f"{BackgroundColors.RED}Image file not found: {BackgroundColors.GREEN}{image_path}{Style.RESET_ALL}")  # Log missing image file for diagnostic purposes.
             continue  # Skip to next image variant when current file does not exist.
 
-        box = locate_image(image_path)  # Attempt to locate the current image variant in the capture region.
+        box = locate_image_in_region(image_path, region) if region is not None else locate_image(image_path)  # Attempt to locate the current image variant within the specified region or across the full virtual desktop.
 
         if box is not None:  # Verify whether the current image variant was successfully detected.
             return box  # Return matched bounding box immediately upon first successful match.
