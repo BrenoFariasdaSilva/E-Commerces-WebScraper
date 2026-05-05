@@ -1247,8 +1247,12 @@ def detect_chrome_download_settings_state(correct_imgs: List[Path], wrong_toggle
         (DOWNLOAD_SETTINGS_STATE_BOTH_TOGGLES_ON, wrong_both_imgs),  # Define the both-toggles-enabled variants.
     ]  # Finalize ordered image candidate groups for state detection.
 
+    time.sleep(0.5)  # Wait before starting state detection to ensure the settings page is fully rendered.
+
+    detection_region = get_chrome_download_settings_region()  # Resolve the automation window region to constrain image detection to the correct monitor.
+
     for state_name, image_paths in image_candidates:  # Iterate downloads settings state candidates in priority order.
-        box = locate_image_variants(image_paths)  # Attempt to locate any color variant of the current state image.
+        box = locate_image_variants(image_paths, detection_region)  # Attempt to locate any color variant of the current state image within the automation window region.
 
         if box is not None:  # Verify whether the current state was successfully detected from any color variant.
             return state_name, box  # Return the detected downloads settings state and bounding box.
