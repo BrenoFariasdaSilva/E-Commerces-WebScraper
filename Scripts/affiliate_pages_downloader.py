@@ -2961,6 +2961,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         retry_attempt = 1  # Initialize retry counter for current URL execution.
         success = False  # Initialize success flag for current URL processing.
         fragmented_skip = False  # Initialize fragmented skip flag for for-loop continuation after while-loop exit.
+        invalid_url_skip = False  # Initialize invalid URL skip flag for for-loop continuation after homepage redirect detection.
 
         if only_renew_amazon_urls:  # Verify whether only-renew mode is active before executing download-specific workflow.
             opened_tabs = only_renew_amazon_url_mode(url, index, urls, urls_file, image_paths, renew_amazon_affiliate, opened_tabs)  # Execute isolated renew-only flow for the current URL and receive updated opened tabs count.
@@ -2984,6 +2985,11 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
             pre_download_snapshots = snapshot_download_directories(downloads_dirs)  # Capture downloads directory snapshots before URL processing.
             
             click_go_to_product_button(image_paths["mercado_livre_img"])  # Execute MercadoLivre button action when available.
+
+            if not verify_url_is_valid_for_download(url, urls_file, url_to_download, image_paths):  # Verify current browser page is a valid product page before extension interaction.
+                opened_tabs = safely_close_product_tab(opened_tabs)  # Close the product tab for the invalid URL before continuing to the next URL.
+                invalid_url_skip = True  # Mark invalid URL skip flag for for-loop continuation without processed count increment.
+                break  # Exit while loop immediately after detecting an invalid URL redirect.
             
             extension_method = click_image_or_coords(image_paths["extension_img"], EXTENSION_X_REF, EXTENSION_Y_REF)  # Execute extension click action with scaled fallback coordinates.
                 
@@ -3069,6 +3075,9 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
 
         if fragmented_skip:  # Verify whether fragmented skip was requested during download attempt.
             continue  # Continue for loop without processed_count increment for fragmented ZIP skip.
+
+        if invalid_url_skip:  # Verify whether invalid URL was detected during download attempt.
+            continue  # Continue for loop without processed_count increment for invalid URL skip.
 
         if not success:  # Verify whether download ultimately failed after all retry attempts.
             continue  # Continue for loop without processed_count increment for failed URLs.
