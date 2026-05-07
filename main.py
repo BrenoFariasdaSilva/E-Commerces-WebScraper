@@ -1275,18 +1275,27 @@ def scrape_product(url, timestamped_output_dir, local_html_path=None):
         if not product_data:  # Verify if scraping failed
             return None, None, None, None, None, None  # Return None values
 
-        if product_data is not None:  # Verify product_data exists
-            product_data["description"], product_data["product_details"] = normalize_product_text_description_and_details(product_data.get("description", ""), product_data.get("product_details", ""))  # Deduplicate phrases and update product_data fields directly
-
-        product_data = normalize_product_data_paths(product_data)  # Normalize all path fields in product_data
-        product_data = ensure_product_data_url_first(product_data, url)  # Ensure source URL exists and is the first key in product_data
+        # Mutate: normalize description/details fields
+        product_data["description"], product_data["product_details"] = normalize_product_text_description_and_details(
+            product_data.get("description", ""),
+            product_data.get("product_details", "")
+        )  # Deduplicate phrases and update product_data fields directly
         
+        product_name_safe = product_data.get("product_name_safe", "")  # Get the sanitized product name for directory naming
+        product_directory = product_name_safe  # Use the sanitized product name as the directory name for output
+        product_dir_path = os.path.join(timestamped_output_dir, product_directory)  # Full path to the product output directory
+        save_product_data_json(product_data, product_dir_path, url)  # Persist after normalization
+
+        product_data = normalize_product_data_paths(product_data)  # Normalize file paths in product_data to ensure they are relative and consistent for output
+        save_product_data_json(product_data, product_dir_path, url)  # Persist after normalization
+
+        product_data = ensure_product_data_url_first(product_data, url)  # Reorder product_data to have URL as the first key for consistency and readability
+        save_product_data_json(product_data, product_dir_path, url)  # Persist after normalization
+
         product_name = product_data.get("name", "Unknown Product")  # Get product name
         if isinstance(product_name, str):  # Ensure we operate only on strings
             product_name = product_name.replace("\u00A0", " ")  # Replace NBSP with normal space
             product_name = re.sub(r"\s+", " ", product_name).strip()  # Collapse multiple whitespace to single spaces
-        product_name_safe = product_data.get("product_name_safe", "")  # Get canonical directory name from scraper
-        product_directory = product_name_safe  # Use canonical directory name directly (already includes platform prefix)
         description_file = f"{timestamped_output_dir}/{product_directory}/{product_name_safe}_description.txt"  # Construct full path to description file using canonical name
         
         if not verify_filepath_exists(description_file):  # Verify if description file exists
