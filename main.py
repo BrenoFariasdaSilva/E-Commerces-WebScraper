@@ -700,6 +700,23 @@ def extract_root_image_basename(root_filename: str) -> str:
     return stripped  # Return raw basename with no numeric prefix and no extension
 
 
+def normalize_basename_for_comparison(basename: str) -> str:
+    """
+    Normalizes an image basename for deterministic filename similarity comparison by
+    lowercasing and removing known CDN-injected size/variant suffixes.
+
+    :param basename: Raw image basename without extension (e.g., "file_br-xxx-resize_w82_nl").
+    :return: Cleaned basename suitable for SequenceMatcher input (e.g., "file_br-xxx").
+    """
+
+    normalized = basename.lower()  # Lowercase for case-insensitive comparison
+    normalized = re.sub(r"-resize_w\d+_\w+", "", normalized)  # Remove hyphen-prefixed CDN resize suffix (e.g., "-resize_w82_nl")
+    normalized = re.sub(r"_resize_w\d+_\w+", "", normalized)  # Remove underscore-prefixed CDN resize suffix variant
+    normalized = re.sub(r"[-_](tn|cover|thumbnail)$", "", normalized)  # Remove known trailing thumbnail variant markers
+    normalized = normalized.strip("-_")  # Strip any residual leading or trailing separator characters
+    return normalized  # Return cleaned normalized basename ready for similarity comparison
+
+
 def get_next_run_index(base_output_dir, today_str):
     """
     Determines the next run index for the current day by scanning existing timestamped directories.
