@@ -2807,6 +2807,27 @@ def get_browser_current_url() -> str:
         return ""  # Return empty string when address bar URL cannot be retrieved.
 
 
+def detect_platform_from_url(url: str) -> str:
+    """
+    Detect the marketplace platform from a URL using configured domain keyword substrings.
+
+    :param url: URL string to evaluate for platform detection.
+    :return: Platform name string from PLATFORM_INVALID_URL_RULES or empty string when unrecognized.
+    """
+
+    normalized_url = str(url).strip().lower()  # Normalize URL for case-insensitive domain keyword matching.
+
+    for platform_name in sorted(PLATFORM_INVALID_URL_RULES.keys()):  # Iterate platform names in sorted order for deterministic detection.
+        platform_config = PLATFORM_INVALID_URL_RULES[platform_name]  # Retrieve platform configuration from rules dictionary.
+        url_domains = platform_config.get("url_domains", [])  # Retrieve domain keyword list for current platform.
+
+        for domain_keyword in url_domains:  # Iterate domain keywords to test presence in normalized URL.
+            if domain_keyword.lower() in normalized_url:  # Verify whether current domain keyword appears in normalized URL.
+                return platform_name  # Return detected platform name immediately upon first keyword match.
+
+    return ""  # Return empty string when no configured platform matches the URL.
+
+
 def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_count: int, downloads_dirs: List[str], image_paths: Dict[str, Path], ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]], chrome_download_settings_ready: bool, renew_amazon_affiliate: bool = False, only_renew_amazon_urls: bool = False) -> Tuple[int, Dict[str, str], bool]:
     """
     Processes URLs while tracking downloaded files by directory snapshots.
