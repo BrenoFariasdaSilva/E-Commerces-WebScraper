@@ -2784,6 +2784,29 @@ def only_renew_amazon_url_mode(url: str, index: int, urls: List[str], urls_file:
     return opened_tabs  # Return updated opened_tabs count to propagate tab lifecycle state to caller.
 
 
+def get_browser_current_url() -> str:
+    """
+    Read the current URL from the Chrome address bar via clipboard.
+
+    :param: None.
+    :return: Current browser URL string or empty string when retrieval fails.
+    """
+
+    try:  # Attempt to read the address bar URL via clipboard capture.
+        pyautogui.hotkey("ctrl", "l")  # Focus the browser address bar.
+        time.sleep(0.15)  # Wait briefly after focusing the address bar.
+        pyautogui.hotkey("ctrl", "a")  # Select all address bar content.
+        time.sleep(0.08)  # Wait briefly after selecting address bar content.
+        pyautogui.hotkey("ctrl", "c")  # Copy selected address bar content to clipboard.
+        time.sleep(0.3)  # Wait for clipboard operation to complete.
+        url = normalize_affiliate_url(get_clipboard_text())  # Retrieve and normalize URL from clipboard.
+        pyautogui.press("escape")  # Unfocus address bar to restore page focus.
+        time.sleep(0.1)  # Wait briefly after unfocusing the address bar.
+        return url  # Return the URL read from the browser address bar.
+    except Exception:  # Handle address bar URL retrieval failures.
+        return ""  # Return empty string when address bar URL cannot be retrieved.
+
+
 def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_count: int, downloads_dirs: List[str], image_paths: Dict[str, Path], ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]], chrome_download_settings_ready: bool, renew_amazon_affiliate: bool = False, only_renew_amazon_urls: bool = False) -> Tuple[int, Dict[str, str], bool]:
     """
     Processes URLs while tracking downloaded files by directory snapshots.
