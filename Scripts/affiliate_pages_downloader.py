@@ -2806,6 +2806,11 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         success = False  # Initialize success flag for current URL processing.
         fragmented_skip = False  # Initialize fragmented skip flag for for-loop continuation after while-loop exit.
 
+        if only_renew_amazon_urls:  # Verify whether only-renew mode is active before executing download-specific workflow.
+            opened_tabs = only_renew_amazon_url_mode(url, index, urls, urls_file, share_button_img, renew_amazon_affiliate, opened_tabs)  # Execute isolated renew-only flow for the current URL and receive updated opened tabs count.
+            processed_count += 1  # Increment processed counter per attempted URL in renew-only mode.
+            continue  # Continue loop to ensure all URLs are attempted independently in renew-only mode.
+
         if not activate_automation_window():  # Verify if automation window activation succeeds before URL navigation.
             return processed_count, url_to_download, False  # Return failure state when activation fails.
 
@@ -2814,18 +2819,11 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         current_tab = index  # Store current tab index.
         original_url = url  # Preserve original URL before potential Amazon affiliate renewal modification.
 
-        if re.search(AFFILIATE_URL_PATTERN, url):  # Verify whether current URL matches Amazon affiliate pattern.
-            url, renewal_success, renewed_url = handle_amazon_affiliate_url(current_tab, url, share_button_img, Path(urls_file), renew_amazon_affiliate)  # Execute extracted Amazon affiliate handling logic.
+        url, renewal_success, renewed_url, _ = renew_amazon_url_for_tab(url, current_tab, urls_file, share_button_img, renew_amazon_affiliate)  # Execute unified Amazon affiliate URL renewal and capture result tuple.
 
-            if renewal_success and renewed_url != original_url:  # Verify whether renewal succeeded and URL actually changed before applying file updates.
-                apply_renewed_url_to_files(original_url, renewed_url, urls_file)  # Apply renewed URL to both main and backup input files.
+        if renewal_success and renewed_url != original_url:  # Verify whether renewal succeeded and URL actually changed before applying file updates.
+            apply_renewed_url_to_files(original_url, renewed_url, urls_file)  # Apply renewed URL to both main and backup input files.
 
-        # @TODO: FIx this, as this depends on renewal_sucess. If the renewal fails, it must try again 
-        if only_renew_amazon_urls:  # Verify whether only-renew mode is active for Amazon URLs.
-            opened_tabs = handle_only_renew_amazon_urls(opened_tabs)  # Execute extracted only-renew tab handling logic.
-            processed_count += 1  # Increment processed counter.
-            break  # Continue loop without executing download-specific workflow.
-        
         while retry_attempt <= MAX_DOWNLOAD_RETRY_ATTEMPTS:  # Execute download attempt up to maximum retry limit.
             pre_download_snapshots = snapshot_download_directories(downloads_dirs)  # Capture downloads directory snapshots before URL processing.
             
