@@ -785,6 +785,32 @@ def compute_perceptual_hash_8x8(img: Image.Image) -> int:
     return hash_bits  # Return 64-bit integer aHash
 
 
+def images_are_perceptually_similar(root_img_path: str, candidate_img_path: str, max_hamming_distance: int = 10) -> bool:
+    """
+    Verifies that two images depict the same visual content by comparing their 8x8
+    perceptual hashes (aHash). Returns True when the Hamming distance between the two
+    hashes is within the allowed tolerance.
+
+    :param root_img_path: Absolute path to the root-level (low-resolution) image.
+    :param candidate_img_path: Absolute path to the candidate (higher-resolution) image.
+    :param max_hamming_distance: Maximum allowed bit difference between hashes (default 10 out of 64).
+    :return: True if the images are visually similar, False otherwise.
+    """
+
+    root_img = load_pil_image_safe(root_img_path)  # Load root image without raising
+    if root_img is None:  # Verify root image loaded successfully
+        return False  # Cannot compare when root image is unavailable
+
+    candidate_img = load_pil_image_safe(candidate_img_path)  # Load candidate image without raising
+    if candidate_img is None:  # Verify candidate image loaded successfully
+        return False  # Cannot compare when candidate image is unavailable
+
+    root_hash = compute_perceptual_hash_8x8(root_img)  # Compute aHash for root image
+    candidate_hash = compute_perceptual_hash_8x8(candidate_img)  # Compute aHash for candidate image
+    hamming_dist = bin(root_hash ^ candidate_hash).count("1")  # Count differing bits via XOR and popcount
+    return hamming_dist <= max_hamming_distance  # Return True when similarity is within tolerance
+
+
 def get_next_run_index(base_output_dir, today_str):
     """
     Determines the next run index for the current day by scanning existing timestamped directories.
