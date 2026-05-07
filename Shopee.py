@@ -1138,7 +1138,8 @@ class Shopee:
                     if response and response.ok:  # Verify if response is successful
                         parsed_url = urlparse(absolute_url)  # Parse URL to extract components
                         ext = os.path.splitext(parsed_url.path)[1] or ".jpg"  # Extract file extension or use default .jpg
-                        filename = f"image_{idx}{ext}"  # Generate filename with index and extension
+                        original_basename = os.path.splitext(os.path.basename(parsed_url.path))[0]  # Extract original filename without extension from URL path
+                        filename = f"{idx:02d}_{original_basename}{ext}"  # Generate filename with two-digit index prefix and original basename
                         filepath = os.path.join(assets_dir, filename)  # Construct full file path for saving
                         
                         with open(filepath, "wb") as f:  # Open file in binary write mode
@@ -1342,7 +1343,8 @@ class Shopee:
                 if not ext or ext not in [".jpg", ".jpeg", ".png", ".webp", ".gif"]:  # If extension is missing or not common image format
                     ext = ".jpg"  # Default to jpg
                 
-                filename = f"image_{image_count:03d}{ext}"  # Generate filename with index and extension
+                original_basename = os.path.splitext(os.path.basename(local_img_path))[0]  # Extract original filename without extension from local path
+                filename = f"{image_count:02d}_{original_basename}{ext}"  # Generate filename with two-digit index prefix and original basename
                 filepath = os.path.join(output_dir, filename)  # Create full path for image file
                 
                 shutil.copy2(local_img_path, filepath)  # Copy local image to output directory
@@ -1362,7 +1364,8 @@ class Shopee:
                     if response and response.ok:  # Verify response is successful
                         parsed_url = urlparse(img_url)  # Parse URL
                         ext = os.path.splitext(parsed_url.path)[1] or ".jpg"  # Get extension or default
-                        filename = f"image_{image_count:03d}{ext}"  # Generate filename
+                        original_basename = os.path.splitext(os.path.basename(parsed_url.path))[0]  # Extract original filename without extension from URL path
+                        filename = f"{image_count:02d}_{original_basename}{ext}"  # Generate filename with two-digit index prefix and original basename
                         filepath = os.path.join(output_dir, filename)  # Create full path
                         
                         with open(filepath, "wb") as f:  # Open file in binary write mode
@@ -1379,7 +1382,8 @@ class Shopee:
                     if response.status_code == 200:  # Verify success
                         parsed_url = urlparse(img_url)  # Parse URL
                         ext = os.path.splitext(parsed_url.path)[1] or ".jpg"  # Get extension
-                        filename = f"image_{image_count:03d}{ext}"  # Generate filename
+                        original_basename = os.path.splitext(os.path.basename(parsed_url.path))[0]  # Extract original filename without extension from URL path
+                        filename = f"{image_count:02d}_{original_basename}{ext}"  # Generate filename with two-digit index prefix and original basename
                         filepath = os.path.join(output_dir, filename)  # Create full path
                         
                         with open(filepath, "wb") as f:  # Open file in binary write mode
