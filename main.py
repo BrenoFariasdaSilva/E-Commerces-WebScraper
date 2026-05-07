@@ -204,7 +204,7 @@ GEMINI_ALL_KEYS_EXHAUSTED_WAIT_SECONDS = 600  # Seconds to wait before restartin
 GEMINI_MAX_ALL_KEYS_EXHAUSTED_CYCLES = 1  # Maximum all-keys-exhausted cycles per URL before failing the request.
 
 # Image Upgrade Constants:
-FILENAME_SIMILARITY_THRESHOLD = 0.70  # Minimum SequenceMatcher ratio for root-to-indexed basename similarity matching
+FILENAME_SIMILARITY_THRESHOLD = 0.70  # Minimum SequenceMatcher ratio for root-to-candidate basename similarity matching
 
 # Functions Definitions:
 
@@ -841,23 +841,23 @@ def candidate_exceeds_root_resolution(root_img_path: str, candidate_img_path: st
     return candidate_pixels > root_pixels  # Return True only when candidate strictly exceeds root resolution
 
 
-def find_resolution_upgrade_candidates(root_basename_normalized: str, indexed_images_dir: str) -> List[Tuple[str, float]]:
+def find_resolution_upgrade_candidates(root_basename_normalized: str, candidate_images_dir: str) -> List[Tuple[str, float]]:
     """
-    Searches the indexed images directory for candidate files whose normalized basename
+    Searches the candidate images directory for files whose normalized basename
     achieves at least FILENAME_SIMILARITY_THRESHOLD similarity against the root's normalized
     basename. Returns candidates sorted by similarity score descending.
 
     :param root_basename_normalized: Normalized basename of the root image (no prefix, no CDN suffix).
-    :param indexed_images_dir: Absolute path to the indexed images subdirectory.
+    :param candidate_images_dir: Absolute path to the candidate images directory to search.
     :return: List of (candidate_absolute_path, similarity_score) tuples, best first.
     """
 
     candidates: List[Tuple[str, float]] = []  # Initialize empty candidate collection
 
-    if not os.path.isdir(indexed_images_dir):  # Verify indexed images directory exists
+    if not os.path.isdir(candidate_images_dir):  # Verify candidate images directory exists
         return candidates  # Return empty list when directory is absent
 
-    image_filenames = get_image_files(indexed_images_dir)  # Retrieve all image filenames from indexed dir
+    image_filenames = get_image_files(candidate_images_dir)  # Retrieve all image filenames from candidate images directory
 
     for cand_filename in image_filenames:  # Iterate every candidate image filename
         cand_basename = os.path.splitext(cand_filename)[0]  # Strip extension from candidate filename
@@ -865,7 +865,7 @@ def find_resolution_upgrade_candidates(root_basename_normalized: str, indexed_im
         similarity = compute_filename_similarity(root_basename_normalized, cand_normalized)  # Compute SequenceMatcher ratio
 
         if similarity >= FILENAME_SIMILARITY_THRESHOLD:  # Only accept candidates meeting minimum similarity
-            cand_path = os.path.join(indexed_images_dir, cand_filename)  # Build absolute path to candidate file
+            cand_path = os.path.join(candidate_images_dir, cand_filename)  # Build absolute path to candidate file
             candidates.append((cand_path, similarity))  # Append candidate with its score
 
     candidates.sort(key=lambda t: t[1], reverse=True)  # Sort by similarity score descending for best-first iteration
@@ -878,7 +878,7 @@ def attempt_resolution_upgrade(root_img_path: str, candidate_img_path: str) -> b
       1. Verifies both files exist on disk.
       2. Verifies the candidate has strictly higher resolution (METHOD 1 gate).
       3. Verifies the images are perceptually similar (METHOD 2 gate).
-      4. Archives the original low-resolution root image into the indexed images directory
+      4. Archives the original low-resolution root image into the candidate images directory
          under the root's original filename, then copies the high-resolution candidate
          into the product root directory under the same original root filename.
 
@@ -901,32 +901,32 @@ def attempt_resolution_upgrade(root_img_path: str, candidate_img_path: str) -> b
 
     root_filename = os.path.basename(root_img_path)  # Extract root filename to use as destination name
     root_dir = os.path.dirname(root_img_path)  # Resolve product root directory for copy destination
-    candidate_dir = os.path.dirname(candidate_img_path)  # Resolve indexed images directory for archive destination
-    archived_root_path = os.path.join(candidate_dir, root_filename)  # Path to preserve the original low-res root inside indexed dir
+    candidate_dir = os.path.dirname(candidate_img_path)  # Resolve candidate images directory for archive destination
+    archived_root_path = os.path.join(candidate_dir, root_filename)  # Build path to preserve the original low-res root inside candidate images directory
 
     try:  # Attempt atomic replacement with full error containment
-        shutil.move(root_img_path, archived_root_path)  # Move low-res root into indexed dir under its original name
-        shutil.copy2(candidate_img_path, os.path.join(root_dir, root_filename))  # Copy high-res candidate to root under original root filename
+        shutil.move(root_img_path, archived_root_path)  # Move low-res root into candidate images directory under its original name
+        shutil.copy2(candidate_img_path, os.path.join(root_dir, root_filename))  # Copy high-res candidate to product root under original root filename
     except Exception:  # Catch any I/O failure during the replacement sequence
         return False  # Signal failure without leaving partial state visible
 
     return True  # Signal successful resolution upgrade
 
 
-def upgrade_root_images_from_indexed_subdir(product_directory: str, timestamped_output_dir: str, images_dir: str) -> None:
+def upgrade_root_images_from_asset_images_dir(product_directory: str, timestamped_output_dir: str, images_dir: str) -> None:
     """
     Orchestrates the deterministic higher-resolution replacement pipeline for all root-level
     images in a product output directory. For each root image:
       - Extracts and normalizes its basename (strips numeric prefix and CDN resize suffix).
-      - Searches the indexed images subdirectory (e.g., "{product_dir}/18/images/") for
-        filename-similar candidates (METHOD 1: SequenceMatcher >= FILENAME_SIMILARITY_THRESHOLD).
+      - Searches the provided asset images directory for filename-similar candidates
+        (METHOD 1: SequenceMatcher >= FILENAME_SIMILARITY_THRESHOLD).
       - For each candidate in best-first order, verifies higher resolution and visual content
         similarity (METHOD 2: 8x8 aHash Hamming distance <= 10), then performs the replacement.
       - Stops after the first successful upgrade per root image to preserve determinism.
 
-    :param product_directory: Indexed product directory name inside the timestamped run dir.
+    :param product_directory: Product directory name inside the timestamped run dir.
     :param timestamped_output_dir: Absolute path to the timestamped run directory.
-    :param images_dir: Absolute path to the indexed images subdirectory to source candidates from.
+    :param images_dir: Absolute path to the asset images directory to source candidates from.
     :return: None
     """
 
@@ -935,11 +935,11 @@ def upgrade_root_images_from_indexed_subdir(product_directory: str, timestamped_
     if not os.path.isdir(product_dir_path):  # Verify product directory exists before any processing
         return  # Return early when product directory is absent
 
-    if images_dir is None:  # Verify indexed images subdir was found
-        verbose_output(  # Log diagnostic message when no indexed subdir is present
-            f"{BackgroundColors.YELLOW}No indexed images subdirectory found in: {BackgroundColors.CYAN}{product_dir_path}{Style.RESET_ALL}"
+    if images_dir is None:  # Verify asset images directory was provided
+        verbose_output(  # Log diagnostic message when no asset images directory is present
+            f"{BackgroundColors.YELLOW}No asset images directory provided for: {BackgroundColors.CYAN}{product_dir_path}{Style.RESET_ALL}"
         )  # End of verbose output call
-        return  # Return early when no indexed images directory exists
+        return  # Return early when no asset images directory is available
 
     root_image_files = get_image_files(product_dir_path)  # Retrieve all root-level image filenames
 
@@ -952,7 +952,7 @@ def upgrade_root_images_from_indexed_subdir(product_directory: str, timestamped_
         root_img_path = os.path.join(product_dir_path, root_filename)  # Build absolute path to root image
         root_basename = extract_root_image_basename(root_filename)  # Strip numeric prefix and extension
         root_normalized = normalize_basename_for_comparison(root_basename)  # Normalize for similarity matching
-        candidates = find_resolution_upgrade_candidates(root_normalized, images_dir)  # Find filename-similar candidates
+        candidates = find_resolution_upgrade_candidates(root_normalized, images_dir)  # Find filename-similar candidates from asset images directory
 
         for candidate_path, similarity_score in candidates:  # Iterate candidates from best match to worst
             success = attempt_resolution_upgrade(root_img_path, candidate_path)  # Attempt atomic replacement
@@ -967,7 +967,7 @@ def upgrade_root_images_from_indexed_subdir(product_directory: str, timestamped_
     print(  # Always print upgrade summary for operational visibility
         f"{BackgroundColors.GREEN}Resolution upgrade complete: "
         f"{BackgroundColors.CYAN}{upgraded_count}{BackgroundColors.GREEN}/{len(root_image_files)}"
-        f"{BackgroundColors.GREEN} root images upgraded from indexed subdir.{Style.RESET_ALL}"
+        f"{BackgroundColors.GREEN} root images upgraded from asset images directory.{Style.RESET_ALL}"
     )  # End of print statement
 
 
@@ -3719,7 +3719,7 @@ def handle_cleanup(product_directory: str, timestamped_output_dir: str, html_pat
     copy_original_input_to_output(input_source, product_directory, base_output_dir=timestamped_output_dir)  # Copy original input into final product folder
 
     if product_directory and isinstance(product_directory, str) and asset_dirs and len(asset_dirs) >= 1:  # Only run resolution upgrade for valid product dirs
-        upgrade_root_images_from_indexed_subdir(product_directory, timestamped_output_dir, asset_dirs[0])  # Move images from indexed subdir to root of product directory for better Gemini compatibility
+        upgrade_root_images_from_asset_images_dir(product_directory, timestamped_output_dir, asset_dirs[0])  # Replace low-res root images with higher-resolution equivalents sourced from the asset images directory
 
     if DELETE_LOCAL_HTML_FILE:  # Only perform deletions when configured
         if extracted_dir_to_cleanup and os.path.exists(extracted_dir_to_cleanup):  # Remove extracted directory if present
