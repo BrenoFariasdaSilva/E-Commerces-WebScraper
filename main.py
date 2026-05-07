@@ -640,7 +640,7 @@ def clean_images_directory(images_dir: str) -> None:
         print(f"{BackgroundColors.YELLOW}Images directory does not exist: {BackgroundColors.CYAN}{images_dir}{Style.RESET_ALL}")
         return  # Return if the images directory does not exist
 
-    allowed_exts = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg", ".avif"}  # Define allowed image extensions for cleanup filtering
+    allowed_exts = {".jpg", ".jpeg", ".png", ".gif", ".webp"}  # Define allowed image extensions for cleanup filtering
 
     if os.path.isdir(images_dir):  # Verify if images directory exists before cleanup
         for fname in os.listdir(images_dir):  # Iterate all entries inside images directory
