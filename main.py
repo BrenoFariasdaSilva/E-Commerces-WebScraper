@@ -599,18 +599,17 @@ def clean_duplicate_images(product_dir):
     remove_duplicate_images(groups)  # Remove duplicate images
 
 
-def exclude_small_images(product_directory, base_output_dir=OUTPUT_DIRECTORY, min_size_bytes=2048):
+def exclude_small_images(product_dir, min_size_bytes=10240):
     """
     Excludes (deletes) image files smaller than the specified minimum size in bytes.
     This helps remove very small or corrupted images that are likely thumbnails or placeholders.
 
-    :param product_directory: Directory name (may include platform prefix) for the product
-    :param base_output_dir: Base output directory path (defaults to OUTPUT_DIRECTORY constant)
-    :param min_size_bytes: Minimum file size in bytes (default 2048 = 2KB)
+    :param product_dir: Directory name (may include platform prefix) for the product
+    :param min_size_bytes: Minimum file size in bytes (default 10240 bytes = 10 KB)
     :return: None
     """
     
-    product_dir = os.path.join(base_output_dir, product_directory)  # Path to the product directory using provided base directory
+    verbose_output(f"{BackgroundColors.GREEN}Excluding small images in directory: {BackgroundColors.CYAN}{product_dir}{Style.RESET_ALL}")
     
     if not os.path.exists(product_dir):  # If the product directory does not exist
         return  # Return if the directory does not exist
