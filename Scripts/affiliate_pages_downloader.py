@@ -2683,6 +2683,33 @@ def apply_renewed_url_to_files(original_url: str, renewed_url: str, urls_file: P
         update_urls_txt_with_new_amazon_url(original_url, renewed_url, backup_file)  # Replace original URL with renewed URL in the backup URLs input file.
 
 
+def renew_amazon_url_for_tab(url: str, current_tab: int, urls_file: Path, share_button_img: Path, renew_amazon_affiliate: bool) -> Tuple[str, bool, str, str]:
+    """
+    Attempts Amazon affiliate URL renewal for the current URL when it matches the affiliate pattern.
+
+    :param url: Current URL to evaluate and potentially renew.
+    :param current_tab: Current browser tab index for logging purposes.
+    :param urls_file: Path to main URLs input file.
+    :param share_button_img: Path to ShareAffiliateURL button image.
+    :param renew_amazon_affiliate: Flag indicating whether renewal is enabled.
+    :return: Tuple of resolved URL, renewal success flag, renewed URL, and renewal reason string.
+    """
+
+    if not re.search(AFFILIATE_URL_PATTERN, url):  # Verify whether current URL matches Amazon affiliate pattern before attempting renewal.
+        return url, False, url, "URL did not match Amazon affiliate pattern"  # Return original URL with failure status when pattern does not match.
+
+    original_url = url  # Preserve original URL before potential renewal replacement.
+    url, renewal_success, renewed_url = handle_amazon_affiliate_url(current_tab, url, share_button_img, Path(urls_file), renew_amazon_affiliate)  # Execute Amazon affiliate renewal for current URL.
+
+    if renewal_success and renewed_url != original_url:  # Verify whether renewal succeeded and URL changed before returning success status.
+        return url, True, renewed_url, "Renewed URL generated"  # Return renewed URL with success status when renewal changed the URL.
+
+    if renewal_success and renewed_url == original_url:  # Verify whether renewal succeeded but URL remained unchanged.
+        return url, False, renewed_url, "Renewed URL matched original URL"  # Return with normalized failure status when renewed URL is identical to original.
+
+    return url, False, renewed_url, "Renewal flow returned unsuccessful status"  # Return with failure status when renewal flow did not succeed.
+
+
 def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_count: int, downloads_dirs: List[str], extension_img: Path, download_img: Path, enable_permission_img: Path, confirmation_img: Path, failed_file_download_img: Path, close_download_tab_img: Path, mercado_livre_img: Path, share_button_img: Path, save_button_img: Path, ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]], chrome_download_settings_ready: bool, renew_amazon_affiliate: bool = False, only_renew_amazon_urls: bool = False) -> Tuple[int, Dict[str, str], bool]:
     """
     Processes URLs while tracking downloaded files by directory snapshots.
