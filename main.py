@@ -1724,7 +1724,9 @@ def scrape_product(url, timestamped_output_dir, local_html_path=None):
             product_data.get("description", ""),
             product_data.get("product_details", "")
         )  # Deduplicate phrases and update product_data fields directly
-        
+
+        product_data = validate_and_fix_product_prices(product_data)  # Validate and correct price and discount fields
+
         product_name_safe = product_data.get("product_name_safe", "")  # Get the sanitized product name for directory naming
         product_directory = product_name_safe  # Use the sanitized product name as the directory name for output
         product_dir_path = os.path.join(timestamped_output_dir, product_directory)  # Full path to the product output directory
