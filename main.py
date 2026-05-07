@@ -571,21 +571,16 @@ def remove_duplicate_images(groups):
                 print(f"{BackgroundColors.RED}Error removing image {BackgroundColors.CYAN}{img_path}{BackgroundColors.RED}: {BackgroundColors.YELLOW}{e}{Style.RESET_ALL}")  # Output duplicate image removal failure
 
 
-def clean_duplicate_images(product_directory, base_output_dir=OUTPUT_DIRECTORY):
+def clean_duplicate_images(product_dir):
     """
-    Cleans up duplicate images in the product directory by normalizing all images to the smallest size,
-    computing MD5 hashes of the resized versions, and removing lower-resolution duplicates while keeping
-    the highest-resolution version of each unique image.
+    Cleans duplicate images in the product directory by resizing them to the minimum dimensions and comparing their hashes.
 
     This approach detects duplicates that may have different resolutions but represent the same content,
     such as thumbnails and full-size images.
 
-    :param product_directory: Directory name (may include platform prefix) for the product
-    :param base_output_dir: Base output directory path (defaults to OUTPUT_DIRECTORY constant)
+    :param product_dir: Directory name (may include platform prefix) for the product
     :return: None
     """
-    
-    product_dir = os.path.join(base_output_dir, product_directory)  # Path to the product directory using provided base directory
     
     if not os.path.exists(product_dir):  # If the product directory does not exist
         print(f"{BackgroundColors.YELLOW}Product directory does not exist: {BackgroundColors.CYAN}{product_dir}{BackgroundColors.YELLOW}.{Style.RESET_ALL}")
