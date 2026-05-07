@@ -641,6 +641,38 @@ def clean_images_directory(images_dir: str) -> None:
                     pass  # Continue cleanup execution after deletion failure
 
 
+def cleaning_product_output_dir(product_directory: str, timestamped_output_dir: str) -> None:
+    """
+    Clean product output directory by removing non-image files from images directory and deleting scripts/styles directories.
+
+    :param product_directory: Indexed product directory name inside the timestamped run dir.
+    :param timestamped_output_dir: Absolute path to the timestamped run directory.
+    :return: None
+    """
+    
+    verbose_output(f"{BackgroundColors.GREEN}Cleaning product output directory for: {BackgroundColors.CYAN}{product_directory}{Style.RESET_ALL}")
+
+    indexed_dir_path = os.path.join(timestamped_output_dir, product_directory)  # Build absolute path to indexed product directory
+
+    images_dir = os.path.join(indexed_dir_path, "images")  # Build absolute path to images directory
+    scripts_dir = os.path.join(indexed_dir_path, "scripts")  # Build absolute path to scripts directory
+    styles_dir = os.path.join(indexed_dir_path, "styles")  # Build absolute path to styles directory
+
+    clean_images_directory(images_dir)  # Remove non-image files from images directory
+
+    if os.path.isdir(scripts_dir):  # Verify if scripts directory exists
+        try:  # Attempt recursive scripts directory deletion
+            shutil.rmtree(scripts_dir)  # Remove scripts directory and all contents
+        except Exception:  # Ignore deletion failures to preserve cleanup continuity
+            pass  # Continue cleanup execution after deletion failure
+
+    if os.path.isdir(styles_dir):  # Verify if styles directory exists
+        try:  # Attempt recursive styles directory deletion
+            shutil.rmtree(styles_dir)  # Remove styles directory and all contents
+        except Exception:  # Ignore deletion failures to preserve cleanup continuity
+            pass  # Continue cleanup execution after deletion failure
+
+
 def get_next_run_index(base_output_dir, today_str):
     """
     Determines the next run index for the current day by scanning existing timestamped directories.
