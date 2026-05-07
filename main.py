@@ -1558,6 +1558,37 @@ def copy_original_input_to_output(input_source, product_directory, base_output_d
     return False  # Default: nothing copied
 
 
+def parse_price_from_components(integer_part: str, decimal_part: str) -> Optional[float]:
+    """
+    Parse Brazilian-style split price components into a float.
+
+    :param integer_part: Integer portion of the price (e.g., "1.000", "100", "N/A").
+    :param decimal_part: Decimal portion of the price (e.g., "99", "00", "N/A").
+    :return: Float price value, or None when components are absent or malformed.
+    """
+
+    int_str = str(integer_part).strip() if integer_part is not None else ""  # Normalize integer part to string
+    dec_str = str(decimal_part).strip() if decimal_part is not None else ""  # Normalize decimal part to string
+
+    if int_str in ("N/A", ""):  # Verify integer part is a valid non-absent value
+        return None  # Return None when integer part is absent or explicitly N/A
+
+    cleaned_int = int_str.replace(".", "").replace(",", "")  # Remove Brazilian thousands separators from integer part
+    if not cleaned_int or not cleaned_int.isdigit():  # Verify cleaned integer contains only digit characters
+        return None  # Return None when integer part is malformed or non-numeric
+
+    if dec_str in ("N/A", "") or not dec_str.isdigit():  # Verify decimal part is a usable digit sequence
+        dec_str = "0"  # Treat absent or non-numeric decimal as zero
+
+    try:  # Attempt numeric reconstruction from validated components
+        int_val = int(cleaned_int)  # Parse validated integer string to int
+        dec_digits = len(dec_str)  # Compute decimal digit count for positional scaling
+        dec_val = int(dec_str) / (10 ** dec_digits)  # Scale decimal digits to fractional value
+        return float(int_val) + dec_val  # Reconstruct full float price from integer and decimal
+    except (ValueError, ZeroDivisionError):  # Handle any numeric conversion or scaling error
+        return None  # Return None when reconstruction fails
+
+
 def scrape_product(url, timestamped_output_dir, local_html_path=None):
     """
     Scrapes product information from a URL by detecting the platform and using the appropriate scraper.
