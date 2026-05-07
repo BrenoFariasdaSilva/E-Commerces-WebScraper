@@ -4283,8 +4283,9 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
         url_to_download: Dict[str, str] = {}  # Initialize URL to downloaded filename mapping dictionary.
         
         if process_only_unlinked_urls:  # Verify whether only unlinked URLs must be processed.
-            existing_report_urls = set()  # Load existing linked urls from report file for filtering.
-            urls = [url for url in urls if url not in existing_report_urls]  # Filter already linked urls from processing list.
+            urls = filter_only_unlinked_urls(urls, preprocessed_urls)  # Filter URLs to only those not linked to any file
+
+            verbose_output(f"{BackgroundColors.GREEN}[DEBUG] process_only_unlinked_urls enabled: {BackgroundColors.CYAN}{len(urls)} URLs to process after filtering{Style.RESET_ALL}")  # Log filtered URL count
         
         processed_count, url_to_download, process_success = process_urls_with_download_tracking(urls, urls_file, tab_count, downloads_dirs, extension_img, download_img, enable_permission_img, confirmation_img, failed_file_download_img, close_download_tab_img, mercado_livre_img, share_button_img, save_button_img, ext_methods, download_methods, completion_methods, close_methods, chrome_download_settings_ready, renew_amazon_affiliate, only_renew_amazon_urls)  # Process URLs with download tracking and retrieve mapping details.
         
