@@ -811,6 +811,29 @@ def images_are_perceptually_similar(root_img_path: str, candidate_img_path: str,
     return hamming_dist <= max_hamming_distance  # Return True when similarity is within tolerance
 
 
+def candidate_exceeds_root_resolution(root_img_path: str, candidate_img_path: str) -> bool:
+    """
+    Returns True when the candidate image has a strictly greater total pixel count
+    (width × height) than the root image, indicating a higher-resolution source.
+
+    :param root_img_path: Absolute path to the root-level image.
+    :param candidate_img_path: Absolute path to the candidate image.
+    :return: True if candidate resolution exceeds root resolution, False otherwise.
+    """
+
+    root_img = load_pil_image_safe(root_img_path)  # Load root image without raising
+    if root_img is None:  # Verify root image is readable
+        return False  # Cannot determine resolution without root image
+
+    candidate_img = load_pil_image_safe(candidate_img_path)  # Load candidate image without raising
+    if candidate_img is None:  # Verify candidate image is readable
+        return False  # Cannot determine resolution without candidate image
+
+    root_pixels = root_img.width * root_img.height  # Compute total pixel count for root image
+    candidate_pixels = candidate_img.width * candidate_img.height  # Compute total pixel count for candidate image
+    return candidate_pixels > root_pixels  # Return True only when candidate strictly exceeds root resolution
+
+
 def get_next_run_index(base_output_dir, today_str):
     """
     Determines the next run index for the current day by scanning existing timestamped directories.
