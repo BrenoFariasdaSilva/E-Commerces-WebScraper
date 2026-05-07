@@ -696,7 +696,7 @@ def get_next_run_index(base_output_dir, today_str):
         return 1  # Return 1 as first run index if directory doesn't exist yet
     
     max_index = 0  # Initialize maximum index counter to zero
-    pattern = re.compile(r'^(\d+)\. \d{4}-\d{2}-\d{2} - .+$')  # Regex: "index. YYYY-MM-DD - <time>"
+    pattern = re.compile(r"^(\d+)\. \d{4}-\d{2}-\d{2} - .+$")  # Regex: "index. YYYY-MM-DD - <time>"
 
     for item in os.listdir(base_output_dir):  # Iterate through all items in base output directory
         item_path = os.path.join(base_output_dir, item)  # Construct full path to item
@@ -743,7 +743,7 @@ def discover_valid_output_directories(base_output_dir: str) -> List[str]:
     if not os.path.isdir(base_output_dir):  # Verify if the base output directory exists
         return valid_dirs  # Return empty list when base directory does not exist
 
-    pattern = re.compile(r'^\d+\. \d{4}-\d{2}-\d{2} - \d{2}h\d{2}m\d{2}s$')  # Regex matching "{index}. YYYY-MM-DD - HHhMMmSSs"
+    pattern = re.compile(r"^\d+\. \d{4}-\d{2}-\d{2} - \d{2}h\d{2}m\d{2}s$")  # Regex matching "{index}. YYYY-MM-DD - HHhMMmSSs"
 
     for item in os.listdir(base_output_dir):  # Iterate through all items in the base output directory
         item_path = os.path.join(base_output_dir, item)  # Build full path for the current item
@@ -858,7 +858,7 @@ def resolve_latest_output_directory(base_output_dir: str) -> Optional[str]:
     if not os.path.isdir(base_output_dir):  # Verify if base output directory exists
         return None  # Return None when base directory does not exist
 
-    pattern = re.compile(r'^(\d+)\. (\d{4}-\d{2}-\d{2}) - (\d{2}h\d{2}m\d{2}s)$')  # Regex matching "{index}. YYYY-MM-DD - HHhMMmSSs"
+    pattern = re.compile(r"^(\d+)\. (\d{4}-\d{2}-\d{2}) - (\d{2}h\d{2}m\d{2}s)$")  # Regex matching "{index}. YYYY-MM-DD - HHhMMmSSs"
     candidates: List[Tuple[datetime.datetime, str]] = []  # Initialize typed list for (datetime, path) candidate tuples
 
     for item in os.listdir(base_output_dir):  # Iterate through all items in the base output directory
@@ -1065,7 +1065,7 @@ def resolve_local_html_path(local_html_path):
                 return test_path  # Return resolved path
     
     if local_html_path.lower().endswith(".html"):  # Verify if path ends with .html extension
-        last_slash_idx = local_html_path.rfind('/')  # Find the last slash in the path
+        last_slash_idx = local_html_path.rfind("/")  # Find the last slash in the path
         if last_slash_idx != -1:  # If there's a slash, we can extract base path
             base_path = local_html_path[:last_slash_idx]  # Remove /filename.html to get base directory path
             html_filename = local_html_path[last_slash_idx + 1:]  # Extract the HTML filename for reconstruction
@@ -1301,7 +1301,7 @@ def scrape_product(url, timestamped_output_dir, local_html_path=None):
         zip_path = local_html_path  # Store the zip path for later cleanup
         zip_dir = os.path.dirname(zip_path)  # Get the directory of the zip file
         zip_name = os.path.basename(zip_path)  # Get the name of the zip file
-        extract_name = zip_name.rsplit('.', 1)[0]  # Remove .zip extension
+        extract_name = zip_name.rsplit(".", 1)[0]  # Remove .zip extension
         extracted_dir = os.path.join(zip_dir, extract_name)  # Directory to extract the zip contents into
         
         try:  # Try to extract the zip file
@@ -1399,7 +1399,7 @@ def validate_product_information(product_data, product_name_safe, description_fi
     if "name" not in product_data or not product_data["name"].strip():  # Verify if name is missing or empty
         reasons.append(f"{BackgroundColors.YELLOW}Product name is missing or empty{Style.RESET_ALL}")
         
-    if "current_price_integer" not in product_data or not str(product_data["current_price_integer"]).strip() or product_data["current_price_integer"] == '0':  # Verify if price is missing, empty, or zero
+    if "current_price_integer" not in product_data or not str(product_data["current_price_integer"]).strip() or product_data["current_price_integer"] == "0":  # Verify if price is missing, empty, or zero
         reasons.append(f"{BackgroundColors.YELLOW}Product price is missing, empty, or zero{Style.RESET_ALL}")
         
     if "discount_percentage" not in product_data or not str(product_data["discount_percentage"]).strip():  # Verify if discount is missing or empty
@@ -1588,7 +1588,7 @@ def validate_price_relationships(old_price: Optional[str], current_price: Option
 
     try:  # Try to parse numeric strings into floats for comparison
         def parse_price(p: str) -> float:  # Define inline parser for localized numeric strings
-            return float(p.replace('.', '').replace(',', '.'))  # Convert Brazilian-style numeric to python float
+            return float(p.replace(".", "").replace(",", "."))  # Convert Brazilian-style numeric to python float
 
         parsed_old = parse_price(old_price) if old_price else None  # Parse old price when present
         parsed_current = parse_price(current_price) if current_price else None  # Parse current price when present
@@ -2893,7 +2893,7 @@ def generate_template_files_from_local(outputs_dir: str, api_keys: Dict[str, str
         print(f"{BackgroundColors.RED}Outputs directory not found: {BackgroundColors.CYAN}{outputs_dir}{Style.RESET_ALL}")  # Report missing base directory
         return  # Return early when base directory does not exist
 
-    timestamp_pattern = re.compile(r'^\d+\. \d{4}-\d{2}-\d{2} - \d{2}h\d{2}m\d{2}s$')  # Regex matching the "{index}. YYYY-MM-DD - HHhMMmSSs" format for timestamped directories
+    timestamp_pattern = re.compile(r"^\d+\. \d{4}-\d{2}-\d{2} - \d{2}h\d{2}m\d{2}s$")  # Regex matching the "{index}. YYYY-MM-DD - HHhMMmSSs" format for timestamped directories
     product_dirs = []  # List to collect valid product directory info for tqdm
 
     for timestamp_dir_name in sorted(os.listdir(outputs_dir)):  # Iterate timestamp directories in sorted order for deterministic processing
