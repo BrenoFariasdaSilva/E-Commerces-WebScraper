@@ -2085,7 +2085,7 @@ def scan_outputs_for_amazon_urls(base_path: str, pattern: str) -> dict:
     return url_map  # Return completed URL-to-filepaths mapping dictionary.
 
 
-def setup_image_paths(assets_dir: Path) -> Tuple[Path, Path, Path, Path, Path, Path, Path, Path, Path]:
+def setup_image_paths(assets_dir: Path) -> Tuple[Path, Path, Path, Path, Path, Path, Path, Path, Path, Path]:
     """
     Creates and returns all required image asset paths.
 
@@ -2100,6 +2100,7 @@ def setup_image_paths(assets_dir: Path) -> Tuple[Path, Path, Path, Path, Path, P
     failed_file_download_img = assets_dir / "FileDownloadFailed.png"  # Define failed download image path
     close_download_tab_img = assets_dir / "CloseDownloadTab.png"  # Define close tab image path
     mercado_livre_img = assets_dir / "MercadoLivre-GoToProduct.png"  # Define MercadoLivre navigation image path
+    mercado_livre_invalid_url_img = assets_dir / "MercadoLivre-InvalidURL.png"  # Define MercadoLivre invalid URL image path
     share_button_img = assets_dir / "ShareAffiliateURL-Amazon.png"  # Define Amazon share button image path
     save_button_img = assets_dir / "SaveFileButton.png"  # Define MercadoLivre save button image path
 
@@ -2111,6 +2112,7 @@ def setup_image_paths(assets_dir: Path) -> Tuple[Path, Path, Path, Path, Path, P
         failed_file_download_img,  # Return failed download image path
         close_download_tab_img,  # Return close tab image path
         mercado_livre_img,  # Return MercadoLivre image path
+        mercado_livre_invalid_url_img,  # Return MercadoLivre invalid URL image path
         share_button_img,  # Return share button image path
         save_button_img,  # Return save button image path
     )  # Return complete tuple of image paths
@@ -4322,7 +4324,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
 
     urls = urls[:tab_count]  # Limit URL list to requested tab count.
 
-    extension_img, download_img, enable_permission_img, confirmation_img, failed_file_download_img, close_download_tab_img, mercado_livre_img, share_button_img, save_button_img = setup_image_paths(assets_dir)  # Initialize all required UI image asset paths from assets directory
+    extension_img, download_img, enable_permission_img, confirmation_img, failed_file_download_img, close_download_tab_img, mercado_livre_img, mercado_livre_invalid_url_img, share_button_img, save_button_img = setup_image_paths(assets_dir)  # Initialize all required UI image asset paths from assets directory
 
     print(f"{BackgroundColors.GREEN}Starting automation immediately and activating Chrome window.{Style.RESET_ALL}")  # Print immediate start message.
 
