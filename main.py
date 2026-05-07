@@ -546,22 +546,29 @@ def group_images_by_resized_hash(images, min_width, min_height):
 
 def remove_duplicate_images(groups):
     """
-    For each group of duplicate images (same hash), keeps the highest resolution version
-    and deletes the lower resolution duplicates.
+    Keeps the highest resolution duplicate image and removes lower resolution versions.
 
-    :param groups: Dictionary with hash as key, list of (image_path, pixel_count) as values
+    :param groups: Dictionary with hash as key and grouped image metadata as values
     :return: None
     """
     
-    for img_hash, group in groups.items():  # Iterate through each group of images
-        if len(group) > 1:  # If there are duplicates in this group
-            group.sort(key=lambda x: x[1], reverse=True)  # Sort by pixel count descending (highest resolution first)
-            for img_path, _ in group[1:]:  # Delete all except the first (highest res)
-                try:  # Try to remove the duplicate image
-                    os.remove(img_path)  # Remove the image file
-                    verbose_output(f"{BackgroundColors.YELLOW}Removed duplicate image: {BackgroundColors.CYAN}{img_path}{Style.RESET_ALL}")
-                except Exception as e:  # If an error occurs while removing the image
-                    print(f"{BackgroundColors.RED}Error removing image {BackgroundColors.CYAN}{img_path}{BackgroundColors.RED}: {BackgroundColors.YELLOW}{e}{Style.RESET_ALL}")
+    for img_hash, group in groups.items():  # Iterate through each grouped image hash
+        if len(group) <= 1:  # Verify if the group contains only one image
+            continue  # Skip non-duplicate groups
+
+        group.sort(key=lambda x: (x[2], x[1][0], x[1][1]), reverse=True)  # Sort by pixel count, width, and height descending
+
+        preserved_image_path, preserved_size, preserved_pixel_count = group[0]  # Extract highest resolution image metadata
+
+        verbose_output(f"{BackgroundColors.GREEN}Keeping highest resolution duplicate image: {BackgroundColors.CYAN}{preserved_image_path} ({preserved_size[0]}x{preserved_size[1]} | {preserved_pixel_count} pixels){Style.RESET_ALL}")  # Output preserved image information
+
+        for img_path, size, pixel_count in group[1:]:  # Iterate through lower resolution duplicates
+            try:  # Attempt duplicate image deletion
+                os.remove(img_path)  # Remove lower resolution duplicate image file
+
+                verbose_output(f"{BackgroundColors.YELLOW}Removed lower resolution duplicate image: {BackgroundColors.CYAN}{img_path} ({size[0]}x{size[1]} | {pixel_count} pixels){Style.RESET_ALL}")  # Output duplicate removal information
+            except Exception as e:  # Verify if duplicate image removal fails
+                print(f"{BackgroundColors.RED}Error removing image {BackgroundColors.CYAN}{img_path}{BackgroundColors.RED}: {BackgroundColors.YELLOW}{e}{Style.RESET_ALL}")  # Output duplicate image removal failure
 
 
 def clean_duplicate_images(product_directory, base_output_dir=OUTPUT_DIRECTORY):
