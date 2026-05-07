@@ -47,7 +47,6 @@ run: dependencies
 local: dependencies
 	$(ENSURE_LOG_DIR)
 	$(CLEAR_CMD)
-	$(call RUN_AND_LOG, ./compressed_archives_renamer.py $(ARGS))
 	$(call RUN_AND_LOG, ./main.py --sort_products_by_product_name True $(ARGS))
 
 # Execute the main script with logging and updated dependency management
