@@ -1214,7 +1214,7 @@ def scrape_product(url, timestamped_output_dir, local_html_path=None):
         scraper = scraper_class(url, local_html_path=html_path, prefix=platform_prefix, output_directory=timestamped_output_dir)  # Create scraper instance with timestamped output directory
         product_data = scraper.scrape()  # Scrape the product
         
-        if not product_data:  # If scraping failed
+        if not product_data:  # Verify if scraping failed
             return None, None, None, None, None, None  # Return None values
 
         product_data = normalize_product_data_paths(product_data)  # Normalize all path fields in product_data
@@ -1228,16 +1228,16 @@ def scrape_product(url, timestamped_output_dir, local_html_path=None):
         product_directory = product_name_safe  # Use canonical directory name directly (already includes platform prefix)
         description_file = f"{timestamped_output_dir}/{product_directory}/{product_name_safe}_description.txt"  # Construct full path to description file using canonical name
         
-        if not verify_filepath_exists(description_file):  # If description file not found
-            print(f"{BackgroundColors.RED}Description file not found: {description_file}{Style.RESET_ALL}")
+        if not verify_filepath_exists(description_file):  # Verify if description file exists
+            print(f"{BackgroundColors.RED}Description file not found: {description_file}{Style.RESET_ALL}")  # Log missing description file
             return None, None, None, None, None, None  # Return None values
 
         input_source = html_path or local_html_path  # Determine the best candidate input source
         copy_original_input_to_output(input_source, product_directory, base_output_dir=timestamped_output_dir)  # Copy original input to output
         
-        return product_data, description_file, product_directory, html_path, zip_path, extracted_dir
-        
-    except Exception as e:  # If an error occurs during scraping
+        return product_data, description_file, product_directory, html_path, zip_path, extracted_dir  # Return cleaned result
+
+    except Exception as e:  # Handle scraping exception
         print(f"{BackgroundColors.RED}Error during scraping: {e}{Style.RESET_ALL}")  # Print error message
         return None, None, None, None, None, None  # Return None values
 
