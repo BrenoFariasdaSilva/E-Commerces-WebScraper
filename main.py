@@ -1289,7 +1289,7 @@ def scrape_product(url, timestamped_output_dir, local_html_path=None):
         product_data = normalize_product_data_paths(product_data)  # Normalize file paths in product_data to ensure they are relative and consistent for output
         save_product_data_json(product_data, product_dir_path, url)  # Persist after normalization
 
-        product_data = ensure_product_data_url_first(product_data, url)  # Reorder product_data to have URL as the first key for consistency and readability
+        product_data = reorder_product_data_fields(product_data, url)  # Reorder product_data fields.
         save_product_data_json(product_data, product_dir_path, url)  # Persist after normalization
 
         product_name = product_data.get("name", "Unknown Product")  # Get product name
@@ -3327,26 +3327,38 @@ def normalize_product_data_paths(product_data: dict) -> dict:
     return normalized  # Return normalized product_data
 
 
-def ensure_product_data_url_first(product_data: dict, url: str) -> dict:
+def reorder_product_data_fields(product_data: dict, url: str) -> dict:
     """
-    Ensure product_data contains the source URL as the first key.
+    Reorder product_data fields.
 
     :param product_data: Dictionary containing product data fields.
     :param url: Original source URL used to process this product.
-    :return: Normalized dictionary with "url" as the first key.
+    :return: Reordered dictionary with controlled field ordering.
     """
+    
+    verbose_output(f"{BackgroundColors.GREEN}Reordering product data fields for URL: {BackgroundColors.CYAN}{url}{Style.RESET_ALL}")  # Log the reordering action for this URL
 
-    normalized_product_data = {"url": url}  # Initialize normalized dictionary guaranteeing URL as the first key
+    reordered_product_data = {"url": url}  # Initialize dictionary ensuring URL is first field
 
-    if not isinstance(product_data, dict):  # Verify if provided product_data is not a dictionary
-        return normalized_product_data  # Return normalized dictionary with URL only when input is invalid
+    if not isinstance(product_data, dict):  # Verify if product_data is not a valid dictionary
+        return reordered_product_data  # Return minimal structure when input is invalid
 
-    for key, value in product_data.items():  # Iterate through original fields preserving insertion order
-        if key == "url":  # Verify if current key is URL to avoid duplicate insertion
-            continue  # Skip original URL key because normalized dictionary already contains source URL
-        normalized_product_data[key] = value  # Append existing key-value pair preserving original order after URL
+    inserted_safe_name = False  # Track whether product_name_safe has been inserted after name
 
-    return normalized_product_data  # Return normalized dictionary with URL as first key
+    for key, value in product_data.items():  # Iterate through original product data preserving order
+        if key == "url":  # Verify if current key is URL to avoid duplication
+            continue  # Skip URL since it is already normalized as first field
+
+        reordered_product_data[key] = value  # Insert current field preserving original ordering rules
+
+        if key == "name" and "product_name_safe" in product_data:  # Verify if name field is reached and safe name exists
+            reordered_product_data["product_name_safe"] = product_data["product_name_safe"]  # Insert safe name immediately after name field
+            inserted_safe_name = True  # Mark safe name as inserted after name field
+
+    if not inserted_safe_name and "product_name_safe" in product_data:  # Verify if safe name was not inserted during ordered pass
+        reordered_product_data["product_name_safe"] = product_data["product_name_safe"]  # Append safe name at end when name field is missing
+
+    return reordered_product_data  # Return reordered product data with enforced field structure
 
 
 def save_product_data_json(product_data: dict, product_dir: str, url: str) -> bool:
@@ -3360,7 +3372,7 @@ def save_product_data_json(product_data: dict, product_dir: str, url: str) -> bo
     """
 
     product_data = normalize_product_data_paths(product_data)  # Normalize all path fields in product_data before export
-    product_data = ensure_product_data_url_first(product_data, url)  # Ensure source URL exists and is the first key in product_data
+    product_data = reorder_product_data_fields(product_data, url)  # Reorder product_data fields.
     json_path = os.path.join(product_dir, "product_data.json")  # Build full path to the product data JSON file
     product_name = product_data.get("product_name_safe", product_data.get("product_name", "unknown"))  # Resolve product name for logging
 
