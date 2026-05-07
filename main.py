@@ -57,6 +57,7 @@ Assumptions & Notes:
 import argparse  # Parse command-line arguments.
 import atexit  # For playing a sound when the program finishes
 import datetime  # For getting the current date and time
+import difflib  # For computing filename similarity ratios via SequenceMatcher
 import hashlib  # For hashing image data
 import json  # For JSON history file handling
 import os  # For running a command in the terminal
