@@ -768,6 +768,23 @@ def load_pil_image_safe(image_path: str) -> Optional[Image.Image]:
         return None  # Return None when image cannot be opened
 
 
+def compute_perceptual_hash_8x8(img: Image.Image) -> int:
+    """
+    Computes an 8x8 average perceptual hash (aHash) for an image using PIL only.
+    Resizes to 8x8 grayscale, computes mean brightness, then encodes a 64-bit integer
+    where each bit is 1 if the corresponding pixel's brightness is at or above the mean.
+
+    :param img: PIL Image object to hash.
+    :return: 64-bit integer perceptual hash.
+    """
+
+    small = img.convert("L").resize((8, 8), Image.Resampling.LANCZOS)  # Convert to 8x8 grayscale thumbnail
+    pixels = list(small.tobytes())  # Extract flat list of 64 grayscale pixel values via bytes (Pylance-safe, each byte is an int 0-255)
+    mean_brightness = sum(pixels) / len(pixels)  # Compute mean brightness across all 64 pixels
+    hash_bits = sum(1 << i for i, p in enumerate(pixels) if p >= mean_brightness)  # Encode bit=1 where pixel >= mean
+    return hash_bits  # Return 64-bit integer aHash
+
+
 def get_next_run_index(base_output_dir, today_str):
     """
     Determines the next run index for the current day by scanning existing timestamped directories.
