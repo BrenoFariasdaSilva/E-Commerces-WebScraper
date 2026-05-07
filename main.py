@@ -1217,6 +1217,7 @@ def scrape_product(url, timestamped_output_dir, local_html_path=None):
         if not product_data:  # If scraping failed
             return None, None, None, None, None, None  # Return None values
 
+        product_data = normalize_product_data_paths(product_data)  # Normalize all path fields in product_data
         product_data = ensure_product_data_url_first(product_data, url)  # Ensure source URL exists and is the first key in product_data
         
         product_name = product_data.get("name", "Unknown Product")  # Get product name
@@ -3288,7 +3289,8 @@ def save_product_data_json(product_data: dict, product_dir: str, url: str) -> bo
     :return: True if file was saved successfully, False otherwise.
     """
 
-    product_data = ensure_product_data_url_first(product_data, url)  # Normalize product_data so URL is present and first before export
+    product_data = normalize_product_data_paths(product_data)  # Normalize all path fields in product_data before export
+    product_data = ensure_product_data_url_first(product_data, url)  # Ensure source URL exists and is the first key in product_data
     json_path = os.path.join(product_dir, "product_data.json")  # Build full path to the product data JSON file
     product_name = product_data.get("product_name_safe", product_data.get("product_name", "unknown"))  # Resolve product name for logging
 
