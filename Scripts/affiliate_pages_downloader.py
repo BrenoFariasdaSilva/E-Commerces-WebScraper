@@ -2828,6 +2828,25 @@ def detect_platform_from_url(url: str) -> str:
     return ""  # Return empty string when no configured platform matches the URL.
 
 
+def is_platform_homepage_url(loaded_url: str, platform_name: str) -> bool:
+    """
+    Verify whether the loaded browser URL matches any homepage redirect pattern for the given platform.
+
+    :param loaded_url: URL string currently loaded in the browser address bar.
+    :param platform_name: Platform name key into PLATFORM_INVALID_URL_RULES.
+    :return: True when loaded URL matches a homepage pattern, otherwise False.
+    """
+
+    platform_config = PLATFORM_INVALID_URL_RULES.get(platform_name, {})  # Retrieve platform configuration from rules dictionary.
+    homepage_patterns = platform_config.get("homepage_patterns", [])  # Retrieve compiled homepage patterns for the platform.
+
+    for pattern in homepage_patterns:  # Iterate compiled homepage patterns for the platform.
+        if pattern.search(loaded_url):  # Verify whether the loaded URL matches the current homepage pattern.
+            return True  # Return True immediately upon first pattern match.
+
+    return False  # Return False when no homepage pattern matches the loaded URL.
+
+
 def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_count: int, downloads_dirs: List[str], image_paths: Dict[str, Path], ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]], chrome_download_settings_ready: bool, renew_amazon_affiliate: bool = False, only_renew_amazon_urls: bool = False) -> Tuple[int, Dict[str, str], bool]:
     """
     Processes URLs while tracking downloaded files by directory snapshots.
