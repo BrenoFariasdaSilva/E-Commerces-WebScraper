@@ -168,7 +168,7 @@ RUN_FUNCTIONS = {
 }
 
 # Invalid URL Detection Constants:
-INVALID_URL_FILENAME = "INVALID_URL"  # Sentinel filename value for expired or redirected product URLs.
+INVALID_URL_FILENAME = "INVALID_URL.zip"  # Sentinel filename value for expired or redirected product URLs.
 
 PLATFORM_INVALID_URL_RULES: Dict[str, Any] = {  # Platform-specific invalid URL detection rules sorted alphabetically by platform name.
     "Amazon": {  # Amazon platform configuration for invalid URL detection.
