@@ -522,25 +522,25 @@ def find_min_dimensions(images):
 def group_images_by_resized_hash(images, min_width, min_height):
     """
     Groups images by their MD5 hash after resizing to the minimum dimensions.
-    This detects duplicates by content similarity after normalization.
 
-    :param images: List of tuples (image_path, size_tuple, PIL_Image_object)
+    :param images: List of tuples (image_path, size_tuple, pixel_count, PIL_Image_object)
     :param min_width: Minimum width to resize to
     :param min_height: Minimum height to resize to
-    :return: Dictionary with hash as key, list of (image_path, pixel_count) as values
+    :return: Dictionary with hash as key, list of image metadata as values
     """
     
     groups = {}  # Dictionary to group images by hash
-    
-    for img_path, size, img in images:  # Iterate through loaded images
+
+    for img_path, size, pixel_count, img in images:  # Iterate through loaded images
         resized = img.resize((min_width, min_height), Image.Resampling.LANCZOS)  # Resize image to minimum dimensions
         resized_bytes = resized.tobytes()  # Get the byte representation of the resized image
         img_hash = hashlib.md5(resized_bytes).hexdigest()  # Compute MD5 hash of the resized image
-    
-        if img_hash not in groups:  # If this hash is not yet in the groups
-            groups[img_hash] = []  # Initialize a new list for this hash
-        groups[img_hash].append((img_path, size[0] * size[1]))  # store path and pixel count
-    
+
+        if img_hash not in groups:  # Verify if this hash does not yet exist in the groups dictionary
+            groups[img_hash] = []  # Initialize a new list for this image hash
+
+        groups[img_hash].append((img_path, size, pixel_count))  # Store image metadata grouped by normalized content hash
+
     return groups  # Return the grouped images
 
 
