@@ -42,7 +42,6 @@ run: dependencies
 	$(ENSURE_LOG_DIR)
 	$(CLEAR_CMD)
 	$(call RUN_AND_LOG, ./Scripts/affiliate_pages_downloader.py --headerless True $(ARGS))
-	$(call RUN_AND_LOG, ./compressed_archives_renamer.py $(ARGS))
 	$(call RUN_AND_LOG, ./main.py --headerless True --sort_products_by_product_name True $(ARGS))
 
 local: dependencies
