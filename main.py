@@ -1084,6 +1084,43 @@ def split_phrases(text: str) -> list:
     
     return [s.strip() for s in segments if s.strip()]  # Return non-empty, stripped phrases
 
+
+def normalize_product_text_description_and_details(description: str, product_details: str) -> Tuple[str, str]:
+    """
+    Deduplicate repeated phrases in product description and product_details.
+
+    :param description: Raw product description string.
+    :param product_details: Raw product details string.
+    :return: Tuple of (cleaned_description, cleaned_product_details).
+    """
+    
+    verbose_output(f"{BackgroundColors.GREEN}Normalizing product description and details by deduplicating phrases...{Style.RESET_ALL}")  # Output the verbose message
+
+    seen = set()  # Set to track unique phrases
+    cleaned_description = []  # List for cleaned description
+    cleaned_product_details = []  # List for cleaned product details
+
+    desc_phrases = split_phrases(description)  # Split description into phrases
+    details_phrases = split_phrases(product_details)  # Split product_details into phrases
+
+    for phrase in desc_phrases:  # Iterate over description phrases
+        norm = phrase.lower().strip()  # Normalize phrase for deduplication
+        if norm not in seen:  # Verify if phrase is unique
+            cleaned_description.append(phrase)  # Append unique phrase to cleaned description
+            seen.add(norm)  # Add normalized phrase to seen set
+
+    for phrase in details_phrases:  # Iterate over product_details phrases
+        norm = phrase.lower().strip()  # Normalize phrase for deduplication
+        if norm not in seen:  # Verify if phrase is unique
+            cleaned_product_details.append(phrase)  # Append unique phrase to cleaned product_details
+            seen.add(norm)  # Add normalized phrase to seen set
+
+    return (
+        " ".join(cleaned_description).strip(),  # Join cleaned description phrases
+        " ".join(cleaned_product_details).strip(),  # Join cleaned product_details phrases
+    )
+
+
 def copy_original_input_to_output(input_source, product_directory, base_output_dir=OUTPUT_DIRECTORY):
     """
     Copies the original input file or directory used for scraping into the product output directory.
@@ -1257,7 +1294,7 @@ def scrape_product(url, timestamped_output_dir, local_html_path=None):
         copy_original_input_to_output(input_source, product_directory, base_output_dir=timestamped_output_dir)  # Copy original input to output
         
         return product_data, description_file, product_directory, html_path, zip_path, extracted_dir  # Return cleaned result
-
+        
     except Exception as e:  # Handle scraping exception
         print(f"{BackgroundColors.RED}Error during scraping: {e}{Style.RESET_ALL}")  # Print error message
         return None, None, None, None, None, None  # Return None values
