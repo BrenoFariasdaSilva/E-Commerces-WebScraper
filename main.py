@@ -717,6 +717,18 @@ def normalize_basename_for_comparison(basename: str) -> str:
     return normalized  # Return cleaned normalized basename ready for similarity comparison
 
 
+def compute_filename_similarity(a: str, b: str) -> float:
+    """
+    Computes a similarity ratio between two normalized basenames using SequenceMatcher.
+
+    :param a: First normalized basename string.
+    :param b: Second normalized basename string.
+    :return: Similarity ratio in [0.0, 1.0] where 1.0 is exact match.
+    """
+
+    return difflib.SequenceMatcher(None, a, b).ratio()  # Return SequenceMatcher ratio between the two basenames
+
+
 def get_next_run_index(base_output_dir, today_str):
     """
     Determines the next run index for the current day by scanning existing timestamped directories.
