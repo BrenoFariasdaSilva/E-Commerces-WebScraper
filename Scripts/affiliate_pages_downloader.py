@@ -4297,7 +4297,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
         return 1  # Return error exit code when lines cannot be loaded.
     
     preprocessed_urls = preprocess_urls(raw_lines)  # Preprocess lines (strip, remove dash prefixes, sort)
-    write_urls_to_file(preprocessed_urls, str(urls_file), True)  # Write preprocessed lines back to the file for consistency and potential manual review.
+    write_urls_to_file(preprocessed_urls, str(urls_file), recursive=True, sort=True)  # Write preprocessed lines back to the file for consistency and potential manual review.
     urls = [url.split()[0] for url in preprocessed_urls]  # Keep only the URL token (first token) per previous behavior
 
     downloads_dirs = ACTIVE_DOWNLOADS_DIRS if ACTIVE_DOWNLOADS_DIRS else prepare_active_downloads_directory()  # Use cached downloads directories or resolve if cache is empty.
