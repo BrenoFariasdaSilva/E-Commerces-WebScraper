@@ -695,22 +695,25 @@ def locate_asset_directories(product_directory: str, timestamped_output_dir: str
     return None  # Return None when no asset directory structure is found
 
 
-def cleaning_product_output_dir(product_directory: str, timestamped_output_dir: str) -> None:
+def cleaning_product_output_dir(product_directory: str, timestamped_output_dir: str, extracted_dir_path: Optional[str] = None) -> None:
     """
     Clean product output directory by removing non-image files from images directory and deleting scripts/styles directories.
 
     :param product_directory: Indexed product directory name inside the timestamped run dir.
     :param timestamped_output_dir: Absolute path to the timestamped run directory.
+    :param extracted_dir_path: Optional path to extracted ZIP directory for direct asset location lookup.
     :return: None
     """
     
     verbose_output(f"{BackgroundColors.GREEN}Cleaning product output directory for: {BackgroundColors.CYAN}{product_directory}{Style.RESET_ALL}")
 
-    indexed_dir_path = os.path.join(timestamped_output_dir, product_directory)  # Build absolute path to indexed product directory
+    asset_dirs = locate_asset_directories(product_directory, timestamped_output_dir, extracted_dir_path)  # Locate images/scripts/styles directories with fallback discovery
 
-    images_dir = os.path.join(indexed_dir_path, "images")  # Build absolute path to images directory
-    scripts_dir = os.path.join(indexed_dir_path, "scripts")  # Build absolute path to scripts directory
-    styles_dir = os.path.join(indexed_dir_path, "styles")  # Build absolute path to styles directory
+    if asset_dirs is None:  # Verify if asset directories were found
+        verbose_output(f"{BackgroundColors.YELLOW}No asset directories (images/scripts/styles) found in product directory structure.{Style.RESET_ALL}")
+        return  # Return early when no asset structure is found
+
+    images_dir, scripts_dir, styles_dir = asset_dirs  # Unpack located asset directory paths
 
     clean_images_directory(images_dir)  # Remove non-image files from images directory
 
@@ -3715,7 +3718,7 @@ def handle_cleanup(product_directory: str, timestamped_output_dir: str, html_pat
     if product_directory and isinstance(product_directory, str):  # Only run image cleanup for valid product dirs
         clean_duplicate_images(product_directory, timestamped_output_dir)  # Deduplicate images in final location
         exclude_small_images(product_directory, timestamped_output_dir)  # Remove extremely small images
-        cleaning_product_output_dir(product_directory, timestamped_output_dir)  # Clean images/scripts/styles after deduplication and small image filtering
+        cleaning_product_output_dir(product_directory, timestamped_output_dir, extracted_dir_to_cleanup)  # Clean images/scripts/styles after deduplication and small image filtering
 
     input_source = html_path_for_assets or local_html_path  # Determine original input source to copy
     copy_original_input_to_output(input_source, product_directory, base_output_dir=timestamped_output_dir)  # Copy original input into final product folder
