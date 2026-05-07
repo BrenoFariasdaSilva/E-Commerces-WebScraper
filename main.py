@@ -1275,6 +1275,9 @@ def scrape_product(url, timestamped_output_dir, local_html_path=None):
         if not product_data:  # Verify if scraping failed
             return None, None, None, None, None, None  # Return None values
 
+        if product_data is not None:  # Verify product_data exists
+            product_data["description"], product_data["product_details"] = normalize_product_text_description_and_details(product_data.get("description", ""), product_data.get("product_details", ""))  # Deduplicate phrases and update product_data fields directly
+
         product_data = normalize_product_data_paths(product_data)  # Normalize all path fields in product_data
         product_data = ensure_product_data_url_first(product_data, url)  # Ensure source URL exists and is the first key in product_data
         
