@@ -883,7 +883,8 @@ class MercadoLivre:
                 if not ext:
                     ext = ".webp"
                 
-                filename = f"image_{image_count:03d}{ext}"
+                original_basename = os.path.splitext(os.path.basename(local_img_path))[0]  # Extract original filename without extension from local path
+                filename = f"{image_count:02d}_{original_basename}{ext}"  # Generate filename with two-digit index prefix and original basename
                 filepath = os.path.join(output_dir, filename)
                 
                 shutil.copy2(local_img_path, filepath)
@@ -902,7 +903,8 @@ class MercadoLivre:
                 if not ext:  # If no extension
                     ext = ".webp"  # Default to webp (common on Mercado Livre)
                 
-                filename = f"image_{image_count:03d}{ext}"  # Create filename
+                original_basename = os.path.splitext(os.path.basename(parsed_url.path))[0]  # Extract original filename without extension from URL path
+                filename = f"{image_count:02d}_{original_basename}{ext}"  # Generate filename with two-digit index prefix and original basename
                 filepath = os.path.join(output_dir, filename)  # Create path
                 
                 with open(filepath, "wb") as f:  # Write file
