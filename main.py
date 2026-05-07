@@ -754,6 +754,20 @@ def locate_indexed_images_subdir(product_dir_path: str) -> Optional[str]:
     return None  # Return None when no matching indexed images directory is found
 
 
+def load_pil_image_safe(image_path: str) -> Optional[Image.Image]:
+    """
+    Opens a PIL Image object from disk without raising on failure.
+
+    :param image_path: Absolute path to the image file.
+    :return: PIL Image object on success, or None if the file cannot be opened.
+    """
+
+    try:  # Attempt to open image file with PIL
+        return Image.open(image_path)  # Open and return image object
+    except Exception:  # Catch any PIL or file read exception
+        return None  # Return None when image cannot be opened
+
+
 def get_next_run_index(base_output_dir, today_str):
     """
     Determines the next run index for the current day by scanning existing timestamped directories.
