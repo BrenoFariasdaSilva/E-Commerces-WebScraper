@@ -2871,6 +2871,23 @@ def detect_invalid_platform_url_by_image(platform_name: str, image_paths: Dict[s
     return False  # Return False when no invalid URL image is detected for the platform.
 
 
+def handle_invalid_url(url: str, urls_file: Path, url_to_download: Dict[str, str], platform_name: str, loaded_url: str) -> None:
+    """
+    Handle invalid URL detection by updating in-memory mapping, persisting INVALID_URL to file, and logging.
+
+    :param url: Original URL string that was opened in the browser tab.
+    :param urls_file: Path to the main URLs input file for persistence update.
+    :param url_to_download: In-memory mapping from URL to downloaded filename.
+    :param platform_name: Detected platform name for warning message context.
+    :param loaded_url: URL string currently loaded in the browser for warning message context.
+    :return: None.
+    """
+
+    url_to_download[url] = INVALID_URL_FILENAME  # Update in-memory URL mapping with INVALID_URL sentinel value.
+    update_url_filename_in_files(urls_file, url, INVALID_URL_FILENAME)  # Persist INVALID_URL sentinel value to both main and backup URL files.
+    print(f"{BackgroundColors.RED}[WARNING] {platform_name} URL is invalid or expired and will be skipped. Original: {BackgroundColors.CYAN}{url}{BackgroundColors.RED} | Loaded: {BackgroundColors.CYAN}{loaded_url}{Style.RESET_ALL}")  # Log invalid URL warning with platform name, original URL, and loaded URL for traceability.
+
+
 def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_count: int, downloads_dirs: List[str], image_paths: Dict[str, Path], ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]], chrome_download_settings_ready: bool, renew_amazon_affiliate: bool = False, only_renew_amazon_urls: bool = False) -> Tuple[int, Dict[str, str], bool]:
     """
     Processes URLs while tracking downloaded files by directory snapshots.
