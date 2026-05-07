@@ -509,12 +509,12 @@ def find_min_dimensions(images):
     """
     Finds the minimum width and height across all loaded images.
 
-    :param images: List of tuples (image_path, size_tuple, PIL_Image_object)
+    :param images: List of tuples (image_path, size_tuple, pixel_count, PIL_Image_object)
     :return: Tuple (min_width, min_height)
     """
     
-    min_width = min(size[0] for _, size, _ in images)  # Find the minimum width
-    min_height = min(size[1] for _, size, _ in images)  # Find the minimum height
+    min_width = min(size[0] for _, size, _, _ in images)  # Find the minimum width
+    min_height = min(size[1] for _, size, _, _ in images)  # Find the minimum height
     
     return min_width, min_height  # Return the minimum dimensions
 
