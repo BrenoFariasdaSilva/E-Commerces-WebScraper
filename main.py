@@ -1589,6 +1589,71 @@ def parse_price_from_components(integer_part: str, decimal_part: str) -> Optiona
         return None  # Return None when reconstruction fails
 
 
+def validate_and_fix_product_prices(product_data: dict) -> dict:
+    """
+    Validate and correct pricing fields in product_data.
+
+    Enforces two rules:
+      1. old_price must never be lower than or equal to current_price.
+         Violation: old_price fields and discount_percentage are reset to "N/A".
+      2. discount_percentage must match the mathematically computed discount.
+         Mismatch: discount_percentage is replaced with the correct computed value.
+
+    :param product_data: Dictionary containing scraped product price fields.
+    :return: Product data dictionary with corrected pricing fields.
+    """
+
+    if not isinstance(product_data, dict):  # Verify product_data is a valid dictionary
+        return product_data  # Return unchanged when product_data is not a dictionary
+
+    old_price_int_raw = str(product_data.get("old_price_integer", "")).strip()  # Extract raw old price integer part
+    old_price_dec_raw = str(product_data.get("old_price_decimal", "")).strip()  # Extract raw old price decimal part
+    cur_price_int_raw = str(product_data.get("current_price_integer", "")).strip()  # Extract raw current price integer part
+    cur_price_dec_raw = str(product_data.get("current_price_decimal", "")).strip()  # Extract raw current price decimal part
+    discount_raw = str(product_data.get("discount_percentage", "")).strip()  # Extract raw discount percentage string
+
+    old_price = parse_price_from_components(old_price_int_raw, old_price_dec_raw)  # Parse old price into float
+    cur_price = parse_price_from_components(cur_price_int_raw, cur_price_dec_raw)  # Parse current price into float
+
+    if old_price is None or cur_price is None or cur_price <= 0.0:  # Verify both prices are parseable and current price is positive
+        return product_data  # Return unchanged when prices cannot be validated
+
+    if old_price < cur_price:  # Verify old price is strictly greater than current price
+        print(
+            f"{BackgroundColors.YELLOW}[WARNING] Invalid old price detected: "
+            f"R${old_price_int_raw},{old_price_dec_raw} <= "
+            f"R${cur_price_int_raw},{cur_price_dec_raw}. "
+            f"Resetting old price and discount to N/A.{Style.RESET_ALL}"
+        )  # Log warning for invalid old price relationship
+        product_data["old_price_integer"] = "N/A"  # Reset old price integer to absent sentinel
+        product_data["old_price_decimal"] = "N/A"  # Reset old price decimal to absent sentinel
+        product_data["discount_percentage"] = "N/A"  # Reset discount to absent sentinel
+        return product_data  # Return with invalid old price fields cleared
+
+    computed_discount_pct = round((old_price - cur_price) / old_price * 100)  # Compute mathematically correct discount percentage
+    computed_discount_str = f"{computed_discount_pct}%"  # Format computed discount as "XX%" string
+
+    provided_discount_str = discount_raw.replace("%", "").strip()  # Strip percent symbol for numeric comparison
+    provided_discount_num = None  # Initialize parsed discount numeric value
+
+    if provided_discount_str and provided_discount_str not in ("N/A",):  # Verify provided discount is a valid numeric candidate
+        try:  # Attempt to parse provided discount as a number
+            provided_discount_num = round(float(provided_discount_str))  # Parse and round to integer for comparison
+        except (ValueError, TypeError):  # Handle non-numeric discount strings
+            provided_discount_num = None  # Treat unparseable discount as absent
+
+    if provided_discount_num is None or provided_discount_num != computed_discount_pct:  # Verify provided discount matches computed value
+        if provided_discount_num is not None:  # Verify mismatch exists before logging (non-None differs from computed)
+            print(
+                f"{BackgroundColors.YELLOW}[WARNING] Discount mismatch detected: "
+                f"provided {discount_raw} differs from computed {computed_discount_str}. "
+                f"Replacing with computed value.{Style.RESET_ALL}"
+            )  # Log warning for discount mismatch and replacement
+        product_data["discount_percentage"] = computed_discount_str  # Replace discount with mathematically correct value
+
+    return product_data  # Return validated and corrected product data
+
+
 def scrape_product(url, timestamped_output_dir, local_html_path=None):
     """
     Scrapes product information from a URL by detecting the platform and using the appropriate scraper.
