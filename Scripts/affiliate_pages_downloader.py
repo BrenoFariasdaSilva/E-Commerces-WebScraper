@@ -2847,6 +2847,30 @@ def is_platform_homepage_url(loaded_url: str, platform_name: str) -> bool:
     return False  # Return False when no homepage pattern matches the loaded URL.
 
 
+def detect_invalid_platform_url_by_image(platform_name: str, image_paths: Dict[str, Path]) -> bool:
+    """
+    Detect an invalid platform URL state by locating platform-specific invalid URL images on screen.
+
+    :param platform_name: Platform name key into PLATFORM_INVALID_URL_RULES.
+    :param image_paths: Dictionary mapping image variable names to resolved image asset paths.
+    :return: True when any invalid URL image is detected on screen, otherwise False.
+    """
+
+    platform_config = PLATFORM_INVALID_URL_RULES.get(platform_name, {})  # Retrieve platform configuration from rules dictionary.
+    invalid_image_keys = platform_config.get("invalid_image_keys", [])  # Retrieve image asset key list for the platform.
+
+    for image_key in invalid_image_keys:  # Iterate image keys configured for the platform.
+        img_path = image_paths.get(image_key)  # Retrieve image path from image_paths dictionary using current key.
+
+        if img_path is None:  # Verify image path is available before attempting detection.
+            continue  # Skip missing image path entries.
+
+        if locate_image(img_path) is not None:  # Verify whether invalid URL image is detected on screen.
+            return True  # Return True immediately when any invalid URL image is found.
+
+    return False  # Return False when no invalid URL image is detected for the platform.
+
+
 def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_count: int, downloads_dirs: List[str], image_paths: Dict[str, Path], ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]], chrome_download_settings_ready: bool, renew_amazon_affiliate: bool = False, only_renew_amazon_urls: bool = False) -> Tuple[int, Dict[str, str], bool]:
     """
     Processes URLs while tracking downloaded files by directory snapshots.
