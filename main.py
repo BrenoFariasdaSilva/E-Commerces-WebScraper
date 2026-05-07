@@ -1697,6 +1697,33 @@ def remove_url_line_from_input_file(url, local_html_path=None):
         return False  # Indicate nothing removed
 
 
+def write_prompt_to_file(prompt_content: str, output_directory: str) -> bool:
+    """
+    Write the Gemini prompt content to Prompt.txt in the specified directory.
+
+    :param prompt_content: The full prompt string to write.
+    :param output_directory: The directory where Prompt.txt will be saved.
+    :return: True if the file was written successfully, False otherwise.
+    """
+    
+    verbose_output(f"{BackgroundColors.GREEN}Writing Prompt.txt to directory: {BackgroundColors.CYAN}{output_directory}{Style.RESET_ALL}")  # Output the verbose message
+
+    try:
+        if not os.path.isdir(output_directory):  # Verify if the output directory exists
+            os.makedirs(output_directory, exist_ok=True)  # Create the output directory if it does not exist
+
+        prompt_file_path = os.path.join(output_directory, "Prompt.txt")  # Build the full path for Prompt.txt
+
+        with open(prompt_file_path, "w", encoding="utf-8") as f:  # Open Prompt.txt for writing with UTF-8 encoding
+            f.write(prompt_content)  # Write the prompt content to Prompt.txt
+
+        verbose_output(f"{BackgroundColors.GREEN}Prompt.txt written to: {BackgroundColors.CYAN}{prompt_file_path}{Style.RESET_ALL}")  # Log successful write
+        return True  # Return True when file is written successfully
+    except Exception as e:
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to write Prompt.txt: {e}{Style.RESET_ALL}")  # Log warning on failure
+        return False  # Return False when file writing fails
+
+
 def generate_marketing_text(product_description, description_file, product_data=None, product_url=None,  owner_name=None, api_key=None, key_index=1, total_keys=1):
     """
     Generates marketing text from product description using Gemini AI.
@@ -1738,6 +1765,9 @@ def generate_marketing_text(product_description, description_file, product_data=
     
     prompt = GEMINI_MARKETING_PROMPT_TEMPLATE.format(product_description=product_description) + International_instruction + no_discount_instruction + amazon_24h_instruction  # Format template with all instructions
 
+    description_dir = os.path.dirname(description_file)  # Get directory of description file.
+    write_prompt_to_file(prompt, description_dir)  # Write the exact prompt to Prompt.txt before Gemini generation
+
     gemini = None  # Initialize Gemini client reference for safe cleanup in all execution paths.
 
     try:  # Try a single-key generation request and delegate key rotation to caller.
@@ -1751,7 +1781,6 @@ def generate_marketing_text(product_description, description_file, product_data=
         formatted_output = gemini.generate_content(prompt)  # Generate formatted marketing text with the provided key.
 
         if formatted_output:  # Verify if generation returned content.
-            description_dir = os.path.dirname(description_file)  # Get directory of description file.
             formatted_file = os.path.join(description_dir, f"Template.txt")  # Build output file path.
             gemini.write_output_to_file(formatted_output, formatted_file)  # Write output to file.
             try:  # Try to validate the generated template file immediately after writing it.
