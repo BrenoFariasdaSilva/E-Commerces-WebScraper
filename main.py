@@ -626,6 +626,10 @@ def clean_images_directory(images_dir: str) -> None:
     """
     
     verbose_output(f"{BackgroundColors.GREEN}Cleaning images directory: {BackgroundColors.CYAN}{images_dir}{Style.RESET_ALL}")
+    
+    if not os.path.isdir(images_dir):  # Verify if the images directory exists
+        print(f"{BackgroundColors.YELLOW}Images directory does not exist: {BackgroundColors.CYAN}{images_dir}{Style.RESET_ALL}")
+        return  # Return if the images directory does not exist
 
     allowed_exts = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg", ".avif"}  # Define allowed image extensions for cleanup filtering
 
@@ -665,12 +669,16 @@ def cleaning_product_output_dir(product_directory: str, timestamped_output_dir: 
             shutil.rmtree(scripts_dir)  # Remove scripts directory and all contents
         except Exception:  # Ignore deletion failures to preserve cleanup continuity
             pass  # Continue cleanup execution after deletion failure
+    else:  # If scripts directory does not exist, output a warning message but continue execution
+        print(f"{BackgroundColors.YELLOW}Scripts directory does not exist: {BackgroundColors.CYAN}{scripts_dir}{Style.RESET_ALL}")
 
     if os.path.isdir(styles_dir):  # Verify if styles directory exists
         try:  # Attempt recursive styles directory deletion
             shutil.rmtree(styles_dir)  # Remove styles directory and all contents
         except Exception:  # Ignore deletion failures to preserve cleanup continuity
             pass  # Continue cleanup execution after deletion failure
+    else:  # If styles directory does not exist, output a warning message but continue execution
+        print(f"{BackgroundColors.YELLOW}Styles directory does not exist: {BackgroundColors.CYAN}{styles_dir}{Style.RESET_ALL}")
 
 
 def get_next_run_index(base_output_dir, today_str):
