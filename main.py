@@ -3220,6 +3220,42 @@ def handle_validation(product_data: dict, product_directory: str, description_fi
     return True  # Return True to signal valid product data
 
 
+def normalize_product_data_paths(product_data: dict) -> dict:
+    """
+    Normalize all path fields in product_data to Unix-style.
+
+    :param product_data: Dictionary containing product data fields.
+    :return: Dictionary with all path fields normalized to Unix-style.
+    """
+
+    if not isinstance(product_data, dict):  # Verify if product_data is a dictionary
+        return product_data  # Return as is if not a dictionary
+
+    from urls_utils import normalize_paths_to_unix  # Import normalization utility
+
+    path_keys = [
+        "local_html_path",
+        "html_path",
+        "zip_path",
+        "extracted_dir",
+        "description_file",
+        "product_directory",
+        "product_dir",
+        "input_source",
+        "output_file",
+        "output_dir",
+    ]  # List of known path-related keys in product_data
+
+    normalized = product_data.copy()  # Copy product_data to avoid mutating input
+
+    for key in path_keys:  # Iterate over known path keys
+        if key in normalized and isinstance(normalized[key], str):  # Verify key exists and is a string
+            # Use normalize_paths_to_unix to normalize this single path string
+            normalized[key] = normalize_paths_to_unix([normalized[key]])[0]
+
+    return normalized  # Return normalized product_data
+
+
 def ensure_product_data_url_first(product_data: dict, url: str) -> dict:
     """
     Ensure product_data contains the source URL as the first key.
