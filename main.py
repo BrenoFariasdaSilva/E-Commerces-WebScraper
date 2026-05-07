@@ -651,6 +651,50 @@ def clean_images_directory(images_dir: str) -> None:
                     pass  # Continue cleanup execution after deletion failure
 
 
+def locate_asset_directories(product_directory: str, timestamped_output_dir: str, extracted_dir_path: Optional[str] = None) -> Optional[Tuple[str, str, str]]:
+    """
+    Locates nested images, scripts, and styles directories within a product output directory.
+    
+    Attempts three strategies in order:
+    1. If extracted_dir_path is provided, use it directly.
+    2. Dynamically discover first subdirectory containing all three asset directories.
+    3. Return None if no valid asset directory structure is found.
+
+    :param product_directory: Indexed product directory name inside the timestamped run dir.
+    :param timestamped_output_dir: Absolute path to the timestamped run directory.
+    :param extracted_dir_path: Optional path to extracted ZIP directory for direct lookup.
+    :return: Tuple of (images_dir, scripts_dir, styles_dir) absolute paths, or None if not found.
+    """
+
+    product_dir_path = os.path.join(timestamped_output_dir, product_directory)  # Build absolute path to product directory
+
+    if not os.path.isdir(product_dir_path):  # Verify if product directory exists
+        return None  # Return None when product directory does not exist
+
+    if extracted_dir_path and os.path.isdir(extracted_dir_path):  # Try direct extracted directory first if provided
+        images_dir = os.path.join(extracted_dir_path, "images")  # Build images directory path inside extracted dir
+        scripts_dir = os.path.join(extracted_dir_path, "scripts")  # Build scripts directory path inside extracted dir
+        styles_dir = os.path.join(extracted_dir_path, "styles")  # Build styles directory path inside extracted dir
+
+        if os.path.isdir(images_dir) or os.path.isdir(scripts_dir) or os.path.isdir(styles_dir):  # Verify at least one asset directory exists
+            return (images_dir, scripts_dir, styles_dir)  # Return tuple of asset directory paths
+
+    for entry in os.listdir(product_dir_path):  # Iterate all entries in product directory for dynamic discovery
+        candidate_path = os.path.join(product_dir_path, entry)  # Build absolute path to candidate entry
+
+        if not os.path.isdir(candidate_path):  # Verify if candidate is a directory
+            continue  # Skip non-directories during enumeration
+
+        images_dir = os.path.join(candidate_path, "images")  # Build images directory path inside candidate
+        scripts_dir = os.path.join(candidate_path, "scripts")  # Build scripts directory path inside candidate
+        styles_dir = os.path.join(candidate_path, "styles")  # Build styles directory path inside candidate
+
+        if os.path.isdir(images_dir) or os.path.isdir(scripts_dir) or os.path.isdir(styles_dir):  # Verify at least one asset directory exists
+            return (images_dir, scripts_dir, styles_dir)  # Return tuple of discovered asset directory paths
+
+    return None  # Return None when no asset directory structure is found
+
+
 def cleaning_product_output_dir(product_directory: str, timestamped_output_dir: str) -> None:
     """
     Clean product output directory by removing non-image files from images directory and deleting scripts/styles directories.
