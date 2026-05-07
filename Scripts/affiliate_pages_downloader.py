@@ -2888,6 +2888,38 @@ def handle_invalid_url(url: str, urls_file: Path, url_to_download: Dict[str, str
     print(f"{BackgroundColors.RED}[WARNING] {platform_name} URL is invalid or expired and will be skipped. Original: {BackgroundColors.CYAN}{url}{BackgroundColors.RED} | Loaded: {BackgroundColors.CYAN}{loaded_url}{Style.RESET_ALL}")  # Log invalid URL warning with platform name, original URL, and loaded URL for traceability.
 
 
+def verify_url_is_valid_for_download(url: str, urls_file: Path, url_to_download: Dict[str, str], image_paths: Dict[str, Path]) -> bool:
+    """
+    Verify the currently loaded browser page is a valid product page before download interaction.
+
+    :param url: Original URL string opened in the browser tab used for platform detection and persistence.
+    :param urls_file: Path to the main URLs input file for persistence when an invalid URL is detected.
+    :param url_to_download: In-memory mapping from URL to downloaded filename updated when invalid URL is detected.
+    :param image_paths: Dictionary mapping image variable names to resolved image asset paths.
+    :return: True when the loaded page is a valid product page, False when an invalid redirect is detected.
+    """
+
+    platform_name = detect_platform_from_url(url)  # Detect the marketplace platform from the original URL.
+
+    if platform_name == "":  # Verify whether a recognized platform was detected before running validation.
+        return True  # Return valid when no platform matches to avoid false positives for unrecognized URLs.
+
+    loaded_url = get_browser_current_url()  # Read the current URL from the browser address bar.
+
+    if loaded_url == "":  # Verify whether browser URL was successfully retrieved before pattern matching.
+        return True  # Return valid when address bar URL cannot be read to avoid blocking the download flow.
+
+    if is_platform_homepage_url(loaded_url, platform_name):  # Verify whether loaded URL matches any homepage redirect pattern for the platform.
+        handle_invalid_url(url, urls_file, url_to_download, platform_name, loaded_url)  # Execute invalid URL handling flow for URL pattern match.
+        return False  # Return invalid after handling homepage redirect detection.
+
+    if detect_invalid_platform_url_by_image(platform_name, image_paths):  # Verify whether an invalid URL image is detected on screen for the platform.
+        handle_invalid_url(url, urls_file, url_to_download, platform_name, loaded_url)  # Execute invalid URL handling flow for image-based detection.
+        return False  # Return invalid after handling image-based invalid URL detection.
+
+    return True  # Return valid when neither homepage pattern nor invalid URL image was detected.
+
+
 def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_count: int, downloads_dirs: List[str], image_paths: Dict[str, Path], ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]], chrome_download_settings_ready: bool, renew_amazon_affiliate: bool = False, only_renew_amazon_urls: bool = False) -> Tuple[int, Dict[str, str], bool]:
     """
     Processes URLs while tracking downloaded files by directory snapshots.
