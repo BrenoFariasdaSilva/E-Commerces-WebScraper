@@ -2703,7 +2703,7 @@ def renew_amazon_url_for_tab(url: str, current_tab: int, urls_file: Path, share_
     return url, False, renewed_url, "Renewal flow returned unsuccessful status"  # Return with failure status when renewal flow did not succeed.
 
 
-def only_renew_amazon_url_mode(url: str, index: int, urls: List[str], urls_file: Path, share_button_img: Path, renew_amazon_affiliate: bool, opened_tabs: int) -> int:
+def only_renew_amazon_url_mode(url: str, index: int, urls: List[str], urls_file: Path, image_paths: Dict[str, Path], renew_amazon_affiliate: bool, opened_tabs: int) -> int:
     """
     Handles the renew-only flow for Amazon affiliate URLs, attempting renewal and file updates while preserving loop continuity and logging detailed outcomes.
     
@@ -2711,7 +2711,7 @@ def only_renew_amazon_url_mode(url: str, index: int, urls: List[str], urls_file:
     :param index: Current index of the URL in the processing loop for logging purposes.
     :param urls: Full list of URLs being processed for context in logging.
     :param urls_file: Path to the main URLs input file for potential updates.
-    :param share_button_img: Path to the share button image used in the renewal flow.
+    :param image_paths: Dictionary containing paths to various images used in the renewal flow.
     :param renew_amazon_affiliate: Flag indicating whether Amazon affiliate renewal is enabled.
     :param opened_tabs: Current count of opened tabs for managing tab lifecycle in renew-only flow.
     :return: Updated opened_tabs count after tab lifecycle completion.
@@ -2730,7 +2730,7 @@ def only_renew_amazon_url_mode(url: str, index: int, urls: List[str], urls_file:
             current_tab = index  # Store current tab index for renewal logging.
             original_url = url  # Preserve original URL before potential renewal replacement.
 
-            url, renewal_success, renewed_url, renewal_reason = renew_amazon_url_for_tab(url, current_tab, urls_file, share_button_img, renew_amazon_affiliate)  # Execute unified Amazon affiliate URL renewal and capture result tuple.
+            url, renewal_success, renewed_url, renewal_reason = renew_amazon_url_for_tab(url, current_tab, urls_file, image_paths["share_button_img"], renew_amazon_affiliate)  # Execute unified Amazon affiliate URL renewal and capture result tuple.
 
             if renewal_success and renewed_url != original_url:  # Verify whether renewal succeeded and URL changed before persisting to files.
                 apply_renewed_url_to_files(original_url, renewed_url, urls_file)  # Apply renewed URL to both main and backup input files.
@@ -2750,7 +2750,7 @@ def only_renew_amazon_url_mode(url: str, index: int, urls: List[str], urls_file:
     return opened_tabs  # Return updated opened_tabs count to propagate tab lifecycle state to caller.
 
 
-def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_count: int, downloads_dirs: List[str], extension_img: Path, download_img: Path, enable_permission_img: Path, confirmation_img: Path, failed_file_download_img: Path, close_download_tab_img: Path, mercado_livre_img: Path, mercado_livre_invalid_url_img: Path, share_button_img: Path, save_button_img: Path, ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]], chrome_download_settings_ready: bool, renew_amazon_affiliate: bool = False, only_renew_amazon_urls: bool = False) -> Tuple[int, Dict[str, str], bool]:
+def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_count: int, downloads_dirs: List[str], image_paths: Dict[str, Path], ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]], chrome_download_settings_ready: bool, renew_amazon_affiliate: bool = False, only_renew_amazon_urls: bool = False) -> Tuple[int, Dict[str, str], bool]:
     """
     Processes URLs while tracking downloaded files by directory snapshots.
 
@@ -2758,21 +2758,13 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
     :param urls_file: Path to the file containing the URLs.
     :param tab_count: Number of URLs to process.
     :param downloads_dirs: Paths to monitored downloads directories.
-    :param extension_img: Path to extension action image.
-    :param download_img: Path to download button image.
-    :param enable_permission_img: Path to optional extension enable-permission image.
-    :param confirmation_img: Path to download confirmation image.
-    :param failed_file_download_img: Path to failed file download image indicating download failure.
-    :param close_download_tab_img: Path to close extension tab image.
-    :param mercado_livre_img: Path to MercadoLivre go-to-product image.
-    :param mercado_livre_invalid_url_img: Path to MercadoLivre invalid URL image for renewal detection.
-    :param share_button_img: Path to ShareAffiliateURL button image for Amazon URL renewal.
-    :param save_button_img: Path to save button image for MercadoLivre.
+    :param image_paths: Dictionary mapping image variable names to resolved image asset paths.
     :param ext_methods: Grouped extension click methods dictionary.
     :param download_methods: Grouped download click methods dictionary.
     :param completion_methods: Grouped completion detection methods dictionary.
     :param close_methods: Grouped close extension tab methods dictionary.
     :param chrome_download_settings_ready: Whether Chrome downloads settings were verified successfully before URL processing.
+    :param renew_amazon_affiliate: Flag indicating whether Amazon affiliate URL renewal is enabled.
     :param only_renew_amazon_urls: Whether to execute only Amazon URL renewal flow without downloads.
     :return: Processed count, URL mapping dictionary, and success status.
     """
@@ -2801,7 +2793,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         fragmented_skip = False  # Initialize fragmented skip flag for for-loop continuation after while-loop exit.
 
         if only_renew_amazon_urls:  # Verify whether only-renew mode is active before executing download-specific workflow.
-            opened_tabs = only_renew_amazon_url_mode(url, index, urls, urls_file, share_button_img, renew_amazon_affiliate, opened_tabs)  # Execute isolated renew-only flow for the current URL and receive updated opened tabs count.
+            opened_tabs = only_renew_amazon_url_mode(url, index, urls, urls_file, image_paths, renew_amazon_affiliate, opened_tabs)  # Execute isolated renew-only flow for the current URL and receive updated opened tabs count.
             processed_count += 1  # Increment processed counter per attempted URL in renew-only mode.
             continue  # Continue loop to ensure all URLs are attempted independently in renew-only mode.
 
@@ -2813,7 +2805,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         current_tab = index  # Store current tab index.
         original_url = url  # Preserve original URL before potential Amazon affiliate renewal modification.
 
-        url, renewal_success, renewed_url, _ = renew_amazon_url_for_tab(url, current_tab, urls_file, share_button_img, renew_amazon_affiliate)  # Execute unified Amazon affiliate URL renewal and capture result tuple.
+        url, renewal_success, renewed_url, _ = renew_amazon_url_for_tab(url, current_tab, urls_file, image_paths["share_button_img"], renew_amazon_affiliate)  # Execute unified Amazon affiliate URL renewal and capture result tuple.
 
         if renewal_success and renewed_url != original_url:  # Verify whether renewal succeeded and URL actually changed before applying file updates.
             apply_renewed_url_to_files(original_url, renewed_url, urls_file)  # Apply renewed URL to both main and backup input files.
@@ -2821,24 +2813,24 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         while retry_attempt <= MAX_DOWNLOAD_RETRY_ATTEMPTS:  # Execute download attempt up to maximum retry limit.
             pre_download_snapshots = snapshot_download_directories(downloads_dirs)  # Capture downloads directory snapshots before URL processing.
             
-            click_go_to_product_button(mercado_livre_img)  # Execute MercadoLivre button action when available.
+            click_go_to_product_button(image_paths["mercado_livre_img"])  # Execute MercadoLivre button action when available.
             
-            extension_method = click_image_or_coords(extension_img, EXTENSION_X_REF, EXTENSION_Y_REF)  # Execute extension click action with scaled fallback coordinates.
+            extension_method = click_image_or_coords(image_paths["extension_img"], EXTENSION_X_REF, EXTENSION_Y_REF)  # Execute extension click action with scaled fallback coordinates.
                 
             px, py = compute_extension_cursor_position()  # Compute cursor position based on current browser/window size.
             pyautogui.moveTo(px, py, duration=0.12)  # Move cursor to computed extension position to prepare for scrolling.
             time.sleep(0.05)  # Wait briefly after moving cursor to allow UI to stabilize before scrolling.
             scroll_extension_tab_to_start_button()  # Scroll at cursor position to reveal the Start download button on low-resolution screens.
             
-            enable_permission_method = click_enable_permission(enable_permission_img)  # Attempt to click optional extension enable permission button using passed asset variable.
+            enable_permission_method = click_enable_permission(image_paths["enable_permission_img"])  # Attempt to click optional extension enable permission button using passed asset variable.
             
             scroll_extension_tab_to_start_button()  # Scroll again after potential permission click to ensure the Start download button is visible regardless of permission prompt presence or screen size.
             
             verbose_output(f"{BackgroundColors.GREEN}Enable permission action: {BackgroundColors.CYAN}{enable_permission_method}{BackgroundColors.GREEN}{Style.RESET_ALL}")  # Log enable-permission action when verbose.
 
-            download_method = click_download_button(download_img)  # Execute download click action.
-            confirmation_alt_img = confirmation_img.with_name(f"{confirmation_img.stem}-Alternative{confirmation_img.suffix}")  # Build alternative confirmation image path using deterministic naming pattern.
-            confirmation_method = watch_for_save_dialog_and_confirmation(save_button_img, confirmation_img, confirmation_alt_img, failed_file_download_img)  # Watch and handle optional save dialog while waiting.
+            download_method = click_download_button(image_paths["download_img"])  # Execute download click action.
+            confirmation_alt_img = image_paths["confirmation_img"].with_name(f"{image_paths['confirmation_img'].stem}-Alternative{image_paths['confirmation_img'].suffix}")  # Build alternative confirmation image path using deterministic naming pattern.
+            confirmation_method = watch_for_save_dialog_and_confirmation(image_paths["save_button_img"], image_paths["confirmation_img"], confirmation_alt_img, image_paths["failed_file_download_img"])  # Watch and handle optional save dialog while waiting.
 
             download_failed = confirmation_method == "Timeout" or confirmation_method == "Download Failed"  # Set download failure flag based on confirmation timeout or failed download result.
             
@@ -2885,7 +2877,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
                     effective_filename = move_downloaded_file_for_url(downloads_dirs, urls_file.resolve().parent, url, effective_filename, url_to_download)  # Move downloaded file for current URL and update mapping with new location.
                     success = True  # Mark download as successful for processed_count increment after while loop.
                     
-            close_method = close_extension_download_tab(close_download_tab_img)  # Execute close extension tab action.
+            close_method = close_extension_download_tab(image_paths["close_download_tab_img"])  # Execute close extension tab action.
             if not download_failed:  # Execute post-download tab closure only when download was not marked as failed to allow for retry attempts without reopening the URL.
                 handle_post_download_methods(ext_methods, download_methods, completion_methods, close_methods, extension_method, download_method, confirmation_method, close_method, current_tab)  # Execute extracted method tracking logic.
             opened_tabs = safely_close_product_tab(opened_tabs)  # Execute safe tab closure logic and update opened tabs counter.
@@ -2895,7 +2887,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
 
                 if retry_attempt <= MAX_DOWNLOAD_RETRY_ATTEMPTS:  # Verify whether retry is still within allowed attempts.
                     print(f"{BackgroundColors.YELLOW}[WARNING] Download failed for URL: {BackgroundColors.CYAN}{url}{BackgroundColors.YELLOW}. Retrying attempt {BackgroundColors.CYAN}{retry_attempt}{BackgroundColors.YELLOW}/{BackgroundColors.CYAN}{MAX_DOWNLOAD_RETRY_ATTEMPTS}{BackgroundColors.YELLOW}.{Style.RESET_ALL}")  # Log retry warning with current attempt count.
-                    context_ready = reset_browser_context_for_retry(close_download_tab_img)  # Reset browser context by closing window and reopening automation environment.
+                    context_ready = reset_browser_context_for_retry(image_paths["close_download_tab_img"])  # Reset browser context by closing window and reopening automation environment.
                     opened_tabs = 0  # Reset opened tabs counter after browser window closure during retry.
 
                     if context_ready:  # Verify browser context readiness before reopening URL for retry.
@@ -4353,7 +4345,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
 
             verbose_output(f"{BackgroundColors.GREEN}[DEBUG] process_only_unlinked_urls enabled: {BackgroundColors.CYAN}{len(urls)} URLs to process after filtering{Style.RESET_ALL}")  # Log filtered URL count
         
-        processed_count, url_to_download, process_success = process_urls_with_download_tracking(urls, urls_file, tab_count, downloads_dirs, extension_img, download_img, enable_permission_img, confirmation_img, failed_file_download_img, close_download_tab_img, mercado_livre_img, mercado_livre_invalid_url_img, share_button_img, save_button_img, ext_methods, download_methods, completion_methods, close_methods, chrome_download_settings_ready, renew_amazon_affiliate, only_renew_amazon_urls)  # Process URLs with download tracking and retrieve mapping details.
+        processed_count, url_to_download, process_success = process_urls_with_download_tracking(urls, urls_file, tab_count, downloads_dirs, image_paths, ext_methods, download_methods, completion_methods, close_methods, chrome_download_settings_ready, renew_amazon_affiliate, only_renew_amazon_urls)  # Process URLs with download tracking and retrieve mapping details.
         
         verbose_output(f"{BackgroundColors.GREEN}URL to Downloaded Filename Mapping:\n{BackgroundColors.CYAN}" + "\n".join(f'    "{k}": "{v}"' for k, v in url_to_download.items()) + f"{Style.RESET_ALL}")  # Print URL to downloaded filename mapping details when verbose enabled.
 
