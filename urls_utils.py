@@ -215,13 +215,13 @@ def load_urls_to_process(input_file) -> list[str] | None:
     return url_list  # Return the collected URL lines as strings
 
 
-def write_urls_to_file(urls_to_write: list, input_file_path: str, recursive: bool = False, sort: bool = True) -> None:
+def write_urls_to_file(urls_to_write: list, input_file_path: str, recursive: bool = True, sort: bool = True) -> None:
     """
     Write URLs to input file, supporting optional local HTML paths.
 
     :param urls_to_write: List of URLs or tuples (url, local_html_path).
     :param input_file_path: Path to the input file.
-    :param recursive: Optional; when True also write a "-backup" copy. Defaults to False.
+    :param recursive: Optional; when True also write a "-backup" copy. Defaults to True.
     :param sort: Optional; when True sorts lines alphabetically (case-insensitive). Defaults to True.
     :return: None.
     """
