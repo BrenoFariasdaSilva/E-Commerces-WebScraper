@@ -1453,7 +1453,7 @@ def normalize_text_field_for_product_scraping(value, field_name: str = "Field", 
     
     if isinstance(value, dict):  # If value is a dictionary
         if not value:  # If dict is empty
-            print(f"{BackgroundColors.YELLOW}[WARNING] {warn_prefix}{field_name} field is a dictionary, skipping normalization. Value: {value}{Style.RESET_ALL}")  # Warn about dict type
+            print(f"{BackgroundColors.YELLOW}[WARNING] {warn_prefix}{field_name} field is a dictionary but it's empty, converting to empty string.{Style.RESET_ALL}")  # Warn about empty dict
             return ""  # Return empty string for empty dict
         print(f"{BackgroundColors.YELLOW}[WARNING] {warn_prefix}{field_name} field is a dictionary, converting to string. Value: {value}{Style.RESET_ALL}")  # Warn about dict type
         return ",\n".join(f"{str(k)}: {str(v)}" for k, v in value.items()) + ","  # Format as requested
@@ -1461,6 +1461,7 @@ def normalize_text_field_for_product_scraping(value, field_name: str = "Field", 
         print(f"{BackgroundColors.YELLOW}[WARNING] {warn_prefix}{field_name} field is a list, joining as string. Value: {value}{Style.RESET_ALL}")  # Warn about list type
         return " ".join(str(x) for x in value if isinstance(x, str))  # Join string elements
     elif value is None:  # If value is None
+        print(f"{BackgroundColors.YELLOW}[WARNING] {warn_prefix}{field_name} field is None, converting to empty string.{Style.RESET_ALL}")  # Warn about None value
         return ""  # Return empty string for None
     elif not isinstance(value, str):  # If value is not a string
         print(f"{BackgroundColors.YELLOW}[WARNING] {warn_prefix}{field_name} field is not a string, skipping normalization. Type: {type(value)} Value: {value}{Style.RESET_ALL}")  # Warn about unknown type
