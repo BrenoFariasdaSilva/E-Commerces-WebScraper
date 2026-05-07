@@ -3705,17 +3705,21 @@ def handle_cleanup(product_directory: str, timestamped_output_dir: str, html_pat
     :param zip_path_to_cleanup: Path to zip file for cleanup, or None.
     :return: None
     """
+    
+    asset_dirs = None  # Initialize asset_dirs as None to explicitly represent unresolved asset directories
+    product_dir_path = os.path.join(timestamped_output_dir, product_directory)
 
     if product_directory and isinstance(product_directory, str):  # Only run image cleanup for valid product dirs
-        clean_duplicate_images(product_directory, timestamped_output_dir)  # Deduplicate images in final location
-        exclude_small_images(product_directory, timestamped_output_dir)  # Remove extremely small images
-        cleaning_product_output_dir(product_directory, timestamped_output_dir, extracted_dir_to_cleanup)  # Clean images/scripts/styles after deduplication and small image filtering
+        asset_dirs = locate_asset_directories(product_dir_path)  # Locate and return a list for the images_dir, scripts_dir, and styles_dir inside the product directory for use in cleanup and resolution upgrade steps
+        cleaning_product_output_dir(product_dir_path, asset_dirs)  # Clean images/scripts/styles after deduplication and small image filtering
+        clean_duplicate_images(product_dir_path)  # Deduplicate images in final location
+        exclude_small_images(product_dir_path)  # Remove extremely small images
 
     input_source = html_path_for_assets or local_html_path  # Determine original input source to copy
     copy_original_input_to_output(input_source, product_directory, base_output_dir=timestamped_output_dir)  # Copy original input into final product folder
 
-    if product_directory and isinstance(product_directory, str):  # Only run resolution upgrade for valid product dirs
-        upgrade_root_images_from_indexed_subdir(product_directory, timestamped_output_dir)  # Replace low-res root images with higher-resolution versions from the indexed subdir
+    if product_directory and isinstance(product_directory, str) and asset_dirs and len(asset_dirs) >= 1:  # Only run resolution upgrade for valid product dirs
+        upgrade_root_images_from_indexed_subdir(product_directory, timestamped_output_dir, asset_dirs[0])  # Move images from indexed subdir to root of product directory for better Gemini compatibility
 
     if DELETE_LOCAL_HTML_FILE:  # Only perform deletions when configured
         if extracted_dir_to_cleanup and os.path.exists(extracted_dir_to_cleanup):  # Remove extracted directory if present
