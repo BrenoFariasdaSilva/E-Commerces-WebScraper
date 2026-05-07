@@ -617,6 +617,30 @@ def exclude_small_images(product_directory, base_output_dir=OUTPUT_DIRECTORY, mi
             print(f"{BackgroundColors.RED}Error verify/removing image {BackgroundColors.CYAN}{img_path}{BackgroundColors.RED}: {BackgroundColors.YELLOW}{e}{Style.RESET_ALL}")
 
 
+def clean_images_directory(images_dir: str) -> None:
+    """
+    Clean images directory by removing non-image files.
+
+    :param images_dir: Absolute path to images directory.
+    :return: None
+    """
+    
+    verbose_output(f"{BackgroundColors.GREEN}Cleaning images directory: {BackgroundColors.CYAN}{images_dir}{Style.RESET_ALL}")
+
+    allowed_exts = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg", ".avif"}  # Define allowed image extensions for cleanup filtering
+
+    if os.path.isdir(images_dir):  # Verify if images directory exists before cleanup
+        for fname in os.listdir(images_dir):  # Iterate all entries inside images directory
+            fpath = os.path.join(images_dir, fname)  # Build absolute path to current entry
+            _, ext = os.path.splitext(fname)  # Extract current file extension
+
+            if not ext.lower() in allowed_exts:  # Verify if current file extension is not an allowed image extension
+                try:  # Attempt removal of non-image file
+                    os.remove(fpath)  # Remove non-image file from images directory
+                except Exception:  # Ignore deletion failures to preserve cleanup continuity
+                    pass  # Continue cleanup execution after deletion failure
+
+
 def get_next_run_index(base_output_dir, today_str):
     """
     Determines the next run index for the current day by scanning existing timestamped directories.
