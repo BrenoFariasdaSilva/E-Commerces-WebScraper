@@ -1480,6 +1480,32 @@ def split_phrases(text: str) -> list:
     return [s.strip() for s in segments if s.strip()]  # Return non-empty, stripped phrases
 
 
+def normalize_text_field_for_product_scraping(value, field_name: str = "Field", warn_prefix: str = "") -> str:
+    """
+    Normalize a product text field to a string for downstream processing.
+
+    Handles dict, list, None, and non-string types robustly, with warnings.
+
+    :param value: The input value to normalize (any type).
+    :param field_name: Name of the field for warning messages.
+    :param warn_prefix: Optional prefix for warning messages (e.g., 'Description', 'Product details').
+    :return: Normalized string value safe for text processing.
+    """
+    
+    if isinstance(value, dict):  # If value is a dictionary
+        print(f"{BackgroundColors.YELLOW}[WARNING] {warn_prefix}{field_name} field is a dictionary, skipping normalization. Value: {value}{Style.RESET_ALL}")  # Warn about dict type
+        return ""  # Return empty string to avoid .split() error
+    elif isinstance(value, list):  # If value is a list
+        print(f"{BackgroundColors.YELLOW}[WARNING] {warn_prefix}{field_name} field is a list, joining as string. Value: {value}{Style.RESET_ALL}")  # Warn about list type
+        return " ".join(str(x) for x in value if isinstance(x, str))  # Join string elements
+    elif value is None:  # If value is None
+        return ""  # Return empty string for None
+    elif not isinstance(value, str):  # If value is not a string
+        print(f"{BackgroundColors.YELLOW}[WARNING] {warn_prefix}{field_name} field is not a string, skipping normalization. Type: {type(value)} Value: {value}{Style.RESET_ALL}")  # Warn about unknown type
+        return str(value)  # Convert to string as fallback
+    return value  # Return string as-is
+
+
 def normalize_product_text_description_and_details(description: str, product_details: str) -> Tuple[str, str]:
     """
     Deduplicate repeated phrases in product description and product_details.
