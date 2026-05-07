@@ -834,6 +834,37 @@ def candidate_exceeds_root_resolution(root_img_path: str, candidate_img_path: st
     return candidate_pixels > root_pixels  # Return True only when candidate strictly exceeds root resolution
 
 
+def find_resolution_upgrade_candidates(root_basename_normalized: str, indexed_images_dir: str) -> List[Tuple[str, float]]:
+    """
+    Searches the indexed images directory for candidate files whose normalized basename
+    achieves at least FILENAME_SIMILARITY_THRESHOLD similarity against the root's normalized
+    basename. Returns candidates sorted by similarity score descending.
+
+    :param root_basename_normalized: Normalized basename of the root image (no prefix, no CDN suffix).
+    :param indexed_images_dir: Absolute path to the indexed images subdirectory.
+    :return: List of (candidate_absolute_path, similarity_score) tuples, best first.
+    """
+
+    candidates: List[Tuple[str, float]] = []  # Initialize empty candidate collection
+
+    if not os.path.isdir(indexed_images_dir):  # Verify indexed images directory exists
+        return candidates  # Return empty list when directory is absent
+
+    image_filenames = get_image_files(indexed_images_dir)  # Retrieve all image filenames from indexed dir
+
+    for cand_filename in image_filenames:  # Iterate every candidate image filename
+        cand_basename = os.path.splitext(cand_filename)[0]  # Strip extension from candidate filename
+        cand_normalized = normalize_basename_for_comparison(cand_basename)  # Normalize candidate basename
+        similarity = compute_filename_similarity(root_basename_normalized, cand_normalized)  # Compute SequenceMatcher ratio
+
+        if similarity >= FILENAME_SIMILARITY_THRESHOLD:  # Only accept candidates meeting minimum similarity
+            cand_path = os.path.join(indexed_images_dir, cand_filename)  # Build absolute path to candidate file
+            candidates.append((cand_path, similarity))  # Append candidate with its score
+
+    candidates.sort(key=lambda t: t[1], reverse=True)  # Sort by similarity score descending for best-first iteration
+    return candidates  # Return ranked list of upgrade candidates
+
+
 def get_next_run_index(base_output_dir, today_str):
     """
     Determines the next run index for the current day by scanning existing timestamped directories.
