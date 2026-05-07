@@ -1521,8 +1521,11 @@ def normalize_product_text_description_and_details(description: str, product_det
     cleaned_description = []  # List for cleaned description
     cleaned_product_details = []  # List for cleaned product details
 
-    desc_phrases = split_phrases(description)  # Split description into phrases
-    details_phrases = split_phrases(product_details)  # Split product_details into phrases
+    desc_input = normalize_text_field_for_product_scraping(description, field_name="Description", warn_prefix="")  # Normalize description field
+    details_input = normalize_text_field_for_product_scraping(product_details, field_name="Product details", warn_prefix="")  # Normalize product_details field
+
+    desc_phrases = split_phrases(desc_input)  # Split description into phrases
+    details_phrases = split_phrases(details_input)  # Split product_details into phrases
 
     for phrase in desc_phrases:  # Iterate over description phrases
         norm = phrase.lower().strip()  # Normalize phrase for deduplication
