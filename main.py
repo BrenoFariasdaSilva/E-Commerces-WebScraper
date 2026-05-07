@@ -3049,7 +3049,7 @@ def prepare_input_urls() -> tuple:
 
     normalized_lines = normalize_paths_to_unix(raw_lines)  # Normalize Windows-style paths to Unix-style before any downstream processing
     processed_lines = preprocess_urls(normalized_lines)  # Preprocess lines (strip, remove prefixes, sort)
-    write_urls_to_file(processed_lines, INPUT_FILE, True)  # Write preprocessed lines back to input file for deterministic retries and user reference
+    write_urls_to_file(processed_lines, INPUT_FILE, recursive=True, sort=True)  # Write preprocessed lines back to input file for deterministic retries and user reference
 
     urls_to_process = []  # Prepare list of tuples (url, local_html_path)
     for line in sorted(processed_lines, key=lambda s: s.lower()):  # Iterate preprocessed lines sorted alphabetically in a case-insensitive manner
