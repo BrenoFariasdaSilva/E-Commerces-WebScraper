@@ -167,6 +167,9 @@ RUN_FUNCTIONS = {
     "Play Sound": True,  # Set to True to play a sound when the program finishes
 }
 
+# Invalid URL Detection Constants:
+INVALID_URL_FILENAME = "INVALID_URL"  # Sentinel filename value for expired or redirected product URLs.
+
 
 # Functions Definitions:
 
