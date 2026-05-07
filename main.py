@@ -83,7 +83,7 @@ from tqdm import tqdm  # Progress bar for URL processing
 from typing import Dict, List, Optional, Set, Tuple  # For type-annotated containers used by final verification functions
 from collections import OrderedDict  # For deterministic ordered mapping of named API keys
 from urllib.parse import urlparse  # For parsing URL hostnames
-from urls_utils import load_urls_to_process, preprocess_urls, write_urls_to_file  # URL helpers
+from urls_utils import load_urls_to_process, preprocess_urls, write_urls_to_file, normalize_paths_to_unix  # URL helpers
 
 
 # Macros:
@@ -2975,8 +2975,9 @@ def prepare_input_urls() -> tuple:
     if raw_lines is None:  # Verify if loading the input file failed (e.g., file not found)
         print(f"{BackgroundColors.RED}Error: Failed to read URLs from file: {BackgroundColors.CYAN}{INPUT_FILE}{BackgroundColors.RED}. Please ensure the file exists and is readable in that specified paths. Be careful with the parent directory of the file as well.{Style.RESET_ALL}")  # Print file read error with details and suggestions.
         return [], 0  # Return empty list and zero count when input file cannot be loaded
-    
-    processed_lines = preprocess_urls(raw_lines)  # Preprocess lines (strip, remove prefixes, sort)
+
+    normalized_lines = normalize_paths_to_unix(raw_lines)  # Normalize Windows-style paths to Unix-style before any downstream processing
+    processed_lines = preprocess_urls(normalized_lines)  # Preprocess lines (strip, remove prefixes, sort)
     write_urls_to_file(processed_lines, INPUT_FILE, True)  # Write preprocessed lines back to input file for deterministic retries and user reference
 
     urls_to_process = []  # Prepare list of tuples (url, local_html_path)
