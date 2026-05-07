@@ -390,7 +390,7 @@ def main():
 
     new_lines = generate_numbered_lines(sanitized_lines, input_dir)  # Generate numbered ZIP assignments and warnings using sanitized URLs
 
-    write_urls_to_file(new_lines, urls_path)  # Write the updated urls file back to disk using shared utility
+    write_urls_to_file(new_lines, urls_path, recursive=True, sort=True)  # Write the updated urls file back to disk using shared utility
 
     finish_time = datetime.datetime.now()  # Get the finish time of the program
     print(
