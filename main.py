@@ -3578,6 +3578,9 @@ def handle_cleanup(product_directory: str, timestamped_output_dir: str, html_pat
     input_source = html_path_for_assets or local_html_path  # Determine original input source to copy
     copy_original_input_to_output(input_source, product_directory, base_output_dir=timestamped_output_dir)  # Copy original input into final product folder
 
+    if product_directory and isinstance(product_directory, str):  # Only run resolution upgrade for valid product dirs
+        upgrade_root_images_from_indexed_subdir(product_directory, timestamped_output_dir)  # Replace low-res root images with higher-resolution versions from the indexed subdir
+
     if DELETE_LOCAL_HTML_FILE:  # Only perform deletions when configured
         if extracted_dir_to_cleanup and os.path.exists(extracted_dir_to_cleanup):  # Remove extracted directory if present
             try:  # Attempt deletion
