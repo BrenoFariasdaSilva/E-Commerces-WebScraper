@@ -573,7 +573,9 @@ def clean_duplicate_images(product_directory, base_output_dir=OUTPUT_DIRECTORY):
     """
     
     product_dir = os.path.join(base_output_dir, product_directory)  # Path to the product directory using provided base directory
+    
     if not os.path.exists(product_dir):  # If the product directory does not exist
+        print(f"{BackgroundColors.YELLOW}Product directory does not exist: {BackgroundColors.CYAN}{product_dir}{BackgroundColors.YELLOW}.{Style.RESET_ALL}")
         return  # Return if the directory does not exist
     
     image_files = get_image_files(product_dir)  # Get list of image files
