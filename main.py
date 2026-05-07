@@ -683,19 +683,16 @@ def locate_asset_directories(product_dir_path: str) -> Optional[List[str]]:
     return None  # Return None when no valid asset directory structure is found
 
 
-def cleaning_product_output_dir(product_directory: str, timestamped_output_dir: str, extracted_dir_path: Optional[str] = None) -> None:
+def cleaning_product_output_dir(product_dir: str, asset_dirs: Optional[List[str]]) -> None:
     """
     Clean product output directory by removing non-image files from images directory and deleting scripts/styles directories.
 
-    :param product_directory: Indexed product directory name inside the timestamped run dir.
-    :param timestamped_output_dir: Absolute path to the timestamped run directory.
-    :param extracted_dir_path: Optional path to extracted ZIP directory for direct asset location lookup.
+    :param product_dir: Indexed product directory name inside the timestamped run dir.
+    :param asset_dirs: List of absolute paths to images, scripts, and styles directories, or None if not found.
     :return: None
     """
     
-    verbose_output(f"{BackgroundColors.GREEN}Cleaning product output directory for: {BackgroundColors.CYAN}{product_directory}{Style.RESET_ALL}")
-
-    asset_dirs = locate_asset_directories(product_directory, timestamped_output_dir, extracted_dir_path)  # Locate images/scripts/styles directories with fallback discovery
+    verbose_output(f"{BackgroundColors.GREEN}Cleaning product output directory for: {BackgroundColors.CYAN}{product_dir}{Style.RESET_ALL}")
 
     if asset_dirs is None:  # Verify if asset directories were found
         verbose_output(f"{BackgroundColors.YELLOW}No asset directories (images/scripts/styles) found in product directory structure.{Style.RESET_ALL}")
