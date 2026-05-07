@@ -1463,6 +1463,37 @@ def setup_method_maps() -> Tuple[Dict[str, List[int]], Dict[str, List[int]], Dic
     return ext_methods, download_methods, completion_methods, close_methods  # Return all method maps
 
 
+def filter_only_unlinked_urls(urls: list, preprocessed_urls: list) -> list:
+    """
+    Filter URLs to only those not linked to any file in the input URLs file.
+
+    :param urls: List of URLs to filter.
+    :param preprocessed_urls: List of preprocessed URL lines from the input file.
+    :return: Filtered list of URLs with no filename/path mapping.
+    """
+
+    url_to_filename = {}  # Initialize mapping from URL to filename/path
+
+    for raw_line in preprocessed_urls:  # Iterate over preprocessed URL lines
+        tokens = raw_line.strip().split()  # Split line into tokens for URL and filename
+
+        if not tokens:  # Verify if the line is empty after stripping
+            continue  # Skip empty lines
+
+        url = tokens[0]  # Extract URL token from line
+        filename = tokens[1] if len(tokens) > 1 else ""  # Extract filename if present, else empty string
+
+        if url not in url_to_filename:  # Verify if URL is not already in the mapping
+            url_to_filename[url] = filename  # Add URL and filename to mapping
+
+        elif url_to_filename[url] == "" and filename != "":  # Verify if existing mapping is empty and new filename is present
+            url_to_filename[url] = filename  # Update mapping with new filename
+
+    filtered_urls = [u for u in urls if url_to_filename.get(u, "") == ""]  # Filter URLs with no filename/path mapping
+
+    return filtered_urls  # Return filtered list of URLs
+
+
 def notify_manual_chrome_download_settings_intervention(url: str) -> None:
     """
     Requests manual Chrome downloads settings correction after first-URL download failure.
