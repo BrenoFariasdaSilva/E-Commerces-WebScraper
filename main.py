@@ -729,6 +729,31 @@ def compute_filename_similarity(a: str, b: str) -> float:
     return difflib.SequenceMatcher(None, a, b).ratio()  # Return SequenceMatcher ratio between the two basenames
 
 
+def locate_indexed_images_subdir(product_dir_path: str) -> Optional[str]:
+    """
+    Locates the images subdirectory inside the first numeric-named subdirectory found
+    within the product directory (e.g., "{product_dir}/18/images/").
+
+    :param product_dir_path: Absolute path to the product output directory.
+    :return: Absolute path to the indexed images directory, or None if not found.
+    """
+
+    if not os.path.isdir(product_dir_path):  # Verify product directory exists on disk
+        return None  # Return None if product directory is missing
+
+    for entry in sorted(os.listdir(product_dir_path)):  # Iterate entries sorted for deterministic ordering
+        entry_path = os.path.join(product_dir_path, entry)  # Build absolute path to current entry
+        if not os.path.isdir(entry_path):  # Skip non-directory entries
+            continue  # Only inspect subdirectories
+        if not re.match(r"^\d+$", entry):  # Skip entries with non-numeric names
+            continue  # Only process purely numeric-named subdirectories
+        images_subdir = os.path.join(entry_path, "images")  # Build path to images directory inside numeric subdir
+        if os.path.isdir(images_subdir):  # Verify images subdirectory exists
+            return images_subdir  # Return the absolute path to the indexed images directory
+
+    return None  # Return None when no matching indexed images directory is found
+
+
 def get_next_run_index(base_output_dir, today_str):
     """
     Determines the next run index for the current day by scanning existing timestamped directories.
