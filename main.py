@@ -906,6 +906,65 @@ def attempt_resolution_upgrade(root_img_path: str, candidate_img_path: str) -> b
     return True  # Signal successful resolution upgrade
 
 
+def upgrade_root_images_from_indexed_subdir(product_directory: str, timestamped_output_dir: str) -> None:
+    """
+    Orchestrates the deterministic higher-resolution replacement pipeline for all root-level
+    images in a product output directory. For each root image:
+      - Extracts and normalizes its basename (strips numeric prefix and CDN resize suffix).
+      - Searches the indexed images subdirectory (e.g., "{product_dir}/18/images/") for
+        filename-similar candidates (METHOD 1: SequenceMatcher >= FILENAME_SIMILARITY_THRESHOLD).
+      - For each candidate in best-first order, verifies higher resolution and visual content
+        similarity (METHOD 2: 8x8 aHash Hamming distance <= 10), then performs the replacement.
+      - Stops after the first successful upgrade per root image to preserve determinism.
+
+    :param product_directory: Indexed product directory name inside the timestamped run dir.
+    :param timestamped_output_dir: Absolute path to the timestamped run directory.
+    :return: None
+    """
+
+    product_dir_path = os.path.join(timestamped_output_dir, product_directory)  # Build absolute path to the product directory
+
+    if not os.path.isdir(product_dir_path):  # Verify product directory exists before any processing
+        return  # Return early when product directory is absent
+
+    indexed_images_dir = locate_indexed_images_subdir(product_dir_path)  # Locate the indexed images subdirectory
+
+    if indexed_images_dir is None:  # Verify indexed images subdir was found
+        verbose_output(  # Log diagnostic message when no indexed subdir is present
+            f"{BackgroundColors.YELLOW}No indexed images subdirectory found in: {BackgroundColors.CYAN}{product_dir_path}{Style.RESET_ALL}"
+        )  # End of verbose output call
+        return  # Return early when no indexed images directory exists
+
+    root_image_files = get_image_files(product_dir_path)  # Retrieve all root-level image filenames
+
+    if not root_image_files:  # Verify there are root images to process
+        return  # Return early when no root images exist
+
+    upgraded_count = 0  # Initialize counter tracking number of successful upgrades
+
+    for root_filename in root_image_files:  # Iterate every root-level image file
+        root_img_path = os.path.join(product_dir_path, root_filename)  # Build absolute path to root image
+        root_basename = extract_root_image_basename(root_filename)  # Strip numeric prefix and extension
+        root_normalized = normalize_basename_for_comparison(root_basename)  # Normalize for similarity matching
+        candidates = find_resolution_upgrade_candidates(root_normalized, indexed_images_dir)  # Find filename-similar candidates
+
+        for candidate_path, similarity_score in candidates:  # Iterate candidates from best match to worst
+            success = attempt_resolution_upgrade(root_img_path, candidate_path)  # Attempt atomic replacement
+            if success:  # Verify if the upgrade was performed
+                verbose_output(  # Log successful upgrade details
+                    f"{BackgroundColors.GREEN}Upgraded root image: {BackgroundColors.CYAN}{root_filename}"
+                    f"{BackgroundColors.GREEN} (filename similarity={similarity_score:.2f}){Style.RESET_ALL}"
+                )  # End of verbose output call
+                upgraded_count += 1  # Increment upgrade counter
+                break  # Stop at first successful candidate for this root image
+
+    print(  # Always print upgrade summary for operational visibility
+        f"{BackgroundColors.GREEN}Resolution upgrade complete: "
+        f"{BackgroundColors.CYAN}{upgraded_count}{BackgroundColors.GREEN}/{len(root_image_files)}"
+        f"{BackgroundColors.GREEN} root images upgraded from indexed subdir.{Style.RESET_ALL}"
+    )  # End of print statement
+
+
 def get_next_run_index(base_output_dir, today_str):
     """
     Determines the next run index for the current day by scanning existing timestamped directories.
