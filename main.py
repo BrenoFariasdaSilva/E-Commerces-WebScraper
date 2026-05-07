@@ -488,7 +488,7 @@ def load_images(product_dir, image_files):
 
     :param product_dir: Path to the product directory
     :param image_files: List of image filenames
-    :return: List of tuples (image_path, size_tuple, PIL_Image_object)
+    :return: List of tuples (image_path, size_tuple, pixel_count, PIL_Image_object)
     """
     
     images = []  # List to store loaded images
@@ -496,9 +496,11 @@ def load_images(product_dir, image_files):
         img_path = os.path.join(product_dir, img_file)  # Get the full path of the image file
         try:  # Try to open the image
             img = Image.open(img_path)  # Open the image using PIL
-            images.append((img_path, img.size, img))  # Store the image path, size, and object
-        except Exception as e:  # If opening the image fails
-            print(f"{BackgroundColors.RED}Error opening image {img_path}: {e}{Style.RESET_ALL}")
+            width, height = img.size  # Extract image dimensions
+            pixel_count = width * height  # Compute image resolution using total pixel count
+            images.append((img_path, img.size, pixel_count, img))  # Store the image path, dimensions, pixel count, and object
+        except Exception as e:  # Verify if opening the image fails
+            print(f"{BackgroundColors.RED}Error opening image {img_path}: {e}{Style.RESET_ALL}")  # Output image loading failure
     
     return images  # Return the list of loaded images
 
