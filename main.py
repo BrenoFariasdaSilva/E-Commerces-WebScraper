@@ -3281,6 +3281,7 @@ def handle_cleanup(product_directory: str, timestamped_output_dir: str, html_pat
     if product_directory and isinstance(product_directory, str):  # Only run image cleanup for valid product dirs
         clean_duplicate_images(product_directory, timestamped_output_dir)  # Deduplicate images in final location
         exclude_small_images(product_directory, timestamped_output_dir)  # Remove extremely small images
+        cleaning_product_output_dir(product_directory, timestamped_output_dir)  # Clean images/scripts/styles after deduplication and small image filtering
 
     input_source = html_path_for_assets or local_html_path  # Determine original input source to copy
     copy_original_input_to_output(input_source, product_directory, base_output_dir=timestamped_output_dir)  # Copy original input into final product folder
