@@ -913,7 +913,7 @@ def attempt_resolution_upgrade(root_img_path: str, candidate_img_path: str) -> b
     return True  # Signal successful resolution upgrade
 
 
-def upgrade_root_images_from_indexed_subdir(product_directory: str, timestamped_output_dir: str) -> None:
+def upgrade_root_images_from_indexed_subdir(product_directory: str, timestamped_output_dir: str, images_dir: str) -> None:
     """
     Orchestrates the deterministic higher-resolution replacement pipeline for all root-level
     images in a product output directory. For each root image:
@@ -926,6 +926,7 @@ def upgrade_root_images_from_indexed_subdir(product_directory: str, timestamped_
 
     :param product_directory: Indexed product directory name inside the timestamped run dir.
     :param timestamped_output_dir: Absolute path to the timestamped run directory.
+    :param images_dir: Absolute path to the indexed images subdirectory to source candidates from.
     :return: None
     """
 
@@ -934,9 +935,7 @@ def upgrade_root_images_from_indexed_subdir(product_directory: str, timestamped_
     if not os.path.isdir(product_dir_path):  # Verify product directory exists before any processing
         return  # Return early when product directory is absent
 
-    indexed_images_dir = locate_indexed_images_subdir(product_dir_path)  # Locate the indexed images subdirectory
-
-    if indexed_images_dir is None:  # Verify indexed images subdir was found
+    if images_dir is None:  # Verify indexed images subdir was found
         verbose_output(  # Log diagnostic message when no indexed subdir is present
             f"{BackgroundColors.YELLOW}No indexed images subdirectory found in: {BackgroundColors.CYAN}{product_dir_path}{Style.RESET_ALL}"
         )  # End of verbose output call
@@ -953,7 +952,7 @@ def upgrade_root_images_from_indexed_subdir(product_directory: str, timestamped_
         root_img_path = os.path.join(product_dir_path, root_filename)  # Build absolute path to root image
         root_basename = extract_root_image_basename(root_filename)  # Strip numeric prefix and extension
         root_normalized = normalize_basename_for_comparison(root_basename)  # Normalize for similarity matching
-        candidates = find_resolution_upgrade_candidates(root_normalized, indexed_images_dir)  # Find filename-similar candidates
+        candidates = find_resolution_upgrade_candidates(root_normalized, images_dir)  # Find filename-similar candidates
 
         for candidate_path, similarity_score in candidates:  # Iterate candidates from best match to worst
             success = attempt_resolution_upgrade(root_img_path, candidate_path)  # Attempt atomic replacement
