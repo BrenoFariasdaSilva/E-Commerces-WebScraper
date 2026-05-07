@@ -687,6 +687,19 @@ def cleaning_product_output_dir(product_directory: str, timestamped_output_dir: 
         print(f"{BackgroundColors.YELLOW}Styles directory does not exist: {BackgroundColors.CYAN}{styles_dir}{Style.RESET_ALL}")
 
 
+def extract_root_image_basename(root_filename: str) -> str:
+    """
+    Strips the two-digit numeric index prefix and extension from a root-level image filename.
+
+    :param root_filename: Filename of a root-level image (e.g., "01_file_br-xxx-resize_w82_nl.jpg").
+    :return: Raw basename without numeric prefix or extension (e.g., "file_br-xxx-resize_w82_nl").
+    """
+
+    name_no_ext = os.path.splitext(root_filename)[0]  # Remove file extension from root filename
+    stripped = re.sub(r"^\d+_", "", name_no_ext)  # Remove leading numeric index prefix (e.g., "01_")
+    return stripped  # Return raw basename with no numeric prefix and no extension
+
+
 def get_next_run_index(base_output_dir, today_str):
     """
     Determines the next run index for the current day by scanning existing timestamped directories.
