@@ -203,6 +203,9 @@ GEMINI_LAST_KEY_INDEX = 0  # Index to keep track of the last used key in the Gem
 GEMINI_ALL_KEYS_EXHAUSTED_WAIT_SECONDS = 600  # Seconds to wait before restarting key rotation when all keys are exhausted.
 GEMINI_MAX_ALL_KEYS_EXHAUSTED_CYCLES = 1  # Maximum all-keys-exhausted cycles per URL before failing the request.
 
+# Image Upgrade Constants:
+FILENAME_SIMILARITY_THRESHOLD = 0.70  # Minimum SequenceMatcher ratio for root-to-indexed basename similarity matching
+
 # Functions Definitions:
 
 
