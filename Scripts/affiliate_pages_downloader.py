@@ -170,6 +170,37 @@ RUN_FUNCTIONS = {
 # Invalid URL Detection Constants:
 INVALID_URL_FILENAME = "INVALID_URL"  # Sentinel filename value for expired or redirected product URLs.
 
+PLATFORM_INVALID_URL_RULES: Dict[str, Any] = {  # Platform-specific invalid URL detection rules sorted alphabetically by platform name.
+    "Amazon": {  # Amazon platform configuration for invalid URL detection.
+        "url_domains": ["amazon.", "amzn.to"],  # Domain keyword substrings used to identify Amazon URLs.
+        "homepage_patterns": [  # Compiled regex patterns for Amazon homepage redirect detection.
+            re.compile(r"^https?://(?:[a-z0-9-]+\.)*amazon\.[a-z][a-z.]*/?(?:\?[^#]*)?$", re.IGNORECASE),  # Detect Amazon domain root without product path segments.
+        ],  # Finalize Amazon homepage patterns list.
+        "invalid_image_keys": [],  # No image asset keys for Amazon invalid URL detection.
+    },  # End Amazon platform configuration.
+    "Mercado Livre": {  # Mercado Livre platform configuration for invalid URL detection.
+        "url_domains": ["mercadolivre.", "mercadolivro.", "mercadolibre."],  # Domain keyword substrings used to identify Mercado Livre URLs.
+        "homepage_patterns": [  # Compiled regex patterns for Mercado Livre homepage redirect detection.
+            re.compile(r"^https?://(?:[a-z0-9-]+\.)*(?:mercadolivre|mercadolivro|mercadolibre)\.[a-z][a-z.]*/?(?:\?[^#]*)?$", re.IGNORECASE),  # Detect Mercado Livre domain root without product path segments.
+        ],  # Finalize Mercado Livre homepage patterns list.
+        "invalid_image_keys": ["mercado_livre_invalid_url_img"],  # Image asset key for Mercado Livre invalid URL screen detection.
+    },  # End Mercado Livre platform configuration.
+    "Shein": {  # Shein platform configuration for invalid URL detection.
+        "url_domains": ["shein."],  # Domain keyword substrings used to identify Shein URLs.
+        "homepage_patterns": [  # Compiled regex patterns for Shein homepage redirect detection.
+            re.compile(r"^https?://(?:[a-z0-9-]+\.)*shein\.[a-z][a-z.]*/?(?:\?[^#]*)?$", re.IGNORECASE),  # Detect Shein domain root without product path segments.
+        ],  # Finalize Shein homepage patterns list.
+        "invalid_image_keys": [],  # No image asset keys for Shein invalid URL detection.
+    },  # End Shein platform configuration.
+    "Shopee": {  # Shopee platform configuration for invalid URL detection.
+        "url_domains": ["shopee.", "shope.ee"],  # Domain keyword substrings used to identify Shopee URLs.
+        "homepage_patterns": [  # Compiled regex patterns for Shopee error page detection.
+            re.compile(r"^https?://shope\.ee/error_page(?:[/?#].*)?$", re.IGNORECASE),  # Detect Shopee error page URL pattern.
+        ],  # Finalize Shopee homepage patterns list.
+        "invalid_image_keys": [],  # No image asset keys for Shopee invalid URL detection.
+    },  # End Shopee platform configuration.
+}  # Finalize PLATFORM_INVALID_URL_RULES centralized configuration dictionary.
+
 
 # Functions Definitions:
 
