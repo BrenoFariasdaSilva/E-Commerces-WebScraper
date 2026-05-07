@@ -1063,6 +1063,27 @@ def normalize_extracted_directory_structure(extracted_dir: str) -> None:
         return  # Silently return to preserve existing behavior
 
 
+def split_phrases(text: str) -> list:
+    """
+    Split text into phrases using sentence and segment delimiters.
+
+    :param text: Input text to split.
+    :return: List of phrases.
+    """
+    
+    verbose_output(f"{BackgroundColors.GREEN}Splitting text into phrases for deduplication...{Style.RESET_ALL}")  # Output the verbose message
+    
+    delimiters = [". ", "\n", "\r", ".", "! ", "? ", "• ", "- ", "– ", "— "]  # Delimiters for splitting
+    segments = [text]  # Initialize with full text
+    
+    for delim in delimiters:  # Iterate over delimiters
+        temp = []  # Temporary list for split segments
+        for seg in segments:  # Iterate over current segments
+            temp.extend(seg.split(delim))  # Split segment and extend temp
+        segments = temp  # Update segments with split results
+    
+    return [s.strip() for s in segments if s.strip()]  # Return non-empty, stripped phrases
+
 def copy_original_input_to_output(input_source, product_directory, base_output_dir=OUTPUT_DIRECTORY):
     """
     Copies the original input file or directory used for scraping into the product output directory.
