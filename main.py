@@ -865,6 +865,47 @@ def find_resolution_upgrade_candidates(root_basename_normalized: str, indexed_im
     return candidates  # Return ranked list of upgrade candidates
 
 
+def attempt_resolution_upgrade(root_img_path: str, candidate_img_path: str) -> bool:
+    """
+    Performs the atomic resolution upgrade for a single root image:
+      1. Verifies both files exist on disk.
+      2. Verifies the candidate has strictly higher resolution (METHOD 1 gate).
+      3. Verifies the images are perceptually similar (METHOD 2 gate).
+      4. Archives the original low-resolution root image into the indexed images directory
+         under the root's original filename, then copies the high-resolution candidate
+         into the product root directory under the same original root filename.
+
+    :param root_img_path: Absolute path to the current root-level image to upgrade.
+    :param candidate_img_path: Absolute path to the higher-resolution candidate image.
+    :return: True when the upgrade was completed successfully, False otherwise.
+    """
+
+    if not os.path.isfile(root_img_path):  # Verify root image file exists before any I/O
+        return False  # Cannot upgrade when root image is missing
+
+    if not os.path.isfile(candidate_img_path):  # Verify candidate image file exists before any I/O
+        return False  # Cannot upgrade with a missing candidate
+
+    if not candidate_exceeds_root_resolution(root_img_path, candidate_img_path):  # Verify candidate has higher resolution
+        return False  # Skip replacement when candidate is not higher-resolution than root
+
+    if not images_are_perceptually_similar(root_img_path, candidate_img_path):  # Verify visual content matches
+        return False  # Skip replacement when perceptual hashes indicate a content mismatch
+
+    root_filename = os.path.basename(root_img_path)  # Extract root filename to use as destination name
+    root_dir = os.path.dirname(root_img_path)  # Resolve product root directory for copy destination
+    candidate_dir = os.path.dirname(candidate_img_path)  # Resolve indexed images directory for archive destination
+    archived_root_path = os.path.join(candidate_dir, root_filename)  # Path to preserve the original low-res root inside indexed dir
+
+    try:  # Attempt atomic replacement with full error containment
+        shutil.move(root_img_path, archived_root_path)  # Move low-res root into indexed dir under its original name
+        shutil.copy2(candidate_img_path, os.path.join(root_dir, root_filename))  # Copy high-res candidate to root under original root filename
+    except Exception:  # Catch any I/O failure during the replacement sequence
+        return False  # Signal failure without leaving partial state visible
+
+    return True  # Signal successful resolution upgrade
+
+
 def get_next_run_index(base_output_dir, today_str):
     """
     Determines the next run index for the current day by scanning existing timestamped directories.
