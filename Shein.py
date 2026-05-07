@@ -1291,7 +1291,8 @@ class Shein:
                     if response and response.ok:  # Verify if response is successful
                         parsed_url = urlparse(absolute_url)  # Parse URL to extract components
                         ext = os.path.splitext(parsed_url.path)[1] or ".jpg"  # Extract file extension or use default .jpg
-                        filename = f"image_{idx}{ext}"  # Generate filename with index and extension
+                        original_basename = os.path.splitext(os.path.basename(parsed_url.path))[0]  # Extract original filename without extension from URL path
+                        filename = f"{idx:02d}_{original_basename}{ext}"  # Generate filename with two-digit index prefix and original basename
                         filepath = os.path.join(assets_dir, filename)  # Construct full file path for saving
                         with open(filepath, "wb") as f:  # Open file in binary write mode
                             f.write(response.body())  # Write response body to file
@@ -1467,11 +1468,11 @@ class Shein:
                     verbose_output(f"{BackgroundColors.RED}Local image file not found: {source_path}{Style.RESET_ALL}")
                     return None
                 
-                _, ext = os.path.splitext(source_path)
+                original_basename, ext = os.path.splitext(os.path.basename(source_path))  # Extract original filename and extension from local path
                 if not ext:
                     ext = ".jpg"  # Default extension
                 
-                dest_path = os.path.join(output_dir, f"image_{index:02d}{ext}")
+                dest_path = os.path.join(output_dir, f"{index:02d}_{original_basename}{ext}")  # Generate filename with two-digit index prefix and original basename
                 
                 shutil.copy2(source_path, dest_path)
                 verbose_output(f"{BackgroundColors.GREEN}Copied local image {index} to {dest_path}{Style.RESET_ALL}")
@@ -1495,7 +1496,8 @@ class Shein:
                     else:
                         ext = ".jpg"  # Default
                 
-                dest_path = os.path.join(output_dir, f"image_{index:02d}{ext}")
+                original_basename = os.path.splitext(os.path.basename(urlparse(image_url).path))[0]  # Extract original filename without extension from URL path
+                dest_path = os.path.join(output_dir, f"{index:02d}_{original_basename}{ext}")  # Generate filename with two-digit index prefix and original basename
                 with open(dest_path, "wb") as f:
                     f.write(response.content)
                 
