@@ -291,7 +291,7 @@ class Gemini:
         self.api_key = api_key  # Store the API key.
         self.api_key_index = api_key_index  # Store the 1-based key index for quota signaling.
         self.client = genai.Client(api_key=api_key)  # Create the Gemini client.
-        self.model = "gemma-3-27b-it"  # Default model; can be overridden in method calls if needed. Read: https://aistudio.google.com/rate-limit?timeRange=last-28-days for current rate limits and available models.
+        self.model = "gemini-3.1-flash-lite"  # Default model; can be overridden in method calls if needed. Read: https://aistudio.google.com/rate-limit?timeRange=last-28-days for current rate limits and available models.
         self.chat = None  # Placeholder for chat session.
         self.quota_exhausted = False  # Track if quota is exhausted for this API key.
     
