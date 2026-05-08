@@ -113,6 +113,22 @@ PERMANENT_API_ERROR_STATUS_CODES = (
     422,
 )  # HTTP status codes that classify API responses as permanent non-retryable failures
 
+PERMANENT_API_ERROR_KEYWORDS = (
+    "not_found",
+    "invalid_argument",
+    "permission_denied",
+    "unauthenticated",
+    "unauthorized",
+    "forbidden",
+    "unimplemented",
+    "failed_precondition",
+    "api_key_invalid",
+    "invalid api key",
+    "api key not valid",
+    "bad request",
+    "method not allowed",
+    "unprocessable entity",
+)  # Keywords used to classify permanent non-retryable Gemini API failures that abort all key rotation
 
 # File Path Constants:
 INPUT_DIRECTORY = "./Inputs/"  # The path to the input directory
