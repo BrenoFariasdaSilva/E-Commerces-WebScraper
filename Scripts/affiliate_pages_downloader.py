@@ -4063,7 +4063,9 @@ def wait_for_valid_affiliate_url(previous_url: str, timeout: int = 5) -> str:
 
     while time.time() - start_time < max(1, int(timeout)):  # Iterate until timeout expires while reading clipboard content.
         pyautogui.hotkey("ctrl", "c")  # Trigger copy action to refresh clipboard with current affiliate URL.
-        time.sleep(0.3)  # Wait briefly to allow clipboard propagation.
+        time.sleep(0.25)  # Wait briefly to allow clipboard propagation.
+        pyautogui.hotkey("ctrl", "c")  # Trigger copy action to refresh clipboard with current affiliate URL.
+        time.sleep(0.25)  # Wait briefly to allow clipboard propagation.
         clipboard_url = normalize_affiliate_url(get_clipboard_text())  # Retrieve and normalize current clipboard URL candidate.
 
         if clipboard_url == "":  # Verify whether clipboard URL candidate is empty.
