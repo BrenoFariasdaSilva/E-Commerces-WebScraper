@@ -4246,7 +4246,7 @@ def update_urls_txt_with_new_amazon_url(old_url: str, new_url: str, urls_file: P
     :param old_url: Original Amazon URL to replace.
     :param new_url: New affiliate URL copied from clipboard.
     :param urls_file: Path to the urls.txt file.
-    :return: True if update succeeded, False otherwise.
+    :return: True if update succeeded or no update was needed, False otherwise.
     """
 
     if urls_file.exists() and not os.access(str(urls_file), os.W_OK):  # Verify whether the urls.txt file exists and is writable before attempting update.
@@ -4271,7 +4271,8 @@ def update_urls_txt_with_new_amazon_url(old_url: str, new_url: str, urls_file: P
                 replacement_occurred = True  # Mark that a replacement occurred for later verification.
 
         if not replacement_occurred:  # Verify whether any replacement actually took place.
-            return False  # Return failure when no replacement was detected in the file.
+            verbose_output(f"{BackgroundColors.CYAN}{urls_file.resolve()}{BackgroundColors.GREEN} does not contain the old URL; no update needed.{Style.RESET_ALL}")  # Log no-op state when old URL is not found in the file.
+            return True  # Return success because file is already in correct state.
 
         write_atomic_temp_file(urls_file, updated_lines)  # Write updated content atomically using helper function.
         verbose_output(f"{BackgroundColors.GREEN}Updated Amazon URL in {BackgroundColors.CYAN}{urls_file.resolve()}{Style.RESET_ALL}")  # Log successful URL update when verbose enabled.
