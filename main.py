@@ -1844,6 +1844,7 @@ def scrape_product(url, timestamped_output_dir, local_html_path=None):
         product_name_safe = product_data.get("product_name_safe", "")  # Get the sanitized product name for directory naming
         product_directory = product_name_safe  # Use the sanitized product name as the directory name for output
         product_dir_path = os.path.join(timestamped_output_dir, product_directory)  # Full path to the product output directory
+        set_full_permissions(product_dir_path)  # Ensure the product output directory has full permissions for subsequent file operations
         save_product_data_json(product_data, product_dir_path, url)  # Persist after normalization
 
         product_data = normalize_product_data_paths(product_data)  # Normalize file paths in product_data to ensure they are relative and consistent for output
