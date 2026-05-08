@@ -450,6 +450,43 @@ def create_directory(full_directory_name, relative_directory_name):
         )
 
 
+def set_full_permissions(target_path: Union[str, Path]) -> None:
+    """
+    Recursively sets full read/write/execute permissions for all users on a file or directory.
+
+    :param target_path: File or directory path to update permissions for.
+    :return: None
+    """
+
+    path_obj = Path(target_path)  # Convert target path into Path object
+
+    if not path_obj.exists():  # Verify if target path exists
+        return  # Return early when target path does not exist
+
+    try:  # Attempt to update permissions for the root target path
+        os.chmod(path_obj, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)  # Grant rwx permissions for user, group, and others
+    except Exception:  # Ignore chmod failures on root target path
+        pass  # Continue execution even if chmod fails
+
+    if path_obj.is_dir():  # Verify if target path is a directory
+        for root_dir, dirnames, filenames in os.walk(path_obj):  # Recursively iterate directory contents
+            for dirname in dirnames:  # Iterate discovered subdirectories
+                dir_path = Path(root_dir) / dirname  # Build absolute subdirectory path
+
+                try:  # Attempt to update subdirectory permissions
+                    os.chmod(dir_path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)  # Grant rwx permissions for all users
+                except Exception:  # Ignore chmod failures for subdirectories
+                    pass  # Continue processing remaining paths
+
+            for filename in filenames:  # Iterate discovered files
+                file_path = Path(root_dir) / filename  # Build absolute file path
+
+                try:  # Attempt to update file permissions
+                    os.chmod(file_path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)  # Grant rwx permissions for all users
+                except Exception:  # Ignore chmod failures for files
+                    pass  # Continue processing remaining paths
+
+
 def clean_unknown_product_directories(output_directory):
     """
     Cleans up any "Unknown Product" directories from previous runs in the output directory.
