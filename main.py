@@ -2468,7 +2468,7 @@ def generate_marketing_text(product_description, description_file, product_data=
         verbose_output(f"{BackgroundColors.YELLOW}API key {owner_name or key_index} returned empty response.{Style.RESET_ALL}")  # Report empty successful-response body.
         return False  # Return failure for empty response.
     except QuotaExceededError as e:  # Handle controlled quota exhaustion from Gemini layer.
-        verbose_output(f"{BackgroundColors.YELLOW}[WARNING] API key {owner_name or key_index} quota exhausted. Rotating to next API key.{Style.RESET_ALL}")  # Emit deterministic quota-rotation warning.
+        print(f"{BackgroundColors.YELLOW}[WARNING] API key {BackgroundColors.CYAN}{owner_name or key_index}{BackgroundColors.YELLOW} quota exhausted. Retry category: {BackgroundColors.CYAN}{e.status_text or 'QUOTA_EXHAUSTED'}{BackgroundColors.YELLOW}. Rotating to next API key.{Style.RESET_ALL}")  # Emit deterministic quota-rotation warning with retry category.
         raise e  # Re-raise controlled signal so caller can rotate without skipping URL.
     except PermanentApiFailureError as e:  # Handle permanent non-retryable API failure from Gemini layer.
         if is_model_configuration_failure(e):  # Verify if permanent error is strictly model-selection related.
@@ -4096,8 +4096,10 @@ def handle_gemini_processing(product_description: str, description_file: str, pr
         except QuotaExceededError as quota_error:  # Handle controlled quota exhaustion signal
             exhausted_label = quota_error.key_index if quota_error.key_index else owner  # Resolve exhausted owner label from exception metadata
             exhausted_key_indices.add(exhausted_label)  # Mark current owner as exhausted for this cycle
-            verbose_output(f"{BackgroundColors.YELLOW}[WARNING] API key {owner} quota exhausted. Rotating to next API key.{Style.RESET_ALL}")  # Log quota exhaustion for current owner/key
+            rotation_reason = quota_error.status_text or "QUOTA_EXHAUSTED"  # Resolve rotation reason from structured quota error metadata.
             current_idx = (current_idx + 1) % total_keys  # Rotate to next owner for same URL and same prompt
+            next_owner = names[current_idx] if total_keys > 0 else "none"  # Resolve next API key owner name after rotation for deterministic logging.
+            print(f"{BackgroundColors.YELLOW}[WARNING] API key {BackgroundColors.CYAN}{owner}{BackgroundColors.YELLOW} marked as exhausted. Rotation reason: {BackgroundColors.CYAN}{rotation_reason}{BackgroundColors.YELLOW}. Next API key selected: {BackgroundColors.CYAN}{next_owner}{Style.RESET_ALL}")  # Emit deterministic log with exhausted key, rotation reason, and next key selection.
 
             if len(exhausted_key_indices) >= total_keys:  # Verify if all owners/keys are exhausted in current cycle
                 exhausted_cycles += 1  # Increment all-keys-exhausted cycle counter
