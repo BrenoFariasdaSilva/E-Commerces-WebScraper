@@ -4624,7 +4624,11 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
                         continue  # Skip processing when no renewed URL mapping is available.
 
                     for mapped_filepath in mapped_filepaths:  # Iterate mapped filepaths associated with current fallback URL.
-                        replace_url_in_file(str(mapped_filepath), old_url, renewed_url)  # Replace old URL with renewed URL in mapped file.
+                        success = replace_url_in_file(str(mapped_filepath), old_url, renewed_url)  # Replace old URL with renewed URL in mapped file.
+                        if success:  # Verify if file-level replacement succeeded for the current mapped file.
+                            verbose_output(f"{BackgroundColors.GREEN}Successfully replaced fallback Outputs URL in file: {BackgroundColors.CYAN}{mapped_filepath}{BackgroundColors.GREEN} from {BackgroundColors.CYAN}{old_url}{BackgroundColors.GREEN} to {BackgroundColors.CYAN}{renewed_url}{Style.RESET_ALL}")  # Log successful fallback URL replacement in mapped file when verbose enabled.
+                        else:
+                            verbose_output(f"{BackgroundColors.YELLOW}[WARNING] Failed to replace fallback Outputs URL in file: {BackgroundColors.CYAN}{mapped_filepath}{BackgroundColors.GREEN} from {BackgroundColors.CYAN}{old_url}{BackgroundColors.GREEN} to {BackgroundColors.CYAN}{renewed_url}{Style.RESET_ALL}")  # Log failed fallback URL replacement in mapped file when verbose enabled.
 
             if not only_renew_amazon_urls:  # Verify whether normal mode requires urls-to-download mapping updates.
                 update_urls_file(urls_file, url_to_download)  # Rewrite URLs file with URL to downloaded filename mapping.
