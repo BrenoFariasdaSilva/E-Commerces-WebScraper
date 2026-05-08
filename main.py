@@ -183,10 +183,10 @@ INSTRUÇÕES:
 6. Quando não houver desconto, OMITA apenas a linha de desconto (🎟️)
 7. Quando não houver preço antigo, use o mesmo valor do preço atual como preço antigo
 8. Quando PREÇO_ANTIGO e PREÇO_ATUAL forem iguais:
-   - NÃO usar formato "DE R$ X"
-   - Usar exclusivamente: 💰 POR APENAS *R${PREÇO_ATUAL}*
-   - Não exibir preço antigo
-   - Não exibir a linha do desconto
+    - NÃO usar formato "DE R$ X"
+    - Usar exclusivamente: 💰 POR APENAS *R${{PREÇO_ATUAL}}*
+    - Não exibir preço antigo
+    - Não exibir a linha do desconto
 9. Sempre incluir link real do produto
 10. Criar 2-3 características principais marcantes
 11. Sugira uso do produto de forma objetiva
@@ -217,9 +217,9 @@ REGRAS DE VALIDAÇÃO DE PREÇO (NOVAS - OBRIGATÓRIAS)
    - Não omitir desconto neste caso
 
 21. CASO PREÇOS IGUAIS:
-   - Não exibir linha "DE R$"
-   - Usar apenas:
-     💰 POR APENAS *R${PREÇO_ATUAL}*
+    - Não exibir linha "DE R$"
+    - Usar apenas:
+        💰 POR APENAS *R${{PREÇO_ATUAL}}*
 
 ────────────────────────────────────────
 REGRAS DE LINK E PLATAFORMA (NOVAS - OBRIGATÓRIAS)
