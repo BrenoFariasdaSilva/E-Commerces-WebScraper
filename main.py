@@ -64,12 +64,14 @@ import os  # For running a command in the terminal
 import platform  # For getting the operating system name
 import re # For regular expressions in text processing
 import shutil  # For removing directories
+import stat  # For handling file permissions during cleanup
 import subprocess  # For running system commands
 import sys  # For system-specific parameters and functions
 import time  # For adding delays between requests
 import zipfile  # For handling zip files
 from AliExpress import AliExpress  # Import the AliExpress class
 from Amazon import Amazon  # Import the Amazon class
+from collections import OrderedDict  # For deterministic ordered mapping of named API keys
 from colorama import Style  # For coloring the terminal
 from dotenv import load_dotenv  # For loading environment variables
 from Gemini import Gemini, QuotaExceededError  # Import the Gemini class and quota exhaustion signal.
@@ -81,8 +83,7 @@ from Shein import Shein  # Import the Shein class
 from Shopee import Shopee  # Import the Shopee class
 from tkinter import Tk, messagebox  # For showing GUI warnings
 from tqdm import tqdm  # Progress bar for URL processing
-from typing import Dict, List, Optional, Set, Tuple  # For type-annotated containers used by final verification functions
-from collections import OrderedDict  # For deterministic ordered mapping of named API keys
+from typing import Dict, List, Optional, Set, Tuple, Union  # For type-annotated containers used by final verification functions
 from urllib.parse import urlparse  # For parsing URL hostnames
 from urls_utils import load_urls_to_process, preprocess_urls, write_urls_to_file, normalize_paths_to_unix  # URL helpers
 
