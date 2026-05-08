@@ -115,6 +115,7 @@ PLATFORMS_MAP = {
 PLATFORM_PREFIX_SEPARATOR = " - "  # Separator between platform prefix and product name in directory structure
 
 # File Path Constants:
+PROJECT_ROOT = str(Path(__file__).resolve().parents[[p.name for p in Path(__file__).resolve().parents].index("E-Commerces-WebScraper")])  # Project root directory
 INPUT_DIRECTORY = "./Inputs/"  # The path to the input directory
 INPUT_FILE = f"{INPUT_DIRECTORY}urls.txt"  # The path to the input file
 OUTPUT_DIRECTORY = "./Outputs/"  # The path to the output directory
@@ -457,7 +458,7 @@ def create_directory(full_directory_name, relative_directory_name):
         )
 
 
-def set_full_permissions(target_path: Union[str, Path]) -> None:
+def set_full_permissions(target_path: Union[str, Path] = PROJECT_ROOT) -> None:
     """
     Recursively sets full read/write/execute permissions for all users on a file or directory.
 
