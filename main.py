@@ -4834,6 +4834,9 @@ def main():
     if handle_generate_template_files_from_local_mode(args, start_time):  # Execute generate mode and early exit if applicable
         return  # Exit early if generate mode executed
 
+    if handle_generate_template_files_from_prompt_mode(args, start_time):  # Execute prompt-based generate mode and early exit if applicable
+        return  # Exit early if prompt-based generate mode executed
+
     if not setup_environment():  # Validate and load environment configuration
         return  # Exit on environment setup failure
 
