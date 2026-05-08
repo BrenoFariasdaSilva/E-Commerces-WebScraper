@@ -4004,6 +4004,44 @@ def save_product_data_json(product_data: dict, product_dir: str, url: str) -> bo
         return False  # Return False when product data could not be saved
 
 
+def process_gemini_model_fallbacks(product_description: str, description_file: str, product_data: Optional[dict], url: str, owner: str, api_key: str, current_idx: int, total_keys: int) -> bool:
+    """
+    Execute deterministic Gemini model fallback attempts for a single API key.
+
+    :param product_description: Full product description text content.
+    :param description_file: Path to the product description output file.
+    :param product_data: Optional dictionary of scraped product data fields.
+    :param url: Product URL being processed.
+    :param owner: Owner name associated with the current API key.
+    :param api_key: Gemini API key used for generation attempts.
+    :param current_idx: Current zero-based API key index.
+    :param total_keys: Total available Gemini API keys.
+    :return: True if any model succeeds, otherwise False.
+    """
+
+    for model_index, model_name in enumerate(GEMINI_MODEL_PRIORITY, 1):  # Iterate model fallback list in fixed deterministic order.
+        success = generate_marketing_text(  # Execute single-key single-model Gemini generation attempt.
+            product_description,  # Reuse same product description for deterministic retry behavior
+            description_file,  # Reuse same description file destination for deterministic retry behavior
+            product_data,  # Reuse same product data context across retries
+            url,  # Reuse same product URL across retries
+            owner_name=owner,  # Pass owner name for enhanced logging
+            api_key=api_key,  # Pass current key only and let caller-side logic handle rotations
+            key_index=(current_idx + 1),  # Pass numeric one-based index for Gemini client and rotation logic
+            total_keys=total_keys,  # Pass total key count for contextual logging
+            model_name=model_name,  # Pass selected model name for deterministic fallback attempt
+        )  # End single-key single-model generation call.
+
+        if success:  # Verify whether generation succeeded for this key/model combination.
+            return True  # Return success immediately after first successful fallback attempt.
+
+        if model_index < len(GEMINI_MODEL_PRIORITY):  # Verify if another fallback model is still available.
+            next_model_name = GEMINI_MODEL_PRIORITY[model_index]  # Resolve next model name using current loop position.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Falling back model for key {BackgroundColors.CYAN}{owner}{BackgroundColors.YELLOW}: {BackgroundColors.CYAN}{model_name}{BackgroundColors.YELLOW} -> {BackgroundColors.CYAN}{next_model_name}{Style.RESET_ALL}")  # Report deterministic model fallback transition.
+
+    return False  # Return failure after exhausting all configured fallback models.
+
+
 def handle_gemini_processing(product_description: str, description_file: str, product_data: Optional[dict], url: str, api_keys: Dict[str, str]) -> bool:
     """
     Execute Gemini AI marketing text generation with key rotation and quota retry logic.
