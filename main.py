@@ -465,6 +465,8 @@ def set_full_permissions(target_path: Union[str, Path] = PROJECT_ROOT) -> None:
     :param target_path: File or directory path to update permissions for.
     :return: None
     """
+    
+    verbose_output(f"{BackgroundColors.GREEN}Updating permissions for: {BackgroundColors.CYAN}{target_path}{Style.RESET_ALL}")  # Log permission update attempt for target path.
 
     path_obj = Path(target_path)  # Convert target path into Path object
 
