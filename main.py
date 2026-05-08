@@ -703,6 +703,7 @@ def cleaning_product_output_dir(product_dir: str, asset_dirs: Optional[List[str]
     clean_images_directory(images_dir)  # Remove non-image files from images directory
 
     if os.path.isdir(scripts_dir):  # Verify if scripts directory exists
+        verbose_output(f"{BackgroundColors.GREEN}Removing scripts directory: {BackgroundColors.CYAN}{scripts_dir}{Style.RESET_ALL}")
         try:  # Attempt recursive scripts directory deletion
             shutil.rmtree(scripts_dir)  # Remove scripts directory and all contents
         except Exception:  # Ignore deletion failures to preserve cleanup continuity
@@ -711,6 +712,7 @@ def cleaning_product_output_dir(product_dir: str, asset_dirs: Optional[List[str]
         print(f"{BackgroundColors.YELLOW}Scripts directory does not exist: {BackgroundColors.CYAN}{scripts_dir}{Style.RESET_ALL}")
 
     if os.path.isdir(styles_dir):  # Verify if styles directory exists
+        verbose_output(f"{BackgroundColors.GREEN}Removing styles directory: {BackgroundColors.CYAN}{styles_dir}{Style.RESET_ALL}")
         try:  # Attempt recursive styles directory deletion
             shutil.rmtree(styles_dir)  # Remove styles directory and all contents
         except Exception:  # Ignore deletion failures to preserve cleanup continuity
