@@ -538,7 +538,7 @@ def clean_unknown_product_directories(output_directory):
         for item in os.listdir(output_directory):  # List all items in the output directory
             item_path = os.path.join(output_directory, item)  # Get the full path of the item
             if os.path.isdir(item_path) and item == "Unknown Product":  # If the item is a directory named "Unknown Product"
-                shutil.rmtree(item_path)  # Remove the directory and its contents
+                force_remove_path(item_path)  # Remove the directory and its contents using centralized deletion
                 verbose_output(f"{BackgroundColors.YELLOW}Removed old 'Unknown Product' directory: {item_path}{Style.RESET_ALL}")
     except Exception as e:  # If an error occurs during cleanup
         print(f"{BackgroundColors.RED}Error during cleanup of 'Unknown Product' directories: {e}{Style.RESET_ALL}")
@@ -637,7 +637,7 @@ def remove_duplicate_images(groups):
 
         for img_path, size, pixel_count in group[1:]:  # Iterate through lower resolution duplicates
             try:  # Attempt duplicate image deletion
-                os.remove(img_path)  # Remove lower resolution duplicate image file
+                force_remove_path(img_path)  # Remove lower resolution duplicate image file using centralized deletion
 
                 verbose_output(f"{BackgroundColors.YELLOW}Removed lower resolution duplicate image: {BackgroundColors.CYAN}{img_path} ({size[0]}x{size[1]} | {pixel_count} pixels){Style.RESET_ALL}")  # Output duplicate removal information
             except Exception as e:  # Verify if duplicate image removal fails
@@ -693,7 +693,7 @@ def exclude_small_images(product_dir, min_size_bytes=10240):
         try:  # Try to get the file size
             size = os.path.getsize(img_path)  # Get the size of the image file in bytes
             if size < min_size_bytes:  # If the image file is smaller than the minimum size
-                os.remove(img_path)  # Remove the image file
+                force_remove_path(img_path)  # Remove the image file using centralized deletion
                 verbose_output(f"{BackgroundColors.YELLOW}Removed small image (<{min_size_bytes} bytes): {BackgroundColors.CYAN}{img_path}{Style.RESET_ALL}")
         except Exception as e:  # If an error occurs while verify/removing the image
             print(f"{BackgroundColors.RED}Error verify/removing image {BackgroundColors.CYAN}{img_path}{BackgroundColors.RED}: {BackgroundColors.YELLOW}{e}{Style.RESET_ALL}")
@@ -722,7 +722,7 @@ def clean_images_directory(images_dir: str) -> None:
 
             if not ext.lower() in allowed_exts:  # Verify if current file extension is not an allowed image extension
                 try:  # Attempt removal of non-image file
-                    os.remove(fpath)  # Remove non-image file from images directory
+                    force_remove_path(fpath)  # Remove non-image file from images directory using centralized deletion
                 except Exception:  # Ignore deletion failures to preserve cleanup continuity
                     pass  # Continue cleanup execution after deletion failure
 
@@ -778,7 +778,7 @@ def cleaning_product_output_dir(product_dir: str, asset_dirs: Optional[List[str]
     if os.path.isdir(scripts_dir):  # Verify if scripts directory exists
         verbose_output(f"{BackgroundColors.GREEN}Removing scripts directory: {BackgroundColors.CYAN}{scripts_dir}{Style.RESET_ALL}")
         try:  # Attempt recursive scripts directory deletion
-            shutil.rmtree(scripts_dir)  # Remove scripts directory and all contents
+            force_remove_path(scripts_dir)  # Remove scripts directory and all contents using centralized deletion
         except Exception:  # Ignore deletion failures to preserve cleanup continuity
             pass  # Continue cleanup execution after deletion failure
     else:  # If scripts directory does not exist, output a warning message but continue execution
@@ -787,7 +787,7 @@ def cleaning_product_output_dir(product_dir: str, asset_dirs: Optional[List[str]
     if os.path.isdir(styles_dir):  # Verify if styles directory exists
         verbose_output(f"{BackgroundColors.GREEN}Removing styles directory: {BackgroundColors.CYAN}{styles_dir}{Style.RESET_ALL}")
         try:  # Attempt recursive styles directory deletion
-            shutil.rmtree(styles_dir)  # Remove styles directory and all contents
+            force_remove_path(styles_dir)  # Remove styles directory and all contents using centralized deletion
         except Exception:  # Ignore deletion failures to preserve cleanup continuity
             pass  # Continue cleanup execution after deletion failure
     else:  # If styles directory does not exist, output a warning message but continue execution
@@ -1173,9 +1173,9 @@ def delete_merged_source_directories(source_dirs: List[str]) -> None:
 
     for source_dir in source_dirs:  # Iterate each source directory for deletion after successful merge
         try:  # Try to delete the source directory recursively
-            shutil.rmtree(source_dir)  # Remove source directory and all its remaining contents recursively
-            dir_name = os.path.basename(source_dir)  # Extract directory name from full path for logging
-            verbose_output(f"{BackgroundColors.GREEN}Deleted merged source directory: {BackgroundColors.CYAN}{dir_name}{Style.RESET_ALL}")  # Log successful deletion of this source directory
+            if force_remove_path(source_dir):  # Remove source directory and all its remaining contents using centralized deletion
+                dir_name = os.path.basename(source_dir)  # Extract directory name from full path for logging
+                verbose_output(f"{BackgroundColors.GREEN}Deleted merged source directory: {BackgroundColors.CYAN}{dir_name}{Style.RESET_ALL}")  # Log successful deletion of this source directory
         except Exception as e:  # Handle errors during deletion of this source directory
             print(f"{BackgroundColors.RED}Error deleting merged source directory {BackgroundColors.CYAN}{source_dir}{BackgroundColors.RED}: {e}{Style.RESET_ALL}")  # Report deletion error without stopping the pipeline
 
@@ -1487,7 +1487,7 @@ def normalize_extracted_directory_structure(extracted_dir: str) -> None:
             destination_path = os.path.join(extracted_dir, entry)  # Build destination path at root extracted_dir
             shutil.move(source_path, destination_path)  # Move entry from nested directory to extracted_dir root
 
-        os.rmdir(single_entry_path)  # Remove now-empty nested directory
+        force_remove_path(single_entry_path)  # Remove now-empty nested directory using centralized deletion
     except Exception:  # Catch any exception during normalization
         return  # Silently return to preserve existing behavior
 
@@ -1627,7 +1627,7 @@ def copy_original_input_to_output(input_source, product_directory, base_output_d
                 if os.path.isdir(html_dir):  # If the HTML's parent is a directory
                     dest_dir = os.path.join(product_dir_full, os.path.basename(html_dir))  # Destination inside product folder
                     if os.path.exists(dest_dir):  # If destination already exists
-                        shutil.rmtree(dest_dir)  # Remove it to replace
+                        force_remove_path(dest_dir)  # Remove it to replace using centralized deletion
                     try:  # Attempt to copy the extracted directory
                         shutil.copytree(html_dir, dest_dir)  # Copy directory tree
                         verbose_output(f"{BackgroundColors.GREEN}Copied extracted directory {BackgroundColors.CYAN}{html_dir}{BackgroundColors.GREEN} to {BackgroundColors.CYAN}{dest_dir}{Style.RESET_ALL}")  # Verbose copy message
@@ -1646,7 +1646,7 @@ def copy_original_input_to_output(input_source, product_directory, base_output_d
         if os.path.isdir(input_source):  # If the input source points to a directory
             dest_dir = os.path.join(product_dir_full, os.path.basename(input_source))  # Destination path inside the product folder
             if os.path.exists(dest_dir):  # If the destination already exists
-                shutil.rmtree(dest_dir)  # Remove the existing destination to replace it
+                force_remove_path(dest_dir)  # Remove the existing destination to replace it using centralized deletion
             shutil.copytree(input_source, dest_dir)  # Copy the whole directory tree
             verbose_output(f"{BackgroundColors.GREEN}Copied input directory {BackgroundColors.CYAN}{input_source}{BackgroundColors.GREEN} to {BackgroundColors.CYAN}{dest_dir}{Style.RESET_ALL}")  # Verbose copy message
             return True  # Indicate success
@@ -1660,7 +1660,7 @@ def copy_original_input_to_output(input_source, product_directory, base_output_d
             else:  # Candidate is a directory
                 dest_dir = os.path.join(product_dir_full, os.path.basename(candidate))  # Destination path inside the product folder
                 if os.path.exists(dest_dir):  # If destination already exists
-                    shutil.rmtree(dest_dir)  # Remove existing destination
+                    force_remove_path(dest_dir)  # Remove existing destination using centralized deletion
                 shutil.copytree(candidate, dest_dir)  # Copy the directory tree
                 verbose_output(f"{BackgroundColors.GREEN}Copied candidate input directory {BackgroundColors.CYAN}{candidate}{BackgroundColors.GREEN} to {BackgroundColors.CYAN}{dest_dir}{Style.RESET_ALL}")  # Verbose copy message
                 return True  # Indicate success
@@ -2643,7 +2643,7 @@ def remove_duplicate_directories_with_highest_index(timestamped_output_dir: Opti
 
             if os.path.isdir(full_path_to_remove):  # Verify if duplicate directory still exists before deletion
                 try:  # Attempt to remove duplicate directory from disk
-                    shutil.rmtree(full_path_to_remove)  # Delete directory tree for duplicate highest index entry
+                    force_remove_path(full_path_to_remove)  # Delete directory tree for duplicate highest index entry using centralized deletion
                     removed_directory_names.append(directory_name_to_remove)  # Track removed directory name
                 except Exception as e:  # Handle filesystem deletion errors safely
                     print(f"{BackgroundColors.RED}Error removing duplicate directory {BackgroundColors.CYAN}{directory_name_to_remove}{BackgroundColors.RED}: {BackgroundColors.YELLOW}{e}{Style.RESET_ALL}")  # Report duplicate deletion failure
@@ -3092,7 +3092,7 @@ def remove_directories(dir_paths: List[str]) -> List[str]:
     removed: List[str] = []  # Initialize list to track removed directories
     for p in dir_paths:  # Iterate candidate directory paths to remove
         try:  # Attempt recursive removal for each candidate path
-            shutil.rmtree(p)  # Remove directory and its contents recursively
+            force_remove_path(p)  # Use centralized deletion function to remove the directory and its contents
             removed.append(p)  # Record path when removal succeeded
         except Exception:  # Ignore removal failures to avoid interrupting batch cleanup
             pass  # Continue with other removals even when one fails
@@ -3705,7 +3705,7 @@ def handle_scraping(url: str, staging_output_dir: str, local_html_path, index: i
             if tmp_product_name:  # Only proceed if we found a temporary product directory name
                 tmp_path = os.path.join(staging_output_dir, tmp_product_name)  # Build staging path for that product
                 if os.path.exists(tmp_path):  # Verify if the staging path exists on disk
-                    shutil.rmtree(tmp_path)  # Remove the partial staging directory to keep staging clean
+                    force_remove_path(tmp_path)  # Remove the partial staging directory to keep staging clean using centralized deletion
         except Exception:  # Catch and ignore any errors during staging cleanup
             pass  # Ignore cleanup errors and continue
 
@@ -3756,7 +3756,7 @@ def handle_staging_to_final_move(scrape_result: tuple, index: int, context: dict
         src_dir = os.path.join(staging_output_dir, product_directory)  # Path to product in staging
         dest_dir = os.path.join(timestamped_output_dir, indexed_product_directory)  # Target path inside final run dir with row index prefix
         if os.path.exists(dest_dir):  # If destination exists, remove it first to replace  # Ensure replace semantics
-            shutil.rmtree(dest_dir)  # Remove existing destination to avoid conflicts
+            force_remove_path(dest_dir)  # Remove existing destination to avoid conflicts using centralized deletion
         if os.path.exists(src_dir):  # Only move if staging source exists
             shutil.move(src_dir, dest_dir)  # Move staging product to final run
         product_name_safe = product_data.get("product_name_safe", "")  # Get canonical directory name from scraper
@@ -3801,12 +3801,12 @@ def handle_cleanup(product_directory: str, timestamped_output_dir: str, html_pat
     if DELETE_LOCAL_HTML_FILE:  # Only perform deletions when configured
         if extracted_dir_to_cleanup and os.path.exists(extracted_dir_to_cleanup):  # Remove extracted directory if present
             try:  # Attempt deletion
-                shutil.rmtree(extracted_dir_to_cleanup)  # Delete extracted dir
+                force_remove_path(extracted_dir_to_cleanup)  # Ensure deletion with centralized function to handle both files and directories                
             except Exception:  # Ignore failures during deletion
                 pass  # Continue silently on failure
         if zip_path_to_cleanup and os.path.exists(zip_path_to_cleanup):  # Remove original zip if present
             try:  # Attempt deletion
-                os.remove(zip_path_to_cleanup)  # Delete zip file
+                force_remove_path(zip_path_to_cleanup)  # Ensure deletion with centralized function to handle both files and directories
             except Exception:  # Ignore failures during deletion
                 pass  # Continue silently on failure
 
@@ -4289,7 +4289,7 @@ def finalize_execution(start_time: datetime.datetime, args: argparse.Namespace, 
 
     try:  # Clean up the staging directory if it's empty after processing all URLs
         if os.path.exists(staging_output_dir) and not os.listdir(staging_output_dir):  # If staging directory exists and is empty
-            shutil.rmtree(staging_output_dir)  # Remove the empty staging directory
+            force_remove_path(staging_output_dir)  # Remove the empty staging directory using centralized deletion
             verbose_output(f"{BackgroundColors.GREEN}Removed empty staging directory: {BackgroundColors.CYAN}{staging_output_dir}{Style.RESET_ALL}")  # Output removal of empty staging directory
     except Exception:  # If an error occurs during cleanup, ignore it
         pass  # Best effort cleanup, ignore errors
