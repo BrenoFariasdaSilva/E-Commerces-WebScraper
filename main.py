@@ -161,8 +161,8 @@ INFORMAÇÕES DO PRODUTO:
 FORMATO OBRIGATÓRIO (siga EXATAMENTE este formato):
 *{{{{NOME DO PRODUTO}}}} – {{{{DIFERENCIAL CURTO}}}}*
 
-💰 DE *R${{{{PREÇO_ANTIGO}}}}* POR APENAS *R${{{{PREÇO_ATUAL}}}}*
-🎟️ *{{{{INFORMAÇÃO DE CUPOM / % DE DESCONTO}}}}* (SE DISPONÍVEL)
+💰 DE *R${{{{PREÇO_ANTIGO}}}}* POR APENAS *R${{{{PREÇO_ATUAL}}}}* (CASO O PREÇO_ANTIGO SEJA MAIOR QUE O PREÇO_ATUAL; SE O PREÇO_ANTIGO FOR MENOR OU IGUAL, OMITA O 'DE *R${{{{PREÇO_ANTIGO}}}}*')
+🎟️ *{{{{INFORMAÇÃO DE CUPOM / % DE DESCONTO}}}}* (SE DISPONÍVEL, E SOMENTE SE O PREÇO_ANTIGO FOR MAIOR QUE O PREÇO_ATUAL)
 
 *{{{{FRASE DE IMPACTO / BENEFÍCIO PRINCIPAL}}}}*
 
@@ -179,25 +179,63 @@ INSTRUÇÕES:
 2. Seja persuasivo, criativo e chamativo
 3. Mantenha o formato EXATAMENTE como mostrado
 4. Use os preços e descontos reais do produto quando disponíveis
-5. A linha de preço (💰) é obrigatória e deve sempre aparecer
+5. A linha de preço (💰) é obrigatória quando houver alteração de preço
 6. Quando não houver desconto, OMITA apenas a linha de desconto (🎟️)
 7. Quando não houver preço antigo, use o mesmo valor do preço atual como preço antigo
-8. Quando PREÇO_ANTIGO e PREÇO_ATUAL forem iguais, escreva a linha de preço como: 💰 POR APENAS *R$<PREÇO_ATUAL>* (sem usar "DE")
-9. Inclua o link real do produto
-10. Crie 2-3 características principais marcantes
-11. Sugira onde/como usar o produto
-12. Se aplicável, sugira como presente ou ocasião especial
-13. Para o desconto, quando existir, nunca usar o termo "off", prefira algo como "20% de Desconto!"
-14. O texto final NÃO pode ultrapassar 1000 caracteres (incluindo espaços e emojis)
-15. Seja direto, evite parágrafos longos e evite textos explicativos extensos — consumidores não gostam de ler textos longos
-16. Priorize frases curtas, objetivas e de alto impacto
-17. ESPAÇAMENTO É OBRIGATÓRIO: deixe exatamente 1 linha em branco entre blocos principais (título, preço/desconto, frase de impacto, lista de benefícios, bloco final da loja/link)
-18. Após o título, SEMPRE inserir 1 linha em branco antes da linha de preço
-19. Após o bloco de preço/desconto, SEMPRE inserir 1 linha em branco antes da frase de impacto
-20. Após a frase de impacto, SEMPRE inserir 1 linha em branco antes da primeira linha com ✨
-21. Após a última linha com ✨, SEMPRE inserir 1 linha em branco antes de "🛒 Encontre ..."
-22. NUNCA comprimir o texto em um bloco único contínuo
-23. NUNCA remover as linhas em branco obrigatórias mesmo quando o texto estiver curto
+8. Quando PREÇO_ANTIGO e PREÇO_ATUAL forem iguais:
+   - NÃO usar formato "DE R$ X"
+   - Usar exclusivamente: 💰 POR APENAS *R${PREÇO_ATUAL}*
+   - Não exibir preço antigo
+   - Não exibir a linha do desconto
+9. Sempre incluir link real do produto
+10. Criar 2-3 características principais marcantes
+11. Sugira uso do produto de forma objetiva
+12. Incluir ocasião/presente quando fizer sentido
+13. Para desconto, nunca usar apenas "off", prefira algo como "20% de Desconto!"
+14. Texto final NÃO pode ultrapassar 1000 caracteres
+15. Frases curtas e objetivas são obrigatórias
+16. Evitar blocos longos ou textos densos
+17. ESPAÇAMENTO É OBRIGATÓRIO:
+   - 1 linha em branco após título
+   - 1 linha em branco após preço/desconto
+   - 1 linha em branco após frase de impacto
+   - 1 linha em branco após lista de características
+18. NUNCA comprimir tudo em um bloco único
+
+────────────────────────────────────────
+REGRAS DE VALIDAÇÃO DE PREÇO (NOVAS - OBRIGATÓRIAS)
+────────────────────────────────────────
+
+19. VALIDAÇÃO DE CONSISTÊNCIA DE PREÇO:
+   - PREÇO_ANTIGO NÃO pode ser menor que PREÇO_ATUAL
+   - Se isso ocorrer, interpretar como dado invertido e corrigir logicamente antes de gerar saída
+   - Nunca inventar valores
+
+20. DESCONTO OBRIGATÓRIO:
+   - Se PREÇO_ANTIGO > PREÇO_ATUAL, o desconto DEVE ser calculado corretamente
+   - O percentual de desconto deve bater exatamente com a diferença entre os valores
+   - Não omitir desconto neste caso
+
+21. CASO PREÇOS IGUAIS:
+   - Não exibir linha "DE R$"
+   - Usar apenas:
+     💰 POR APENAS *R${PREÇO_ATUAL}*
+
+────────────────────────────────────────
+REGRAS DE LINK E PLATAFORMA (NOVAS - OBRIGATÓRIAS)
+────────────────────────────────────────
+
+22. Sempre incluir plataforma do produto (ex: Amazon, Shopee, Mercado Livre)
+
+23. Sempre incluir link do produto
+
+24. Se o link for da AMAZON:
+   - É OBRIGATÓRIO adicionar ANTES do link, em NOVA LINHA com o aviso informado sobre o link ser válido por apenas 24 horas,
+
+   - Essa linha NUNCA pode vir depois do link
+   - Essa linha NUNCA pode vir na mesma linha do link ou da plataforma, mas sempre antes da plataforma, que por consequência estaria antes do link também.
+
+────────────────────────────────────────
 
 Gere APENAS o texto formatado, sem explicações adicionais."""  # Template for Gemini AI marketing text generation
 
