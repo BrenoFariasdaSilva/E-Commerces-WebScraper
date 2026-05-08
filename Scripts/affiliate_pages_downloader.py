@@ -3132,6 +3132,9 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
 
         processed_count += 1  # Increment processed counter for successfully completed URLs.
 
+    if only_renew_amazon_urls:  # Verify whether only-renew mode is active before printing the renewal final report.
+        print_amazon_url_renewal_final_report(processed_count, renewal_success_count, renewal_failed_urls)  # Print Amazon URL renewal final report.
+
     url_to_download = dict(sorted(url_to_download.items(), key=lambda item: item[0].lower()))  # Sort URL mapping dictionary by keys alphabetically in a case-insensitive manner
 
     return processed_count, url_to_download, True  # Return processed counter, URL mapping, and success status.
