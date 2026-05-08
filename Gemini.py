@@ -130,6 +130,26 @@ PERMANENT_API_ERROR_KEYWORDS = (
     "unprocessable entity",
 )  # Keywords used to classify permanent non-retryable Gemini API failures that abort all key rotation
 
+QUOTA_EXHAUSTED_API_ERROR_KEYWORDS = (
+    "429",
+    "resource_exhausted",
+    "quota",
+    "too many requests",
+    "rate limit",
+    "ratelimitexceeded",
+    "usage limit",
+    "usage_limit_exceeded",
+    "daily limit",
+    "per-minute",
+    "per_minute",
+    "per-day",
+    "per_day",
+    "insufficient_quota",
+    "billing",
+    "token limit",
+    "capacity exhausted",
+)  # Keywords used to identify API quota, resource, and capacity exhaustion errors that require immediate key rotation
+
 # File Path Constants:
 INPUT_DIRECTORY = "./Inputs/"  # The path to the input directory
 INPUT_FILE = f"{INPUT_DIRECTORY}input.txt"  # The path to the input file
