@@ -4294,51 +4294,52 @@ def resolve_outputs_directory() -> Path:
     return outputs_dir.resolve()  # Return resolved Outputs directory path.
 
 
-def replace_url_in_file(filepath: str, old_url: str, new_url: str) -> None:
+def replace_url_in_file(filepath: str, old_url: str, new_url: str) -> bool:
     """
     Replace old URL with new URL inside file.
 
     :param filepath: File path.
     :param old_url: Old URL string.
     :param new_url: New URL string.
-    :return: None.
+    :return: True if operation succeeded, False otherwise.
     """
 
-    filepath_obj = Path(filepath)  # Build Path object from filepath string for text operations.
+    filepath_obj = Path(filepath)  # Build Path object from filepath string for safe operations.
 
     if not os.access(str(filepath_obj), os.W_OK):  # Verify whether the file is writable before attempting replacement.
-        print(f"{BackgroundColors.YELLOW}[WARNING] Skipping read-only file: {BackgroundColors.CYAN}{filepath_obj}{Style.RESET_ALL}")
-        return
+        print(f"{BackgroundColors.YELLOW}[WARNING] Skipping read-only file: {BackgroundColors.CYAN}{filepath_obj}{Style.RESET_ALL}")  # Log read-only file warning.
+        return False  # Return failure due to permission restriction.
 
-    try:  # Attempt to read file text safely before replacement.
-        text = filepath_obj.read_text(encoding="utf-8", errors="ignore")  # Read current file content using safe tolerant decoding.
-    except Exception as e:  # Handle file read failures gracefully.
-        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to read file for URL replacement: {BackgroundColors.CYAN}{filepath_obj}{Style.RESET_ALL} - {e}")  # Print replacement read failure warning.
-        return  # Return early when file cannot be read.
+    try:  # Attempt to read file content safely.
+        text = filepath_obj.read_text(encoding="utf-8", errors="ignore")  # Read file content with safe decoding.
+    except Exception as e:  # Handle read failures.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to read file for URL replacement: {BackgroundColors.CYAN}{filepath_obj}{BackgroundColors.YELLOW} - {e}{Style.RESET_ALL}")  # Log read failure.
+        return False  # Return failure on read error.
 
-    updated_text = text.replace(old_url, new_url)  # Replace all occurrences of old URL with new URL.
+    updated_text = text.replace(old_url, new_url)  # Replace all occurrences of old URL.
 
-    if updated_text == text:  # Verify whether content changed after replacement attempt.
-        verbose_output(f"{BackgroundColors.GREEN} No URL replacement needed in file: {BackgroundColors.CYAN}{filepath_obj}{Style.RESET_ALL}")  # Print no-change replacement warning.
-        return  # Return early when no replacement occurred.
+    if updated_text == text:  # Verify whether any replacement occurred.
+        verbose_output(f"{BackgroundColors.GREEN}No URL replacement needed in file: {BackgroundColors.CYAN}{filepath_obj}{Style.RESET_ALL}")  # Log no-op state.
+        return True  # Return success because file is already in correct state.
 
-    try:  # Attempt to persist modified file content.
-        filepath_obj.write_text(updated_text, encoding="utf-8")  # Write updated content back to the file.
-    except Exception as e:  # Handle file write failures gracefully.
-        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to write file for URL replacement: {BackgroundColors.CYAN}{filepath_obj}{Style.RESET_ALL} - {e}")  # Print replacement write failure warning.
-        return  # Return early when replacement write operation fails.
+    try:  # Attempt to write updated content.
+        filepath_obj.write_text(updated_text, encoding="utf-8")  # Persist updated file content.
+    except Exception as e:  # Handle write failures.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to write file for URL replacement: {BackgroundColors.CYAN}{filepath_obj}{BackgroundColors.YELLOW} - {e}{Style.RESET_ALL}")  # Log write failure.
+        return False  # Return failure on write error.
 
-    try:  # Attempt to re-read file content for replacement validation.
-        persisted_text = filepath_obj.read_text(encoding="utf-8", errors="ignore")  # Re-read file content after write for validation.
-    except Exception as e:  # Handle validation read failures safely.
-        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to validate URL replacement in file: {BackgroundColors.CYAN}{filepath_obj}{Style.RESET_ALL} - {e}")  # Print replacement validation read failure warning.
-        return  # Return early when validation read operation fails.
+    try:  # Validate persisted file content.
+        persisted_text = filepath_obj.read_text(encoding="utf-8", errors="ignore")  # Re-read file after write.
+    except Exception as e:  # Handle validation read failures.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to validate URL replacement in file: {BackgroundColors.CYAN}{filepath_obj}{Style.RESET_ALL} - {e}")  # Log validation failure.
+        return False  # Return failure on validation read error.
 
-    if new_url in persisted_text and old_url not in persisted_text:  # Verify replacement persisted with new URL present and old URL removed.
-        verbose_output(f"{BackgroundColors.GREEN}Updated URL replacements in file: {BackgroundColors.CYAN}{filepath_obj}{Style.RESET_ALL}")  # Print successful replacement update message.
-        return  # Return after successful replacement validation.
+    if new_url in persisted_text and old_url not in persisted_text:  # Verify replacement integrity.
+        verbose_output(f"{BackgroundColors.GREEN}Updated URL replacements in file: {BackgroundColors.CYAN}{filepath_obj}{Style.RESET_ALL}")  # Log success state.
+        return True  # Return success after validated replacement.
 
-    print(f"{BackgroundColors.YELLOW}[WARNING] URL replacement validation failed in file: {BackgroundColors.CYAN}{filepath_obj}{Style.RESET_ALL}")  # Print replacement validation failure warning.
+    print(f"{BackgroundColors.YELLOW}[WARNING] URL replacement validation failed in file: {BackgroundColors.CYAN}{filepath_obj}{Style.RESET_ALL}")  # Log validation mismatch.
+    return False  # Return failure when validation does not match expected state.
 
 
 def replace_url_recursively(base_path: Path, old_url: str, new_url: str) -> None:
