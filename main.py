@@ -3563,6 +3563,47 @@ def locate_existing_prompt_file(product_dir_path: str) -> Optional[str]:
     return None  # Return None when no supported prompt file exists.
 
 
+def collect_products_missing_templates(outputs_dir: str) -> List[Tuple[str, str, str]]:
+    """
+    Collect product directories that require Template.txt generation from Prompt.txt.
+
+    :param outputs_dir: Base outputs directory to scan.
+    :return: List of tuples containing (product_dir_path, product_dir_name, prompt_file_path).
+    """
+
+    timestamp_pattern = re.compile(r"^\d+\. \d{4}-\d{2}-\d{2} - \d{2}h\d{2}m\d{2}s$")  # Verify timestamp directory format.
+    product_dirs: List[Tuple[str, str, str]] = []  # Store valid product candidates.
+
+    for timestamp_dir_name in sorted(os.listdir(outputs_dir)):  # Iterate timestamp directories deterministically.
+        timestamp_dir_path = os.path.join(outputs_dir, timestamp_dir_name)  # Build full timestamp path.
+        if not os.path.isdir(timestamp_dir_path):  # Verify entry is directory.
+            continue  # Skip invalid entries.
+        if not timestamp_pattern.match(timestamp_dir_name):  # Verify timestamp format compliance.
+            continue  # Skip non-matching directories.
+
+        verbose_output(f"{BackgroundColors.GREEN}Traversing timestamp directory: {BackgroundColors.CYAN}{timestamp_dir_name}{Style.RESET_ALL}")  # Log traversal step.
+
+        for product_dir_name in sorted(os.listdir(timestamp_dir_path)):  # Iterate product directories.
+            product_dir_path = os.path.join(timestamp_dir_path, product_dir_name)  # Build product path.
+            if not os.path.isdir(product_dir_path):  # Verify directory type.
+                continue  # Skip invalid entries.
+
+            template_file = os.path.join(product_dir_path, "Template.txt")  # Define template path.
+
+            if os.path.exists(template_file):  # Verify template already exists.
+                verbose_output(f"{BackgroundColors.YELLOW}Template already exists in: {BackgroundColors.CYAN}{product_dir_name}{Style.RESET_ALL}")  # Log skip reason.
+                continue  # Skip already processed products.
+
+            prompt_file = locate_existing_prompt_file(product_dir_path)  # Resolve prompt file.
+
+            if prompt_file is None:  # Verify prompt existence.
+                verbose_output(f"{BackgroundColors.YELLOW}Prompt not found in: {BackgroundColors.CYAN}{product_dir_name}{Style.RESET_ALL}")  # Log missing prompt.
+                continue  # Skip invalid product.
+
+            product_dirs.append((product_dir_path, product_dir_name, prompt_file))  # Register valid product.
+    return product_dirs  # Return collected product list.
+
+
 def handle_generate_template_files_from_local_mode(args: argparse.Namespace, start_time: datetime.datetime) -> bool:
     """
     Execute generate_template_files_from_local mode and return whether it was activated.
