@@ -3797,8 +3797,6 @@ def normalize_product_data_paths(product_data: dict) -> dict:
     if not isinstance(product_data, dict):  # Verify if product_data is a dictionary
         return product_data  # Return as is if not a dictionary
 
-    from urls_utils import normalize_paths_to_unix  # Import normalization utility
-
     path_keys = [
         "local_html_path",
         "html_path",
