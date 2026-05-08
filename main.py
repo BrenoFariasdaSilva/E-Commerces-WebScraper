@@ -2390,7 +2390,7 @@ def is_model_configuration_failure(error: PermanentApiFailureError) -> bool:
     return False  # Return False when permanent failure does not match model-selection failure patterns.
 
 
-def generate_marketing_text(product_description, description_file, product_data=None, product_url=None,  owner_name=None, api_key=None, key_index=1, total_keys=1):
+def generate_marketing_text(product_description, description_file, product_data=None, product_url=None,  owner_name=None, api_key=None, key_index=1, total_keys=1, model_name: str = "gemini-3.1-flash-lite"):
     """
     Generates marketing text from product description using Gemini AI.
     Uses a single API key attempt and signals quota exhaustion for caller-side key rotation.
@@ -2403,6 +2403,7 @@ def generate_marketing_text(product_description, description_file, product_data=
     :param owner_name: Optional owner name label for the API key used (for logging)
     :param key_index: 1-based index of the API key being used
     :param total_keys: Total number of available API keys for log context
+    :param model_name: Gemini model name for this single generation attempt
     :return: True if successful, False otherwise
     """
 
@@ -2443,7 +2444,13 @@ def generate_marketing_text(product_description, description_file, product_data=
             )
         )  # Output verbose message.
 
-        gemini = Gemini(api_key, api_key_index=key_index)  # Create Gemini instance with numeric key index for quota signaling.
+        verbose_output(  # Emit verbose model-attempt diagnostics for this single-model attempt.
+            true_string=(
+                f"{BackgroundColors.GREEN}Attempting Gemini model {BackgroundColors.CYAN}{model_name}{BackgroundColors.GREEN} with API key {owner_name or key_index}.{Style.RESET_ALL}"
+            )
+        )  # Output verbose message.
+
+        gemini = Gemini(api_key, api_key_index=key_index, model_name=model_name)  # Create Gemini instance with numeric key index and selected model name.
         formatted_output = gemini.generate_content(prompt)  # Generate formatted marketing text with the provided key.
 
         if formatted_output:  # Verify if generation returned content.
