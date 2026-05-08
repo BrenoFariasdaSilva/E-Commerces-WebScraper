@@ -2471,6 +2471,9 @@ def generate_marketing_text(product_description, description_file, product_data=
         verbose_output(f"{BackgroundColors.YELLOW}[WARNING] API key {owner_name or key_index} quota exhausted. Rotating to next API key.{Style.RESET_ALL}")  # Emit deterministic quota-rotation warning.
         raise e  # Re-raise controlled signal so caller can rotate without skipping URL.
     except PermanentApiFailureError as e:  # Handle permanent non-retryable API failure from Gemini layer.
+        if is_model_configuration_failure(e):  # Verify if permanent error is strictly model-selection related.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Permanent model failure detected for model {BackgroundColors.CYAN}{model_name}{BackgroundColors.YELLOW} with key {BackgroundColors.CYAN}{owner_name or key_index}{BackgroundColors.YELLOW}. Falling back to next model.{Style.RESET_ALL}")  # Report model-specific permanent failure and allow deterministic fallback.
+            return False  # Return failure for this model attempt so caller can continue fallback sequence.
         print(f"{BackgroundColors.RED}[ERROR] Permanent API failure with key {BackgroundColors.CYAN}{owner_name or key_index}{BackgroundColors.RED}: {e}{Style.RESET_ALL}")  # Report permanent failure for this key attempt.
         raise e  # Re-raise permanent failure signal so caller can abort all key rotation.
     except Exception as e:  # Handle non-quota generation failures.
