@@ -3582,12 +3582,16 @@ def initialize_directories() -> str:
         os.path.abspath(INPUT_DIRECTORY), INPUT_DIRECTORY.replace(".", "")
     )  # Create the input directory
 
+    set_full_permissions(INPUT_DIRECTORY)  # Ensure full permissions for the input directory and its contents
+    
     ensure_ffmpef_is_installed()  # Verify if ffmpeg is installed and install it if not
 
     create_directory(
         os.path.abspath(OUTPUT_DIRECTORY), OUTPUT_DIRECTORY.replace(".", "")
     )  # Create the base output directory
-
+    
+    set_full_permissions(OUTPUT_DIRECTORY)  # Ensure full permissions for the output directory and its contents
+    
     staging_output_dir = os.path.join(OUTPUT_DIRECTORY, ".staging")  # Staging area for interim outputs
     create_directory(os.path.abspath(staging_output_dir), "Outputs/.staging")  # Ensure staging exists
 
@@ -4360,6 +4364,8 @@ def main():
     run_post_processing(context, urls_to_process)  # Execute integrity verification and old product removal
 
     handle_sorting_phase(args, context)  # Execute sorting logic when enabled
+    
+    set_full_permissions(OUTPUT_DIRECTORY)  # Ensure full permissions for the output directory and its contents
 
     finalize_execution(start_time, args, context, total_urls)  # Print summary, timing, and finalize
 
