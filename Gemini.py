@@ -250,6 +250,26 @@ class QuotaExceededError(Exception):
         self.original_error = original_error  # Store original SDK exception for diagnostics.
 
 
+class PermanentApiFailureError(Exception):
+    """
+    Represents a permanent non-retryable failure signal for a Gemini API request.
+
+    :param message: Error message describing the permanent failure event.
+    :param key_index: 1-based API key index that encountered the failure.
+    :param status_code: Optional numeric HTTP-like status code.
+    :param status_text: Optional status text such as NOT_FOUND.
+    :param original_error: Original exception object raised by the SDK.
+    :return: None
+    """
+
+    def __init__(self, message, key_index=None, status_code=None, status_text=None, original_error=None):
+        super().__init__(message)  # Initialize base Exception with provided message.
+        self.key_index = key_index  # Store the 1-based API key index for upstream abort signal.
+        self.status_code = status_code  # Store parsed status code when available.
+        self.status_text = status_text  # Store parsed status text when available.
+        self.original_error = original_error  # Store original SDK exception for diagnostics.
+
+
 class Gemini:
     """
     Class for interacting with Google's Gemini AI model.
