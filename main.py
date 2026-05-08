@@ -3836,6 +3836,45 @@ def process_template_generation_item(product_dir_path: str, product_dir_name: st
     return False  # Return failure.
 
 
+def generate_template_files_from_prompt(outputs_dir: str, api_keys: Dict[str, str]) -> None:
+    """
+    Traverse all product output directories and generate missing Template.txt files from Prompt.txt.
+
+    :param outputs_dir: Base outputs directory.
+    :param api_keys: Mapping of API keys.
+    :return: None
+    """
+
+    print(f"{BackgroundColors.GREEN}Running in {BackgroundColors.CYAN}Generate Template Files from Prompt{Style.RESET_ALL}")  # Log mode start.
+
+    if not os.path.isdir(outputs_dir):  # Verify directory exists.
+        print(f"{BackgroundColors.RED}Outputs directory not found: {BackgroundColors.CYAN}{outputs_dir}{Style.RESET_ALL}")  # Log error.
+        return  # Exit early.
+
+    product_dirs = collect_products_missing_templates(outputs_dir)  # Collect candidates.
+
+    total = len(product_dirs)  # Compute workload.
+
+    if total == 0:  # Verify empty workload.
+        return  # Exit early.
+
+    pbar = tqdm(
+        product_dirs,
+        desc=f"{BackgroundColors.GREEN}Generating Templates{Style.RESET_ALL}",
+        unit="product",
+        ncols=100,
+        bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]",
+        file=sys.__stdout__,
+    )  # Initialize progress bar.
+
+    for idx, (product_dir_path, product_dir_name, prompt_file) in enumerate(pbar, 1):  # Iterate workload.
+        pbar.set_description(
+            f"{BackgroundColors.GREEN}Generating {BackgroundColors.CYAN}{idx}{BackgroundColors.GREEN}/{BackgroundColors.CYAN}{total}{BackgroundColors.GREEN} - {BackgroundColors.CYAN}{product_dir_name}{Style.RESET_ALL}"
+        )  # Update progress bar.
+
+        process_template_generation_item(product_dir_path, product_dir_name, prompt_file, api_keys)  # Execute processing step.
+
+
 def handle_generate_template_files_from_local_mode(args: argparse.Namespace, start_time: datetime.datetime) -> bool:
     """
     Execute generate_template_files_from_local mode and return whether it was activated.
