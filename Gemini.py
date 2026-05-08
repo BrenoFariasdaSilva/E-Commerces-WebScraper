@@ -438,6 +438,9 @@ class Gemini:
                     self.quota_exhausted = True  # Mark quota as exhausted for this API key
                     raise self.create_quota_exhausted_error(e)  # Raise controlled quota signal so caller can rotate key
 
+                if self.is_permanent_api_error(e):  # If this failure represents a permanent non-retryable API error
+                    raise self.create_permanent_api_failure_error(e)  # Raise permanent failure signal to abort all key rotation immediately
+
                 if not self.is_retryable_api_error(e):  # Stop retry flow for non-transient exceptions
                     raise  # Re-raise non-retryable error so caller can handle it
 
