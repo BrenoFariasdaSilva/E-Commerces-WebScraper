@@ -4112,7 +4112,7 @@ def validate_amazon_affiliate_url(url: str) -> bool:
 
 def replace_url_in_line(line: str, old_url: str, new_url: str) -> Tuple[str, bool]:
     """
-    Replace old URL in a single line while preserving trailing content.
+    Replace old URL in a single line while preserving all surrounding content.
 
     :param line: Single line of text to process.
     :param old_url: Old URL to search for in the line.
@@ -4120,14 +4120,11 @@ def replace_url_in_line(line: str, old_url: str, new_url: str) -> Tuple[str, boo
     :return: Tuple containing the possibly modified line and a boolean indicating replacement.
     """
 
-    tokens = line.split()  # Split current line into whitespace-separated tokens.
-    if tokens and old_url in tokens[0]:  # Verify if the first token contains the old URL.
-        new_line = line.replace(tokens[0], new_url, 1)  # Replace only the first token occurrence with new URL.
-        return new_line, True  # Return modified line and True to indicate replacement.
-    elif old_url in line:  # Verify if the old URL appears elsewhere in the line.
-        new_line = line.replace(old_url, new_url)  # Replace all occurrences of the old URL in the line.
-        return new_line, True  # Return modified line and True to indicate replacement.
-    return line, False  # Return original line and False when no replacement occurred.
+    if old_url in line:  # Verify if the old URL exists anywhere in the line as a substring.
+        new_line = line.replace(old_url, new_url)  # Replace only the URL substring while preserving all surrounding content.
+        return new_line, True  # Return modified line and indicate replacement occurred.
+
+    return line, False  # Return original line when no replacement is needed.
 
 
 def write_atomic_temp_file(urls_file: Path, updated_lines: List[str]) -> None:
