@@ -3778,6 +3778,35 @@ def handle_gemini_prompt_processing(prompt_content: str, output_directory: str, 
     return success  # Return whether Gemini generation succeeded.
 
 
+def generate_and_validate_template_from_prompt_for_product(prompt_file: str, api_keys: Dict[str, str]) -> bool:
+    """
+    Generate and validate Template.txt for a product using existing Prompt.txt content.
+
+    :param prompt_file: Absolute path to the product prompt file.
+    :param api_keys: Mapping of Gemini API owner names to API key strings.
+    :return: True if generation and validation succeeded, False otherwise.
+    """
+
+    try:  # Try to read the prompt file content for Gemini generation.
+        with open(str(prompt_file), "r", encoding="utf-8") as f:  # Open prompt file with UTF-8 encoding.
+            prompt_content = f.read()  # Read full prompt content as generation input.
+    except Exception as e:  # If reading the prompt file fails.
+        print(f"{BackgroundColors.RED}Error reading prompt file {BackgroundColors.CYAN}{prompt_file}{BackgroundColors.RED}: {e}{Style.RESET_ALL}")  # Report error reading prompt file.
+        return False  # Return failure when prompt file cannot be read.
+
+    output_directory = os.path.dirname(str(prompt_file))  # Derive directory containing the prompt file for output path.
+
+    success = handle_gemini_prompt_processing(prompt_content, output_directory, api_keys)  # Generate and validate template output using prompt-only processing path.
+
+    if not success:  # Verify if Gemini generation did not succeed.
+        return False  # Return failure when generation did not produce output.
+
+    template_file = os.path.join(output_directory, "Template.txt")  # Build path to the generated Template.txt file.
+    validate_and_fix_output_file(template_file)  # Validate and fix formatting issues in the generated template.
+
+    return True  # Return success after generation and validation complete.
+
+
 def handle_generate_template_files_from_local_mode(args: argparse.Namespace, start_time: datetime.datetime) -> bool:
     """
     Execute generate_template_files_from_local mode and return whether it was activated.
