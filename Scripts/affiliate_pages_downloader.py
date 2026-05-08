@@ -66,6 +66,7 @@ import platform  # Identify active operating system.
 import pyautogui  # Automate keyboard and mouse interactions.
 import re  # Regular expressions for stripping ANSI escape sequences.
 import shutil  # Move files between directories.
+import stat  # For handling file permissions during cleanup
 import subprocess  # Execute shell commands for clipboard access and other operations.
 import sys  # Access process-level runtime controls.
 import time  # Manage sleep and elapsed time operations.
@@ -77,7 +78,7 @@ from PIL import ImageGrab  # Import PIL ImageGrab for multi-monitor screenshot c
 from pyscreeze import Box  # Import Box namedtuple for image location results.
 from tkinter import messagebox  # Import tkinter messagebox utility.
 from tqdm import tqdm  # Import tqdm progress bar iterator.
-from typing import Any, Dict, List, Optional, Tuple  # Provide typing annotations for containers and dynamic objects.
+from typing import Any, Dict, List, Optional, Tuple, Union  # Provide typing annotations for containers and dynamic objects.
 
 
 PROJECT_ROOT = str(Path(__file__).resolve().parents[[p.name for p in Path(__file__).resolve().parents].index("E-Commerces-WebScraper")])  # Project root directory
@@ -311,6 +312,45 @@ def verbose_output(true_string="", false_string=""):
         print(false_string)  # Output the false statement string
 
 
+def set_full_permissions(target_path: Union[str, Path]) -> None:
+    """
+    Recursively sets full read/write/execute permissions for all users on a file or directory.
+
+    :param target_path: File or directory path to update permissions for.
+    :return: None
+    """
+    
+    verbose_output(f"{BackgroundColors.CYAN}Updating permissions for: {target_path}{Style.RESET_ALL}")  # Log permission update attempt for target path.
+
+    path_obj = Path(target_path)  # Convert target path into Path object
+
+    if not path_obj.exists():  # Verify if target path exists
+        return  # Return early when target path does not exist
+
+    try:  # Attempt to update permissions for the root target path
+        os.chmod(path_obj, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)  # Grant rwx permissions for user, group, and others
+    except Exception:  # Ignore chmod failures on root target path
+        pass  # Continue execution even if chmod fails
+
+    if path_obj.is_dir():  # Verify if target path is a directory
+        for root_dir, dirnames, filenames in os.walk(path_obj):  # Recursively iterate directory contents
+            for dirname in dirnames:  # Iterate discovered subdirectories
+                dir_path = Path(root_dir) / dirname  # Build absolute subdirectory path
+
+                try:  # Attempt to update subdirectory permissions
+                    os.chmod(dir_path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)  # Grant rwx permissions for all users
+                except Exception:  # Ignore chmod failures for subdirectories
+                    pass  # Continue processing remaining paths
+
+            for filename in filenames:  # Iterate discovered files
+                file_path = Path(root_dir) / filename  # Build absolute file path
+
+                try:  # Attempt to update file permissions
+                    os.chmod(file_path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)  # Grant rwx permissions for all users
+                except Exception:  # Ignore chmod failures for files
+                    pass  # Continue processing remaining paths
+                
+                
 def open_chrome_by_os() -> bool:
     """
     Opens Google Chrome using operating-system specific commands.
@@ -4710,6 +4750,8 @@ def main():
     USE_MAIN_MONITOR = args.main_monitor  # Set monitor selection based on parsed CLI argument.
 
     update_chrome_profile(CHROME_PROFILE_DISPLAY_NAME)  # Resolve and set CHROME_PROFILE_DIRECTORY using configured display name with Default fallback.
+    
+    set_full_permissions(PROJECT_ROOT)  # Update permissions for the entire project directory to ensure all files are accessible for reading and writing during processing, especially after operations that may create new files or modify existing ones with restrictive permissions.
 
     exit_code = run(args.tab_count, args.urls_file, args.assets_dir, args.headerless, args.renew_amazon_affiliate_url, ONLY_RENEW_AMAZON_AFFILIATE_URLS, args.process_only_unlinked_urls)  # Execute automation flow with headerless option, renewal override, only-renew mode, and unlinked URLs processing.
 
