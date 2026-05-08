@@ -373,6 +373,18 @@ class Gemini:
         return QuotaExceededError(message, key_index=key_index, status_code=status_code, status_text=status_text, original_error=error)  # Return structured quota exhaustion signal.
 
 
+    def is_permanent_api_error(self, error):
+        """
+        Determines whether an API error indicates a permanent non-retryable failure.
+
+        :param error: The exception raised during an API request.
+        :return: True if the error indicates a permanent failure, False otherwise.
+        """
+
+        error_text = str(error).lower()  # Convert exception message to lowercase for keyword matching
+        return any(keyword in error_text for keyword in PERMANENT_API_ERROR_KEYWORDS)  # Return True when any permanent failure keyword is present in the error text
+
+
     def execute_with_retry(self, request_callable, operation_name="gemini_request"):
         """
         Executes a Gemini API callable with exponential backoff retry on temporary failures.
