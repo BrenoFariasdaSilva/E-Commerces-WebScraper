@@ -4412,26 +4412,42 @@ def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, urls_fi
                 continue  # Skip file on read failure.
 
     success = update_urls_txt_with_new_amazon_url(current_url, copied_url, urls_file)  # Update urls.txt with new affiliate URL.
-    if success:  # Verify if urls.txt was successfully updated.
-        backup_urls_file = urls_file.with_name(urls_file.stem + "-backup" + urls_file.suffix)  # Create backup file path by adding -backup suffix before the extension.
-        success = update_urls_txt_with_new_amazon_url(current_url, copied_url, backup_urls_file)  # Update urls-backup.txt with new affiliate URL.
+    if not success:  # Verify if urls.txt update succeeded.
+        verbose_output(f"{BackgroundColors.RED}Failed to update urls.txt with new Amazon URL{Style.RESET_ALL}")  # Log urls.txt update failure when verbose enabled.
+        return False, current_url  # Return failure and original URL when urls.txt update fails.
 
-        outputs_dir = resolve_outputs_directory()  # Resolve Outputs directory path from project root.
-        replace_url_recursively(outputs_dir, current_url, copied_url)  # Replace renewed Amazon URL recursively inside Outputs files.
-        verbose_output(f"{BackgroundColors.GREEN}Amazon URL successfully renewed from {BackgroundColors.CYAN}{current_url}{BackgroundColors.GREEN} to {BackgroundColors.CYAN}{copied_url}{Style.RESET_ALL}")  # Log successful renewal completion when verbose enabled.
+    backup_urls_file = urls_file.with_name(urls_file.stem + "-backup" + urls_file.suffix)  # Create backup file path by adding -backup suffix before extension.
+    backup_success = update_urls_txt_with_new_amazon_url(current_url, copied_url, backup_urls_file)  # Update urls-backup.txt with new affiliate URL.
 
-        print_url_update(current_url, copied_url)  # Print colored OLD and NEW URL output to terminal for visibility.
-        if ONLY_RENEW_AMAZON_AFFILIATE_URLS:  # Verify if running in renew-only mode.
-            files_to_validate = [str(urls_file.resolve()), str(backup_urls_file.resolve())]  # Include both urls.txt and urls-backup.txt for validation when enabled.
-        else:  # Verify if running in normal mode.
-            files_to_validate = [str(urls_file.resolve())]  # Include only urls.txt for validation in default mode.
-        if not validate_url_update(current_url, copied_url, files_to_validate):  # Verify new URL presence and old URL absence across selected files.
-            print(f"{BackgroundColors.YELLOW}[WARNING] Affiliate URL validation failed for files: {BackgroundColors.CYAN}{files_to_validate}{Style.RESET_ALL}")  # Log validation failure and mention only the files actually validated.
-            return False, current_url  # Return failure and original URL when validation does not pass to avoid continuing silently.
+    recursive_success = replace_url_recursively(outputs_dir, current_url, copied_url)  # Replace renewed Amazon URL recursively inside Outputs files.
 
-        return True, copied_url  # Return success and new URL when full workflow completes successfully.
+    print_url_update(current_url, copied_url)  # Print colored OLD and NEW URL output to terminal for visibility.
 
-    return False, current_url  # Return failure and original URL when initial update step fails.
+    files_to_validate = affected_files if affected_files else []  # Only validate files that originally contained the old URL.
+
+    verbose_output(f"{BackgroundColors.GREEN}Affected files for validation: {BackgroundColors.CYAN}{files_to_validate}{Style.RESET_ALL}")  # Log filtered validation set.
+
+    validation_success = True  # Default to success when no affected files exist.
+
+    if affected_files:  # Only validate when there was something to actually update.
+        validation_success = validate_url_update(current_url, copied_url, files_to_validate)  # Validate only impacted files.
+
+    pipeline_success = (success and validation_success and recursive_success)  # Aggregate all critical pipeline steps.
+
+    if not backup_success:  # Verify backup update failure.
+        verbose_output(f"{BackgroundColors.RED}Failed to update urls-backup.txt with new Amazon URL{Style.RESET_ALL}")  # Log backup failure.
+
+    if not recursive_success:  # Verify recursive replacement failure.
+        verbose_output(f"{BackgroundColors.RED}Recursive URL replacement failed in Outputs directory{Style.RESET_ALL}")  # Log recursion failure.
+
+    if not validation_success:  # Verify validation failure.
+        verbose_output(f"{BackgroundColors.RED}URL validation failed after renewal process{Style.RESET_ALL}")  # Log validation failure.
+
+    if not pipeline_success:  # Verify any stage failure.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Affiliate URL update failed or partially inconsistent (success={success}, backup={backup_success}, recursive={recursive_success}, validation={validation_success}){Style.RESET_ALL}")  # Log full pipeline state.
+        return False, current_url  # Return failure when any critical stage is not satisfied.
+
+    return True, copied_url  # Return success only when full pipeline is consistent.
 
 
 def build_report(ext_methods: Dict[str, List[int]], download_methods: Dict[str, List[int]], completion_methods: Dict[str, List[int]], close_methods: Dict[str, List[int]]) -> str:
