@@ -373,10 +373,8 @@ class Gemini:
         :return: True if the error indicates exhausted key quota, otherwise False.
         """
 
-        error_text = str(error).lower()  # Convert exception text to lowercase for deterministic matching.
-        has_status_resource_exhausted = "resource_exhausted" in error_text  # Verify explicit RESOURCE_EXHAUSTED status presence.
-        has_code_429 = "429" in error_text  # Verify HTTP 429 quota status presence.
-        return has_status_resource_exhausted or has_code_429  # Return True when either quota indicator is present.
+        error_text = str(error).lower()  # Convert exception text to lowercase for deterministic keyword matching.
+        return any(keyword in error_text for keyword in QUOTA_EXHAUSTED_API_ERROR_KEYWORDS)  # Return True when any quota exhaustion keyword is present in the error text.
 
 
     def create_quota_exhausted_error(self, error):
@@ -389,10 +387,35 @@ class Gemini:
 
         error_text = str(error)  # Store original error text for message propagation.
         error_text_lower = error_text.lower()  # Normalize text for status/code extraction.
-        status_code = 429 if "429" in error_text_lower else None  # Parse status code when present in message text.
-        status_text = "RESOURCE_EXHAUSTED" if "resource_exhausted" in error_text_lower else None  # Parse status label when present in message text.
+        status_code = 429 if "429" in error_text_lower else None  # Parse HTTP 429 status code when present in message text.
+
+        if "resource_exhausted" in error_text_lower:  # Verify explicit RESOURCE_EXHAUSTED status label for classification.
+            status_text = "RESOURCE_EXHAUSTED"  # Assign canonical SDK status label for deterministic downstream identification.
+        elif "billing" in error_text_lower:  # Verify billing quota exhaustion indicator for classification.
+            status_text = "BILLING_QUOTA_EXCEEDED"  # Assign billing quota status label for deterministic downstream identification.
+        elif "daily" in error_text_lower and ("limit" in error_text_lower or "quota" in error_text_lower):  # Verify daily limit or daily quota exhaustion indicator.
+            status_text = "DAILY_QUOTA_EXCEEDED"  # Assign daily quota status label for deterministic downstream identification.
+        elif "per-minute" in error_text_lower or "per_minute" in error_text_lower:  # Verify per-minute quota exhaustion indicator.
+            status_text = "PER_MINUTE_QUOTA_EXCEEDED"  # Assign per-minute quota status label for deterministic downstream identification.
+        elif "per-day" in error_text_lower or "per_day" in error_text_lower:  # Verify per-day quota exhaustion indicator.
+            status_text = "PER_DAY_QUOTA_EXCEEDED"  # Assign per-day quota status label for deterministic downstream identification.
+        elif "rate limit" in error_text_lower or "ratelimitexceeded" in error_text_lower:  # Verify rate limit exhaustion indicator.
+            status_text = "RATE_LIMIT_EXCEEDED"  # Assign rate limit status label for deterministic downstream identification.
+        elif "too many requests" in error_text_lower:  # Verify too-many-requests indicator for classification.
+            status_text = "TOO_MANY_REQUESTS"  # Assign too-many-requests status label for deterministic downstream identification.
+        elif "usage limit" in error_text_lower or "usage_limit_exceeded" in error_text_lower:  # Verify usage limit exhaustion indicator.
+            status_text = "USAGE_LIMIT_EXCEEDED"  # Assign usage limit status label for deterministic downstream identification.
+        elif "token limit" in error_text_lower:  # Verify token limit exhaustion indicator.
+            status_text = "TOKEN_LIMIT_EXCEEDED"  # Assign token limit status label for deterministic downstream identification.
+        elif "capacity" in error_text_lower:  # Verify capacity exhaustion indicator.
+            status_text = "CAPACITY_EXHAUSTED"  # Assign capacity exhaustion status label for deterministic downstream identification.
+        elif "quota" in error_text_lower:  # Verify general quota exhaustion indicator as fallback.
+            status_text = "QUOTA_EXCEEDED"  # Assign general quota exceeded status label for deterministic downstream identification.
+        else:  # Default status label when no specific category matches.
+            status_text = "QUOTA_EXHAUSTED"  # Assign default quota exhausted status label for deterministic downstream identification.
+
         key_index = self.api_key_index if self.api_key_index is not None else 0  # Use known key index or zero when unavailable.
-        message = f"Gemini API key {key_index} quota exhausted: {error_text}"  # Build deterministic upstream-facing error message.
+        message = f"Gemini API key {key_index} quota exhausted ({status_text}): {error_text}"  # Build deterministic upstream-facing error message with category label.
         return QuotaExceededError(message, key_index=key_index, status_code=status_code, status_text=status_text, original_error=error)  # Return structured quota exhaustion signal.
 
 
@@ -458,8 +481,10 @@ class Gemini:
                 return request_callable()  # Execute the provided Gemini API request callable
             except Exception as e:  # Capture request exceptions for retry decision
                 if self.is_quota_exhausted_api_error(e):  # If this failure represents exhausted key quota
-                    self.quota_exhausted = True  # Mark quota as exhausted for this API key
-                    raise self.create_quota_exhausted_error(e)  # Raise controlled quota signal so caller can rotate key
+                    self.quota_exhausted = True  # Mark quota as exhausted for this API key.
+                    quota_signal = self.create_quota_exhausted_error(e)  # Build structured quota exhaustion signal with parsed category metadata.
+                    print(f"{BackgroundColors.YELLOW}[WARNING] Gemini API quota exhaustion detected for API key {self.api_key_index or 0}. Category: {BackgroundColors.CYAN}{quota_signal.status_text}{BackgroundColors.YELLOW}. Triggering immediate key rotation.{Style.RESET_ALL}")  # Emit deterministic log when API key is marked as exhausted with rotation reason.
+                    raise quota_signal  # Raise structured quota signal so caller can rotate immediately without retrying.
 
                 if self.is_permanent_api_error(e):  # If this failure represents a permanent non-retryable API error
                     raise self.create_permanent_api_failure_error(e)  # Raise permanent failure signal to abort all key rotation immediately
