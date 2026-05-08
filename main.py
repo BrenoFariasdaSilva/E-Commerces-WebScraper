@@ -3705,6 +3705,79 @@ def process_gemini_prompt_model_fallbacks(prompt_content: str, output_directory:
     return False  # Return failure after exhausting all configured fallback models.
 
 
+def handle_gemini_prompt_processing(prompt_content: str, output_directory: str, api_keys: Dict[str, str]) -> bool:
+    """
+    Execute Gemini template generation from prompt content with key rotation and quota retry logic.
+
+    :param prompt_content: Prompt text read from Prompt.txt file.
+    :param output_directory: Product output directory where Template.txt will be written.
+    :param api_keys: Ordered mapping of owner name to Gemini API key strings.
+    :return: True if Gemini generation succeeded, False otherwise.
+    """
+
+    verbose_output(f"{BackgroundColors.GREEN}Step 2: {BackgroundColors.CYAN}Formatting with Gemini AI{Style.RESET_ALL}")  # Step 2: Format the product description with Gemini AI.
+
+    success = False  # Initialize Gemini formatting success flag for this directory.
+    exhausted_key_indices = set()  # Track exhausted key labels during the current rotation cycle.
+    exhausted_cycles = 0  # Track how many full exhausted cycles happened for this directory.
+    names = list(api_keys.keys())  # Extract owner name list preserving order for deterministic rotation.
+    total_keys = len(names)  # Compute total available keys for this directory attempt.
+
+    global GEMINI_LAST_KEY_INDEX  # Reuse module-level key index to preserve deterministic rotation across runs.
+    current_idx = GEMINI_LAST_KEY_INDEX % total_keys if total_keys > 0 else 0  # Start from last successful key index.
+
+    while True:  # Keep retrying same prompt request until success or maximum exhausted cycles reached.
+        owner = names[current_idx] if total_keys > 0 else ""  # Resolve current owner name for logging and selection.
+        api_key = api_keys.get(owner, "")  # Select API key for this owner from the mapping.
+
+        verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Testing API key {BackgroundColors.CYAN}{owner}{BackgroundColors.GREEN}...{Style.RESET_ALL}")  # Log which owner/key is being tested for this attempt.
+
+        try:  # Try processing the same prompt with current owner/key.
+            model_success = process_gemini_prompt_model_fallbacks(  # Execute deterministic model fallback processing for current API key.
+                prompt_content,  # Pass prompt file content for Gemini generation attempts.
+                output_directory,  # Pass output directory path for Gemini generation attempts.
+                owner,  # Pass current API key owner name for logging context.
+                api_key,  # Pass current Gemini API key for generation attempts.
+                current_idx,  # Pass current zero-based API key index for rotation metadata.
+                total_keys,  # Pass total available API key count for contextual logging.
+            )  # End deterministic Gemini model fallback processing.
+
+            if model_success:  # Verify whether generation succeeded for this owner/key after fallback attempts.
+                success = True  # Persist directory-level success state for final function return.
+                GEMINI_LAST_KEY_INDEX = current_idx  # Persist last successful key index for next directory.
+                verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Using API key {owner} for generation...{Style.RESET_ALL}")  # Log which owner/key succeeded.
+                break  # Exit retry loop and continue directory pipeline.
+
+            print(f"{BackgroundColors.YELLOW}[WARNING] All models failed for API key {owner}. Rotating to next API key.{Style.RESET_ALL}")  # Report model-fallback exhaustion for this key.
+            current_idx = (current_idx + 1) % total_keys  # Rotate to next owner after model fallback exhaustion for this key.
+            if current_idx == 0:  # Verify if a full owner/key round has been completed.
+                break  # Stop loop after one full non-quota rotation and keep failure result.
+        except QuotaExceededError as quota_error:  # Handle controlled quota exhaustion signal.
+            exhausted_label = quota_error.key_index if quota_error.key_index else owner  # Resolve exhausted owner label from exception metadata.
+            exhausted_key_indices.add(exhausted_label)  # Mark current owner as exhausted for this cycle.
+            rotation_reason = quota_error.status_text or "QUOTA_EXHAUSTED"  # Resolve rotation reason from structured quota error metadata.
+            current_idx = (current_idx + 1) % total_keys  # Rotate to next owner for same prompt.
+            next_owner = names[current_idx] if total_keys > 0 else "none"  # Resolve next API key owner name after rotation for deterministic logging.
+            print(f"{BackgroundColors.YELLOW}[WARNING] API key {BackgroundColors.CYAN}{owner}{BackgroundColors.YELLOW} marked as exhausted. Rotation reason: {BackgroundColors.CYAN}{rotation_reason}{BackgroundColors.YELLOW}. Next API key selected: {BackgroundColors.CYAN}{next_owner}{Style.RESET_ALL}")  # Emit deterministic log with exhausted key, rotation reason, and next key selection.
+
+            if len(exhausted_key_indices) >= total_keys:  # Verify if all owners/keys are exhausted in current cycle.
+                exhausted_cycles += 1  # Increment all-keys-exhausted cycle counter.
+                if exhausted_cycles > GEMINI_MAX_ALL_KEYS_EXHAUSTED_CYCLES:  # Verify if maximum cycle retries reached.
+                    print(f"{BackgroundColors.RED}All API keys remained exhausted for prompt directory: {BackgroundColors.CYAN}{output_directory}{Style.RESET_ALL}")  # Report final exhaustion failure for current directory.
+                    break  # Stop retrying this directory after configured exhausted cycles.
+                print(f"{BackgroundColors.YELLOW}[WARNING] All API keys exhausted. Waiting {GEMINI_ALL_KEYS_EXHAUSTED_WAIT_SECONDS}s before retrying the same prompt directory.{Style.RESET_ALL}")  # Report cooldown before restarting owner/key rotation.
+                time.sleep(GEMINI_ALL_KEYS_EXHAUSTED_WAIT_SECONDS)  # Wait before restarting rotation to allow quota reset windows.
+                exhausted_key_indices.clear()  # Reset exhausted owner/key tracking for next cycle.
+                current_idx = 0  # Restart rotation from first owner after cooldown.
+
+            continue  # Continue retry loop for same prompt.
+        except PermanentApiFailureError as perm_error:  # Handle permanent non-retryable API failure signal.
+            print(f"{BackgroundColors.RED}[ERROR] Permanent API failure detected for prompt directory: {BackgroundColors.CYAN}{output_directory}{BackgroundColors.RED}. Status: {BackgroundColors.CYAN}{perm_error.status_code} - {perm_error.status_text}{BackgroundColors.RED}. Aborting all key rotation for this prompt.{Style.RESET_ALL}")  # Report permanent failure and abort all remaining key attempts.
+            break  # Abort all key rotation immediately on permanent failure to prevent useless retry storms.
+
+    return success  # Return whether Gemini generation succeeded.
+
+
 def handle_generate_template_files_from_local_mode(args: argparse.Namespace, start_time: datetime.datetime) -> bool:
     """
     Execute generate_template_files_from_local mode and return whether it was activated.
