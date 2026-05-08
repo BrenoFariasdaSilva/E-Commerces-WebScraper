@@ -3807,6 +3807,35 @@ def generate_and_validate_template_from_prompt_for_product(prompt_file: str, api
     return True  # Return success after generation and validation complete.
 
 
+def process_template_generation_item(product_dir_path: str, product_dir_name: str, prompt_file: str, api_keys: Dict[str, str]) -> bool:
+    """
+    Generate and validate Template.txt for a single product directory.
+
+    :param product_dir_path: Product directory path.
+    :param product_dir_name: Product directory name.
+    :param prompt_file: Prompt.txt file path.
+    :param api_keys: API keys for generation.
+    :return: True if successful, False otherwise.
+    """
+
+    template_file = os.path.join(product_dir_path, "Template.txt")  # Build template path.
+
+    if os.path.exists(template_file):  # Verify template existence.
+        verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Template already exists for: {BackgroundColors.CYAN}{product_dir_name}{Style.RESET_ALL}")  # Log skip.
+        return True  # Treat as success because no action required.
+
+    verbose_output(f"{BackgroundColors.GREEN}Generating Template.txt from Prompt.txt for: {BackgroundColors.CYAN}{product_dir_name}{Style.RESET_ALL}")  # Log generation start.
+
+    success = generate_and_validate_template_from_prompt_for_product(prompt_file, api_keys)  # Execute generation pipeline.
+
+    if success:  # Verify success state.
+        verbose_output(f"{BackgroundColors.GREEN}Successfully generated Template.txt for: {BackgroundColors.CYAN}{product_dir_name}{Style.RESET_ALL}")  # Log success.
+        return True  # Return success.
+
+    print(f"{BackgroundColors.RED}Failed to generate Template.txt for: {BackgroundColors.CYAN}{product_dir_name}{Style.RESET_ALL}")  # Log failure.
+    return False  # Return failure.
+
+
 def handle_generate_template_files_from_local_mode(args: argparse.Namespace, start_time: datetime.datetime) -> bool:
     """
     Execute generate_template_files_from_local mode and return whether it was activated.
