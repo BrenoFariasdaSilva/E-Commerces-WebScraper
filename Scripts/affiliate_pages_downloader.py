@@ -1046,19 +1046,19 @@ def extract_and_validate_urls(primary_file: Path, backup_file: Path, affiliate_p
     backup_is_empty = is_file_empty(str(backup_file))  # Verify backup file emptiness
 
     if primary_is_empty:  # Verify primary file empty state
-        print(f"{BackgroundColors.YELLOW}[WARNING] {primary_file.name} is empty{Style.RESET_ALL}")  # Log primary empty warning
+        print(f"{BackgroundColors.YELLOW}[WARNING] {BackgroundColors.CYAN}{primary_file.name}{BackgroundColors.YELLOW} is empty{Style.RESET_ALL}")  # Log primary empty warning
 
     if backup_is_empty:  # Verify backup file empty state
-        print(f"{BackgroundColors.YELLOW}[WARNING] {backup_file.name} is empty{Style.RESET_ALL}")  # Log backup empty warning
+        print(f"{BackgroundColors.YELLOW}[WARNING] {BackgroundColors.CYAN}{backup_file.name}{BackgroundColors.YELLOW} is empty{Style.RESET_ALL}")  # Log backup empty warning
 
     primary_valid_urls = [] if primary_is_empty else extract_amazon_urls_from_file(str(primary_file), affiliate_pattern)  # Extract primary URLs
     backup_valid_urls = [] if backup_is_empty else extract_amazon_urls_from_file(str(backup_file), affiliate_pattern)  # Extract backup URLs
 
     if not primary_is_empty and len(primary_valid_urls) == 0:  # Verify invalid primary content
-        print(f"{BackgroundColors.YELLOW}[WARNING] {primary_file.name} contains no valid Amazon URLs{Style.RESET_ALL}")  # Log warning
+        print(f"{BackgroundColors.YELLOW}[WARNING] {BackgroundColors.CYAN}{primary_file.name}{BackgroundColors.YELLOW} contains no valid Amazon URLs{Style.RESET_ALL}")  # Log warning
 
     if not backup_is_empty and len(backup_valid_urls) == 0:  # Verify invalid backup content
-        print(f"{BackgroundColors.YELLOW}[WARNING] {backup_file.name} contains no valid Amazon URLs{Style.RESET_ALL}")  # Log warning
+        print(f"{BackgroundColors.YELLOW}[WARNING] {BackgroundColors.CYAN}{backup_file.name}{BackgroundColors.YELLOW} contains no valid Amazon URLs{Style.RESET_ALL}")  # Log warning
 
     unique_urls: List[str] = []  # Initialize deduplicated URL list
     seen_urls: set[str] = set()  # Initialize deduplication set
