@@ -2777,7 +2777,7 @@ def renew_amazon_url_for_tab(url: str, current_tab: int, urls_file: Path, share_
     return url, False, renewed_url, "Renewal flow returned unsuccessful status"  # Return with failure status when renewal flow did not succeed.
 
 
-def only_renew_amazon_url_mode(url: str, index: int, urls: List[str], urls_file: Path, image_paths: Dict[str, Path], renew_amazon_affiliate: bool, opened_tabs: int) -> int:
+def only_renew_amazon_url_mode(url: str, index: int, urls: List[str], urls_file: Path, image_paths: Dict[str, Path], renew_amazon_affiliate: bool, opened_tabs: int) -> Tuple[int, bool, str]:
     """
     Handles the renew-only flow for Amazon affiliate URLs, attempting renewal and file updates while preserving loop continuity and logging detailed outcomes.
     
@@ -2788,11 +2788,12 @@ def only_renew_amazon_url_mode(url: str, index: int, urls: List[str], urls_file:
     :param image_paths: Dictionary containing paths to various images used in the renewal flow.
     :param renew_amazon_affiliate: Flag indicating whether Amazon affiliate renewal is enabled.
     :param opened_tabs: Current count of opened tabs for managing tab lifecycle in renew-only flow.
-    :return: Updated opened_tabs count after tab lifecycle completion.
+    :return: Tuple of updated opened_tabs count, renewal success flag, and original URL identifier.
     """
 
     verbose_output(f"{BackgroundColors.GREEN}[INFO] Starting Amazon affiliate renewal attempt ({BackgroundColors.CYAN}{index}/{len(urls)}{BackgroundColors.GREEN}) for URL: {BackgroundColors.CYAN}{url}{Style.RESET_ALL}")  # Log URL renewal attempt start with index and URL.
 
+    original_url = url  # Preserve the original URL before any renewal modification for accurate result reporting.
     renewal_success = False  # Initialize renewal status for current URL attempt.
     renewal_reason = "Amazon renewal returned unsuccessful status"  # Initialize default failure reason for current URL attempt.
 
@@ -2802,7 +2803,6 @@ def only_renew_amazon_url_mode(url: str, index: int, urls: List[str], urls_file:
         else:  # Execute renewal flow when automation window activation succeeds.
             opened_tabs = open_url_in_new_tab(url, opened_tabs)  # Open URL in new tab and update opened tabs counter.
             current_tab = index  # Store current tab index for renewal logging.
-            original_url = url  # Preserve original URL before potential renewal replacement.
 
             url, renewal_success, renewed_url, renewal_reason = renew_amazon_url_for_tab(url, current_tab, urls_file, image_paths["share_button_img"], renew_amazon_affiliate)  # Execute unified Amazon affiliate URL renewal and capture result tuple.
 
@@ -2821,7 +2821,7 @@ def only_renew_amazon_url_mode(url: str, index: int, urls: List[str], urls_file:
         print(f"{BackgroundColors.YELLOW}[WARNING] Exception traceback for URL: {BackgroundColors.CYAN}{url}{BackgroundColors.YELLOW}\n{BackgroundColors.CYAN}{traceback.format_exc()}{Style.RESET_ALL}")  # Log exception traceback details for current URL renewal failure.
         opened_tabs = handle_only_renew_amazon_urls(opened_tabs)  # Attempt tab cleanup after renewal exception to preserve loop continuity.
 
-    return opened_tabs  # Return updated opened_tabs count to propagate tab lifecycle state to caller.
+    return opened_tabs, renewal_success, original_url  # Return updated opened_tabs count, renewal success flag, and original URL identifier.
 
 
 def get_browser_current_url() -> str:
