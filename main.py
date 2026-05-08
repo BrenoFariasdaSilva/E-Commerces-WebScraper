@@ -3547,6 +3547,22 @@ def generate_template_files_from_local(outputs_dir: str, api_keys: Dict[str, str
             print(f"{BackgroundColors.RED}Failed to generate Template.txt for: {BackgroundColors.CYAN}{product_dir_name}{Style.RESET_ALL}")  # Log generation failure for this product
 
 
+def locate_existing_prompt_file(product_dir_path: str) -> Optional[str]:
+    """
+    Locate an existing prompt file in the product directory using supported filename variants.
+
+    :param product_dir_path: Absolute path to the product output directory.
+    :return: Absolute prompt file path when found, otherwise None.
+    """
+
+    for prompt_file_name in ("Prompt.txt", "prompt.txt"):  # Iterate prompt filename variants for compatibility with existing and new naming styles.
+        prompt_path = os.path.join(product_dir_path, prompt_file_name)  # Build absolute path for current prompt filename candidate.
+        if os.path.isfile(prompt_path):  # Verify if this prompt file candidate exists as a regular file.
+            return prompt_path  # Return first existing prompt file path.
+
+    return None  # Return None when no supported prompt file exists.
+
+
 def handle_generate_template_files_from_local_mode(args: argparse.Namespace, start_time: datetime.datetime) -> bool:
     """
     Execute generate_template_files_from_local mode and return whether it was activated.
