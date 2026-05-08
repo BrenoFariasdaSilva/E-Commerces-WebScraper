@@ -2469,7 +2469,7 @@ def generate_marketing_text(product_description, description_file, product_data=
 
     amazon_24h_instruction = ""  # Initialize Amazon-specific warning instruction
     if product_url and detect_platform(product_url) == "amazon":  # Verify if the current product belongs to Amazon
-        amazon_24h_instruction = "\n\n**IMPORTANTE**: Para produtos da Amazon, ADICIONE IMEDIATAMENTE ANTES DA LINHA DO LINK (👉 ...) a seguinte mensagem EM NEGRITO E EM MAIUSCULAS: *ATENÇÃO: LINK VÁLIDO POR 24 HORAS. APÓS 24 HORAS, SÓ PERMANECE VÁLIDO SE O PRODUTO FOR ADICIONADO AO CARRINHO DENTRO DESSE PRAZO.*"
+        amazon_24h_instruction = "\n**IMPORTANTE**: Para produtos da Amazon, ADICIONE IMEDIATAMENTE ANTES DA LINHA DO LINK (👉 ...) a seguinte mensagem EM NEGRITO E EM MAIUSCULAS: *ATENÇÃO: LINK VÁLIDO POR 24 HORAS. APÓS 24 HORAS, SÓ PERMANECE VÁLIDO SE O PRODUTO FOR ADICIONADO AO CARRINHO DENTRO DESSE PRAZO.*"
     
     prompt = GEMINI_MARKETING_PROMPT_TEMPLATE.format(product_description=product_description) + International_instruction + no_discount_instruction + amazon_24h_instruction  # Format template with all instructions
 
