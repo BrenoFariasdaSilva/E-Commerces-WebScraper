@@ -203,6 +203,13 @@ Gere APENAS o texto formatado, sem explicações adicionais."""  # Template for 
 GEMINI_LAST_KEY_INDEX = 0  # Index to keep track of the last used key in the Gemini prompt template for dynamic replacement
 GEMINI_ALL_KEYS_EXHAUSTED_WAIT_SECONDS = 600  # Seconds to wait before restarting key rotation when all keys are exhausted.
 GEMINI_MAX_ALL_KEYS_EXHAUSTED_CYCLES = 1  # Maximum all-keys-exhausted cycles per URL before failing the request.
+GEMINI_MODEL_PRIORITY = [
+    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash-lite",
+    "gemini-2.5-flash",
+    "gemini-3-flash",
+    "gemma-3-27b-it",
+]  # Deterministic model fallback priority for each API-key attempt.
 
 # Image Upgrade Constants:
 FILENAME_SIMILARITY_THRESHOLD = 0.70  # Minimum SequenceMatcher ratio for root-to-candidate basename similarity matching
