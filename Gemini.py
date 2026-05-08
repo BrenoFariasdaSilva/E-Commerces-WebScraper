@@ -104,6 +104,16 @@ RETRYABLE_API_ERROR_KEYWORDS = (
     "gateway timeout",
 )  # Keywords used to classify transient Gemini API failures for retry
 
+PERMANENT_API_ERROR_STATUS_CODES = (
+    400,
+    401,
+    403,
+    404,
+    405,
+    422,
+)  # HTTP status codes that classify API responses as permanent non-retryable failures
+
+
 # File Path Constants:
 INPUT_DIRECTORY = "./Inputs/"  # The path to the input directory
 INPUT_FILE = f"{INPUT_DIRECTORY}input.txt"  # The path to the input file
