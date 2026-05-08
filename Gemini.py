@@ -385,6 +385,36 @@ class Gemini:
         return any(keyword in error_text for keyword in PERMANENT_API_ERROR_KEYWORDS)  # Return True when any permanent failure keyword is present in the error text
 
 
+    def create_permanent_api_failure_error(self, error):
+        """
+        Creates a structured permanent failure exception for caller-side abort.
+
+        :param error: Original exception raised by the Gemini SDK request.
+        :return: PermanentApiFailureError containing parsed key and status metadata.
+        """
+
+        error_text = str(error)  # Store original error text for message propagation.
+        error_text_lower = error_text.lower()  # Normalize text for status/code extraction.
+        status_code = None  # Initialize status_code as absent until a match is found.
+
+        for code in PERMANENT_API_ERROR_STATUS_CODES:  # Iterate permanent status codes to find a match in error text
+            if str(code) in error_text_lower:  # Verify if this status code number appears in the error text
+                status_code = code  # Assign matched status code for structured error propagation
+                break  # Stop at first matched status code
+
+        status_text = None  # Initialize status_text as absent until a known label is matched.
+        permanent_status_labels = ("NOT_FOUND", "INVALID_ARGUMENT", "PERMISSION_DENIED", "UNAUTHENTICATED", "UNIMPLEMENTED", "FAILED_PRECONDITION")  # Define known permanent gRPC status labels for extraction
+
+        for label in permanent_status_labels:  # Iterate permanent status labels to find a match
+            if label.lower() in error_text_lower:  # Verify if this label appears in the normalized error text
+                status_text = label  # Assign matched status label for structured error propagation
+                break  # Stop at first matched label
+
+        key_index = self.api_key_index if self.api_key_index is not None else 0  # Use known key index or zero when unavailable.
+        message = f"Gemini API key {key_index} permanent failure: {error_text}"  # Build deterministic upstream-facing error message.
+        return PermanentApiFailureError(message, key_index=key_index, status_code=status_code, status_text=status_text, original_error=error)  # Return structured permanent failure signal.
+
+
     def execute_with_retry(self, request_callable, operation_name="gemini_request"):
         """
         Executes a Gemini API callable with exponential backoff retry on temporary failures.
