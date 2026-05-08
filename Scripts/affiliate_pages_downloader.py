@@ -3837,6 +3837,30 @@ def reset_browser_context_for_retry(close_download_tab_img: Path) -> bool:
     return context_ready  # Return browser context readiness status.
 
 
+def print_amazon_url_renewal_final_report(processed_count: int, renewal_success_count: int, renewal_failed_urls: list) -> None:
+    """
+    Print Amazon URL renewal final report.
+
+    :param processed_count: Total number of processed URLs.
+    :param renewal_success_count: Total number of successful renewals.
+    :param renewal_failed_urls: List of URLs that failed renewal.
+    :return: None.
+    """
+
+    renewal_failed_count = len(renewal_failed_urls)  # Compute total failed renewals from failed URL list.
+
+    print(f"{BackgroundColors.GREEN}[INFO] Amazon URL Renewal Final Report:{Style.RESET_ALL}")  # Print renewal final report header.
+    print(f"{BackgroundColors.GREEN}[INFO] Total URLs processed: {BackgroundColors.CYAN}{processed_count}{Style.RESET_ALL}")  # Print total processed URLs count.
+    print(f"{BackgroundColors.GREEN}[INFO] Successful renewals: {BackgroundColors.CYAN}{renewal_success_count}{Style.RESET_ALL}")  # Print successful renewal count.
+    print(f"{BackgroundColors.GREEN}[INFO] Failed renewals: {BackgroundColors.CYAN}{renewal_failed_count}{Style.RESET_ALL}")  # Print failed renewal count.
+
+    if renewal_failed_count > 0:  # Verify whether any renewals failed before printing failed URL list.
+        print(f"{BackgroundColors.YELLOW}[WARNING] URLs that failed renewal:{Style.RESET_ALL}")  # Print failed URLs section header.
+
+        for failed_url in renewal_failed_urls:  # Iterate failed renewal URLs.
+            print(f"{BackgroundColors.YELLOW}[WARNING]   - {BackgroundColors.CYAN}{failed_url}{Style.RESET_ALL}")  # Print each failed URL entry.
+
+
 def join_array(values: List[int]) -> str:
     """
     Joins integer list into comma-separated string.
