@@ -4342,23 +4342,29 @@ def replace_url_in_file(filepath: str, old_url: str, new_url: str) -> bool:
     return False  # Return failure when validation does not match expected state.
 
 
-def replace_url_recursively(base_path: Path, old_url: str, new_url: str) -> None:
+def replace_url_recursively(base_path: Path, old_url: str, new_url: str) -> bool:
     """
     Replace URL occurrences recursively for all files inside a base directory.
 
     :param base_path: Root directory to traverse recursively.
     :param old_url: Original URL to replace.
     :param new_url: New URL to persist.
-    :return: None.
+    :return: True if at least one operation succeeded, False otherwise.
     """
 
-    if not base_path.exists():  # Verify whether Outputs base directory exists.
-        verbose_output(f"{BackgroundColors.YELLOW}[WARNING] Outputs directory not found for recursive URL replacement: {BackgroundColors.CYAN}{base_path}{Style.RESET_ALL}")  # Log missing Outputs directory when verbose enabled.
-        return  # Return early when Outputs directory is unavailable.
+    if not base_path.exists():  # Verify whether base directory exists.
+        verbose_output(f"{BackgroundColors.YELLOW}[WARNING] Outputs directory not found for recursive URL replacement: {BackgroundColors.CYAN}{base_path}{Style.RESET_ALL}")  # Log missing directory.
+        return False  # Return failure when directory does not exist.
 
-    for filepath in base_path.rglob("*"):  # Traverse all filesystem entries under Outputs recursively.
-        if filepath.is_file() and filepath.suffix in {".txt", ".json", ".csv"}:  # Verify file is a supported text-based format (txt, json, csv).
-            replace_url_in_file(str(filepath), old_url, new_url)  # Replace URL occurrences in current supported text file.
+    any_success = False  # Track whether at least one file operation succeeded.
+
+    for filepath in base_path.rglob("*"):  # Traverse directory recursively.
+        if filepath.is_file() and filepath.suffix in {".csv", ".html", ".json", ".txt"}:  # Filter supported file types.
+            result = replace_url_in_file(str(filepath), old_url, new_url)  # Attempt file-level replacement.
+            if result:  # Verify if file operation succeeded.
+                any_success = True  # Mark overall success.
+
+    return any_success  # Return aggregated success state.
 
 
 def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, urls_file: Path) -> tuple:
