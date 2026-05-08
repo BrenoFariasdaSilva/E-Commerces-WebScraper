@@ -4192,9 +4192,11 @@ def url_exists_in_file(filepath: str, url: str) -> bool:
     """
 
     lines = read_file_lines(filepath)  # Read file lines using helper function.
+    
     for line in lines:  # Iterate each line to search for the URL.
         if url in line:  # Verify whether the URL substring appears in the current line.
             return True  # Return True immediately when a match is found.
+    
     return False  # Return False when no matching line is found.
 
 
