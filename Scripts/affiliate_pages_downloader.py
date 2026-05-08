@@ -312,7 +312,7 @@ def verbose_output(true_string="", false_string=""):
         print(false_string)  # Output the false statement string
 
 
-def set_full_permissions(target_path: Union[str, Path]) -> None:
+def set_full_permissions(target_path: Union[str, Path] = PROJECT_ROOT) -> None:
     """
     Recursively sets full read/write/execute permissions for all users on a file or directory.
 
