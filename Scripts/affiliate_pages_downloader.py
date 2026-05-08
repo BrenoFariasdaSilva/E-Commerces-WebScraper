@@ -4399,6 +4399,18 @@ def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, urls_fi
     RENEWED_URL_MAP[current_url] = copied_url  # Store successful renewal mapping for fallback mapped-file replacements.
     print(f"{BackgroundColors.GREEN}Old URL: {BackgroundColors.CYAN}{current_url}{BackgroundColors.GREEN} -> New URL: {BackgroundColors.CYAN}{copied_url}{Style.RESET_ALL}")  # Print old and new URL mapping after successful renewal.
 
+    outputs_dir = resolve_outputs_directory()  # Resolve Outputs directory path from project root.
+
+    affected_files = []  # Track only files that actually contain the old URL and require updates.
+    for filepath in outputs_dir.rglob("*"):  # Traverse all files in Outputs directory.
+        if filepath.is_file() and filepath.suffix in {".csv", ".html", ".json", ".txt"}:  # Restrict to supported file types.
+            try:  # Safely read file content for pre-check.
+                content = filepath.read_text(encoding="utf-8", errors="ignore")  # Load file content.
+                if current_url in content:  # Verify file actually contains the old URL.
+                    affected_files.append(str(filepath.resolve()))  # Register file as requiring update.
+            except Exception:  # Ignore unreadable files safely.
+                continue  # Skip file on read failure.
+
     success = update_urls_txt_with_new_amazon_url(current_url, copied_url, urls_file)  # Update urls.txt with new affiliate URL.
     if success:  # Verify if urls.txt was successfully updated.
         backup_urls_file = urls_file.with_name(urls_file.stem + "-backup" + urls_file.suffix)  # Create backup file path by adding -backup suffix before the extension.
