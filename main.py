@@ -487,6 +487,41 @@ def set_full_permissions(target_path: Union[str, Path]) -> None:
                     pass  # Continue processing remaining paths
 
 
+def force_remove_path(target_path: Union[str, Path], retries: int = 3, delay: float = 0.5) -> bool:
+    """
+    Forcefully removes a file or directory with retry and permission handling.
+
+    :param target_path: File or directory path to remove.
+    :param retries: Number of deletion retries.
+    :param delay: Delay between retries in seconds.
+    :return: True if deletion succeeded, otherwise False.
+    """
+
+    path_obj = Path(target_path)  # Convert target path into Path object
+
+    if not path_obj.exists():  # Verify if target path already does not exist
+        return True  # Return success because path is already absent
+
+    for attempt in range(retries):  # Iterate deletion retry attempts
+        try:  # Attempt permission update and deletion
+            set_full_permissions(path_obj)  # Grant full permissions recursively before deletion
+
+            if path_obj.is_dir():  # Verify if target path is a directory
+                shutil.rmtree(path_obj)  # Remove directory recursively
+            else:  # Handle file deletion path
+                path_obj.unlink()  # Remove file from filesystem
+
+            if not path_obj.exists():  # Verify if deletion completed successfully
+                return True  # Return success after confirmed deletion
+
+        except Exception:  # Catch deletion failures
+            pass  # Ignore deletion failure and retry later
+
+        time.sleep(delay)  # Wait before retrying deletion
+
+    return not path_obj.exists()  # Return final deletion state
+
+
 def clean_unknown_product_directories(output_directory):
     """
     Cleans up any "Unknown Product" directories from previous runs in the output directory.
