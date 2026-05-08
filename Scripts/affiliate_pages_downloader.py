@@ -4217,9 +4217,11 @@ def validate_url_update(old_url: str, new_url: str, filepaths: list) -> bool:
             continue  # Skip validation for read-only files to avoid false negatives.
         exists_new = url_exists_in_file(fp, new_url)  # Verify new URL presence in the file.
         if not exists_new:  # Verify whether new URL is missing in the current file.
+            print(f"{BackgroundColors.RED}[ERROR] New URL not found in file: {BackgroundColors.CYAN}{fp}{Style.RESET_ALL}")  # Log error when new URL is missing from the file.
             all_ok = False  # Mark aggregated flag as failed when missing new URL.
         exists_old = url_exists_in_file(fp, old_url)  # Verify old URL presence in the file.
         if exists_old:  # Verify whether old URL is still present in the current file.
+            print(f"{BackgroundColors.RED}[ERROR] Old URL still found in file: {BackgroundColors.CYAN}{fp}{Style.RESET_ALL}")  # Log error when old URL is still present in the file.
             all_ok = False  # Mark aggregated flag as failed when old URL remains.
     return all_ok  # Return aggregated validation result.
 
