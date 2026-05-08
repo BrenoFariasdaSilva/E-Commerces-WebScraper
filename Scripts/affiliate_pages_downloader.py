@@ -2984,6 +2984,8 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
     initial_consecutive_download_failures = 0  # Initialize consecutive download-failure counter for the first processed URLs when Chrome downloads settings are unresolved.
     downloads_dirs[:] = [str(Path(downloads_dir).resolve()) for downloads_dir in downloads_dirs]  # Resolve and normalize monitored downloads directory paths.
     opened_tabs = 0  # Track number of tabs opened by this processing loop to avoid closing the base tab.
+    renewal_success_count: int = 0  # Track total successful Amazon URL renewals for final report in only-renew mode.
+    renewal_failed_urls: List[str] = []  # Collect original URLs that failed renewal for final report in only-renew mode.
 
     if tab_count > 0:  # Verify if there are URLs to process.
         if not activate_automation_window():  # Verify if automation window activation succeeds before opening separator tab.
@@ -3004,8 +3006,14 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         invalid_url_skip = False  # Initialize invalid URL skip flag for for-loop continuation after homepage redirect detection.
 
         if only_renew_amazon_urls:  # Verify whether only-renew mode is active before executing download-specific workflow.
-            opened_tabs = only_renew_amazon_url_mode(url, index, urls, urls_file, image_paths, renew_amazon_affiliate, opened_tabs)  # Execute isolated renew-only flow for the current URL and receive updated opened tabs count.
+            opened_tabs, renewal_succeeded, renewal_original_url = only_renew_amazon_url_mode(url, index, urls, urls_file, image_paths, renew_amazon_affiliate, opened_tabs)  # Execute isolated renew-only flow and unpack tabs count, success flag, and original URL identifier.
             processed_count += 1  # Increment processed counter per attempted URL in renew-only mode.
+
+            if renewal_succeeded:  # Verify whether the current URL renewal succeeded before incrementing the success counter.
+                renewal_success_count += 1  # Increment successful renewal counter for final report.
+            else:  # Handle unsuccessful renewal result by recording original URL for final report.
+                renewal_failed_urls.append(renewal_original_url)  # Append original URL to failed renewals list for final report.
+
             continue  # Continue loop to ensure all URLs are attempted independently in renew-only mode.
 
         if not activate_automation_window():  # Verify if automation window activation succeeds before URL navigation.
