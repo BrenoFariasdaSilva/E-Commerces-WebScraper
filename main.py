@@ -2363,6 +2363,33 @@ def write_prompt_to_file(prompt_content: str, output_directory: str) -> bool:
         return False  # Return False when file writing fails
 
 
+def is_model_configuration_failure(error: PermanentApiFailureError) -> bool:
+    """
+    Determine whether a permanent API error represents a model selection/configuration failure.
+
+    :param error: PermanentApiFailureError raised by the Gemini layer.
+    :return: True when the error indicates invalid or unavailable model selection, otherwise False.
+    """
+
+    status_text = str(getattr(error, "status_text", "") or "").strip().upper()  # Normalize permanent status text for deterministic comparisons.
+    raw_message = str(error)  # Read high-level permanent error message for keyword matching.
+    original_message = str(getattr(error, "original_error", "") or "")  # Read original SDK error message for keyword matching.
+    combined_text = f"{raw_message} {original_message}".lower()  # Merge both messages into a single normalized text corpus.
+
+    has_model_token = "model" in combined_text or "models/" in combined_text  # Verify if message references model identifiers directly.
+    has_not_found_hint = "not found" in combined_text or "not_found" in combined_text  # Verify if message reports missing resources.
+    has_invalid_hint = "invalid model" in combined_text or "unsupported model" in combined_text or "unknown model" in combined_text  # Verify if message reports invalid model selection.
+    has_api_version_mismatch_hint = "is not found for api version" in combined_text  # Verify if message reports model/version compatibility mismatch.
+
+    if has_model_token and (has_not_found_hint or has_invalid_hint or has_api_version_mismatch_hint):  # Verify model-specific permanent failure indicators in message text.
+        return True  # Return True when message clearly indicates model selection/configuration failure.
+
+    if status_text == "NOT_FOUND" and has_model_token:  # Verify NOT_FOUND status paired with model references for deterministic fallback classification.
+        return True  # Return True when NOT_FOUND status clearly maps to model lookup failure.
+
+    return False  # Return False when permanent failure does not match model-selection failure patterns.
+
+
 def generate_marketing_text(product_description, description_file, product_data=None, product_url=None,  owner_name=None, api_key=None, key_index=1, total_keys=1):
     """
     Generates marketing text from product description using Gemini AI.
