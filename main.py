@@ -3604,6 +3604,73 @@ def collect_products_missing_templates(outputs_dir: str) -> List[Tuple[str, str,
     return product_dirs  # Return collected product list.
 
 
+def generate_template_from_prompt_content(prompt_content: str, output_directory: str, owner_name=None, api_key=None, key_index=1, total_keys=1, model_name: str = "gemini-3.1-flash-lite") -> bool:
+    """
+    Generate Template.txt directly from prebuilt prompt content using Gemini AI.
+
+    :param prompt_content: Prompt text read from Prompt.txt file.
+    :param output_directory: Product output directory where Template.txt will be written.
+    :param owner_name: Optional owner name label for the API key used.
+    :param api_key: Gemini API key string to use for this single generation attempt.
+    :param key_index: 1-based index of the API key being used.
+    :param total_keys: Total number of available API keys for log context.
+    :param model_name: Gemini model name for this single generation attempt.
+    :return: True if generation succeeded, False otherwise.
+    """
+
+    if not api_key:  # Verify if a concrete API key was provided by the caller.
+        print(f"{BackgroundColors.RED}Error: No Gemini API key provided for generation.{Style.RESET_ALL}")  # Report missing key for this attempt.
+        return False  # Return failure when key is unavailable.
+
+    gemini = None  # Initialize Gemini client reference for safe cleanup in all execution paths.
+
+    try:  # Try a single-key generation request and delegate key rotation to caller.
+        verbose_output(  # Emit verbose key-attempt diagnostics for this single-key attempt.
+            true_string=(
+                f"{BackgroundColors.GREEN}Attempting to use Gemini API key {owner_name or key_index} ({key_index}/{total_keys})...{Style.RESET_ALL}"
+            )
+        )  # Output verbose message.
+
+        verbose_output(  # Emit verbose model-attempt diagnostics for this single-model attempt.
+            true_string=(
+                f"{BackgroundColors.GREEN}Attempting Gemini model {BackgroundColors.CYAN}{model_name}{BackgroundColors.GREEN} with API key {owner_name or key_index}.{Style.RESET_ALL}"
+            )
+        )  # Output verbose message.
+
+        gemini = Gemini(api_key, api_key_index=key_index, model_name=model_name)  # Create Gemini instance with numeric key index and selected model name.
+        formatted_output = gemini.generate_content(prompt_content)  # Generate formatted marketing text using only prompt file content as input.
+
+        if formatted_output:  # Verify if generation returned content.
+            formatted_file = os.path.join(output_directory, "Template.txt")  # Build output file path.
+            gemini.write_output_to_file(formatted_output, formatted_file)  # Write output to file.
+            try:  # Try to validate the generated template file immediately after writing it.
+                valid_template = validate_template_file(Path(formatted_file))  # Validate generated template file and get boolean result.
+                if not valid_template:  # Verify if validation failed for the generated template.
+                    print(f"{BackgroundColors.YELLOW}[WARNING] Template validation failed for file: {BackgroundColors.CYAN}{formatted_file}{Style.RESET_ALL}")  # Log warning when template is invalid.
+            except Exception as e:  # Handle unexpected exceptions raised by the validation function.
+                print(f"{BackgroundColors.YELLOW}[WARNING] Template validation failed: {e}{Style.RESET_ALL}")  # Log warning including exception message when validation raises.
+
+            return True  # Return success for this key attempt even if validation logged warnings.
+
+        verbose_output(f"{BackgroundColors.YELLOW}API key {owner_name or key_index} returned empty response.{Style.RESET_ALL}")  # Report empty successful-response body.
+        return False  # Return failure for empty response.
+    except QuotaExceededError as e:  # Handle controlled quota exhaustion from Gemini layer.
+        print(f"{BackgroundColors.YELLOW}[WARNING] API key {BackgroundColors.CYAN}{owner_name or key_index}{BackgroundColors.YELLOW} quota exhausted. Retry category: {BackgroundColors.CYAN}{e.status_text or 'QUOTA_EXHAUSTED'}{BackgroundColors.YELLOW}. Rotating to next API key.{Style.RESET_ALL}")  # Emit deterministic quota-rotation warning with retry category.
+        raise e  # Re-raise controlled signal so caller can rotate without skipping URL.
+    except PermanentApiFailureError as e:  # Handle permanent non-retryable API failure from Gemini layer.
+        if is_model_configuration_failure(e):  # Verify if permanent error is strictly model-selection related.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Permanent model failure detected for model {BackgroundColors.CYAN}{model_name}{BackgroundColors.YELLOW} with key {BackgroundColors.CYAN}{owner_name or key_index}{BackgroundColors.YELLOW}. Falling back to next model.{Style.RESET_ALL}")  # Report model-specific permanent failure and allow deterministic fallback.
+            return False  # Return failure for this model attempt so caller can continue fallback sequence.
+        print(f"{BackgroundColors.RED}[ERROR] Permanent API failure with key {BackgroundColors.CYAN}{owner_name or key_index}{BackgroundColors.RED}: {e}{Style.RESET_ALL}")  # Report permanent failure for this key attempt.
+        raise e  # Re-raise permanent failure signal so caller can abort all key rotation.
+    except Exception as e:  # Handle non-quota generation failures.
+        verbose_output(f"{BackgroundColors.RED}Error with API key {owner_name or key_index}: {e}{Style.RESET_ALL}")  # Report unexpected generation failure.
+        return False  # Return failure for non-quota errors.
+    finally:  # Guarantee client cleanup regardless of success, quota signal, or generic failure.
+        if gemini is not None:  # Verify if Gemini client was instantiated before cleanup.
+            gemini.close()  # Close Gemini client to release resources.
+
+
 def handle_generate_template_files_from_local_mode(args: argparse.Namespace, start_time: datetime.datetime) -> bool:
     """
     Execute generate_template_files_from_local mode and return whether it was activated.
