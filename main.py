@@ -4072,26 +4072,27 @@ def handle_gemini_processing(product_description: str, description_file: str, pr
         verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Testing API key {BackgroundColors.CYAN}{owner}{BackgroundColors.GREEN}...{Style.RESET_ALL}")  # Log which owner/key is being tested for this attempt
 
         try:  # Try processing the same product with current owner/key
-            success = generate_marketing_text(  # Execute single-key Gemini generation attempt
-                product_description,  # Reuse same product description for deterministic retry behavior
-                description_file,  # Reuse same description file destination for deterministic retry behavior
-                product_data,  # Reuse same product data context across retries
-                url,  # Reuse same product URL across retries
-                owner_name=owner,  # Pass owner name for enhanced logging
-                api_key=api_key,  # Pass current key only and let caller-side logic handle rotations
-                key_index=(current_idx + 1),  # Pass numeric one-based index for Gemini client and rotation logic
-                total_keys=total_keys,  # Pass total key count for contextual logging
-            )  # End single-key generation call
+            model_success = process_gemini_model_fallbacks(  # Execute deterministic model fallback processing for current API key.
+                product_description,  # Pass product description content for Gemini generation attempts
+                description_file,  # Pass description output file path for Gemini generation attempts
+                product_data,  # Pass optional scraped product data context for Gemini generation attempts
+                url,  # Pass current product URL for contextual logging and processing
+                owner,  # Pass current API key owner name for logging context
+                api_key,  # Pass current Gemini API key for generation attempts
+                current_idx,  # Pass current zero-based API key index for rotation metadata
+                total_keys,  # Pass total available API key count for contextual logging
+            )  # End deterministic Gemini model fallback processing.
 
-            if success:  # Verify whether generation succeeded for this owner/key
+            if model_success:  # Verify whether generation succeeded for this owner/key after fallback attempts.
+                success = True  # Persist URL-level success state for final function return.
                 GEMINI_LAST_KEY_INDEX = current_idx  # Persist last successful key index for next URL
                 verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Using API key {owner} for generation...{Style.RESET_ALL}")  # Log which owner/key succeeded
                 break  # Exit retry loop and continue URL pipeline
 
-            print(f"{BackgroundColors.YELLOW}[WARNING] API key {owner} failed to generate content.{Style.RESET_ALL}")  # Report non-quota failure for this owner/key
-            current_idx = (current_idx + 1) % total_keys  # Rotate to next owner on non-quota failure to maximize resilience
-            if current_idx == 0:  # Verify if a full owner/key round has been completed
-                break  # Stop loop after one full non-quota rotation and keep failure result
+            print(f"{BackgroundColors.YELLOW}[WARNING] All models failed for API key {owner}. Rotating to next API key.{Style.RESET_ALL}")  # Report model-fallback exhaustion for this key.
+            current_idx = (current_idx + 1) % total_keys  # Rotate to next owner after model fallback exhaustion for this key.
+            if current_idx == 0:  # Verify if a full owner/key round has been completed.
+                break  # Stop loop after one full non-quota rotation and keep failure result.
         except QuotaExceededError as quota_error:  # Handle controlled quota exhaustion signal
             exhausted_label = quota_error.key_index if quota_error.key_index else owner  # Resolve exhausted owner label from exception metadata
             exhausted_key_indices.add(exhausted_label)  # Mark current owner as exhausted for this cycle
