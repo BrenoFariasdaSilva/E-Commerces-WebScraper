@@ -3875,6 +3875,40 @@ def generate_template_files_from_prompt(outputs_dir: str, api_keys: Dict[str, st
         process_template_generation_item(product_dir_path, product_dir_name, prompt_file, api_keys)  # Execute processing step.
 
 
+def handle_generate_template_files_from_prompt_mode(args: argparse.Namespace, start_time: datetime.datetime) -> bool:
+    """
+    Execute generate_template_files_from_prompt mode and return whether it was activated.
+
+    :param args: Parsed command-line arguments namespace.
+    :param start_time: Program start timestamp for execution time calculation.
+    :return: True if prompt-based generate mode was executed and main should exit early, False otherwise.
+    """
+
+    generate_from_prompt = args.generate_template_files_from_prompt  # Resolve generate_template_files_from_prompt flag from parsed arguments.
+
+    if not generate_from_prompt:  # Verify if generate_template_files_from_prompt mode is not requested.
+        return False  # Return False to indicate mode was not activated.
+
+    if not setup_environment():  # Validate and load environment configuration before generation.
+        return True  # Return True to signal early exit due to environment setup failure.
+
+    api_keys = load_api_keys()  # Load and validate Gemini API keys for template generation.
+    if not api_keys:  # Verify if at least one API key was successfully loaded.
+        return True  # Return True to signal early exit due to missing API keys.
+
+    create_directory(os.path.abspath(OUTPUT_DIRECTORY), OUTPUT_DIRECTORY.replace(".", ""))  # Ensure the base output directory exists before traversal.
+
+    reversed_api_keys = OrderedDict(reversed(list(api_keys.items())))  # Reverse ordered mapping to change generation order.
+
+    generate_template_files_from_prompt(OUTPUT_DIRECTORY, reversed_api_keys)  # Execute prompt-based template generation traversal for all product directories missing Template.txt.
+
+    finish_time = datetime.datetime.now()  # Get finish time after generate operation completes.
+    print(f"{BackgroundColors.GREEN}Execution time: {BackgroundColors.CYAN}{calculate_execution_time(start_time, finish_time)}{Style.RESET_ALL}")  # Output execution time for the generate run.
+    print(f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Program finished.{Style.RESET_ALL}")  # Output program end message.
+
+    return True  # Return True to indicate mode was executed and main should exit early.
+
+
 def handle_generate_template_files_from_local_mode(args: argparse.Namespace, start_time: datetime.datetime) -> bool:
     """
     Execute generate_template_files_from_local mode and return whether it was activated.
