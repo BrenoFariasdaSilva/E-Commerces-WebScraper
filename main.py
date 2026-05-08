@@ -1048,7 +1048,7 @@ def upgrade_root_images_from_asset_images_dir(product_directory: str, timestampe
 
     print(  # Always print upgrade summary for operational visibility
         f"{BackgroundColors.GREEN}Resolution upgrade complete: "
-        f"{BackgroundColors.CYAN}{upgraded_count}{BackgroundColors.GREEN}/{len(root_image_files)}"
+        f"{BackgroundColors.CYAN}{upgraded_count}{BackgroundColors.GREEN}/{BackgroundColors.CYAN}{len(root_image_files)}"
         f"{BackgroundColors.GREEN} root images upgraded from asset images directory.{Style.RESET_ALL}"
     )  # End of print statement
 
