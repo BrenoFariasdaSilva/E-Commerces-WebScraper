@@ -74,7 +74,7 @@ from Amazon import Amazon  # Import the Amazon class
 from collections import OrderedDict  # For deterministic ordered mapping of named API keys
 from colorama import Style  # For coloring the terminal
 from dotenv import load_dotenv  # For loading environment variables
-from Gemini import Gemini, QuotaExceededError  # Import the Gemini class and quota exhaustion signal.
+from Gemini import Gemini, PermanentApiFailureError, QuotaExceededError  # Imports for Gemini AI integration and custom exceptions
 from Logger import Logger  # For logging output to both terminal and file
 from MercadoLivre import MercadoLivre  # Import the MercadoLivre class
 from pathlib import Path  # For handling file paths
@@ -2429,6 +2429,9 @@ def generate_marketing_text(product_description, description_file, product_data=
     except QuotaExceededError as e:  # Handle controlled quota exhaustion from Gemini layer.
         verbose_output(f"{BackgroundColors.YELLOW}[WARNING] API key {owner_name or key_index} quota exhausted. Rotating to next API key.{Style.RESET_ALL}")  # Emit deterministic quota-rotation warning.
         raise e  # Re-raise controlled signal so caller can rotate without skipping URL.
+    except PermanentApiFailureError as e:  # Handle permanent non-retryable API failure from Gemini layer.
+        print(f"{BackgroundColors.RED}[ERROR] Permanent API failure with key {BackgroundColors.CYAN}{owner_name or key_index}{BackgroundColors.RED}: {e}{Style.RESET_ALL}")  # Report permanent failure for this key attempt.
+        raise e  # Re-raise permanent failure signal so caller can abort all key rotation.
     except Exception as e:  # Handle non-quota generation failures.
         verbose_output(f"{BackgroundColors.RED}Error with API key {owner_name or key_index}: {e}{Style.RESET_ALL}")  # Report unexpected generation failure.
         return False  # Return failure for non-quota errors.
@@ -4024,6 +4027,9 @@ def handle_gemini_processing(product_description: str, description_file: str, pr
                 current_idx = 0  # Restart rotation from first owner after cooldown
 
             continue  # Continue retry loop for same URL
+        except PermanentApiFailureError as perm_error:  # Handle permanent non-retryable API failure signal
+            print(f"{BackgroundColors.RED}[ERROR] Permanent API failure detected for URL: {BackgroundColors.CYAN}{url}{BackgroundColors.RED}. Status: {BackgroundColors.CYAN}{perm_error.status_code} - {perm_error.status_text}{BackgroundColors.RED}. Aborting all key rotation for this URL.{Style.RESET_ALL}")  # Report permanent failure and abort all remaining key attempts
+            break  # Abort all key rotation immediately on permanent failure to prevent useless retry storms
 
     return success  # Return whether Gemini generation succeeded
 
