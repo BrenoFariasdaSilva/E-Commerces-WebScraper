@@ -244,6 +244,6 @@ def write_urls_to_file(urls_to_write: list, input_file_path: str, recursive: boo
                     file.write(f"{url}\n")  # Write only the URL
         if recursive:  # If recursive flag is True
             backup_file_path = input_file_path.replace(".txt", "-backup.txt")  # Determine backup file path
-            write_urls_to_file(urls_to_write, backup_file_path, False)  # Recursively write to backup file if recursive flag is True
+            write_urls_to_file(urls_to_write, backup_file_path, False, True)  # Recursively write to backup file if recursive flag is True
     except Exception as e:  # Handle any exception during file write
         print(f"{BackgroundColors.RED}Error writing to file {input_file_path}: {e}{Style.RESET_ALL}")  # Report write errors
