@@ -2317,6 +2317,66 @@ def append_processed_product_to_history(day_str: str, platform_name: str, produc
     save_history_file(history, history_file_path)  # Persist the updated history to disk
 
 
+def remove_url_line_from_single_file(url: str, local_html_path, target_file_path: str) -> bool:
+    """
+    Removes a line containing the specified URL from a single target file.
+
+    :param url: The URL to remove from the target file.
+    :param local_html_path: Optional local HTML path to match for more precise removal.
+    :param target_file_path: Absolute or relative path to the file to modify.
+    :return: True if a line was removed, False otherwise.
+    """
+
+    try:  # Wrap file operations to avoid crashing on IO errors
+        if not verify_filepath_exists(target_file_path):  # Verify if the target file exists before reading
+            return False  # Indicate nothing removed when file is absent
+
+        removed = False  # Track whether a matching line was removed
+        with open(target_file_path, "r", encoding="utf-8") as f:  # Read current target file contents
+            lines = f.readlines()  # Load all lines from target file
+
+        new_lines = []  # Initialize list to collect lines to keep after removal
+
+        for line in lines:  # Iterate over each existing line in the file
+            stripped = line.strip()  # Trim whitespace from current line
+
+            if not stripped:  # Preserve empty lines without alteration
+                new_lines.append(line)  # Keep blank lines as-is
+                continue  # Continue to next line
+
+            parts = stripped.split(None, 1)  # Split into at most 2 tokens (URL and optional path)
+            first_token = parts[0] if parts else ""  # Extract URL token from split result
+            second_token = parts[1].strip() if len(parts) > 1 else None  # Extract optional local path when present
+
+            if not removed and first_token == url:  # Candidate match on URL token
+                if local_html_path:  # Verify if caller provided a local path for exact matching
+                    if second_token and os.path.normpath(second_token) == os.path.normpath(local_html_path):  # Exact local path match against normalized paths
+                        removed = True  # Mark line as removed and skip appending
+                        continue  # Skip appending matched line
+                    else:  # URL matches but local path differs
+                        new_lines.append(line)  # Keep this line when local path does not match
+                        continue  # Continue processing remaining lines
+                else:  # No local path required; remove first matching URL occurrence
+                    removed = True  # Mark line as removed and skip appending
+                    continue  # Skip appending matched line
+
+            new_lines.append(line)  # Keep non-matching line in output
+
+        if removed:  # Write updated lines back to target file only when a line was removed
+            tmp_path = target_file_path + ".tmp"  # Temporary file path for safe atomic write
+            with open(tmp_path, "w", encoding="utf-8") as f:  # Write updated content to temp file
+                f.writelines(new_lines)  # Write kept lines to temporary file
+            try:  # Attempt atomic replace of target file
+                os.replace(tmp_path, target_file_path)  # Replace original with temp file atomically
+            except Exception:  # Fallback to non-atomic write when atomic replace fails
+                with open(target_file_path, "w", encoding="utf-8") as f:  # Open original for direct overwrite
+                    f.writelines(new_lines)  # Write kept lines directly to original file
+
+        return removed  # Return whether a matching line was removed
+    except Exception:  # On any error, do not fail the scraping run
+        return False  # Indicate nothing removed due to exception
+
+
 def remove_url_line_from_input_file(url, local_html_path=None):
     """
     Removes a line containing the specified URL from the input file and its backup. If local_html_path is provided, it will only remove the line if it matches both the URL and the local HTML path.
