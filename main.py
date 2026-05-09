@@ -2319,62 +2319,23 @@ def append_processed_product_to_history(day_str: str, platform_name: str, produc
 
 def remove_url_line_from_input_file(url, local_html_path=None):
     """
-    Removes a line containing the specified URL from the input file. If local_html_path is provided, it will only remove the line if it matches both the URL and the local HTML path.
-    
-    :param url: The URL to remove from the input file
-    :param local_html_path: Optional local HTML path to match for more precise removal
-    :return: True if a line was removed, False otherwise
+    Removes a line containing the specified URL from the input file and its backup. If local_html_path is provided, it will only remove the line if it matches both the URL and the local HTML path.
+
+    :param url: The URL to remove from the input file.
+    :param local_html_path: Optional local HTML path to match for more precise removal.
+    :return: True if a line was removed from the primary input file, False otherwise.
     """
-    
+
     verbose_output(
         f"{BackgroundColors.GREEN}Removing URL from input file: {BackgroundColors.CYAN}{url}{Style.RESET_ALL}"
     )  # Output the verbose message
-    
-    try:  # Wrap file operations to avoid crashing the main loop
-        if not verify_filepath_exists(INPUT_FILE): # If the input file doesn't exist, nothing to remove
-            return False  # Indicate nothing removed
 
-        removed = False  # Track whether we removed a line
-        with open(INPUT_FILE, "r", encoding="utf-8") as f:  # Read current input file
-            lines = f.readlines()  # Load all lines
+    backup_file_path = INPUT_FILE.replace(".txt", "-backup.txt")  # Derive backup file path from primary input file path
 
-        new_lines = []  # Lines to keep
-        for line in lines:  # Iterate existing lines
-            stripped = line.strip()  # Trim whitespace
-            if not stripped:  # Preserve empty lines
-                new_lines.append(line)  # Keep blank lines as-is
-                continue  # Continue to next line
+    removed = remove_url_line_from_single_file(url, local_html_path, INPUT_FILE)  # Remove URL line from primary input file
+    remove_url_line_from_single_file(url, local_html_path, backup_file_path)  # Synchronize removal to backup file to maintain consistency
 
-            parts = stripped.split(None, 1)  # Split into at most 2 tokens (url and optional path)
-            first_token = parts[0] if parts else ""  # Extract URL token
-            second_token = parts[1].strip() if len(parts) > 1 else None  # Extract optional local path
-
-            if not removed and first_token == url:  # Candidate match on URL
-                if local_html_path:  # If caller provided a local path, prefer exact match with second token
-                    if second_token and os.path.normpath(second_token) == os.path.normpath(local_html_path):  # Exact local path match
-                        removed = True  # Mark removed and skip appending this line
-                        continue  # Skip appending matched line
-                    else:  # URL matches but local path differs
-                        new_lines.append(line)  # Keep this line
-                        continue  # Continue processing
-                else:  # No local path required, remove first occurrence of matching URL
-                    removed = True  # Mark removed and skip appending this line
-                    continue  # Skip appending matched line
-
-            new_lines.append(line)  # Keep non-matching line
-
-        if removed:  # If we removed a line, atomically rewrite the file
-            tmp_path = INPUT_FILE + ".tmp"  # Temporary file path for safe write
-            with open(tmp_path, "w", encoding="utf-8") as f:  # Write new content to temp file
-                f.writelines(new_lines)  # Write kept lines back
-            try:  # Attempt atomic replace
-                os.replace(tmp_path, INPUT_FILE)  # Replace original file with temp file
-            except Exception:  # Fallback to non-atomic replace
-                with open(INPUT_FILE, "w", encoding="utf-8") as f:  # Open original for overwrite
-                    f.writelines(new_lines)  # Write kept lines
-        return removed  # Return whether a line was removed
-    except Exception:  # On any error, do not fail the scraping run
-        return False  # Indicate nothing removed
+    return removed  # Return whether a line was removed from the primary input file
 
 
 def write_prompt_to_file(prompt_content: str, output_directory: str) -> bool:
