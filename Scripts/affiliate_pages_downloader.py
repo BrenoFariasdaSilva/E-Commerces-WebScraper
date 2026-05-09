@@ -4384,12 +4384,12 @@ def replace_url_recursively(base_path: Path, old_url: str, new_url: str) -> bool
     :param base_path: Root directory to traverse recursively.
     :param old_url: Original URL to replace.
     :param new_url: New URL to persist.
-    :return: True if at least one operation succeeded, False otherwise.
+    :return: True if at least one operation succeeded 
     """
 
     if not base_path.exists():  # Verify whether base directory exists.
         verbose_output(f"{BackgroundColors.YELLOW}[WARNING] Outputs directory not found for recursive URL replacement: {BackgroundColors.CYAN}{base_path}{Style.RESET_ALL}")  # Log missing directory.
-        return False  # Return failure when directory does not exist.
+        return True  # Return success when directory does not exist.
 
     any_success = False  # Track whether at least one file operation succeeded.
 
@@ -4454,7 +4454,9 @@ def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, urls_fi
     backup_urls_file = urls_file.with_name(urls_file.stem + "-backup" + urls_file.suffix)  # Create backup file path by adding -backup suffix before extension.
     backup_success = update_urls_txt_with_new_amazon_url(current_url, copied_url, backup_urls_file)  # Update urls-backup.txt with new affiliate URL.
 
-    recursive_success = replace_url_recursively(outputs_dir, current_url, copied_url)  # Replace renewed Amazon URL recursively inside Outputs files.
+    outputs_dir_recursive_success = replace_url_recursively(outputs_dir, current_url, copied_url)  # Replace renewed Amazon URL recursively inside Outputs files.
+    # also replace the urls recursively in the urls.txt files
+    inputs_dir_recursive_success = replace_url_recursively(urls_file.parent, current_url, copied_url)  # Replace renewed Amazon URL recursively inside urls.txt files.
 
     print_url_update(current_url, copied_url)  # Print colored OLD and NEW URL output to terminal for visibility.
 
@@ -4467,19 +4469,22 @@ def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, urls_fi
     if affected_files:  # Only validate when there was something to actually update.
         validation_success = validate_url_update(current_url, copied_url, files_to_validate)  # Validate only impacted files.
 
-    pipeline_success = (success and validation_success and recursive_success)  # Aggregate all critical pipeline steps.
+    pipeline_success = (success and validation_success and outputs_dir_recursive_success and inputs_dir_recursive_success)  # Aggregate all critical pipeline steps.
 
     if not backup_success:  # Verify backup update failure.
         verbose_output(f"{BackgroundColors.RED}Failed to update urls-backup.txt with new Amazon URL{Style.RESET_ALL}")  # Log backup failure.
 
-    if not recursive_success:  # Verify recursive replacement failure.
+    if not outputs_dir_recursive_success:  # Verify Outputs directory recursive replacement failure.
         verbose_output(f"{BackgroundColors.RED}Recursive URL replacement failed in Outputs directory{Style.RESET_ALL}")  # Log recursion failure.
+
+    if not inputs_dir_recursive_success:  # Verify Inputs directory recursive replacement failure.
+        verbose_output(f"{BackgroundColors.RED}Recursive URL replacement failed in Inputs directory{Style.RESET_ALL}")  # Log recursion failure.
 
     if not validation_success:  # Verify validation failure.
         verbose_output(f"{BackgroundColors.RED}URL validation failed after renewal process{Style.RESET_ALL}")  # Log validation failure.
 
     if not pipeline_success:  # Verify any stage failure.
-        print(f"{BackgroundColors.YELLOW}[WARNING] Affiliate URL update failed or partially inconsistent (success={success}, backup={backup_success}, recursive={recursive_success}, validation={validation_success}){Style.RESET_ALL}")  # Log full pipeline state.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Affiliate URL update failed or partially inconsistent (success={success}, backup={backup_success}, outputs_dir_recursive={outputs_dir_recursive_success}, inputs_dir_recursive={inputs_dir_recursive_success}, validation={validation_success}){Style.RESET_ALL}")  # Log full pipeline state.
         return False, current_url  # Return failure when any critical stage is not satisfied.
 
     return True, copied_url  # Return success only when full pipeline is consistent.
