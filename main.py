@@ -786,7 +786,7 @@ def locate_asset_directories(product_dir_path: str) -> Optional[List[str]]:
     :return: List of absolute paths to images, scripts, and styles directories if found, or None if not found.
     """
 
-    verbose_output(f"{BackgroundColors.GREEN}Locating asset directories (images, scripts, styles) within product directory: {BackgroundColors.CYAN}{product_dir_path}{Style.RESET_ALL}")
+    verbose_output(f"{BackgroundColors.GREEN}Locating asset directories {BackgroundColors.CYAN}(images, scripts, styles){BackgroundColors.GREEN} within product directory: {BackgroundColors.CYAN}{product_dir_path}{Style.RESET_ALL}")
 
     if not os.path.isdir(product_dir_path):  # Verify if product directory exists
         return None  # Return None when product directory does not exist
