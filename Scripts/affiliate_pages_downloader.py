@@ -4354,7 +4354,7 @@ def replace_url_in_file(filepath: str, old_url: str, new_url: str) -> bool:
     updated_text = text.replace(old_url, new_url)  # Replace all occurrences of old URL.
 
     if updated_text == text:  # Verify whether any replacement occurred.
-        verbose_output(f"{BackgroundColors.GREEN}No URL replacement needed in file: {BackgroundColors.CYAN}{filepath_obj}{Style.RESET_ALL}")  # Log no-op state.
+        # verbose_output(f"{BackgroundColors.GREEN}No URL replacement needed in file: {BackgroundColors.CYAN}{filepath_obj}{Style.RESET_ALL}")  # Log no-op state.
         return True  # Return success because file is already in correct state.
 
     try:  # Attempt to write updated content.
