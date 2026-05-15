@@ -3658,7 +3658,7 @@ def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_i
     return "Timeout"  # Return timeout status after wait window expires.
 
 
-def wait_for_download_file_stabilization(downloads_dirs: List[str], timeout: float = 10.0, interval: float = 0.5, recent_window: float = 10.0) -> None:
+def wait_for_download_file_stabilization(downloads_dirs: List[str], timeout: float = 30.0, interval: float = 0.5, recent_window: float = 15.0) -> None:
     """
     Waits until no recently modified or temporary download files are present in monitored directories.
 
