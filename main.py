@@ -747,30 +747,25 @@ def exclude_small_images(product_dir, min_size_bytes=10240):
             print(f"{BackgroundColors.RED}Error verify/removing image {BackgroundColors.CYAN}{img_path}{BackgroundColors.RED}: {BackgroundColors.YELLOW}{e}{Style.RESET_ALL}")
 
 
-def clean_images_directory(images_dir: str) -> None:
+def clean_disallowed_files_recursively(target_dir: str) -> None:
     """
-    Clean images directory by removing non-image files.
+    Remove all files with disallowed extensions recursively in the target directory.
 
-    :param images_dir: Absolute path to images directory.
+    :param target_dir: Absolute path to the directory to clean.
     :return: None
     """
-    
-    verbose_output(f"{BackgroundColors.GREEN}Cleaning images directory: {BackgroundColors.CYAN}{images_dir}{Style.RESET_ALL}")
-    
-    if not os.path.isdir(images_dir):  # Verify if the images directory exists
-        print(f"{BackgroundColors.YELLOW}Images directory does not exist: {BackgroundColors.CYAN}{images_dir}{Style.RESET_ALL}")
-        return  # Return if the images directory does not exist
 
-    allowed_exts = {".jpg", ".jpeg", ".png", ".gif", ".webp"}  # Define allowed image extensions for cleanup filtering
+    verbose_output(f"{BackgroundColors.GREEN}Recursively cleaning disallowed files in: {BackgroundColors.CYAN}{target_dir}{Style.RESET_ALL}")  # Log the cleanup operation
 
-    if os.path.isdir(images_dir):  # Verify if images directory exists before cleanup
-        for fname in os.listdir(images_dir):  # Iterate all entries inside images directory
-            fpath = os.path.join(images_dir, fname)  # Build absolute path to current entry
-            _, ext = os.path.splitext(fname)  # Extract current file extension
+    allowed_exts = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".txt", ".json", ".mp4", ".webm", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".m4v", ".mpeg", ".mpg", ".3gp", ".ts", ".m3u8", ".zip", ".rar", ".7z"}  # Define allowed file extensions for cleanup filtering
 
-            if not ext.lower() in allowed_exts:  # Verify if current file extension is not an allowed image extension
-                try:  # Attempt removal of non-image file
-                    force_remove_path(fpath)  # Remove non-image file from images directory using centralized deletion
+    for root, dirs, files in os.walk(target_dir):  # Traverse all directories and files recursively
+        for fname in files:  # Iterate all files in the current directory
+            fpath = os.path.join(root, fname)  # Build absolute path to current file
+            _, ext = os.path.splitext(fname)  # Extract file extension
+            if ext.lower() not in allowed_exts:  # Verify if file extension is not allowed
+                try:  # Attempt removal of disallowed file
+                    force_remove_path(fpath)  # Remove disallowed file using centralized deletion
                 except Exception:  # Ignore deletion failures to preserve cleanup continuity
                     pass  # Continue cleanup execution after deletion failure
 
@@ -821,7 +816,7 @@ def cleaning_product_output_dir(product_dir: str, asset_dirs: Optional[List[str]
 
     images_dir, scripts_dir, styles_dir = asset_dirs  # Unpack located asset directory paths
 
-    clean_images_directory(images_dir)  # Remove non-image files from images directory
+    clean_disallowed_files_recursively(images_dir)  # Remove non-image files from images directory
 
     if os.path.isdir(scripts_dir):  # Verify if scripts directory exists
         verbose_output(f"{BackgroundColors.GREEN}Removing scripts directory: {BackgroundColors.CYAN}{scripts_dir}{Style.RESET_ALL}")
@@ -4728,6 +4723,7 @@ def run_post_processing(context: dict, urls_to_process: list) -> None:
 
     timestamped_output_dir = context["timestamped_output_dir"]  # Retrieve timestamped output directory from context
 
+    clean_disallowed_files_recursively(timestamped_output_dir)  # Clean any disallowed files from the output directory before final verification
     run_final_output_integrity_verification(timestamped_output_dir, urls_to_process)  # Run final reliability verification after all URL processing has completed
 
     removed = remove_repeated_products_older_than(2, os.path.join(OUTPUT_DIRECTORY, "history.json"), OUTPUT_DIRECTORY)  # Remove repeated products older than 2 days and collect removed dirs
