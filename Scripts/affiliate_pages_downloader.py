@@ -4101,6 +4101,9 @@ def wait_for_valid_affiliate_url(previous_url: str, get_amazon_url_img: Path, ti
     normalized_previous_url = normalize_affiliate_url(previous_url)  # Normalize previous URL for equality verification.
 
     while time.time() - start_time < max(1, int(timeout)):  # Iterate until timeout expires while reading clipboard content.
+        box = locate_image(get_amazon_url_img)  # Attempt to locate GetAffiliateURL button image on screen.
+        if box is not None:  # Verify image was found before clicking.
+            click_box_center(box)  # Click center of detected GetAffiliateURL button box to trigger URL copy action.
         pyautogui.hotkey("ctrl", "c")  # Trigger copy action to refresh clipboard with current affiliate URL.
         time.sleep(0.25)  # Wait briefly to allow clipboard propagation.
         pyautogui.hotkey("ctrl", "c")  # Trigger copy action to refresh clipboard with current affiliate URL.
