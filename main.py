@@ -747,9 +747,77 @@ def exclude_small_images(product_dir, min_size_bytes=10240):
             print(f"{BackgroundColors.RED}Error verify/removing image {BackgroundColors.CYAN}{img_path}{BackgroundColors.RED}: {BackgroundColors.YELLOW}{e}{Style.RESET_ALL}")
 
 
+def sort_and_prefix_image_files_in_directory(images_dir: str, allowed_exts: set) -> None:
+    """
+    Sort image files by size and apply deterministic numeric prefixes.
+
+    :param images_dir: Absolute path to the images directory to rename.
+    :param allowed_exts: Set of allowed image file extensions.
+    :return: None
+    """
+
+    if not os.path.isdir(images_dir):  # Verify that the images directory exists.
+        return  # Return early when the directory is unavailable.
+
+    if os.path.basename(os.path.normpath(images_dir)) != "images":  # Verify that the directory name is exactly images.
+        return  # Return early when the directory name does not match.
+
+    ordered_files: List[Tuple[int, str, str, int, str]] = []  # Store deterministic file metadata for sorting.
+
+    try:  # Attempt to collect the current direct image files.
+        for order_index, fname in enumerate(sorted(os.listdir(images_dir))):  # Traverse direct files in deterministic lexical order.
+            file_path = os.path.join(images_dir, fname)  # Build the absolute path for the current file.
+            if not os.path.isfile(file_path):  # Verify that the entry is a regular file.
+                continue  # Skip directories and non-file entries.
+            _, ext = os.path.splitext(fname)  # Extract the file extension for filtering.
+            if ext.lower() not in allowed_exts:  # Verify that the file is a supported image asset.
+                continue  # Skip non-image assets during sorting.
+            file_size = os.path.getsize(file_path)  # Read the current file size from disk.
+            basename = os.path.splitext(fname)[0]  # Extract the basename without extension.
+            normalized_basename = re.sub(r"^\d+[_-]+", "", basename).strip("_- ")  # Remove an existing numeric prefix from the basename.
+            if not normalized_basename:  # Verify that normalization still left a usable basename.
+                normalized_basename = basename.strip("_- ") or "image"  # Preserve a safe fallback basename when stripping empties the name.
+            ordered_files.append((order_index, fname, file_path, file_size, normalized_basename))  # Store candidate metadata for stable sorting.
+    except Exception as e:  # Capture unexpected directory enumeration errors.
+        print(f"{BackgroundColors.YELLOW}Error sorting images in directory {BackgroundColors.CYAN}{images_dir}{BackgroundColors.YELLOW}: {BackgroundColors.CYAN}{e}{Style.RESET_ALL}")  # Report sorting failure and continue.
+        return  # Return early when directory enumeration fails.
+
+    if not ordered_files:  # Verify that there are image files to rename.
+        return  # Return early when no image files are available.
+
+    ordered_files.sort(key=lambda item: (-item[3], item[0]))  # Sort by file size descending and lexical order for stable ties.
+    staged_files: List[Tuple[str, int, str, str]] = []  # Store successfully staged file data for the final rename pass.
+
+    for position, (_, fname, file_path, _, normalized_basename) in enumerate(ordered_files, 1):  # Assign deterministic positions after sorting.
+        ext = os.path.splitext(fname)[1]  # Preserve the original extension casing in the final filename.
+        temp_name = f"__image_sort__{position:06d}__{fname}"  # Build a temporary rename target within the same directory.
+        temp_path = resolve_collision_path(images_dir, temp_name)  # Resolve any temporary naming collision before renaming.
+        try:  # Attempt to move the source file into its temporary path.
+            rename_with_retry(file_path, temp_path)  # Move the file into its temporary sorting path.
+            staged_files.append((temp_path, position, normalized_basename, ext))  # Track only files that were staged successfully.
+        except Exception as e:  # Preserve cleanup continuity when a rename fails.
+            print(f"{BackgroundColors.YELLOW}Error staging image file {BackgroundColors.CYAN}{file_path}{BackgroundColors.YELLOW}: {BackgroundColors.CYAN}{e}{Style.RESET_ALL}")  # Report staging failure and continue.
+
+    renamed_count = 0  # Track successfully renamed files for logging.
+
+    for temp_path, position, normalized_basename, ext in staged_files:  # Apply the final numeric prefix in sorted order.
+        if not os.path.exists(temp_path):  # Verify that the staged file still exists before finalizing.
+            continue  # Skip staged entries that disappeared after the first pass.
+        final_name = f"{position}_{normalized_basename}{ext}"  # Build the final sorted filename while preserving the extension.
+        final_path = resolve_collision_path(images_dir, final_name)  # Resolve any final naming collision safely.
+        try:  # Attempt to move the staged file to its final name.
+            rename_with_retry(temp_path, final_path)  # Move the staged file to its final sorted name.
+            renamed_count += 1  # Increment the count of successfully renamed files.
+        except Exception as e:  # Preserve cleanup continuity when the final rename fails.
+            print(f"{BackgroundColors.YELLOW}Error finalizing image file {BackgroundColors.CYAN}{temp_path}{BackgroundColors.YELLOW}: {BackgroundColors.CYAN}{e}{Style.RESET_ALL}")  # Report final rename failure and continue.
+
+    if renamed_count > 0:  # Verify that at least one image file was renamed.
+        verbose_output(f"{BackgroundColors.GREEN}Sorted image files in directory: {BackgroundColors.CYAN}{images_dir}{Style.RESET_ALL}")  # Log the completed image ordering step.
+
+
 def clean_disallowed_files_recursively(target_dir: str) -> None:
     """
-    Remove all files with disallowed extensions recursively in the target directory.
+    Remove disallowed files recursively in the target directory and reorder image files.
 
     :param target_dir: Absolute path to the directory to clean.
     :return: None
@@ -759,15 +827,26 @@ def clean_disallowed_files_recursively(target_dir: str) -> None:
 
     allowed_exts = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".txt", ".json", ".mp4", ".webm", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".m4v", ".mpeg", ".mpg", ".3gp", ".ts", ".m3u8", ".zip", ".rar", ".7z"}  # Define allowed file extensions for cleanup filtering
 
-    for root, dirs, files in os.walk(target_dir):  # Traverse all directories and files recursively
-        for fname in files:  # Iterate all files in the current directory
-            fpath = os.path.join(root, fname)  # Build absolute path to current file
-            _, ext = os.path.splitext(fname)  # Extract file extension
-            if ext.lower() not in allowed_exts:  # Verify if file extension is not allowed
-                try:  # Attempt removal of disallowed file
-                    force_remove_path(fpath)  # Remove disallowed file using centralized deletion
-                except Exception:  # Ignore deletion failures to preserve cleanup continuity
-                    pass  # Continue cleanup execution after deletion failure
+    if not os.path.isdir(target_dir):  # Verify that the target directory exists before traversal.
+        return  # Return early when the target directory is unavailable.
+
+    for root, dirs, files in os.walk(target_dir):  # Traverse all directories and files recursively.
+        dirs.sort()  # Sort directory traversal order for deterministic recursion.
+        files.sort()  # Sort file traversal order for deterministic cleanup.
+        for fname in files:  # Iterate all files in the current directory.
+            fpath = os.path.join(root, fname)  # Build absolute path to current file.
+            _, ext = os.path.splitext(fname)  # Extract file extension.
+            if ext.lower() not in allowed_exts:  # Verify if file extension is not allowed.
+                try:  # Attempt removal of disallowed file.
+                    force_remove_path(fpath)  # Remove disallowed file using centralized deletion.
+                except Exception:  # Ignore deletion failures to preserve cleanup continuity.
+                    pass  # Continue cleanup execution after deletion failure.
+
+        if os.path.basename(os.path.normpath(root)) == "images":  # Verify that the current directory is exactly images.
+            try:  # Attempt to reorder image files after cleanup.
+                sort_and_prefix_image_files_in_directory(root, allowed_exts)  # Sort remaining image files by size and rename them.
+            except Exception:  # Ignore renaming failures to preserve cleanup continuity.
+                pass  # Continue cleanup execution after rename failure.
 
 
 def locate_asset_directories(product_dir_path: str) -> Optional[List[str]]:
@@ -801,7 +880,7 @@ def locate_asset_directories(product_dir_path: str) -> Optional[List[str]]:
 
 def cleaning_product_output_dir(product_dir: str, asset_dirs: Optional[List[str]]) -> None:
     """
-    Clean product output directory by removing non-image files from images directory and deleting scripts/styles directories.
+    Clean product output directory by deleting scripts/styles directories.
 
     :param product_dir: Indexed product directory name inside the timestamped run dir.
     :param asset_dirs: List of absolute paths to images, scripts, and styles directories, or None if not found.
@@ -815,8 +894,6 @@ def cleaning_product_output_dir(product_dir: str, asset_dirs: Optional[List[str]
         return  # Return early when no asset structure is found
 
     images_dir, scripts_dir, styles_dir = asset_dirs  # Unpack located asset directory paths
-
-    clean_disallowed_files_recursively(images_dir)  # Remove non-image files from images directory
 
     if os.path.isdir(scripts_dir):  # Verify if scripts directory exists
         verbose_output(f"{BackgroundColors.GREEN}Removing scripts directory: {BackgroundColors.CYAN}{scripts_dir}{Style.RESET_ALL}")
