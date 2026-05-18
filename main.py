@@ -4332,16 +4332,19 @@ def handle_cleanup(product_directory: str, timestamped_output_dir: str, html_pat
     """
     
     asset_dirs = None  # Initialize asset_dirs as None to explicitly represent unresolved asset directories
-    product_dir_path = os.path.join(timestamped_output_dir, product_directory)
+    product_dir_path = os.path.join(timestamped_output_dir, product_directory)  # Build the absolute product directory path.
 
     if product_directory and isinstance(product_directory, str):  # Only run image cleanup for valid product dirs
         asset_dirs = locate_asset_directories(product_dir_path)  # Locate and return a list for the images_dir, scripts_dir, and styles_dir inside the product directory for use in cleanup and resolution upgrade steps
-        cleaning_product_output_dir(product_dir_path, asset_dirs)  # Clean images/scripts/styles after deduplication and small image filtering
-        clean_duplicate_images(product_dir_path)  # Deduplicate images in final location
-        exclude_small_images(product_dir_path)  # Remove extremely small images
 
     input_source = html_path_for_assets or local_html_path  # Determine original input source to copy
     copy_original_input_to_output(input_source, product_directory, base_output_dir=timestamped_output_dir)  # Copy original input into final product folder
+
+    if product_directory and isinstance(product_directory, str):  # Only run recursive cleanup for valid product dirs
+        clean_disallowed_files_recursively(product_dir_path)  # Remove disallowed files and reorder image files after the copy step.
+        cleaning_product_output_dir(product_dir_path, asset_dirs)  # Delete scripts/styles directories after the recursive cleanup.
+        clean_duplicate_images(product_dir_path)  # Deduplicate images in final location.
+        exclude_small_images(product_dir_path)  # Remove extremely small images.
 
     if product_directory and isinstance(product_directory, str) and asset_dirs and len(asset_dirs) >= 1:  # Only run resolution upgrade for valid product dirs
         upgrade_root_images_from_asset_images_dir(product_directory, timestamped_output_dir, asset_dirs[0])  # Replace low-res root images with higher-resolution equivalents sourced from the asset images directory
