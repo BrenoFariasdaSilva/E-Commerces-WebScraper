@@ -2751,7 +2751,7 @@ def apply_renewed_url_to_files(original_url: str, renewed_url: str, urls_file: P
         update_urls_txt_with_new_amazon_url(original_url, renewed_url, backup_file)  # Replace original URL with renewed URL in the backup URLs input file.
 
 
-def renew_amazon_url_for_tab(url: str, current_tab: int, urls_file: Path, share_button_img: Path, renew_amazon_affiliate: bool) -> Tuple[str, bool, str, str]:
+def renew_amazon_url_for_tab(url: str, current_tab: int, urls_file: Path, share_button_img: Path, get_amazon_url_img: Path, renew_amazon_affiliate: bool) -> Tuple[str, bool, str, str]:
     """
     Attempts Amazon affiliate URL renewal for the current URL when it matches the affiliate pattern.
 
@@ -2759,6 +2759,7 @@ def renew_amazon_url_for_tab(url: str, current_tab: int, urls_file: Path, share_
     :param current_tab: Current browser tab index for logging purposes.
     :param urls_file: Path to main URLs input file.
     :param share_button_img: Path to ShareAffiliateURL button image.
+    :param get_amazon_url_img: Path to GetAffiliateURL button image.
     :param renew_amazon_affiliate: Flag indicating whether renewal is enabled.
     :return: Tuple of resolved URL, renewal success flag, renewed URL, and renewal reason string.
     """
@@ -2767,7 +2768,7 @@ def renew_amazon_url_for_tab(url: str, current_tab: int, urls_file: Path, share_
         return url, False, url, "URL did not match Amazon affiliate pattern"  # Return original URL with failure status when pattern does not match.
 
     original_url = url  # Preserve original URL before potential renewal replacement.
-    url, renewal_success, renewed_url = handle_amazon_affiliate_url(current_tab, url, share_button_img, Path(urls_file), renew_amazon_affiliate)  # Execute Amazon affiliate renewal for current URL.
+    url, renewal_success, renewed_url = handle_amazon_affiliate_url(current_tab, url, share_button_img, get_amazon_url_img, Path(urls_file), renew_amazon_affiliate)  # Execute Amazon affiliate renewal for current URL.
 
     if renewal_success and renewed_url != original_url:  # Verify whether renewal succeeded and URL changed before returning success status.
         return url, True, renewed_url, "Renewed URL generated"  # Return renewed URL with success status when renewal changed the URL.
@@ -2805,7 +2806,7 @@ def only_renew_amazon_url_mode(url: str, index: int, urls: List[str], urls_file:
             opened_tabs = open_url_in_new_tab(url, opened_tabs)  # Open URL in new tab and update opened tabs counter.
             current_tab = index  # Store current tab index for renewal logging.
 
-            url, renewal_success, renewed_url, renewal_reason = renew_amazon_url_for_tab(url, current_tab, urls_file, image_paths["share_button_img"], renew_amazon_affiliate)  # Execute unified Amazon affiliate URL renewal and capture result tuple.
+            url, renewal_success, renewed_url, renewal_reason = renew_amazon_url_for_tab(url, current_tab, urls_file, image_paths["share_button_img"], image_paths["get_amazon_url_img"], renew_amazon_affiliate)  # Execute unified Amazon affiliate URL renewal and capture result tuple.
 
             if renewal_success and renewed_url != original_url:  # Verify whether renewal succeeded and URL changed before persisting to files.
                 apply_renewed_url_to_files(original_url, renewed_url, urls_file)  # Apply renewed URL to both main and backup input files.
@@ -3025,7 +3026,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         current_tab = index  # Store current tab index.
         original_url = url  # Preserve original URL before potential Amazon affiliate renewal modification.
 
-        url, renewal_success, renewed_url, _ = renew_amazon_url_for_tab(url, current_tab, urls_file, image_paths["share_button_img"], renew_amazon_affiliate)  # Execute unified Amazon affiliate URL renewal and capture result tuple.
+        url, renewal_success, renewed_url, _ = renew_amazon_url_for_tab(url, current_tab, urls_file, image_paths["share_button_img"], image_paths["get_amazon_url_img"], renew_amazon_affiliate)  # Execute unified Amazon affiliate URL renewal and capture result tuple.
 
         if renewal_success and renewed_url != original_url:  # Verify whether renewal succeeded and URL actually changed before applying file updates.
             apply_renewed_url_to_files(original_url, renewed_url, urls_file)  # Apply renewed URL to both main and backup input files.
@@ -3479,13 +3480,14 @@ def scroll_window_to_top_center() -> None:
         pass  # Ignore exceptions to preserve execution flow when Home key press fails
 
 
-def handle_amazon_affiliate_url(current_tab: int, url: str, share_button_img: Path, urls_file: Path, renew_amazon_affiliate: bool) -> Tuple[str, bool, str]:
+def handle_amazon_affiliate_url(current_tab: int, url: str, share_button_img: Path, get_amazon_url_img: Path, urls_file: Path, renew_amazon_affiliate: bool) -> Tuple[str, bool, str]:
     """
     Handle Amazon affiliate URL renewal flow.
 
     :param current_tab: Current browser tab index.
     :param url: Original URL being processed.
     :param share_button_img: Path to ShareAffiliateURL button image.
+    :param get_amazon_url_img: Path to GetAffiliateURL button image.
     :param urls_file: Path to urls.txt file.
     :param renew_amazon_affiliate: Flag indicating whether renewal is enabled.
     :return: Tuple containing possibly updated URL, success flag, and renewed URL.
@@ -3498,7 +3500,7 @@ def handle_amazon_affiliate_url(current_tab: int, url: str, share_button_img: Pa
     renewed_url = url  # Initialize renewed URL with original URL.
 
     if renew_amazon_affiliate or RENEW_AMAZON_AFFILIATE_URL:  # Verify whether renewal is enabled via arg or global flag before attempting renewal.
-        renewal_success, renewed_url = renew_amazon_affiliate_url(url, share_button_img, Path(urls_file))  # Attempt Amazon affiliate URL renewal and capture tuple result.
+        renewal_success, renewed_url = renew_amazon_affiliate_url(url, share_button_img, get_amazon_url_img, Path(urls_file))  # Attempt Amazon affiliate URL renewal and capture tuple result.
         if renewal_success and renewed_url != url:  # Verify whether renewal succeeded and URL changed before updating current URL.
             url = renewed_url  # Update current URL with renewed affiliate URL.
 
@@ -4085,11 +4087,12 @@ def is_valid_affiliate_url(url: str) -> bool:
     return True  # Return validation success when all strict affiliate constraints pass.
 
 
-def wait_for_valid_affiliate_url(previous_url: str, timeout: int = 5) -> str:
+def wait_for_valid_affiliate_url(previous_url: str, get_amazon_url_img: Path, timeout: int = 5) -> str:
     """
     Wait for a valid renewed affiliate URL that differs from previous URL.
 
     :param previous_url: Previously known URL used for difference verification.
+    :param get_amazon_url_img: Path to GetAffiliateURL button image.
     :param timeout: Maximum wait duration in seconds for valid clipboard URL.
     :return: Valid normalized affiliate URL or empty string when timeout expires.
     """
@@ -4403,12 +4406,13 @@ def replace_url_recursively(base_path: Path, old_url: str, new_url: str) -> bool
     return any_success  # Return aggregated success state.
 
 
-def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, urls_file: Path) -> tuple:
+def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, get_amazon_url_img: Path, urls_file: Path) -> tuple:
     """
     Orchestrate complete Amazon affiliate URL renewal workflow.
 
     :param current_url: Original Amazon URL to replace.
     :param share_button_img: Path to ShareAffiliateURL-Amazon.png image.
+    :param get_amazon_url_img: Path to GetAffiliateURL-Amazon.png image.
     :param urls_file: Path to the urls.txt file.
     :return: Tuple containing True if renewal succeeded, otherwise False, and the new URL if successful or the original URL if failed.
     """
@@ -4419,7 +4423,7 @@ def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, urls_fi
 
     time.sleep(1)  # Wait for menu to appear after button click.
 
-    copied_url = wait_for_valid_affiliate_url(current_url, 5)  # Wait for a valid renewed affiliate URL from clipboard.
+    copied_url = wait_for_valid_affiliate_url(current_url, get_amazon_url_img, 5)  # Wait for a valid renewed affiliate URL from clipboard.
     if not copied_url:  # Verify if clipboard retrieval succeeded.
         verbose_output(f"{BackgroundColors.RED}Failed to retrieve valid renewed URL from clipboard{Style.RESET_ALL}")  # Log clipboard retrieval failure when verbose enabled.
         return False, current_url  # Return failure and original URL when clipboard is empty.
