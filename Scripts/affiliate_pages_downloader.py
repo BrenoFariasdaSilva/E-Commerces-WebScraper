@@ -144,6 +144,7 @@ DOWNLOAD_SETTINGS_STATE_TOGGLE_2_ON = "Toggle 2 On"  # Define state label for th
 DOWNLOAD_SETTINGS_STATE_BOTH_TOGGLES_ON = "Both Toggles On"  # Define state label for both downloads settings toggles enabled.
 DOWNLOAD_SETTINGS_STATE_UNKNOWN = "Unknown"  # Define state label for an unresolved downloads settings configuration.
 MAX_DOWNLOAD_RETRY_ATTEMPTS = 2  # Define maximum number of download attempts per URL including the initial attempt.
+MAX_RETRY_MECHANISM_ATTEMPTS = 5  # Define maximum number of post-processing retry cycles for failed/unlinked URLs.
 
 TARGET_CHROME_TITLE = ""  # Store selected Chrome window title for reuse.
 ACTIVE_CHROME_BOUNDS = {"left": 0, "top": 0, "width": 0, "height": 0}  # Store active Chrome window bounds for coordinate calculations.
@@ -226,6 +227,7 @@ def parse_arguments(repo_root: Path) -> argparse.Namespace:
     parser.add_argument("--renew-amazon-affiliate-url", action="store_true", default=True, help="Enable Amazon affiliate URL renewal attempts (default: True)")  # Register renewal override argument
     parser.add_argument("--only-renew-amazon-urls", nargs="?", const="true", default=None, help="Enable mode that only renews Amazon affiliate URLs without downloading content")  # Register only-renew mode argument with optional truthy value.
     parser.add_argument("--main-monitor", action="store_true", default=False, help="Route all UI operations to the primary monitor (default: False uses secondary monitor when available)")  # Register main-monitor flag argument.
+    parser.add_argument("--no-retry-mechanism", action="store_true", default=False, help="Disable the post-processing retry mechanism for failed/unlinked URLs (default: False, retry is enabled)")  # Register no-retry-mechanism flag argument.
 
     args = parser.parse_args()  # Parse command-line arguments
 
@@ -1566,6 +1568,33 @@ def filter_only_unlinked_urls(urls: list, preprocessed_urls: list) -> list:
     filtered_urls = [u for u in urls if url_to_filename.get(u, "") == ""]  # Filter URLs with no filename/path mapping
 
     return filtered_urls  # Return filtered list of URLs
+
+
+def detect_unlinked_urls_from_file(urls_file: Path) -> List[str]:
+    """
+    Detect URLs not yet linked to any downloaded file by reading the current input file state.
+
+    :param urls_file: Path to the URLs input file to read and parse.
+    :return: List of URL strings not yet linked to a downloaded file.
+    """
+
+    if not urls_file.exists():  # Verify whether the URLs file exists before attempting to read.
+        return []  # Return empty list when the URLs file is absent.
+
+    try:  # Attempt to read and parse the URLs file for unlinked URL detection.
+        raw_lines = load_urls_to_process(str(urls_file))  # Read raw trimmed lines from the input file using centralized utility.
+
+        if raw_lines is None:  # Verify whether loading lines failed due to file issues.
+            return []  # Return empty list when the file read fails.
+
+        preprocessed = preprocess_urls(raw_lines)  # Preprocess raw lines using centralized URL normalization utility.
+        all_urls = [line.strip().split()[0] for line in preprocessed if line.strip()]  # Extract the URL token from each preprocessed line.
+        unlinked = filter_only_unlinked_urls(all_urls, preprocessed)  # Filter to only URLs without an associated filename using existing linking logic.
+
+        return unlinked  # Return list of detected unlinked URLs.
+    except Exception as exc:  # Handle unexpected errors during unlinked URL detection.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to detect unlinked URLs from file: {BackgroundColors.CYAN}{urls_file}{BackgroundColors.YELLOW} - {exc}{Style.RESET_ALL}")  # Log failure warning with file path and exception context.
+        return []  # Return empty list when detection fails.
 
 
 def notify_manual_chrome_download_settings_intervention(url: str) -> None:
@@ -3142,6 +3171,63 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
     return processed_count, url_to_download, True  # Return processed counter, URL mapping, and success status.
 
 
+def execute_retry_mechanism(urls_file: Path, downloads_dirs: List[str], image_paths: Dict[str, Path], chrome_download_settings_ready: bool, renew_amazon_affiliate: bool, max_attempts: int = MAX_RETRY_MECHANISM_ATTEMPTS) -> int:
+    """
+    Execute post-processing retry cycles for URLs that remain unlinked after the main processing loop.
+
+    :param urls_file: Path to the URLs input file used for reading and updating URL-to-file associations.
+    :param downloads_dirs: Paths to monitored downloads directories used for file detection.
+    :param image_paths: Dictionary mapping image variable names to resolved image asset paths.
+    :param chrome_download_settings_ready: Whether Chrome downloads settings were verified before processing.
+    :param renew_amazon_affiliate: Whether Amazon affiliate URL renewal is enabled during retry cycles.
+    :param max_attempts: Maximum number of retry cycles before declaring failure for remaining URLs.
+    :return: Total count of URLs re-attempted across all retry cycles.
+    """
+
+    total_retried = 0  # Initialize total retried URL count across all retry cycles.
+
+    for attempt in range(1, max_attempts + 1):  # Iterate retry cycles up to the configured maximum attempt count.
+        unlinked_urls = detect_unlinked_urls_from_file(urls_file)  # Read the updated file and detect currently unlinked URLs.
+
+        if len(unlinked_urls) == 0:  # Verify whether all URLs are now linked before scheduling another retry cycle.
+            verbose_output(f"{BackgroundColors.GREEN}[INFO] All URLs are now linked after {BackgroundColors.CYAN}{attempt - 1}{BackgroundColors.GREEN} retry cycle(s). Retry mechanism complete.{Style.RESET_ALL}")  # Log early completion when all URLs are linked.
+            break  # Exit retry loop when all URLs are successfully linked.
+
+        print(f"{BackgroundColors.YELLOW}[WARNING] Retry cycle {BackgroundColors.CYAN}{attempt}/{max_attempts}{BackgroundColors.YELLOW}: {BackgroundColors.CYAN}{len(unlinked_urls)}{BackgroundColors.YELLOW} unlinked URL(s) found. Starting retry...{Style.RESET_ALL}")  # Log retry cycle start with remaining unlinked URL count.
+
+        retry_ext_methods, retry_download_methods, retry_completion_methods, retry_close_methods = setup_method_maps()  # Reinitialize grouped automation method maps for the current retry cycle.
+
+        retry_tab_count = len(unlinked_urls)  # Compute tab count from the current unlinked URL list.
+
+        _, _, retry_process_success = process_urls_with_download_tracking(
+            unlinked_urls,
+            urls_file,
+            retry_tab_count,
+            downloads_dirs,
+            image_paths,
+            retry_ext_methods,
+            retry_download_methods,
+            retry_completion_methods,
+            retry_close_methods,
+            chrome_download_settings_ready,
+            renew_amazon_affiliate,
+            False,
+        )  # Execute the full download workflow for the current batch of unlinked URLs using existing processing logic.
+
+        if not retry_process_success:  # Verify whether the retry processing cycle encountered a fatal error.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Retry cycle {BackgroundColors.CYAN}{attempt}{BackgroundColors.YELLOW} aborted due to processing failure. Stopping retry mechanism.{Style.RESET_ALL}")  # Log retry cycle abort when processing encounters a fatal error.
+            break  # Exit retry loop when processing fails fatally.
+
+        total_retried += len(unlinked_urls)  # Increment the total retried count by the size of the current retry batch.
+
+    remaining_unlinked = detect_unlinked_urls_from_file(urls_file)  # Read the final file state to detect URLs that remain unlinked after all retry cycles.
+
+    for url in remaining_unlinked:  # Iterate remaining unlinked URLs to log individual failure warnings.
+        print(f"{BackgroundColors.YELLOW}[WARNING] URL failed processing after {BackgroundColors.CYAN}{max_attempts}{BackgroundColors.YELLOW} retry attempt(s) and remains unlinked: {BackgroundColors.CYAN}{url}{Style.RESET_ALL}")  # Log per-URL warning for each URL still unlinked after retry exhaustion.
+
+    return total_retried  # Return total count of URLs re-attempted across all retry cycles.
+
+
 def locate_image(image_path: Path) -> Any:
     """
     Locates an image on screen.
@@ -4568,7 +4654,7 @@ def maybe_show_messagebox(title: str, message: str) -> None:
         pass  # Skip messagebox display on exception.
 
 
-def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bool = True, renew_amazon_affiliate: bool = False, only_renew_amazon_urls: bool = False, process_only_unlinked_urls: bool = False) -> int:
+def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bool = True, renew_amazon_affiliate: bool = False, only_renew_amazon_urls: bool = False, process_only_unlinked_urls: bool = False, retry_mechanism: bool = True) -> int:
     """
     Runs the affiliate pages automation workflow.
 
@@ -4579,6 +4665,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
     :param renew_amazon_affiliate: Override global renewal flag when True.
     :param only_renew_amazon_urls: Override global only-renew mode when True.
     :param process_only_unlinked_urls: Whether to filter URLs against existing report links and process only unlinked URLs when True.
+    :param retry_mechanism: Whether to execute the post-processing retry mechanism for failed/unlinked URLs after the main loop.
     :return: Exit code where 0 means success and 1 means failure.
     """
 
@@ -4685,6 +4772,9 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
 
             if not headerless:  # Verify if headerless flag is disabled before showing GUI messagebox.
                 maybe_show_messagebox("Automation Finished", final_report)  # Display optional messagebox report when allowed.
+
+        if retry_mechanism and not only_renew_amazon_urls:  # Verify whether retry mechanism is enabled and mode is not renew-only.
+            execute_retry_mechanism(urls_file, downloads_dirs, image_paths, chrome_download_settings_ready, renew_amazon_affiliate)  # Execute post-processing retry cycles for any remaining unlinked URLs.
 
         return 0  # Return success exit code.
     finally:  # Ensure dedicated automation window cleanup regardless of success or failure.
@@ -4844,7 +4934,7 @@ def main():
     
     set_full_permissions(PROJECT_ROOT)  # Update permissions for the entire project directory to ensure all files are accessible for reading and writing during processing, especially after operations that may create new files or modify existing ones with restrictive permissions.
 
-    exit_code = run(args.tab_count, args.urls_file, args.assets_dir, args.headerless, args.renew_amazon_affiliate_url, ONLY_RENEW_AMAZON_AFFILIATE_URLS, args.process_only_unlinked_urls)  # Execute automation flow with headerless option, renewal override, only-renew mode, and unlinked URLs processing.
+    exit_code = run(args.tab_count, args.urls_file, args.assets_dir, args.headerless, args.renew_amazon_affiliate_url, ONLY_RENEW_AMAZON_AFFILIATE_URLS, args.process_only_unlinked_urls, not args.no_retry_mechanism)  # Execute automation flow with all CLI-configured options including retry mechanism control.
 
     finish_time = datetime.datetime.now()  # Capture program finish timestamp.
     print(f"{BackgroundColors.GREEN}Start time: {BackgroundColors.CYAN}{start_time.strftime('%d/%m/%Y - %H:%M:%S')}\n{BackgroundColors.GREEN}Finish time: {BackgroundColors.CYAN}{finish_time.strftime('%d/%m/%Y - %H:%M:%S')}\n{BackgroundColors.GREEN}Execution time: {BackgroundColors.CYAN}{calculate_execution_time(start_time, finish_time)}{Style.RESET_ALL}")  # Print execution timing summary.
