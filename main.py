@@ -1083,15 +1083,19 @@ def attempt_resolution_upgrade(root_img_path: str, candidate_img_path: str) -> b
     """
 
     if not os.path.isfile(root_img_path):  # Verify root image file exists before any I/O
+        print(f"{BackgroundColors.YELLOW}Root image file does not exist for upgrade: {BackgroundColors.CYAN}{root_img_path}{Style.RESET_ALL}")
         return False  # Cannot upgrade when root image is missing
 
     if not os.path.isfile(candidate_img_path):  # Verify candidate image file exists before any I/O
+        print(f"{BackgroundColors.YELLOW}Candidate image file does not exist for upgrade: {BackgroundColors.CYAN}{candidate_img_path}{Style.RESET_ALL}")
         return False  # Cannot upgrade with a missing candidate
 
     if not candidate_exceeds_root_resolution(root_img_path, candidate_img_path):  # Verify candidate has higher resolution
+        print(f"{BackgroundColors.YELLOW}Candidate image does not exceed root resolution: {BackgroundColors.CYAN}{candidate_img_path}{BackgroundColors.YELLOW} vs {BackgroundColors.CYAN}{root_img_path}{Style.RESET_ALL}")
         return False  # Skip replacement when candidate is not higher-resolution than root
 
     if not images_are_perceptually_similar(root_img_path, candidate_img_path):  # Verify visual content matches
+        print(f"{BackgroundColors.YELLOW}Candidate image failed perceptual similarity check against root: {BackgroundColors.CYAN}{candidate_img_path}{BackgroundColors.YELLOW} vs {BackgroundColors.CYAN}{root_img_path}{Style.RESET_ALL}")
         return False  # Skip replacement when perceptual hashes indicate a content mismatch
 
     root_filename = os.path.basename(root_img_path)  # Extract root filename to use as destination name
