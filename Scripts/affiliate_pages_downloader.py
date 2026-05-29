@@ -4549,8 +4549,7 @@ def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, get_ama
     backup_success = update_urls_txt_with_new_amazon_url(current_url, copied_url, backup_urls_file)  # Update urls-backup.txt with new affiliate URL.
 
     outputs_dir_recursive_success = replace_url_recursively(outputs_dir, current_url, copied_url)  # Replace renewed Amazon URL recursively inside Outputs files.
-    # also replace the urls recursively in the urls.txt files
-    inputs_dir_recursive_success = replace_url_recursively(urls_file.parent, current_url, copied_url)  # Replace renewed Amazon URL recursively inside urls.txt files.
+    inputs_dir_recursive_success = replace_url_recursively(urls_file.parent, current_url, copied_url)  # Replace renewed Amazon URL recursively inside Inputs files.
 
     print_url_update(current_url, copied_url)  # Print colored OLD and NEW URL output to terminal for visibility.
 
@@ -4563,7 +4562,7 @@ def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, get_ama
     if affected_files:  # Only validate when there was something to actually update.
         validation_success = validate_url_update(current_url, copied_url, files_to_validate)  # Validate only impacted files.
 
-    pipeline_success = (success and validation_success and outputs_dir_recursive_success and inputs_dir_recursive_success)  # Aggregate all critical pipeline steps.
+    renewal_persistence_success = (success and backup_success and inputs_dir_recursive_success and validation_success)  # Aggregate critical renewal persistence steps required for downstream URL-to-file association consistency.
 
     if not backup_success:  # Verify backup update failure.
         verbose_output(f"{BackgroundColors.RED}Failed to update urls-backup.txt with new Amazon URL{Style.RESET_ALL}")  # Log backup failure.
@@ -4577,7 +4576,7 @@ def renew_amazon_affiliate_url(current_url: str, share_button_img: Path, get_ama
     if not validation_success:  # Verify validation failure.
         verbose_output(f"{BackgroundColors.RED}URL validation failed after renewal process{Style.RESET_ALL}")  # Log validation failure.
 
-    if not pipeline_success:  # Verify any stage failure.
+    if not renewal_persistence_success:  # Verify critical renewal persistence stage failure.
         print(f"{BackgroundColors.YELLOW}[WARNING] Affiliate URL update failed or partially inconsistent (success={success}, backup={backup_success}, outputs_dir_recursive={outputs_dir_recursive_success}, inputs_dir_recursive={inputs_dir_recursive_success}, validation={validation_success}){Style.RESET_ALL}")  # Log full pipeline state.
         return False, current_url  # Return failure when any critical stage is not satisfied.
 
