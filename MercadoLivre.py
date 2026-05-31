@@ -94,8 +94,10 @@ HTML_SELECTORS = {
     "current_price_cents": {"class": "andes-money-amount__cents"},  # CSS selector for current price decimal part
     "price_container": {"class": "ui-pdp-container__row ui-pdp-container__row--price"},  # CSS selector for main price container
     "price_subtitles": {"class": "ui-pdp-price__subtitles"},  # CSS selector for subtitle price container to ignore
+    "old_price_element": {"name": "s", "attrs": {"class": re.compile(r"andes-money-amount--previous")}},  # <s> tag containing the old/struck-through price (andes-money-amount--previous class)
+    "current_price_element": {"name": "span", "attrs": {"itemprop": "offers"}},  # <span> with schema.org offers attribute identifying the active current price
     "discount_marker": {"name": "span", "attrs": {"data-andes-money-amount-discount": "true"}},  # Selector for discounted price marker element (data attribute)
-    "discount": {"class": re.compile(r"andes-money-amount__discount.*ui-pdp-family--SEMIBOLD.*ui-pdp-color--GREEN", re.IGNORECASE)},  # CSS selector for discount percentage element
+    "discount": {"name": "span", "attrs": {"data-andes-money-amount-discount": "true"}},  # Selector for discount percentage element by data attribute
     "description": {"class": "ui-pdp-description__content"},  # CSS selector for product description content
     "international_marker": {"id": "cbt_summary_rebranding--title"},  # ID selector for international product marker
     "gallery_column": {"class": "ui-pdp-gallery__column"},  # CSS selector for gallery column container
@@ -351,29 +353,21 @@ class MercadoLivre:
         :return: Tuple of (integer_part, decimal_part) for current price
         """
         
-        price_container = soup.find("div", **HTML_SELECTORS["price_container"])  # Find the main price container
+        current_el = soup.find(**HTML_SELECTORS["current_price_element"])  # Find current price element by schema.org offers attribute
 
-        if not price_container or not isinstance(price_container, Tag):  # Verify if price container was not found
-            verbose_output(f"{BackgroundColors.YELLOW}[DEBUG] Price container not found, falling back to document-level search{Style.RESET_ALL}")  # Log fallback debug message
-            price_container = soup  # Fallback to entire document for compatibility
+        if not current_el or not isinstance(current_el, Tag):  # Verify if current price element was not found
+            verbose_output(f"{BackgroundColors.YELLOW}[DEBUG] Current price element not found{Style.RESET_ALL}")  # Log missing current price element
+            return "0", "00"  # Return zero defaults when current price element is absent
 
-        subtitle = price_container.find("div", **HTML_SELECTORS["price_subtitles"])  # Find subtitle container inside price container to ignore
-        if subtitle and isinstance(subtitle, Tag):  # Verify if subtitle container exists inside price container
-            verbose_output(f"{BackgroundColors.YELLOW}[DEBUG] Skipping subtitle container price values{Style.RESET_ALL}")  # Log subtitle skip debug message
+        fraction = current_el.find("span", **HTML_SELECTORS["price_fraction"])  # Find fraction span within the current price element
 
-        fraction_tag = price_container.find("span", **HTML_SELECTORS["price_fraction"])  # Find first fraction element inside price container
+        if not fraction or not isinstance(fraction, Tag):  # Verify fraction element presence
+            verbose_output(f"{BackgroundColors.YELLOW}[DEBUG] Current price fraction not found{Style.RESET_ALL}")  # Log missing fraction element
+            return "0", "00"  # Return defaults when fraction is absent
 
-        if fraction_tag and isinstance(fraction_tag, Tag):  # Verify presence of a fraction tag for current price
-            integer_part = fraction_tag.get_text(strip=True)  # Extract integer portion of current price
-            parent = fraction_tag.find_parent(class_=re.compile(r"andes-money-amount"))  # Find parent element to locate cents
-            if parent and isinstance(parent, Tag):  # Verify parent is valid Tag
-                cents = parent.find(**HTML_SELECTORS["current_price_cents"])  # Find cents element using centralized selector
-                decimal_part = cents.get_text(strip=True) if cents and isinstance(cents, Tag) else "00"  # Extract decimal part or default
-            else:  # If parent is missing
-                decimal_part = "00"  # Default decimal part when not found
-        else:  # If no fraction tag found
-            integer_part = "N/A"  # Default integer part when not found
-            decimal_part = "N/A"  # Default decimal part when not found
+        integer_part = fraction.get_text(strip=True)  # Extract integer portion of current price
+        cents = current_el.find("span", **HTML_SELECTORS["current_price_cents"])  # Find cents span within the current price element
+        decimal_part = cents.get_text(strip=True) if cents and isinstance(cents, Tag) else "00"  # Extract decimal part or default to 00
 
         verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Current price extracted: {BackgroundColors.CYAN}{integer_part}.{decimal_part}{Style.RESET_ALL}")  # Log extracted current price
 
@@ -389,33 +383,25 @@ class MercadoLivre:
         :return: Tuple of (integer_part, decimal_part) for old price
         """
         
-        price_container = soup.find("div", **HTML_SELECTORS["price_container"])  # Find the main price container
+        old_el = soup.find(**HTML_SELECTORS["old_price_element"])  # Find old/struck-through price element by andes-money-amount--previous class
 
-        if not price_container or not isinstance(price_container, Tag):  # Verify if price container was not found
-            verbose_output(f"{BackgroundColors.YELLOW}[DEBUG] Price container not found when detecting old price{Style.RESET_ALL}")  # Log debug message when container missing
-            return "N/A", "N/A"  # Return N/A when old price cannot be determined without container
-
-        discount_marker = price_container.find(**HTML_SELECTORS["discount_marker"])  # Find discounted price marker inside price container
-
-        if not discount_marker or not isinstance(discount_marker, Tag):  # Verify if discount marker is absent
-            verbose_output(f"{BackgroundColors.YELLOW}[DEBUG] Discount marker not found. No old price available.{Style.RESET_ALL}")  # Log debug message indicating no old price
+        if not old_el or not isinstance(old_el, Tag):  # Verify if old price element was not found
+            verbose_output(f"{BackgroundColors.YELLOW}[DEBUG] Old price element not found. No old price available.{Style.RESET_ALL}")  # Log debug message when no old price present
             return "N/A", "N/A"  # Return N/A to indicate no old price present
 
-        old_fraction = discount_marker.find_previous("span", **HTML_SELECTORS["price_fraction"]) or discount_marker.find("span", **HTML_SELECTORS["price_fraction"])  # Attempt to find old price fraction near discount marker
+        fraction = old_el.find("span", **HTML_SELECTORS["price_fraction"])  # Find fraction span within the old price element
 
-        if old_fraction and isinstance(old_fraction, Tag):  # Verify if old fraction tag exists
-            integer_part = old_fraction.get_text(strip=True)  # Extract integer part of old price
-            parent = old_fraction.find_parent(class_=re.compile(r"andes-money-amount"))  # Find parent for cents extraction
-            if parent and isinstance(parent, Tag):  # Verify parent validity
-                cents = parent.find(**HTML_SELECTORS["current_price_cents"])  # Find cents element using centralized selector
-                decimal_part = cents.get_text(strip=True) if cents and isinstance(cents, Tag) else "00"  # Extract decimal part or default
-            else:  # If parent missing
-                decimal_part = "00"  # Default decimal part
-            verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Old price extracted: {BackgroundColors.CYAN}{integer_part}.{decimal_part}{Style.RESET_ALL}")  # Log extracted old price
-            return integer_part, decimal_part  # Return detected old price parts
+        if not fraction or not isinstance(fraction, Tag):  # Verify fraction element presence
+            verbose_output(f"{BackgroundColors.YELLOW}[DEBUG] Old price fraction not found{Style.RESET_ALL}")  # Log missing fraction element
+            return "N/A", "N/A"  # Return N/A when fraction is absent
 
-        verbose_output(f"{BackgroundColors.YELLOW}[WARNING] Could not locate old price element despite discount marker.{Style.RESET_ALL}")  # Log warning when marker exists but price not found
-        return "N/A", "N/A"  # Return N/A when old price cannot be determined
+        integer_part = fraction.get_text(strip=True)  # Extract integer part of old price
+        cents = old_el.find("span", **HTML_SELECTORS["current_price_cents"])  # Find cents span within the old price element
+        decimal_part = cents.get_text(strip=True) if cents and isinstance(cents, Tag) else "00"  # Extract decimal part or default to 00
+
+        verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Old price extracted: {BackgroundColors.CYAN}{integer_part}.{decimal_part}{Style.RESET_ALL}")  # Log extracted old price
+
+        return integer_part, decimal_part  # Return detected old price parts
 
 
     def extract_discount_percentage(self, soup):
@@ -426,7 +412,7 @@ class MercadoLivre:
         :return: Discount percentage string or "N/A" if not found
         """
         
-        discount_element = soup.find(**HTML_SELECTORS["discount"])  # Find discount element using centralized selector
+        discount_element = soup.find(**HTML_SELECTORS["discount_marker"])  # Find discount element by data-andes-money-amount-discount attribute
 
         if discount_element and isinstance(discount_element, Tag):  # Verify if discount element exists in document
             discount_text = discount_element.get_text(strip=True)  # Extract raw discount text
