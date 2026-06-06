@@ -836,6 +836,8 @@ def clean_disallowed_files_recursively(target_dir: str) -> None:
         for fname in files:  # Iterate all files in the current directory.
             fpath = os.path.join(root, fname)  # Build absolute path to current file.
             _, ext = os.path.splitext(fname)  # Extract file extension.
+            if fname.lower() == "index.html":  # Preserve directory index pages generated inside asset subdirectories.
+                continue  # Skip deletion for index.html files.
             if ext.lower() not in allowed_exts:  # Verify if file extension is not allowed.
                 try:  # Attempt removal of disallowed file.
                     force_remove_path(fpath)  # Remove disallowed file using centralized deletion.
