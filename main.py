@@ -252,6 +252,12 @@ GEMINI_MODEL_PRIORITY = [
 
 # Image Upgrade Constants:
 FILENAME_SIMILARITY_THRESHOLD = 0.70  # Minimum SequenceMatcher ratio for root-to-candidate basename similarity matching
+PRODUCT_DATA_DIRECTORY_NAME = "Product Data"  # Directory name for storing root-level media artifacts after final restructuring.
+PRODUCT_METADATA_DIRECTORY_NAME = "Product Metadata"  # Directory name for storing non-media artifacts after final restructuring.
+ROOT_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tif", ".tiff", ".svg", ".heic", ".avif"}  # Supported image extensions for root media detection.
+ROOT_VIDEO_EXTENSIONS = {".mp4", ".webm", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".m4v", ".mpeg", ".mpg", ".3gp", ".ts", ".m3u8"}  # Supported video extensions for root media detection.
+ROOT_MEDIA_EXTENSIONS = ROOT_IMAGE_EXTENSIONS | ROOT_VIDEO_EXTENSIONS  # Union of root-level image and video extensions.
+REFERENCE_TEXT_EXTENSIONS = {".txt", ".json", ".html", ".htm", ".md", ".xml", ".yaml", ".yml", ".csv", ".js", ".ts", ".css"}  # Text-based extensions used for media reference update pass.
 
 # Functions Definitions:
 
@@ -4870,6 +4876,366 @@ def handle_sorting_phase(args: argparse.Namespace, context: dict) -> None:
             verbose_output(f"{BackgroundColors.GREEN}Sorting and index normalization completed.{Style.RESET_ALL}")  # Confirm completion after all renames and internal updates finish
 
 
+def get_restructure_target_output_directory(context: dict) -> Optional[str]:
+    """
+    Resolve the output directory that should be restructured before finalization.
+
+    :param context: Mutable processing context dictionary.
+    :return: Absolute path to target output directory or None when unavailable.
+    """
+
+    sorting_target_dir = context.get("timestamped_output_dir_for_sorting")  # Retrieve explicit sorting target directory from context when sorting-only mode is used.
+    timestamped_output_dir = context.get("timestamped_output_dir")  # Retrieve current run timestamped output directory from context.
+
+    if sorting_target_dir and os.path.isdir(sorting_target_dir):  # Prefer explicit sorting target directory when available and valid.
+        return sorting_target_dir  # Return explicit sorting target for restructuring.
+
+    if timestamped_output_dir and os.path.isdir(timestamped_output_dir):  # Fallback to current run timestamped output directory when available and valid.
+        return timestamped_output_dir  # Return current run output directory for restructuring.
+
+    return None  # Return None when no valid output directory is available.
+
+
+def list_product_output_directories(base_output_dir: str) -> List[str]:
+    """
+    List immediate product directory paths in the given output directory.
+
+    :param base_output_dir: Base output directory that contains product folders.
+    :return: Sorted list of absolute product directory paths.
+    """
+
+    product_directory_paths: List[str] = []  # Initialize list that will store absolute product directory paths.
+
+    try:  # Attempt to list product directories from base output directory safely.
+        for entry_name in sorted(os.listdir(base_output_dir)):  # Iterate directory entries in deterministic sorted order.
+            entry_path = os.path.join(base_output_dir, entry_name)  # Build absolute path for current directory entry.
+            if os.path.isdir(entry_path):  # Verify current entry is a directory before collecting.
+                product_directory_paths.append(entry_path)  # Append product directory path to the result list.
+    except Exception as e:  # Handle filesystem listing failures without interrupting finalization flow.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to list product directories in {BackgroundColors.CYAN}{base_output_dir}{BackgroundColors.YELLOW}: {e}{Style.RESET_ALL}")  # Emit warning when listing fails.
+
+    return product_directory_paths  # Return sorted list of discovered product directory paths.
+
+
+def resolve_file_collision_path(parent_directory: str, original_name: str) -> str:
+    """
+    Resolve collisions for file destinations by appending incremental numeric suffixes.
+
+    :param parent_directory: Destination directory that will receive the file.
+    :param original_name: Original filename that should be preserved when possible.
+    :return: Collision-safe absolute file path.
+    """
+
+    destination_path = os.path.join(parent_directory, original_name)  # Build initial destination path using original filename.
+
+    if not os.path.exists(destination_path):  # Verify if initial destination path is available without collision.
+        return destination_path  # Return initial destination path when no collision exists.
+
+    base_name, extension = os.path.splitext(original_name)  # Split filename into stem and extension for collision suffix generation.
+    collision_suffix = 1  # Initialize collision suffix counter.
+
+    while True:  # Continue probing until a free collision-safe destination path is found.
+        candidate_name = f"{base_name} ({collision_suffix}){extension}"  # Build collision candidate filename using incremental suffix.
+        candidate_path = os.path.join(parent_directory, candidate_name)  # Build absolute path for the collision candidate filename.
+        if not os.path.exists(candidate_path):  # Verify if collision candidate path is available.
+            return candidate_path  # Return first available collision-safe destination path.
+        collision_suffix += 1  # Increment collision suffix and continue probing for the next candidate.
+
+
+def is_root_media_filename(filename: str) -> bool:
+    """
+    Determine whether a filename is considered a root-level media file.
+
+    :param filename: Filename to classify.
+    :return: True when filename extension is an image/video media extension, False otherwise.
+    """
+
+    _, extension = os.path.splitext(filename)  # Extract filename extension for media classification.
+    return extension.lower() in ROOT_MEDIA_EXTENSIONS  # Return classification result based on predefined media extension sets.
+
+
+def classify_root_entries_for_restructure(product_directory: str) -> Tuple[List[str], List[str], List[str]]:
+    """
+    Classify immediate root entries of a product directory for restructuring.
+
+    :param product_directory: Product directory path to classify immediate entries from.
+    :return: Tuple of (root_media_files, root_metadata_files, root_metadata_directories).
+    """
+
+    root_media_files: List[str] = []  # Initialize list for root-level media files.
+    root_metadata_files: List[str] = []  # Initialize list for root-level non-media files.
+    root_metadata_directories: List[str] = []  # Initialize list for root-level directories to move into metadata.
+
+    for entry_name in sorted(os.listdir(product_directory)):  # Iterate root entries in deterministic sorted order.
+        if entry_name in {PRODUCT_DATA_DIRECTORY_NAME, PRODUCT_METADATA_DIRECTORY_NAME}:  # Skip target directories to avoid self-move recursion.
+            continue  # Continue to next entry when current entry is one of the target directories.
+
+        entry_path = os.path.join(product_directory, entry_name)  # Build absolute path for current root entry.
+
+        if os.path.isdir(entry_path):  # Verify whether current root entry is a directory.
+            root_metadata_directories.append(entry_name)  # Collect root directory for metadata relocation.
+            continue  # Continue to next entry after handling directory classification.
+
+        if os.path.isfile(entry_path):  # Verify whether current root entry is a file.
+            if is_root_media_filename(entry_name):  # Verify whether current root file is a media file.
+                root_media_files.append(entry_name)  # Collect media file for Product Data relocation.
+            else:  # Handle root non-media file classification.
+                root_metadata_files.append(entry_name)  # Collect non-media file for Product Metadata relocation.
+
+    return root_media_files, root_metadata_files, root_metadata_directories  # Return classified root entry lists for subsequent relocation.
+
+
+def move_entry_with_collision_resolution(source_path: str, destination_directory: str) -> str:
+    """
+    Move one file/directory into destination directory while preventing name collisions.
+
+    :param source_path: Absolute source path for file or directory to move.
+    :param destination_directory: Absolute destination directory path.
+    :return: Final moved entry name in destination directory.
+    """
+
+    source_name = os.path.basename(source_path)  # Resolve source entry basename for destination naming.
+
+    if os.path.isdir(source_path):  # Verify whether source entry is a directory.
+        destination_path = resolve_collision_path(destination_directory, source_name)  # Resolve collision-safe destination path for directories.
+    else:  # Handle file source entries.
+        destination_path = resolve_file_collision_path(destination_directory, source_name)  # Resolve collision-safe destination path for files.
+
+    shutil.move(source_path, destination_path)  # Move source entry to destination path using filesystem move semantics.
+    return os.path.basename(destination_path)  # Return final destination entry name after potential collision suffixing.
+
+
+def collect_product_data_media_files(product_data_directory: str) -> Tuple[List[str], List[str]]:
+    """
+    Collect image and video files from Product Data directory root.
+
+    :param product_data_directory: Absolute Product Data directory path.
+    :return: Tuple of (image_filenames, video_filenames) in deterministic sorted order.
+    """
+
+    image_filenames: List[str] = []  # Initialize list for image filenames located in Product Data root.
+    video_filenames: List[str] = []  # Initialize list for video filenames located in Product Data root.
+
+    for entry_name in sorted(os.listdir(product_data_directory)):  # Iterate Product Data root entries in deterministic sorted order.
+        entry_path = os.path.join(product_data_directory, entry_name)  # Build absolute path for current Product Data entry.
+        if not os.path.isfile(entry_path):  # Skip non-file entries because rename ordering is file-based.
+            continue  # Continue to next entry when current entry is not a regular file.
+
+        _, extension = os.path.splitext(entry_name)  # Extract extension for media category classification.
+        extension = extension.lower()  # Normalize extension for case-insensitive extension comparisons.
+
+        if extension in ROOT_IMAGE_EXTENSIONS:  # Verify whether file is an image extension.
+            image_filenames.append(entry_name)  # Collect image filename for image ordering and renaming.
+        elif extension in ROOT_VIDEO_EXTENSIONS:  # Verify whether file is a video extension.
+            video_filenames.append(entry_name)  # Collect video filename for video ordering and renaming.
+
+    return image_filenames, video_filenames  # Return collected image/video filename lists for subsequent rename planning.
+
+
+def build_size_descending_rename_plan(product_data_directory: str, filenames: List[str]) -> List[Tuple[str, str, str]]:
+    """
+    Build two-phase rename plan sorted by file size descending, then filename ascending.
+
+    :param product_data_directory: Absolute Product Data directory path.
+    :param filenames: List of media filenames to include in the rename plan.
+    :return: List of (old_name, temp_name, new_name) tuples.
+    """
+
+    if not filenames:  # Verify if there are no files to plan renaming for.
+        return []  # Return empty rename plan when no files are present.
+
+    sortable_entries: List[Tuple[int, str]] = []  # Initialize list for sortable tuples (size_bytes, filename).
+
+    for filename in filenames:  # Iterate candidate media filenames to compute sortable metadata.
+        file_path = os.path.join(product_data_directory, filename)  # Build absolute path for current media file.
+        try:  # Attempt to read file size for deterministic size-based sorting.
+            file_size = os.path.getsize(file_path)  # Read file size in bytes from filesystem metadata.
+        except Exception:  # Handle file access failures by assigning size zero fallback.
+            file_size = 0  # Use zero-size fallback when file size cannot be read.
+        sortable_entries.append((file_size, filename))  # Append sortable metadata tuple for ordering.
+
+    sortable_entries.sort(key=lambda item: (-item[0], item[1].lower()))  # Sort by size descending and filename ascending for deterministic ordering.
+
+    digits = max(2, len(str(len(sortable_entries))))  # Determine zero-padding width for sequential numeric naming.
+    rename_plan: List[Tuple[str, str, str]] = []  # Initialize two-phase rename plan list.
+
+    for index, (_size_bytes, old_name) in enumerate(sortable_entries, 1):  # Enumerate sorted entries using 1-based index for new numeric names.
+        extension = os.path.splitext(old_name)[1]  # Preserve original extension exactly as stored on disk.
+        new_name = f"{index:0{digits}d}{extension}"  # Build final numeric filename preserving original extension.
+        temp_name = f"__restructure_tmp__{index:06d}__{old_name}"  # Build temporary filename for collision-safe two-phase renaming.
+        rename_plan.append((old_name, temp_name, new_name))  # Append rename tuple to planned operations list.
+
+    return rename_plan  # Return built rename plan for two-phase execution.
+
+
+def execute_two_phase_media_rename(product_data_directory: str, rename_plan: List[Tuple[str, str, str]]) -> Dict[str, str]:
+    """
+    Execute two-phase media rename plan and return applied old-to-new filename mapping.
+
+    :param product_data_directory: Absolute Product Data directory path.
+    :param rename_plan: List of (old_name, temp_name, new_name) tuples.
+    :return: Mapping from old filenames to successfully applied new filenames.
+    """
+
+    applied_mapping: Dict[str, str] = {}  # Initialize mapping of old filename to new filename for successfully applied renames.
+
+    for old_name, temp_name, _new_name in rename_plan:  # Execute phase 1 renames (old -> temp) for all planned files.
+        old_path = os.path.join(product_data_directory, old_name)  # Build absolute path to current old filename.
+        temp_path = os.path.join(product_data_directory, temp_name)  # Build absolute path to temporary filename.
+        if not os.path.exists(old_path):  # Verify old path exists before attempting phase 1 rename.
+            continue  # Continue when file is missing due to prior operations or unexpected external changes.
+        rename_with_retry(old_path, temp_path)  # Rename old path to temporary path for collision-safe phase 1.
+
+    for old_name, temp_name, new_name in rename_plan:  # Execute phase 2 renames (temp -> final) for all planned files.
+        temp_path = os.path.join(product_data_directory, temp_name)  # Build absolute path to temporary filename.
+        new_path = os.path.join(product_data_directory, new_name)  # Build absolute path to final filename.
+        if not os.path.exists(temp_path):  # Verify temporary file exists before attempting phase 2 rename.
+            continue  # Continue when temporary path is unavailable due to previous failures.
+        rename_with_retry(temp_path, new_path)  # Rename temporary path to final numeric filename for phase 2 completion.
+        applied_mapping[old_name] = new_name  # Record successful old-to-new filename mapping for reference updates.
+
+    return applied_mapping  # Return applied rename mapping for downstream path/reference rewriting.
+
+
+def is_reference_text_file(file_path: str) -> bool:
+    """
+    Determine whether a file should be scanned for media reference rewrites.
+
+    :param file_path: Absolute file path to classify.
+    :return: True when file is considered a text/reference candidate, False otherwise.
+    """
+
+    filename = os.path.basename(file_path).lower()  # Normalize filename for case-insensitive comparisons.
+    extension = os.path.splitext(filename)[1]  # Extract lowercased extension from normalized filename.
+
+    if filename == "index.html":  # Always include index.html files even when extension list changes.
+        return True  # Return True because index.html may contain media references.
+
+    return extension in REFERENCE_TEXT_EXTENSIONS  # Return extension-based classification result.
+
+
+def update_media_references_for_product_directory(product_directory: str, original_to_new_media_names: Dict[str, str]) -> None:
+    """
+    Update textual references from old root media names to Product Data relative media paths.
+
+    :param product_directory: Product directory root path after restructuring.
+    :param original_to_new_media_names: Mapping from original root media filename to final Product Data filename.
+    :return: None
+    """
+
+    if not original_to_new_media_names:  # Verify if there are no media mappings that require reference updates.
+        return  # Return early when nothing needs to be rewritten.
+
+    for root_directory, _dirnames, filenames in os.walk(product_directory):  # Traverse product directory recursively to inspect candidate reference files.
+        for filename in filenames:  # Iterate every file in current traversal directory.
+            file_path = os.path.join(root_directory, filename)  # Build absolute path for current file candidate.
+            if not is_reference_text_file(file_path):  # Verify whether current file is a supported reference text file.
+                continue  # Skip files that are not targeted for reference updates.
+
+            try:  # Attempt to read file content as UTF-8 text for reference rewriting.
+                with open(file_path, "r", encoding="utf-8") as source_file:  # Open reference candidate file using UTF-8 decoding.
+                    content = source_file.read()  # Read full file content for in-memory replacement operations.
+            except Exception:  # Ignore read/decode errors to avoid breaking finalization due to non-text or locked files.
+                continue  # Continue traversal when file cannot be read as UTF-8 text.
+
+            updated_content = content  # Initialize mutable content copy for replacement operations.
+
+            for original_name, new_name in sorted(original_to_new_media_names.items(), key=lambda item: len(item[0]), reverse=True):  # Iterate mappings longest-first to avoid partial overlap replacement issues.
+                target_media_path = os.path.join(product_directory, PRODUCT_DATA_DIRECTORY_NAME, new_name)  # Build absolute target path to final media file in Product Data.
+                relative_target_unix = normalize_path(os.path.relpath(target_media_path, root_directory))  # Build relative Unix-style target reference path from current file directory.
+                relative_target_windows = relative_target_unix.replace("/", "\\")  # Build Windows-style relative target reference variant.
+
+                replacement_pairs = [  # Define deterministic replacement pair list for common path representations.
+                    (f"./{original_name}", relative_target_unix),
+                    (f".\\{original_name}", relative_target_windows),
+                    (f"{PRODUCT_DATA_DIRECTORY_NAME}/{original_name}", relative_target_unix),
+                    (f"{PRODUCT_DATA_DIRECTORY_NAME}\\{original_name}", relative_target_windows),
+                    (original_name, relative_target_unix),
+                ]  # End of replacement pair list.
+
+                for old_value, new_value in replacement_pairs:  # Apply each old->new replacement pair in deterministic order.
+                    updated_content = updated_content.replace(old_value, new_value)  # Replace all occurrences for current replacement pair.
+
+            if updated_content != content:  # Verify whether at least one replacement changed file content.
+                try:  # Attempt to persist updated content back to the same file path.
+                    with open(file_path, "w", encoding="utf-8") as target_file:  # Open file in write mode with UTF-8 encoding.
+                        target_file.write(updated_content)  # Write rewritten content containing updated media references.
+                except Exception:  # Ignore write failures to keep finalization flow resilient.
+                    continue  # Continue traversal even when a particular file cannot be updated.
+
+
+def restructure_single_product_output_directory(product_directory: str) -> None:
+    """
+    Restructure one product directory into Product Data/Product Metadata and rename root media files.
+
+    :param product_directory: Absolute product directory path.
+    :return: None
+    """
+
+    if not os.path.isdir(product_directory):  # Verify product directory exists before attempting restructuring.
+        return  # Return early when product directory is missing.
+
+    product_data_directory = os.path.join(product_directory, PRODUCT_DATA_DIRECTORY_NAME)  # Build Product Data directory path inside product directory.
+    product_metadata_directory = os.path.join(product_directory, PRODUCT_METADATA_DIRECTORY_NAME)  # Build Product Metadata directory path inside product directory.
+
+    create_directory(product_data_directory, f"{os.path.basename(product_directory)}/{PRODUCT_DATA_DIRECTORY_NAME}")  # Ensure Product Data directory exists before moving media files.
+    create_directory(product_metadata_directory, f"{os.path.basename(product_directory)}/{PRODUCT_METADATA_DIRECTORY_NAME}")  # Ensure Product Metadata directory exists before moving metadata files/directories.
+
+    root_media_files, root_metadata_files, root_metadata_directories = classify_root_entries_for_restructure(product_directory)  # Classify immediate root entries into media and metadata buckets.
+    original_to_moved_media_names: Dict[str, str] = {}  # Initialize mapping from original root media names to moved Product Data filenames.
+
+    for directory_name in root_metadata_directories:  # Move all root directories into Product Metadata directory.
+        source_path = os.path.join(product_directory, directory_name)  # Build absolute source path for metadata directory move.
+        move_entry_with_collision_resolution(source_path, product_metadata_directory)  # Move root metadata directory into Product Metadata with collision handling.
+
+    for filename in root_metadata_files:  # Move all root non-media files into Product Metadata directory.
+        source_path = os.path.join(product_directory, filename)  # Build absolute source path for metadata file move.
+        move_entry_with_collision_resolution(source_path, product_metadata_directory)  # Move root metadata file into Product Metadata with collision handling.
+
+    for filename in root_media_files:  # Move all root media files into Product Data directory.
+        source_path = os.path.join(product_directory, filename)  # Build absolute source path for media file move.
+        moved_name = move_entry_with_collision_resolution(source_path, product_data_directory)  # Move root media file into Product Data and capture final moved filename.
+        original_to_moved_media_names[filename] = moved_name  # Persist mapping from original root filename to moved Product Data filename.
+
+    image_filenames, video_filenames = collect_product_data_media_files(product_data_directory)  # Collect current image/video files in Product Data root after relocation.
+    image_rename_plan = build_size_descending_rename_plan(product_data_directory, image_filenames)  # Build deterministic size-descending rename plan for images only.
+    video_rename_plan = build_size_descending_rename_plan(product_data_directory, video_filenames)  # Build deterministic size-descending rename plan for videos only.
+
+    moved_to_new_media_names: Dict[str, str] = {}  # Initialize mapping from moved Product Data filename to final numeric filename.
+    moved_to_new_media_names.update(execute_two_phase_media_rename(product_data_directory, image_rename_plan))  # Apply image rename plan and merge resulting mapping.
+    moved_to_new_media_names.update(execute_two_phase_media_rename(product_data_directory, video_rename_plan))  # Apply video rename plan and merge resulting mapping.
+
+    original_to_new_media_names: Dict[str, str] = {}  # Initialize final mapping from original root media filename to final Product Data numeric filename.
+    for original_name, moved_name in original_to_moved_media_names.items():  # Compose original-to-final mapping using moved and renamed mappings.
+        original_to_new_media_names[original_name] = moved_to_new_media_names.get(moved_name, moved_name)  # Resolve final filename fallback to moved name when unchanged by rename stage.
+
+    update_media_references_for_product_directory(product_directory, original_to_new_media_names)  # Update textual media references across product directory after move/rename operations.
+    set_full_permissions(product_directory)  # Re-apply full permissions after restructuring to preserve current finalization behavior.
+
+
+def restructure_product_outputs_before_finalize(context: dict) -> None:
+    """
+    Restructure all product output directories before final execution summary.
+
+    :param context: Mutable processing context dictionary.
+    :return: None
+    """
+
+    target_output_directory = get_restructure_target_output_directory(context)  # Resolve target output directory for restructuring before finalize.
+    if not target_output_directory:  # Verify if target output directory could not be resolved.
+        return  # Return early when no valid output directory is available.
+
+    product_directories = list_product_output_directories(target_output_directory)  # List product directories to process for restructuring.
+    if not product_directories:  # Verify whether there are product directories to process.
+        return  # Return early when there are no product directories.
+
+    for product_directory in product_directories:  # Iterate all product directories and apply per-directory restructuring flow.
+        try:  # Protect per-directory restructuring to keep global finalization resilient.
+            restructure_single_product_output_directory(product_directory)  # Restructure one product directory into Product Data/Product Metadata and rename media.
+        except Exception as e:  # Handle unexpected per-directory failures while continuing other directories.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Failed to restructure product directory {BackgroundColors.CYAN}{product_directory}{BackgroundColors.YELLOW}: {e}{Style.RESET_ALL}")  # Emit warning and continue with remaining product directories.
+
+
 def finalize_execution(start_time: datetime.datetime, args: argparse.Namespace, context: dict, total_urls: int) -> None:
     """
     Print execution summary, timing, cleanup staging, and register exit handlers.
@@ -4967,6 +5333,8 @@ def main():
     handle_sorting_phase(args, context)  # Execute sorting logic when enabled
     
     set_full_permissions(OUTPUT_DIRECTORY)  # Ensure full permissions for the output directory and its contents
+
+    restructure_product_outputs_before_finalize(context)  # Restructure final product directories and media naming before execution summary
 
     finalize_execution(start_time, args, context, total_urls)  # Print summary, timing, and finalize
 
