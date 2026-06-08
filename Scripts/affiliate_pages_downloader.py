@@ -2201,6 +2201,7 @@ def setup_image_paths(assets_dir: Path) -> Dict[str, Path]:
         "confirmation_img": assets_dir / "ConfirmationFileDownloaded.png",  # Define download confirmation image path
         "download_img": assets_dir / "DownloadButton.png",  # Define download button image path
         "enable_permission_img": assets_dir / "Extension Enable Permission.png",  # Define extension permission image path
+        "ExtensionMaybeLater_img": assets_dir / "ExtensionMaybeLater.png",  # Define extension maybe later image path
         "extension_img": assets_dir / "Extension.png",  # Define extension image path
         "failed_file_download_img": assets_dir / "FileDownloadFailed.png",  # Define failed download image path
         "get_amazon_url_img": assets_dir / "GetAffiliateURL-Amazon.png",  # Define Amazon URL retrieval image path    
