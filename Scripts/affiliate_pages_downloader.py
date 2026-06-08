@@ -3036,6 +3036,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         success = False  # Initialize success flag for current URL processing.
         fragmented_skip = False  # Initialize fragmented skip flag for for-loop continuation after while-loop exit.
         invalid_url_skip = False  # Initialize invalid URL skip flag for for-loop continuation after homepage redirect detection.
+        extension_unavailable_skip = False  # Initialize extension-unavailable skip flag for for-loop continuation after extension lookup failure.
 
         if only_renew_amazon_urls:  # Verify whether only-renew mode is active before executing download-specific workflow.
             opened_tabs, renewal_succeeded, renewal_original_url = only_renew_amazon_url_mode(url, index, urls, urls_file, image_paths, renew_amazon_affiliate, opened_tabs)  # Execute isolated renew-only flow and unpack tabs count, success flag, and original URL identifier.
@@ -3071,7 +3072,13 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
                 invalid_url_skip = True  # Mark invalid URL skip flag for for-loop continuation without processed count increment.
                 break  # Exit while loop immediately after detecting an invalid URL redirect.
             
-            extension_method = click_image_or_coords(image_paths["extension_img"], EXTENSION_X_REF, EXTENSION_Y_REF)  # Execute extension click action with scaled fallback coordinates.
+            extension_method = click_extension_image(image_paths["extension_img"])  # Execute extension click action using extension image-only lookup.
+
+            if extension_method == "NotFound":  # Verify whether extension image lookup failed before permission and download flow.
+                print(f"{BackgroundColors.YELLOW}[WARNING] Extension image not found for URL: {BackgroundColors.CYAN}{url}{BackgroundColors.YELLOW}. Closing current tab and skipping URL processing.{Style.RESET_ALL}")  # Log extension lookup failure with URL context.
+                opened_tabs = safely_close_product_tab(opened_tabs)  # Close the current product tab using existing tab-close flow.
+                extension_unavailable_skip = True  # Mark extension unavailable skip flag for for-loop continuation.
+                break  # Exit while loop immediately to stop current URL processing path.
                 
             px, py = compute_extension_cursor_position()  # Compute cursor position based on current browser/window size.
             pyautogui.moveTo(px, py, duration=0.12)  # Move cursor to computed extension position to prepare for scrolling.
@@ -3158,6 +3165,9 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
 
         if invalid_url_skip:  # Verify whether invalid URL was detected during download attempt.
             continue  # Continue for loop without processed_count increment for invalid URL skip.
+
+        if extension_unavailable_skip:  # Verify whether extension image lookup failed during download attempt.
+            continue  # Continue for loop without processed_count increment for extension-unavailable skip.
 
         if not success:  # Verify whether download ultimately failed after all retry attempts.
             continue  # Continue for loop without processed_count increment for failed URLs.
@@ -3473,6 +3483,23 @@ def click_image_or_coords(image_path: Path, reference_x: float, reference_y: flo
     scaled_x, scaled_y = get_scaled_fallback_coords(reference_x, reference_y)  # Compute scaled fallback coordinates relative to active window.
     pyautogui.click(scaled_x, scaled_y)  # Click scaled fallback coordinates.
     return "Coordinates"  # Return coordinates method label.
+
+
+def click_extension_image(image_path: Path) -> str:
+    """
+    Clicks the extension image only when it is detected.
+
+    :param image_path: Path to the extension image.
+    :return: Method name used for the click.
+    """
+
+    box = locate_image(image_path)  # Locate extension image on screen.
+
+    if box is None:  # Verify extension image detection before clicking.
+        return "NotFound"  # Return NotFound when extension image is unavailable.
+
+    pyautogui.click(box.left, box.top)  # Click top-left point like AHK ImageSearch behavior.
+    return "ImageSearch"  # Return image search method label.
 
 
 def compute_extension_cursor_position() -> Tuple[int, int]:
