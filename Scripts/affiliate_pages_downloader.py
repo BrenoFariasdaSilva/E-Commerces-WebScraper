@@ -3647,6 +3647,21 @@ def click_download_button(download_img: Path) -> str:
     return "Coordinates"  # Return coordinates method label.
 
 
+def click_specific_coordinates(x: int, y: int) -> str:
+    """
+    Clicks specific coordinates.
+
+    :param x: X coordinate to click.
+    :param y: Y coordinate to click.
+    :return: Method name used for the click.
+    """
+
+    pyautogui.moveTo(x, y)  # Move the cursor to the specified coordinates for traceability.
+    pyautogui.click(x, y)  # Click specified coordinates directly.
+    
+    return "Coordinates"  # Return coordinates method label.
+
+
 def click_enable_permission(enable_img: Path, maybe_later_img: Path | None = None) -> str:
     """
     Clicks the extension popup dismissal or enable permission button when present.
@@ -3666,8 +3681,7 @@ def click_enable_permission(enable_img: Path, maybe_later_img: Path | None = Non
                 box_left, box_top, box_width, box_height = maybe_later_box  # Unpack the detected bounding box values for a bottom-half click target.
                 click_x = box_left + (box_width // 2)  # Keep the click aligned with the horizontal center of the detected image.
                 click_y = box_top + ((box_height * 3) // 4)  # Target the midpoint of the lower half of the detected image.
-                pyautogui.moveTo(click_x, click_y)  # Move the cursor to the computed click position for traceability.
-                pyautogui.click(click_x, click_y)  # Click the lower-half midpoint of the detected extension popup dismissal button box.
+                click_specific_coordinates(click_x, click_y)  # Click the computed coordinates to dismiss the popup while avoiding potential "enable" button areas.
                 return "MaybeLater"  # Return popup dismissal method label when clicked.
 
         box = locate_image(enable_img)  # Locate enable-permission image on screen.
