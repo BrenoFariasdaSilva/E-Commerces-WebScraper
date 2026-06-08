@@ -3096,7 +3096,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
 
             download_method = click_download_button(image_paths["download_img"])  # Execute download click action.
             confirmation_alt_img = image_paths["confirmation_img"].with_name(f"{image_paths['confirmation_img'].stem}-Alternative{image_paths['confirmation_img'].suffix}")  # Build alternative confirmation image path using deterministic naming pattern.
-            confirmation_method = watch_for_save_dialog_and_confirmation(image_paths["save_button_img"], image_paths["confirmation_img"], confirmation_alt_img, image_paths["failed_file_download_img"])  # Watch and handle optional save dialog while waiting.
+            confirmation_method = watch_for_save_dialog_and_confirmation(image_paths["save_button_img"], image_paths["confirmation_img"], confirmation_alt_img, image_paths["failed_file_download_img"], image_paths["hide_next_time_img"]  )  # Watch and handle optional save dialog while waiting.
 
             download_failed = confirmation_method == "Timeout" or confirmation_method == "Download Failed"  # Set download failure flag based on confirmation timeout or failed download result.
             
@@ -3766,7 +3766,25 @@ def prevent_screen_lock(last_move_ts: float, interval_seconds: float = 50.0) -> 
     return last_move_ts  # Return unchanged timestamp when interval not reached.
 
 
-def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_img: Path, confirmation_alt_img: Path, failed_file_download_img: Path) -> str:
+def click_hide_next_time_if_present(hide_next_time_img: Path) -> bool:
+    """
+    Clicks the hide-next-time button when present.
+
+    :param hide_next_time_img: Path to the hide-next-time image.
+    :return: True when the button was found and clicked, otherwise False.
+    """
+
+    box = enhanced_locate_image(hide_next_time_img)  # Attempt to locate the hide-next-time image on screen.
+
+    if box is None:  # Verify image was found before attempting a click.
+        return False  # Return failure when the hide-next-time image was not detected.
+
+    verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Hide next time button detected; clicking to dismiss overlay.{Style.RESET_ALL}")  # Log hide-next-time button detection and click action.
+    click_box_center(box)  # Click center of detected hide-next-time button box.
+    return True  # Return success when the hide-next-time button was clicked.
+
+
+def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_img: Path, confirmation_alt_img: Path, failed_file_download_img: Path, hide_next_time_img: Path) -> str:
     """
     Watches for the optional Chrome "Save As" dialog and clicks the save button if it appears,
     while also monitoring for the confirmation image to stop early.
@@ -3775,6 +3793,7 @@ def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_i
     :param confirmation_img: Path to the confirmation image.
     :param confirmation_alt_img: Path to the alternative confirmation image.
     :param failed_file_download_img: Path to the failed file download image.
+    :param hide_next_time_img: Path to the hide-next-time image for optional overlay dismissal.
     :return: Detection status string.
     """
     
@@ -3787,6 +3806,8 @@ def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_i
     while (time.time() - start_time) < max_wait_time:  # Loop until timeout window is reached.
         scroll_extension_tab_to_start_button()  # Scroll again after potential permission click to ensure the Start download button is visible regardless of permission prompt presence or screen size.
         last_cursor_move_ts = prevent_screen_lock(last_cursor_move_ts)  # Periodically move cursor to prevent screen lock.
+        
+        click_hide_next_time_if_present(hide_next_time_img)  # Attempt to dismiss the hide-next-time overlay when present.
 
         box = enhanced_locate_image(save_button_img)  # Attempt to locate the optional save button image on screen.
         pyautogui.press("enter")  # Confirm save action via Enter key when required.
