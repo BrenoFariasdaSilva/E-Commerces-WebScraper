@@ -252,8 +252,8 @@ GEMINI_MODEL_PRIORITY = [
 
 # Image Upgrade Constants:
 FILENAME_SIMILARITY_THRESHOLD = 0.70  # Minimum SequenceMatcher ratio for root-to-candidate basename similarity matching
-PRODUCT_DATA_DIRECTORY_NAME = "Product Data"  # Directory name for storing root-level media artifacts after final restructuring.
-PRODUCT_METADATA_DIRECTORY_NAME = "Product Metadata"  # Directory name for storing non-media artifacts after final restructuring.
+PRODUCT_DATA_DIRECTORY_NAME = "Product Data"  # Directory name for storing product payload artifacts after final restructuring.
+PRODUCT_METADATA_DIRECTORY_NAME = "Product Metadata"  # Directory name for storing metadata artifacts after final restructuring.
 ROOT_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tif", ".tiff", ".svg", ".heic", ".avif"}  # Supported image extensions for root media detection.
 ROOT_VIDEO_EXTENSIONS = {".mp4", ".webm", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".m4v", ".mpeg", ".mpg", ".3gp", ".ts", ".m3u8"}  # Supported video extensions for root media detection.
 ROOT_MEDIA_EXTENSIONS = ROOT_IMAGE_EXTENSIONS | ROOT_VIDEO_EXTENSIONS  # Union of root-level image and video extensions.
@@ -4959,12 +4959,12 @@ def classify_root_entries_for_restructure(product_directory: str) -> Tuple[List[
     Classify immediate root entries of a product directory for restructuring.
 
     :param product_directory: Product directory path to classify immediate entries from.
-    :return: Tuple of (root_media_files, root_metadata_files, root_metadata_directories).
+    :return: Tuple of (root_product_data_files, root_metadata_files, root_product_data_directories).
     """
 
-    root_media_files: List[str] = []  # Initialize list for root-level media files.
-    root_metadata_files: List[str] = []  # Initialize list for root-level non-media files.
-    root_metadata_directories: List[str] = []  # Initialize list for root-level directories to move into metadata.
+    root_product_data_files: List[str] = []  # Initialize list for root-level files that belong in Product Data.
+    root_metadata_files: List[str] = []  # Initialize list for root-level files that belong in Product Metadata.
+    root_product_data_directories: List[str] = []  # Initialize list for root-level directories that belong in Product Data.
 
     for entry_name in sorted(os.listdir(product_directory)):  # Iterate root entries in deterministic sorted order.
         if entry_name in {PRODUCT_DATA_DIRECTORY_NAME, PRODUCT_METADATA_DIRECTORY_NAME}:  # Skip target directories to avoid self-move recursion.
@@ -4973,16 +4973,18 @@ def classify_root_entries_for_restructure(product_directory: str) -> Tuple[List[
         entry_path = os.path.join(product_directory, entry_name)  # Build absolute path for current root entry.
 
         if os.path.isdir(entry_path):  # Verify whether current root entry is a directory.
-            root_metadata_directories.append(entry_name)  # Collect root directory for metadata relocation.
+            root_product_data_directories.append(entry_name)  # Collect root directory for Product Data relocation.
             continue  # Continue to next entry after handling directory classification.
 
         if os.path.isfile(entry_path):  # Verify whether current root entry is a file.
-            if is_root_media_filename(entry_name):  # Verify whether current root file is a media file.
-                root_media_files.append(entry_name)  # Collect media file for Product Data relocation.
-            else:  # Handle root non-media file classification.
-                root_metadata_files.append(entry_name)  # Collect non-media file for Product Metadata relocation.
+            entry_name_lower = entry_name.lower()  # Normalize filename for deterministic case-insensitive rules.
 
-    return root_media_files, root_metadata_files, root_metadata_directories  # Return classified root entry lists for subsequent relocation.
+            if entry_name_lower.endswith("_description.txt") or entry_name_lower.endswith(".zip"):  # Route description and archive files to Product Data.
+                root_product_data_files.append(entry_name)  # Collect Product Data file.
+            elif entry_name_lower in {"product_data.json", "prompt.txt"}:  # Route known metadata files to Product Metadata.
+                root_metadata_files.append(entry_name)  # Collect Product Metadata file.
+
+    return root_product_data_files, root_metadata_files, root_product_data_directories  # Return classified root entry lists for subsequent relocation.
 
 
 def move_entry_with_collision_resolution(source_path: str, destination_directory: str) -> str:
@@ -5116,10 +5118,10 @@ def is_reference_text_file(file_path: str) -> bool:
 
 def update_media_references_for_product_directory(product_directory: str, original_to_new_media_names: Dict[str, str]) -> None:
     """
-    Update textual references from old root media names to Product Data relative media paths.
+    Update textual references from old root media names to renamed root media relative paths.
 
     :param product_directory: Product directory root path after restructuring.
-    :param original_to_new_media_names: Mapping from original root media filename to final Product Data filename.
+    :param original_to_new_media_names: Mapping from original root media filename to final renamed root media filename.
     :return: None
     """
 
@@ -5141,7 +5143,7 @@ def update_media_references_for_product_directory(product_directory: str, origin
             updated_content = content  # Initialize mutable content copy for replacement operations.
 
             for original_name, new_name in sorted(original_to_new_media_names.items(), key=lambda item: len(item[0]), reverse=True):  # Iterate mappings longest-first to avoid partial overlap replacement issues.
-                target_media_path = os.path.join(product_directory, PRODUCT_DATA_DIRECTORY_NAME, new_name)  # Build absolute target path to final media file in Product Data.
+                target_media_path = os.path.join(product_directory, new_name)  # Build absolute target path to final renamed media file in root product directory.
                 relative_target_unix = normalize_path(os.path.relpath(target_media_path, root_directory))  # Build relative Unix-style target reference path from current file directory.
                 relative_target_windows = relative_target_unix.replace("/", "\\")  # Build Windows-style relative target reference variant.
 
@@ -5166,7 +5168,7 @@ def update_media_references_for_product_directory(product_directory: str, origin
 
 def restructure_single_product_output_directory(product_directory: str) -> None:
     """
-    Restructure one product directory into Product Data/Product Metadata and rename root media files.
+    Restructure one product directory into Product Data/Product Metadata.
 
     :param product_directory: Absolute product directory path.
     :return: None
@@ -5181,35 +5183,30 @@ def restructure_single_product_output_directory(product_directory: str) -> None:
     create_directory(product_data_directory, f"{os.path.basename(product_directory)}/{PRODUCT_DATA_DIRECTORY_NAME}")  # Ensure Product Data directory exists before moving media files.
     create_directory(product_metadata_directory, f"{os.path.basename(product_directory)}/{PRODUCT_METADATA_DIRECTORY_NAME}")  # Ensure Product Metadata directory exists before moving metadata files/directories.
 
-    root_media_files, root_metadata_files, root_metadata_directories = classify_root_entries_for_restructure(product_directory)  # Classify immediate root entries into media and metadata buckets.
-    original_to_moved_media_names: Dict[str, str] = {}  # Initialize mapping from original root media names to moved Product Data filenames.
+    root_product_data_files, root_metadata_files, root_product_data_directories = classify_root_entries_for_restructure(product_directory)  # Classify immediate root entries into Product Data and Product Metadata buckets.
 
-    for directory_name in root_metadata_directories:  # Move all root directories into Product Metadata directory.
-        source_path = os.path.join(product_directory, directory_name)  # Build absolute source path for metadata directory move.
-        move_entry_with_collision_resolution(source_path, product_metadata_directory)  # Move root metadata directory into Product Metadata with collision handling.
+    for directory_name in root_product_data_directories:  # Move all root directories into Product Data directory.
+        source_path = os.path.join(product_directory, directory_name)  # Build absolute source path for Product Data directory move.
+        move_entry_with_collision_resolution(source_path, product_data_directory)  # Move root directory into Product Data with collision handling.
 
-    for filename in root_metadata_files:  # Move all root non-media files into Product Metadata directory.
+    for filename in root_metadata_files:  # Move all root metadata files into Product Metadata directory.
         source_path = os.path.join(product_directory, filename)  # Build absolute source path for metadata file move.
         move_entry_with_collision_resolution(source_path, product_metadata_directory)  # Move root metadata file into Product Metadata with collision handling.
 
-    for filename in root_media_files:  # Move all root media files into Product Data directory.
-        source_path = os.path.join(product_directory, filename)  # Build absolute source path for media file move.
-        moved_name = move_entry_with_collision_resolution(source_path, product_data_directory)  # Move root media file into Product Data and capture final moved filename.
-        original_to_moved_media_names[filename] = moved_name  # Persist mapping from original root filename to moved Product Data filename.
+    for filename in root_product_data_files:  # Move all root Product Data files into Product Data directory.
+        source_path = os.path.join(product_directory, filename)  # Build absolute source path for Product Data file move.
+        move_entry_with_collision_resolution(source_path, product_data_directory)  # Move root Product Data file into Product Data with collision handling.
 
-    image_filenames, video_filenames = collect_product_data_media_files(product_data_directory)  # Collect current image/video files in Product Data root after relocation.
-    image_rename_plan = build_size_descending_rename_plan(product_data_directory, image_filenames)  # Build deterministic size-descending rename plan for images only.
-    video_rename_plan = build_size_descending_rename_plan(product_data_directory, video_filenames)  # Build deterministic size-descending rename plan for videos only.
+    image_filenames, video_filenames = collect_product_data_media_files(product_directory)  # Collect current image/video files in root product directory.
+    image_rename_plan = build_size_descending_rename_plan(product_directory, image_filenames)  # Build deterministic size-descending rename plan for root images only.
+    video_rename_plan = build_size_descending_rename_plan(product_directory, video_filenames)  # Build deterministic size-descending rename plan for root videos only.
 
-    moved_to_new_media_names: Dict[str, str] = {}  # Initialize mapping from moved Product Data filename to final numeric filename.
-    moved_to_new_media_names.update(execute_two_phase_media_rename(product_data_directory, image_rename_plan))  # Apply image rename plan and merge resulting mapping.
-    moved_to_new_media_names.update(execute_two_phase_media_rename(product_data_directory, video_rename_plan))  # Apply video rename plan and merge resulting mapping.
+    original_to_new_media_names: Dict[str, str] = {}  # Initialize mapping from original root media filename to final numeric filename.
+    original_to_new_media_names.update(execute_two_phase_media_rename(product_directory, image_rename_plan))  # Apply root image rename plan and merge resulting mapping.
+    original_to_new_media_names.update(execute_two_phase_media_rename(product_directory, video_rename_plan))  # Apply root video rename plan and merge resulting mapping.
 
-    original_to_new_media_names: Dict[str, str] = {}  # Initialize final mapping from original root media filename to final Product Data numeric filename.
-    for original_name, moved_name in original_to_moved_media_names.items():  # Compose original-to-final mapping using moved and renamed mappings.
-        original_to_new_media_names[original_name] = moved_to_new_media_names.get(moved_name, moved_name)  # Resolve final filename fallback to moved name when unchanged by rename stage.
+    update_media_references_for_product_directory(product_directory, original_to_new_media_names)  # Update textual media references across product directory after root rename operations.
 
-    update_media_references_for_product_directory(product_directory, original_to_new_media_names)  # Update textual media references across product directory after move/rename operations.
     set_full_permissions(product_directory)  # Re-apply full permissions after restructuring to preserve current finalization behavior.
 
 
@@ -5231,7 +5228,7 @@ def restructure_product_outputs_before_finalize(context: dict) -> None:
 
     for product_directory in product_directories:  # Iterate all product directories and apply per-directory restructuring flow.
         try:  # Protect per-directory restructuring to keep global finalization resilient.
-            restructure_single_product_output_directory(product_directory)  # Restructure one product directory into Product Data/Product Metadata and rename media.
+            restructure_single_product_output_directory(product_directory)  # Restructure one product directory into Product Data/Product Metadata.
         except Exception as e:  # Handle unexpected per-directory failures while continuing other directories.
             print(f"{BackgroundColors.YELLOW}[WARNING] Failed to restructure product directory {BackgroundColors.CYAN}{product_directory}{BackgroundColors.YELLOW}: {e}{Style.RESET_ALL}")  # Emit warning and continue with remaining product directories.
 
@@ -5334,7 +5331,7 @@ def main():
     
     set_full_permissions(OUTPUT_DIRECTORY)  # Ensure full permissions for the output directory and its contents
 
-    restructure_product_outputs_before_finalize(context)  # Restructure final product directories and media naming before execution summary
+    restructure_product_outputs_before_finalize(context)  # Restructure final product directories before execution summary
 
     finalize_execution(start_time, args, context, total_urls)  # Print summary, timing, and finalize
 
