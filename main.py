@@ -3475,6 +3475,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--merge_output_dirs", type=lambda s: str(s).lower() in ("true", "1", "yes", "y"), default=False, help="Whether to merge all timestamped output directories into a single new directory (default: False)")  # Register merge_output_dirs argument with boolean conversion
     parser.add_argument("--generate_template_files_from_local", type=lambda s: str(s).lower() in ("true", "1", "yes", "y"), default=False, help="Whether to generate missing Template.txt files from local description files (default: False)")  # Register generate_template_files_from_local argument with boolean conversion
     parser.add_argument("--generate_template_files_from_prompt", type=lambda s: str(s).lower() in ("true", "1", "yes", "y"), default=False, help="Whether to generate missing Template.txt files from existing Prompt.txt files (default: False)")  # Register generate_template_files_from_prompt argument with boolean conversion
+    parser.add_argument("--restructure_product_outputs", action="store_true", help="Whether to run standalone product output restructuring for all immediate directories inside ./Outputs/ except .staging (default: False)")  # Register standalone restructuring mode flag without requiring a value.
 
     args = parser.parse_args()  # Parse command-line arguments
 
@@ -4046,6 +4047,63 @@ def handle_generate_template_files_from_local_mode(args: argparse.Namespace, sta
     print(f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Program finished.{Style.RESET_ALL}")  # Output program end message
 
     return True  # Return True to indicate mode was executed and main should exit early
+
+
+def list_restructure_mode_target_directories(base_output_dir: str) -> List[str]:
+    """
+    List immediate eligible directories for standalone restructuring mode.
+
+    :param base_output_dir: Base output directory that contains run directories.
+    :return: Sorted list of absolute eligible directories excluding .staging case-insensitively.
+    """
+
+    target_directories: List[str] = []  # Initialize list for immediate eligible output directories.
+
+    if not os.path.isdir(base_output_dir):  # Verify base output directory exists before listing entries.
+        return target_directories  # Return empty list when output directory does not exist.
+
+    for entry_name in sorted(os.listdir(base_output_dir)):  # Iterate immediate child entries in deterministic sorted order.
+        if entry_name.lower() == ".staging":  # Ignore staging directory name regardless of letter casing.
+            continue  # Continue to next entry when current entry is staging.
+
+        entry_path = os.path.join(base_output_dir, entry_name)  # Build absolute path for current immediate child entry.
+        if not os.path.isdir(entry_path):  # Verify current entry is a directory.
+            continue  # Continue to next entry when current entry is not a directory.
+
+        target_directories.append(entry_path)  # Append eligible immediate child directory for standalone restructuring mode.
+
+    return target_directories  # Return collected eligible immediate directories.
+
+
+def handle_restructure_product_outputs_mode(args: argparse.Namespace, start_time: datetime.datetime) -> bool:
+    """
+    Execute standalone product output restructuring mode and return whether it was activated.
+
+    :param args: Parsed command-line arguments namespace.
+    :param start_time: Program start timestamp for execution time calculation.
+    :return: True if standalone restructuring mode was executed and main should exit early, False otherwise.
+    """
+
+    if not args.restructure_product_outputs:  # Verify standalone restructuring mode was requested.
+        return False  # Return False to indicate standalone restructuring mode was not activated.
+
+    print(f"{BackgroundColors.GREEN}Running in {BackgroundColors.CYAN}Restructure Product Outputs{BackgroundColors.GREEN} Mode.{Style.RESET_ALL}")  # Log standalone restructuring mode activation.
+    create_directory(os.path.abspath(OUTPUT_DIRECTORY), OUTPUT_DIRECTORY.replace(".", ""))  # Ensure the base output directory exists before standalone restructuring traversal.
+
+    target_directories = list_restructure_mode_target_directories(OUTPUT_DIRECTORY)  # Resolve eligible immediate output directories for standalone restructuring mode.
+    if not target_directories:  # Verify there are eligible directories to process.
+        print(f"{BackgroundColors.YELLOW}No eligible directories found in {BackgroundColors.CYAN}{OUTPUT_DIRECTORY}{BackgroundColors.YELLOW} for standalone restructuring mode.{Style.RESET_ALL}")  # Report empty eligible directory set.
+    else:  # Execute standalone restructuring pass when eligible directories were discovered.
+        for target_directory in target_directories:  # Iterate every eligible immediate output directory for standalone restructuring.
+            print(f"{BackgroundColors.GREEN}Restructuring output directory: {BackgroundColors.CYAN}{target_directory}{Style.RESET_ALL}")  # Log current directory being restructured.
+            restructure_context = {"timestamped_output_dir_for_sorting": target_directory, "timestamped_output_dir": None}  # Build minimal context consumed by existing restructuring path.
+            restructure_product_outputs_before_finalize(restructure_context)  # Reuse existing restructuring implementation for current output directory.
+
+    finish_time = datetime.datetime.now()  # Capture finish time after standalone restructuring mode completion.
+    print(f"{BackgroundColors.GREEN}Execution time: {BackgroundColors.CYAN}{calculate_execution_time(start_time, finish_time)}{Style.RESET_ALL}")  # Output execution time for standalone restructuring mode.
+    print(f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Program finished.{Style.RESET_ALL}")  # Output program end message for standalone restructuring mode.
+
+    return True  # Return True to indicate standalone restructuring mode executed and main should exit early.
 
 
 def setup_environment() -> bool:
@@ -4979,6 +5037,9 @@ def classify_root_entries_for_restructure(product_directory: str) -> Tuple[List[
         if os.path.isfile(entry_path):  # Verify whether current root entry is a file.
             entry_name_lower = entry_name.lower()  # Normalize filename for deterministic case-insensitive rules.
 
+            if is_root_media_filename(entry_name) or entry_name_lower == "template.txt":  # Keep media and Template.txt in root product directory.
+                continue  # Continue to next entry because this file must remain in root.
+
             if entry_name_lower.endswith("_description.txt") or entry_name_lower.endswith(".zip"):  # Route description and archive files to Product Data.
                 root_product_data_files.append(entry_name)  # Collect Product Data file.
             elif entry_name_lower in {"product_data.json", "prompt.txt"}:  # Route known metadata files to Product Metadata.
@@ -5005,6 +5066,48 @@ def move_entry_with_collision_resolution(source_path: str, destination_directory
 
     shutil.move(source_path, destination_path)  # Move source entry to destination path using filesystem move semantics.
     return os.path.basename(destination_path)  # Return final destination entry name after potential collision suffixing.
+
+
+def rebalance_restructure_directories(product_directory: str, product_data_directory: str, product_metadata_directory: str) -> None:
+    """
+    Rebalance misplaced entries across root, Product Data, and Product Metadata.
+
+    :param product_directory: Absolute product directory path.
+    :param product_data_directory: Absolute Product Data directory path.
+    :param product_metadata_directory: Absolute Product Metadata directory path.
+    :return: None.
+    """
+
+    container_directories = [product_data_directory, product_metadata_directory]  # Define source container directories that can contain misplaced entries.
+
+    for container_directory in container_directories:  # Iterate each container directory for ownership rebalance.
+        if not os.path.isdir(container_directory):  # Verify container directory exists before scanning entries.
+            continue  # Continue to next container when current one does not exist.
+
+        for entry_name in sorted(os.listdir(container_directory)):  # Iterate container entries in deterministic sorted order.
+            source_path = os.path.join(container_directory, entry_name)  # Build absolute source path for current container entry.
+            entry_name_lower = entry_name.lower()  # Normalize entry name for deterministic case-insensitive rules.
+
+            destination_directory: Optional[str] = None  # Initialize destination directory for current entry.
+
+            if os.path.isdir(source_path):  # Verify whether current entry is a directory.
+                if container_directory == product_metadata_directory:  # Route directories from Product Metadata into Product Data.
+                    destination_directory = product_data_directory  # Assign Product Data as destination for directories currently in Product Metadata.
+            elif os.path.isfile(source_path):  # Verify whether current entry is a file.
+                if is_root_media_filename(entry_name) or entry_name_lower == "template.txt":  # Route media and Template.txt back to root.
+                    destination_directory = product_directory  # Assign root product directory as destination.
+                elif entry_name_lower.endswith("_description.txt") or entry_name_lower.endswith(".zip"):  # Route description and archive files into Product Data.
+                    destination_directory = product_data_directory  # Assign Product Data as destination for description and archive files.
+                elif entry_name_lower in {"product_data.json", "prompt.txt"}:  # Route product_data.json and Prompt.txt into Product Metadata.
+                    destination_directory = product_metadata_directory  # Assign Product Metadata as destination for metadata files.
+
+            if not destination_directory:  # Verify if no rebalance destination was determined for this entry.
+                continue  # Continue to next entry when current entry does not need rebalance.
+
+            if os.path.normcase(os.path.abspath(destination_directory)) == os.path.normcase(os.path.abspath(container_directory)):  # Verify destination differs from source container.
+                continue  # Continue to next entry when current entry is already in the correct container.
+
+            move_entry_with_collision_resolution(source_path, destination_directory)  # Move current entry to ownership-correct destination with collision handling.
 
 
 def collect_product_data_media_files(product_data_directory: str) -> Tuple[List[str], List[str]]:
@@ -5183,6 +5286,8 @@ def restructure_single_product_output_directory(product_directory: str) -> None:
     create_directory(product_data_directory, f"{os.path.basename(product_directory)}/{PRODUCT_DATA_DIRECTORY_NAME}")  # Ensure Product Data directory exists before moving media files.
     create_directory(product_metadata_directory, f"{os.path.basename(product_directory)}/{PRODUCT_METADATA_DIRECTORY_NAME}")  # Ensure Product Metadata directory exists before moving metadata files/directories.
 
+    rebalance_restructure_directories(product_directory, product_data_directory, product_metadata_directory)  # Rebalance misplaced entries from prior runs before root classification and movement.
+
     root_product_data_files, root_metadata_files, root_product_data_directories = classify_root_entries_for_restructure(product_directory)  # Classify immediate root entries into Product Data and Product Metadata buckets.
 
     for directory_name in root_product_data_directories:  # Move all root directories into Product Data directory.
@@ -5293,6 +5398,9 @@ def main():
     if args.verbose:  # Verify if verbose mode is enabled
         global VERBOSE  # Set the global VERBOSE variable to True when the --verbose flag is provided
         VERBOSE = True  # Enable verbose output
+
+    if handle_restructure_product_outputs_mode(args, start_time):  # Execute standalone restructuring mode and early exit if applicable.
+        return  # Exit early if standalone restructuring mode executed.
 
     if handle_merge_mode(args, start_time):  # Execute merge-only mode and early exit if applicable
         return  # Exit early if merge mode executed
