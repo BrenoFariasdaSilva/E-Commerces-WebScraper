@@ -3078,7 +3078,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
             time.sleep(0.05)  # Wait briefly after moving cursor to allow UI to stabilize before scrolling.
             scroll_extension_tab_to_start_button()  # Scroll at cursor position to reveal the Start download button on low-resolution screens.
             
-            enable_permission_method = click_enable_permission(image_paths["enable_permission_img"])  # Attempt to click optional extension enable permission button using passed asset variable.
+            enable_permission_method = click_enable_permission(image_paths["enable_permission_img"], image_paths["ExtensionMaybeLater_img"])  # Attempt to dismiss optional extension popup or click enable permission using passed asset variables.
             
             scroll_extension_tab_to_start_button()  # Scroll again after potential permission click to ensure the Start download button is visible regardless of permission prompt presence or screen size.
             
@@ -3647,17 +3647,29 @@ def click_download_button(download_img: Path) -> str:
     return "Coordinates"  # Return coordinates method label.
 
 
-def click_enable_permission(enable_img: Path) -> str:
+def click_enable_permission(enable_img: Path, maybe_later_img: Path | None = None) -> str:
     """
-    Clicks the extension enable permission button when present.
+    Clicks the extension popup dismissal or enable permission button when present.
 
     :param enable_img: Path to the extension enable-permission image.
+    :param maybe_later_img: Optional path to the extension "maybe later" image.
     :return: Method name used for the click.
     """
 
     start = time.time()  # Store start timestamp for optional retry window.
 
     while time.time() - start <= 1.2:  # Repeat until timeout window expires.
+        if maybe_later_img is not None:  # Attempt to dismiss the extension popup before the permission prompt when the asset is available.
+            maybe_later_box = locate_image(maybe_later_img)  # Locate extension "maybe later" image on screen.
+
+            if maybe_later_box is not None:  # Verify image was found before clicking.
+                box_left, box_top, box_width, box_height = maybe_later_box  # Unpack the detected bounding box values for a bottom-half click target.
+                click_x = box_left + (box_width // 2)  # Keep the click aligned with the horizontal center of the detected image.
+                click_y = box_top + ((box_height * 3) // 4)  # Target the midpoint of the lower half of the detected image.
+                pyautogui.moveTo(click_x, click_y)  # Move the cursor to the computed click position for traceability.
+                pyautogui.click(click_x, click_y)  # Click the lower-half midpoint of the detected extension popup dismissal button box.
+                return "MaybeLater"  # Return popup dismissal method label when clicked.
+
         box = locate_image(enable_img)  # Locate enable-permission image on screen.
 
         if box is not None:  # Verify image was found before clicking.
