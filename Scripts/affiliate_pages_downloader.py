@@ -2205,6 +2205,7 @@ def setup_image_paths(assets_dir: Path) -> Dict[str, Path]:
         "extension_img": assets_dir / "Extension.png",  # Define extension image path
         "failed_file_download_img": assets_dir / "FileDownloadFailed.png",  # Define failed download image path
         "get_amazon_url_img": assets_dir / "GetAffiliateURL-Amazon.png",  # Define Amazon URL retrieval image path    
+        "hide_next_time_img": assets_dir / "ConfirmationFileDownloaded-HideNextTime.png",  # Define hide next time image path
         "mercado_livre_img": assets_dir / "MercadoLivre-GoToProduct.png",  # Define MercadoLivre navigation image path
         "mercado_livre_invalid_url_img": assets_dir / "MercadoLivre-InvalidURL.png",  # Define MercadoLivre invalid URL image path
         "save_button_img": assets_dir / "SaveFileButton.png",  # Define MercadoLivre save button image path
