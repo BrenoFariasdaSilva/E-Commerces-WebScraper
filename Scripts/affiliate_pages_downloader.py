@@ -2441,7 +2441,7 @@ def filter_and_delete_detected_filenames(detected_filename: str, delete_temp_fil
     :return: Filtered filename or empty string if invalid.
     """
     
-    if detected_filename.endswith(".tmp"):  # If the detected file is a temporary file.
+    if detected_filename.endswith(".tmp") or detected_filename.endswith(".crdownload") or "unconfirmed" in detected_filename.lower():  # If the detected file is a temporary file.
         print(f"{BackgroundColors.YELLOW}[WARNING] Detected filename appears to be a temporary file and will be ignored: {BackgroundColors.CYAN}{detected_filename}{Style.RESET_ALL}")  # Log warning about temporary file detection.
         try:
             if delete_temp_files:  # Check if deletion of temporary files is enabled before attempting to delete.
