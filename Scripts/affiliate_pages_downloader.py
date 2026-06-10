@@ -3868,7 +3868,7 @@ def wait_for_download_file_stabilization(downloads_dirs: List[str], timeout: flo
                     if not file_path.exists():  # Verify file still exists.
                         continue  # Skip removed files.
 
-                    if name.endswith(".crdownload") or name.endswith(".tmp"):  # Verify temporary download file presence.
+                    if name.endswith(".crdownload") or name.endswith(".tmp") or "unconfirmed" in name.lower():  # Verify temporary download file presence.
                         last_seen_temp_file = name  # Track latest temporary filename.
                         verbose_output(f"{BackgroundColors.YELLOW}[DEBUG] Detected temporary download file: {BackgroundColors.CYAN}{file_path}{BackgroundColors.YELLOW}; waiting for stabilization...{Style.RESET_ALL}")  # Log detection of temporary file with path details when verbose.
                         unstable_found = True  # Mark unstable file detected.
