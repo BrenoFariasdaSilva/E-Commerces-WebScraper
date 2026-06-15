@@ -43,17 +43,20 @@ run: dependencies
 	$(CLEAR_CMD)
 	$(call RUN_AND_LOG, ./Scripts/affiliate_pages_downloader.py --process_only_unlinked_urls --headerless True $(ARGS))
 	$(call RUN_AND_LOG, ./main.py --headerless True --sort_products_by_product_name True $(ARGS))
+	$(call RUN_AND_LOG, ./main.py --restructure_product_outputs $(ARGS))
 
 local: dependencies
 	$(ENSURE_LOG_DIR)
 	$(CLEAR_CMD)
 	$(call RUN_AND_LOG, ./main.py --sort_products_by_product_name True $(ARGS))
+	$(call RUN_AND_LOG, ./main.py --restructure_product_outputs $(ARGS))
 
 # Execute the main script with logging and updated dependency management
 main: dependencies
 	$(ENSURE_LOG_DIR)
 	$(CLEAR_CMD)
 	$(call RUN_AND_LOG, ./main.py --sort_products_by_product_name True $(ARGS))
+	$(call RUN_AND_LOG, ./main.py --restructure_product_outputs $(ARGS))
 
 sort_products: dependencies
 	$(ENSURE_LOG_DIR)
@@ -69,6 +72,7 @@ else
 	fi
 endif
 	$(call RUN_AND_LOG, ./main.py --sort_products_by_product_name True --output_dir "$(OUTPUT_DIR)")
+	$(call RUN_AND_LOG, ./main.py --restructure_product_outputs $(ARGS))
 
 generate_template_files_from_local: dependencies
 	$(ENSURE_LOG_DIR)
