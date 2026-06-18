@@ -103,6 +103,21 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def verbose_output(true_string: str = "", false_string: str = "") -> None:  # Define verbose output behavior.
+    """
+    Output a message based on verbose mode.
+
+    :param true_string: Message printed when verbose mode is active.
+    :param false_string: Message printed when verbose mode is inactive.
+    :return: None
+    """
+
+    if VERBOSE and true_string != "":  # Print verbose message when enabled.
+        print(true_string)  # Output the enabled message.
+    elif false_string != "":  # Print fallback message when provided.
+        print(false_string)  # Output the fallback message.
+
+
 def resolve_entry_with_trailing_space(current_path: str, entry: str, stripped_part: str) -> str:  # Resolve one path segment.
     """
     Resolve and optionally rename a directory entry with trailing spaces.
