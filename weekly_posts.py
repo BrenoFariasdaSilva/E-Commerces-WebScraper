@@ -103,6 +103,19 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def get_ordered_weekday_child_directories(weekday_path: Path) -> list[Path]:  # Order weekday child directories.
+    """
+    Return weekday child directories in deterministic normalized name order.
+
+    :param weekday_path: Weekday directory path.
+    :return: Ordered child directory paths.
+    """
+
+    child_dirs = [path for path in weekday_path.iterdir() if path.is_dir()]  # Collect child directories only.
+    child_dirs.sort(key=lambda path: (get_child_directory_name_without_index(path.name).lower(), path.name.lower()))  # Sort by normalized name.
+    return child_dirs  # Return ordered child directories.
+
+
 def build_weekday_child_targets(child_dirs: list[Path]) -> dict[Path, Path]:  # Build final indexed targets.
     """
     Build target paths for indexed weekday child directories.
