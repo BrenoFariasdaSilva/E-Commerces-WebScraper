@@ -103,6 +103,19 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def get_weekday_directory_with_count(weekday_path: Path) -> Path:  # Build counted weekday path.
+    """
+    Return the weekday directory path with its child directory count.
+
+    :param weekday_path: Weekday directory path.
+    :return: Weekday directory path with count suffix.
+    """
+
+    total_posts = sum(1 for child in weekday_path.iterdir() if child.is_dir())  # Count child directories.
+    counted_path = weekday_path.parent / f"{weekday_path.name} ({total_posts})"  # Build counted path.
+    return counted_path  # Return counted path.
+
+
 def is_timestamp_dir(path: Path) -> bool:  # Detect timestamp directory names.
     """
     Return whether a path matches the timestamp directory format.
