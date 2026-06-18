@@ -56,37 +56,49 @@ from colorama import Style  # Reset terminal colors
 from Logger import Logger  # Log output to terminal and file.
 
 
-# Macros:
-class BackgroundColors:  # Colors for the terminal
-    CYAN = "\033[96m"  # Cyan
-    GREEN = "\033[92m"  # Green
-    YELLOW = "\033[93m"  # Yellow
-    RED = "\033[91m"  # Red
-    BOLD = "\033[1m"  # Bold
-    UNDERLINE = "\033[4m"  # Underline
-    CLEAR_TERMINAL = "\033[H\033[J"  # Clear the terminal
+class BackgroundColors:  # Define terminal color constants.
+    CYAN = "\033[96m"  # Set cyan color.
+    GREEN = "\033[92m"  # Set green color.
+    YELLOW = "\033[93m"  # Set yellow color.
+    RED = "\033[91m"  # Set red color.
+    BOLD = "\033[1m"  # Set bold style.
+    UNDERLINE = "\033[4m"  # Set underline style.
+    CLEAR_TERMINAL = "\033[H\033[J"  # Clear the terminal.
 
 
-# Execution Constants:
-VERBOSE = False  # Set to True to output verbose messages
+VERBOSE = False  # Set verbose output off by default.
 
-# Logger Setup:
-logger = Logger(f"./Logs/{Path(__file__).stem}.log", clean=True)  # Create a Logger instance
-sys.stdout = logger  # Redirect stdout to the logger
-sys.stderr = logger  # Redirect stderr to the logger
+logger = Logger(f"./Logs/{Path(__file__).stem}.log", clean=True)  # Create a Logger instance.
+sys.stdout = logger  # Redirect stdout to the logger.
+sys.stderr = logger  # Redirect stderr to the logger.
 
-# Sound Constants:
-SOUND_COMMANDS = {
-    "Darwin": "afplay",
-    "Linux": "aplay",
-    "Windows": "start",
-}  # The commands to play a sound for each operating system
-SOUND_FILE = "./.assets/Sounds/NotificationSound.wav"  # The path to the sound file
+SOUND_COMMANDS = {  # Define sound commands by operating system.
+    "Darwin": "afplay",  # Set macOS sound command.
+    "Linux": "aplay",  # Set Linux sound command.
+    "Windows": "start",  # Set Windows sound command.
+}  # Close sound command mapping.
+SOUND_FILE = "./.assets/Sounds/NotificationSound.wav"  # Set the notification sound path.
 
-# RUN_FUNCTIONS:
-RUN_FUNCTIONS = {
-    "Play Sound": True,  # Set to True to play a sound when the program finishes
-}
+RUN_FUNCTIONS = {  # Configure optional finish actions.
+    "Play Sound": True,  # Enable finish sound registration.
+}  # Close optional finish actions.
+
+OUTPUTS_DIR = Path(r"D:\Backup\GitHub\Public\E-Commerces-WebScraper\Outputs")  # Set the default outputs directory.
+TO_DISTRIBUTE_DIR = OUTPUTS_DIR / "To-Distribute"  # Set the staging distribution directory.
+TIMESTAMP_DIR_PATTERN = re.compile(r"^\d+\.\s\d{4}-\d{2}-\d{2}\s-\s\d{2}h\d{2}m\d{2}s$")  # Match timestamp directory names.
+POST_DIR_PATTERN = re.compile(r"^(\d+)\.\s(.+?)\s-\s(.+)$")  # Match indexed post directory names.
+CHILD_INDEX_PATTERN = re.compile(r"^\d+\.\s(.+)$")  # Match indexed weekday child directory names.
+TEMP_INDEX_PREFIX = ".weekly-posts-indexing-"  # Set temporary indexing prefix.
+WEEKDAYS = [  # Define weekday directory names.
+    "1. Monday",  # Set Monday directory name.
+    "2. Tuesday",  # Set Tuesday directory name.
+    "3. Wednesday",  # Set Wednesday directory name.
+    "4. Thursday",  # Set Thursday directory name.
+    "5. Friday",  # Set Friday directory name.
+    "6. Saturday",  # Set Saturday directory name.
+    "7. Sunday",  # Set Sunday directory name.
+]  # Close weekday directory names.
+
 
 # Functions Definitions:
 
