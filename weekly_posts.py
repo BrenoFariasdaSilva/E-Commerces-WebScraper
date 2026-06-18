@@ -103,6 +103,44 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def distribute_platform_directories() -> None:  # Distribute post directories across weekdays.
+    """
+    Distribute platform directories evenly across weekdays.
+
+    :param: None
+    :return: None
+    """
+
+    weekday_paths = create_weekday_directories()  # Create weekday directories.
+    platform_map: defaultdict[str, list[Path]] = defaultdict(list)  # Initialize platform mapping.
+    post_dirs = [path for path in TO_DISTRIBUTE_DIR.iterdir() if path.is_dir() and path.name not in WEEKDAYS]  # Collect post directories.
+    post_dirs.sort(key=lambda path: path.name.lower())  # Sort post directories case-insensitively.
+
+    for post_dir in post_dirs:  # Iterate post directories.
+        platform = get_platform_name(post_dir.name)  # Extract platform name.
+
+        if platform:  # Detect valid platform name.
+            platform_map[platform].append(post_dir)  # Store post directory by platform.
+
+    for platform_dirs in platform_map.values():  # Iterate platform directory groups.
+        total = len(platform_dirs)  # Count platform directories.
+        base_amount = total // 7  # Calculate base weekday amount.
+        remainder = total % 7  # Calculate Sunday remainder.
+        index = 0  # Initialize platform directory index.
+
+        for weekday_index, weekday in enumerate(WEEKDAYS):  # Iterate weekdays in configured order.
+            amount = base_amount  # Set base amount for weekday.
+
+            if weekday_index == 6:  # Detect Sunday.
+                amount += remainder  # Assign remainder to Sunday.
+
+            for _ in range(amount):  # Move configured amount for weekday.
+                source = platform_dirs[index]  # Get source post directory.
+                destination = weekday_paths[weekday] / source.name  # Build weekday destination.
+                shutil.move(str(source), str(destination))  # Move post directory to weekday.
+                index += 1  # Advance platform directory index.
+
+
 def outputs_already_has_weekdays() -> bool:  # Detect existing weekday directories in Outputs.
     """
     Return whether Outputs already contains weekday directories.
