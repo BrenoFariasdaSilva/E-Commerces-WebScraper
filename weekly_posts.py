@@ -103,6 +103,18 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def directories_are_equivalent(dir_a: Path, dir_b: Path) -> bool:  # Compare two directories.
+    """
+    Compare directory structure, file names, and file sizes.
+
+    :param dir_a: First directory path.
+    :param dir_b: Second directory path.
+    :return: True when directories are equivalent.
+    """
+
+    return build_directory_signature(dir_a) == build_directory_signature(dir_b)  # Return comparison result.
+
+
 def resolve_duplicate_directory(source: Path, destination: Path) -> None:  # Resolve duplicate directory names.
     """
     Resolve duplicate directories by equivalence, file count, and size.
