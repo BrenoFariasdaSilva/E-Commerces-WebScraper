@@ -103,6 +103,30 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def get_next_week_directory() -> Path:  # Find next available Next-Week path.
+    """
+    Return the first available Next-Week directory path.
+
+    :param: None
+    :return: Available Next-Week directory path.
+    """
+
+    candidate = OUTPUTS_DIR / "Next-Week"  # Build first candidate.
+
+    if not candidate.exists():  # Detect available first candidate.
+        return candidate  # Return first candidate.
+
+    counter = 2  # Initialize suffix counter.
+
+    while True:  # Iterate until an available candidate is found.
+        candidate = OUTPUTS_DIR / f"Next-Week-{counter}"  # Build suffixed candidate.
+
+        if not candidate.exists():  # Detect available suffixed candidate.
+            return candidate  # Return suffixed candidate.
+
+        counter += 1  # Increment suffix counter.
+
+
 def remove_indexes_from_post_directories() -> None:  # Normalize post directory names.
     """
     Remove leading indexes from post directories inside To-Distribute.
