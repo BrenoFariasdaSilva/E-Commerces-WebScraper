@@ -103,6 +103,17 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def rename_weekday_with_count(weekday_path: Path) -> None:  # Rename weekday with child count.
+    """
+    Rename a weekday directory with its child directory count.
+
+    :param weekday_path: Weekday directory path.
+    :return: None
+    """
+
+    weekday_path.rename(get_weekday_directory_with_count(weekday_path))  # Rename weekday path with count.
+
+
 def finalize_distribution() -> None:  # Finalize staged distribution.
     """
     Move weekday directories to Outputs unless they already exist.
