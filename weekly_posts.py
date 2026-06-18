@@ -103,6 +103,24 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def build_weekday_child_targets(child_dirs: list[Path]) -> dict[Path, Path]:  # Build final indexed targets.
+    """
+    Build target paths for indexed weekday child directories.
+
+    :param child_dirs: Ordered child directory paths.
+    :return: Mapping of source paths to target paths.
+    """
+
+    targets: dict[Path, Path] = {}  # Initialize target mapping.
+
+    for index, child_dir in enumerate(child_dirs, start=1):  # Iterate child directories with one-based index.
+        clean_name = get_child_directory_name_without_index(child_dir.name)  # Remove existing index from name.
+        target = child_dir.parent / f"{index:02d}. {clean_name}"  # Build indexed target path.
+        targets[child_dir] = target  # Store target path.
+
+    return targets  # Return target mapping.
+
+
 def verify_weekday_child_targets_available(targets: dict[Path, Path]) -> None:  # Verify indexed target availability.
     """
     Verify that indexed weekday child targets can be safely created.
