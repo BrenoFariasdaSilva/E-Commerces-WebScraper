@@ -103,6 +103,22 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def get_child_directory_name_without_index(directory_name: str) -> str:  # Remove existing child index.
+    """
+    Return a weekday child directory name without a leading index.
+
+    :param directory_name: Weekday child directory name.
+    :return: Directory name without a leading index.
+    """
+
+    match = CHILD_INDEX_PATTERN.fullmatch(directory_name)  # Match existing child index.
+
+    if match:  # Detect indexed child directory name.
+        return match.group(1)  # Return name without index.
+
+    return directory_name  # Return original name.
+
+
 def get_ordered_weekday_child_directories(weekday_path: Path) -> list[Path]:  # Order weekday child directories.
     """
     Return weekday child directories in deterministic normalized name order.
