@@ -103,6 +103,17 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def create_to_distribute_directory() -> None:  # Create staging directory.
+    """
+    Create the To-Distribute directory if it is missing.
+
+    :param: None
+    :return: None
+    """
+
+    TO_DISTRIBUTE_DIR.mkdir(exist_ok=True)  # Create staging directory.
+
+
 def get_directory_stats(path: Path) -> tuple[int, int]:  # Calculate directory stats.
     """
     Return file count and total byte size for a directory.
