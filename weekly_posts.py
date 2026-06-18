@@ -103,6 +103,60 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def calculate_execution_time(start_time: Any, finish_time: Any | None = None) -> str:  # Calculate readable duration.
+    """
+    Calculate execution time and return a human-readable string.
+
+    :param start_time: Start time, duration, or numeric seconds.
+    :param finish_time: Finish time or numeric seconds.
+    :return: Formatted execution time.
+    """
+
+    if finish_time is None:  # Use single-argument duration mode.
+        total_seconds = to_seconds(start_time)  # Convert provided duration.
+        if total_seconds is None:  # Detect conversion failure.
+            try:  # Attempt numeric conversion.
+                total_seconds = float(start_time)  # Convert value to float.
+            except Exception:  # Handle numeric conversion failure.
+                total_seconds = 0.0  # Use zero fallback.
+    else:  # Use start and finish mode.
+        st = to_seconds(start_time)  # Convert start time.
+        ft = to_seconds(finish_time)  # Convert finish time.
+        if st is not None and ft is not None:  # Detect successful conversions.
+            total_seconds = ft - st  # Calculate numeric difference.
+        else:  # Use subtraction fallback.
+            try:  # Attempt direct subtraction.
+                delta = finish_time - start_time  # Calculate time delta.
+                total_seconds = float(delta.total_seconds())  # Convert delta to seconds.
+            except Exception:  # Handle subtraction failure.
+                try:  # Attempt numeric fallback.
+                    total_seconds = float(finish_time) - float(start_time)  # Calculate numeric difference.
+                except Exception:  # Handle numeric fallback failure.
+                    total_seconds = 0.0  # Use zero fallback.
+
+    if total_seconds is None:  # Detect missing total seconds.
+        total_seconds = 0.0  # Use zero fallback.
+
+    if total_seconds < 0:  # Detect negative duration.
+        total_seconds = abs(total_seconds)  # Normalize to positive duration.
+
+    days = int(total_seconds // 86400)  # Calculate full days.
+    hours = int((total_seconds % 86400) // 3600)  # Calculate remaining hours.
+    minutes = int((total_seconds % 3600) // 60)  # Calculate remaining minutes.
+    seconds = int(total_seconds % 60)  # Calculate remaining seconds.
+
+    if days > 0:  # Detect day-level duration.
+        return f"{days}d {hours}h {minutes}m {seconds}s"  # Return days format.
+
+    if hours > 0:  # Detect hour-level duration.
+        return f"{hours}h {minutes}m {seconds}s"  # Return hours format.
+
+    if minutes > 0:  # Detect minute-level duration.
+        return f"{minutes}m {seconds}s"  # Return minutes format.
+
+    return f"{seconds}s"  # Return seconds format.
+
+
 def play_sound() -> None:  # Play finish sound when available.
     """
     Play a sound when the program finishes and skip Windows.
