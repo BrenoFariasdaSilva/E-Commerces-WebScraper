@@ -39,14 +39,21 @@ Assumptions & Notes:
       the existing merge rules move them from timestamp directories.
 """
 
-import atexit  # For playing a sound when the program finishes
-import datetime  # For getting the current date and time
-import os  # For running a command in the terminal
-import platform  # For getting the operating system name
-import sys  # For system-specific parameters and functions
-from colorama import Style  # For coloring the terminal
-from Logger import Logger  # For logging output to both terminal and file
-from pathlib import Path  # For handling file paths
+
+from __future__ import annotations  # Enable postponed annotation evaluation.
+
+import atexit  # Register a finish action.
+import datetime  # Capture program timing.
+import os  # Run operating system commands.
+import platform  # Detect the operating system.
+import re  # Match directory naming patterns.
+import shutil  # Move and remove directories.
+import sys  # Redirect standard streams.
+from collections import defaultdict  # Group post directories by platform.
+from pathlib import Path  # Handle filesystem paths.
+from typing import Any  # Import Any for flexible timing values.
+from colorama import Style  # Reset terminal colors
+from Logger import Logger  # Log output to terminal and file.
 
 
 # Macros:
