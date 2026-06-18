@@ -103,6 +103,18 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def rename_temporary_weekday_children(temporary_paths: dict[Path, Path]) -> None:  # Rename temporary children to final paths.
+    """
+    Rename temporary weekday child directories to final indexed paths.
+
+    :param temporary_paths: Mapping of temporary paths to final target paths.
+    :return: None
+    """
+
+    for temporary_path, target_path in temporary_paths.items():  # Iterate temporary paths.
+        temporary_path.rename(target_path)  # Rename temporary path to final target.
+
+
 def index_weekday_child_directories(weekday_path: Path) -> None:  # Index child directories inside one weekday.
     """
     Index child directories inside a weekday directory with two digits.
