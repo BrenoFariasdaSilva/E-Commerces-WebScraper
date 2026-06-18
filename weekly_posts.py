@@ -103,6 +103,29 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def move_timestamp_directories() -> None:  # Move timestamp directories into staging.
+    """
+    Move all timestamp directories into To-Distribute and delete originals.
+
+    :param: None
+    :return: None
+    """
+
+    create_to_distribute_directory()  # Ensure staging directory exists.
+    timestamp_dirs = [path for path in OUTPUTS_DIR.iterdir() if is_timestamp_dir(path)]  # Collect timestamp directories.
+
+    for timestamp_dir in sorted(timestamp_dirs):  # Iterate timestamp directories in sorted order.
+        for child in timestamp_dir.iterdir():  # Iterate timestamp directory children.
+            destination = TO_DISTRIBUTE_DIR / child.name  # Build destination path.
+
+            if destination.exists():  # Detect duplicate destination.
+                resolve_duplicate_directory(source=child, destination=destination)  # Resolve duplicate destination.
+            else:  # Handle new destination.
+                shutil.move(str(child), str(destination))  # Move child into staging.
+
+        shutil.rmtree(timestamp_dir)  # Remove empty timestamp directory.
+
+
 def get_next_week_directory() -> Path:  # Find next available Next-Week path.
     """
     Return the first available Next-Week directory path.
