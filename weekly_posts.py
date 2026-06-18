@@ -103,6 +103,30 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def resolve_duplicate_directory(source: Path, destination: Path) -> None:  # Resolve duplicate directory names.
+    """
+    Resolve duplicate directories by equivalence, file count, and size.
+
+    :param source: Source directory path.
+    :param destination: Destination directory path.
+    :return: None
+    """
+
+    if directories_are_equivalent(source, destination):  # Detect equivalent directories.
+        shutil.rmtree(source)  # Remove duplicate source directory.
+        return  # Stop duplicate resolution.
+
+    source_files, source_size = get_directory_stats(source)  # Read source stats.
+    dest_files, dest_size = get_directory_stats(destination)  # Read destination stats.
+    keep_source = source_files > dest_files or (source_files == dest_files and source_size > dest_size)  # Determine stronger directory.
+
+    if keep_source:  # Detect source as stronger directory.
+        shutil.rmtree(destination)  # Remove destination directory.
+        source.rename(destination)  # Rename source to destination.
+    else:  # Keep destination directory.
+        shutil.rmtree(source)  # Remove source directory.
+
+
 def move_timestamp_directories() -> None:  # Move timestamp directories into staging.
     """
     Move all timestamp directories into To-Distribute and delete originals.
