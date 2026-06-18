@@ -103,6 +103,17 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def outputs_already_has_weekdays() -> bool:  # Detect existing weekday directories in Outputs.
+    """
+    Return whether Outputs already contains weekday directories.
+
+    :param: None
+    :return: True when Outputs contains an uncounted weekday directory.
+    """
+
+    return any((OUTPUTS_DIR / weekday).exists() for weekday in WEEKDAYS)  # Return existing weekday result.
+
+
 def rename_weekday_with_count(weekday_path: Path) -> None:  # Rename weekday with child count.
     """
     Rename a weekday directory with its child directory count.
