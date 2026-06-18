@@ -103,6 +103,35 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def to_seconds(obj: Any) -> float | None:  # Convert time-like values.
+    """
+    Convert various time-like objects to seconds.
+
+    :param obj: Object to convert.
+    :return: Equivalent time in seconds, or None when conversion fails.
+    """
+
+    if obj is None:  # Detect missing value.
+        return None  # Return no conversion.
+
+    if isinstance(obj, (int, float)):  # Detect numeric value.
+        return float(obj)  # Return numeric seconds.
+
+    if hasattr(obj, "total_seconds"):  # Detect timedelta-like object.
+        try:  # Attempt timedelta conversion.
+            return float(obj.total_seconds())  # Return total seconds.
+        except Exception:  # Handle conversion failure.
+            pass  # Continue to other conversions.
+
+    if hasattr(obj, "timestamp"):  # Detect datetime-like object.
+        try:  # Attempt timestamp conversion.
+            return float(obj.timestamp())  # Return timestamp seconds.
+        except Exception:  # Handle conversion failure.
+            pass  # Continue to fallback.
+
+    return None  # Return no conversion.
+
+
 def calculate_execution_time(start_time: Any, finish_time: Any | None = None) -> str:  # Calculate readable duration.
     """
     Calculate execution time and return a human-readable string.
