@@ -382,7 +382,7 @@ def play_sound():
         )
 
 
-def main():
+def main() -> None:  # Run program entrypoint.
     """
     Main function.
 
@@ -390,35 +390,26 @@ def main():
     :return: None
     """
 
-    print(
-        f"{BackgroundColors.CLEAR_TERMINAL}{BackgroundColors.BOLD}{BackgroundColors.GREEN}Welcome to the {BackgroundColors.CYAN}Main Template Python{BackgroundColors.GREEN} program!{Style.RESET_ALL}",
-        end="\n\n",
-    )  # Output the welcome message
+    print(f"{BackgroundColors.CLEAR_TERMINAL}{BackgroundColors.BOLD}{BackgroundColors.GREEN}Welcome to the {BackgroundColors.CYAN}Weekly Posts Distribution{BackgroundColors.GREEN} program!{Style.RESET_ALL}", end="\n\n")  # Output welcome message.
     
-    start_time = datetime.datetime.now()  # Get the start time of the program
+    start_time = datetime.datetime.now()  # Get program start time.
     
-    # Implement logic here
-
-    finish_time = datetime.datetime.now()  # Get the finish time of the program
+    run_weekly_posts_distribution()  # Run weekly post distribution workflow.
     
-    print(
-        f"{BackgroundColors.GREEN}Start time: {BackgroundColors.CYAN}{start_time.strftime('%d/%m/%Y - %H:%M:%S')}\n{BackgroundColors.GREEN}Finish time: {BackgroundColors.CYAN}{finish_time.strftime('%d/%m/%Y - %H:%M:%S')}\n{BackgroundColors.GREEN}Execution time: {BackgroundColors.CYAN}{calculate_execution_time(start_time, finish_time)}{Style.RESET_ALL}"
-    )  # Output the start and finish times
+    finish_time = datetime.datetime.now()  # Get program finish time.
     
-    print(
-        f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Program finished.{Style.RESET_ALL}"
-    )  # Output the end of the program message
+    print(f"{BackgroundColors.GREEN}Start time: {BackgroundColors.CYAN}{start_time.strftime('%d/%m/%Y - %H:%M:%S')}\n{BackgroundColors.GREEN}Finish time: {BackgroundColors.CYAN}{finish_time.strftime('%d/%m/%Y - %H:%M:%S')}\n{BackgroundColors.GREEN}Execution time: {BackgroundColors.CYAN}{calculate_execution_time(start_time, finish_time)}{Style.RESET_ALL}")  # Output timing summary.
     
-    (
-        atexit.register(play_sound) if RUN_FUNCTIONS["Play Sound"] else None
-    )  # Register the play_sound function to be called when the program finishes
+    print(f"{BackgroundColors.BOLD}{BackgroundColors.GREEN}Program finished.{Style.RESET_ALL}")  # Output finish message.
+    
+    (atexit.register(play_sound) if RUN_FUNCTIONS["Play Sound"] else None)  # Register finish sound action.
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # Run script entrypoint.
     """
-    This is the standard boilerplate that calls the main() function.
+    This is the standard boilerplate that calls the main function.
 
     :return: None
     """
 
-    main()  # Call the main function
+    main()  # Call main function.
