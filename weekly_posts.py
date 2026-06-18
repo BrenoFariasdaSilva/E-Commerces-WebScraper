@@ -1,49 +1,42 @@
 """
 ================================================================================
-<PROJECT OR SCRIPT TITLE>
+Weekly Posts Distribution
 ================================================================================
 Author      : Breno Farias da Silva
-Created     : <YYYY-MM-DD>
+Created     : 2026-06-18
 Description :
-    <Provide a concise and complete overview of what this script does.>
-    <Mention its purpose, scope, and relevance to the larger project.>
+    Merge timestamped output directories into a weekly distribution structure
+    grouped by platform and spread across weekday directories.
 
     Key features include:
-        - <Feature 1 — e.g., automatic data loading and preprocessing>
-        - <Feature 2 — e.g., model training and evaluation>
-        - <Feature 3 — e.g., visualization or report generation>
-        - <Feature 4 — e.g., logging or notification system>
-        - <Feature 5 — e.g., integration with other modules or datasets>
+        - Timestamp directory detection using the existing output naming format
+        - Duplicate directory resolution by structure, file count, and size
+        - Platform and title directory normalization before distribution
+        - Weekday distribution with remaining items assigned to Sunday
+        - Two-digit indexing for child directories inside each weekday folder
 
 Usage:
-    1. <Explain any configuration steps before running, such as editing variables or paths.>
-    2. <Describe how to execute the script — typically via Makefile or Python.>
-        $ make <target>   or   $ python <script_name>.py
-    3. <List what outputs are expected or where results are saved.>
+    1. Keep the default output path configured in the constants below.
+    2. Execute the script directly with Python.
+        $ python weekly_posts.py
+    3. Review distributed folders in the configured Outputs directory.
 
 Outputs:
-    - <Output file or directory 1 — e.g., results.csv>
-    - <Output file or directory 2 — e.g., Feature_Analysis/plots/>
-    - <Output file or directory 3 — e.g., logs/output.txt>
+    - Outputs/To-Distribute
+    - Outputs/Next-Week or Outputs/Next-Week-N
+    - Outputs/<weekday name> (<post count>)
 
 TODOs:
-    - <Add a task or improvement — e.g., implement CLI argument parsing.>
-    - <Add another improvement — e.g., extend support to Parquet files.>
-    - <Add optimization — e.g., parallelize evaluation loop.>
-    - <Add robustness — e.g., error handling or data validation.>
+    - None.
 
 Dependencies:
-    - Python >= <version>
-    - <Library 1 — e.g., pandas>
-    - <Library 2 — e.g., numpy>
-    - <Library 3 — e.g., scikit-learn>
-    - <Library 4 — e.g., matplotlib, seaborn, tqdm, colorama>
+    - Python >= 3.10
+    - colorama
 
 Assumptions & Notes:
-    - <List any key assumptions — e.g., last column is the target variable.>
-    - <Mention data format — e.g., CSV files only.>
-    - <Mention platform or OS-specific notes — e.g., sound disabled on Windows.>
-    - <Note on output structure or reusability.>
+    - The default Outputs directory is the canonical target for this project.
+    - Files and directories not matched by the workflow remain untouched unless
+      the existing merge rules move them from timestamp directories.
 """
 
 import atexit  # For playing a sound when the program finishes
