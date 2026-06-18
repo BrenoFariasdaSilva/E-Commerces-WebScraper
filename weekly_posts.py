@@ -103,6 +103,25 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def get_temporary_weekday_child_path(child_dir: Path, index: int) -> Path:  # Build temporary child path.
+    """
+    Return an available temporary path for a weekday child directory.
+
+    :param child_dir: Weekday child directory path.
+    :param index: Temporary index number.
+    :return: Available temporary path.
+    """
+
+    attempt = 1  # Initialize attempt counter.
+    temp_path = child_dir.parent / f"{TEMP_INDEX_PREFIX}{index:02d}-{child_dir.name}"  # Build first temporary path.
+
+    while temp_path.exists():  # Detect temporary path collision.
+        attempt += 1  # Increment attempt counter.
+        temp_path = child_dir.parent / f"{TEMP_INDEX_PREFIX}{index:02d}-{attempt}-{child_dir.name}"  # Build next temporary path.
+
+    return temp_path  # Return available temporary path.
+
+
 def move_weekday_children_to_temporary_paths(targets: dict[Path, Path]) -> dict[Path, Path]:  # Move children to temporary paths.
     """
     Move weekday child directories to temporary paths before final indexing.
