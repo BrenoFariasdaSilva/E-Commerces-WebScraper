@@ -103,6 +103,71 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def verify_filepath_exists(filepath: str) -> bool:  # Verify file or folder existence.
+    """
+    Verify whether a file or folder exists at the specified path.
+
+    :param filepath: Path to the file or folder.
+    :return: True if the file or folder exists, otherwise False.
+    """
+
+    try:  # Wrap existence verification for stable monitoring.
+        verbose_output(f"{BackgroundColors.GREEN}Verifying if the file or folder exists at the path: {BackgroundColors.CYAN}{filepath}{Style.RESET_ALL}")  # Log verification start.
+
+        if not isinstance(filepath, str) or not filepath.strip():  # Validate filepath input.
+            verbose_output(true_string=f"{BackgroundColors.YELLOW}Invalid filepath provided, skipping existence verification.{Style.RESET_ALL}")  # Log invalid input.
+            return False  # Return False for invalid input.
+
+        if os.path.exists(filepath):  # Detect original path existence.
+            return True  # Return True immediately.
+
+        candidate = str(filepath).strip()  # Normalize input to string.
+
+        if (candidate.startswith("'") and candidate.endswith("'")) or (candidate.startswith('"') and candidate.endswith('"')):  # Detect quoted paths.
+            candidate = candidate[1:-1].strip()  # Remove wrapping quotes.
+
+        candidate = os.path.expanduser(candidate)  # Expand user directory marker.
+        candidate = os.path.normpath(candidate)  # Normalize path structure.
+
+        if os.path.exists(candidate):  # Detect normalized path existence.
+            return True  # Return True for normalized path.
+
+        repo_dir = os.path.dirname(os.path.abspath(__file__))  # Resolve repository directory.
+        cwd = os.getcwd()  # Capture current working directory.
+        alt = candidate.lstrip(os.sep) if candidate.startswith(os.sep) else candidate  # Prepare relative-safe path.
+        repo_candidate = os.path.join(repo_dir, alt)  # Build repository-relative candidate.
+        cwd_candidate = os.path.join(cwd, alt)  # Build cwd-relative candidate.
+
+        for path_variant in (repo_candidate, cwd_candidate):  # Iterate candidate paths.
+            try:  # Attempt candidate normalization.
+                normalized_variant = os.path.normpath(path_variant)  # Normalize candidate path.
+                if os.path.exists(normalized_variant):  # Detect candidate path existence.
+                    return True  # Return True for located path.
+            except Exception:  # Handle candidate errors.
+                continue  # Continue to the next candidate.
+
+        try:  # Attempt absolute path fallback.
+            abs_candidate = os.path.abspath(candidate)  # Build absolute candidate.
+            if os.path.exists(abs_candidate):  # Detect absolute path existence.
+                return True  # Return True for absolute path.
+        except Exception:  # Handle absolute path errors.
+            pass  # Continue to trailing-space resolution.
+
+        for path_variant in (candidate, repo_candidate, cwd_candidate):  # Iterate trailing-space candidates.
+            try:  # Attempt trailing-space resolution.
+                resolved = resolve_full_trailing_space_path(path_variant)  # Resolve trailing-space path.
+                if resolved != path_variant and os.path.exists(resolved):  # Detect resolved path existence.
+                    verbose_output(f"{BackgroundColors.YELLOW}Resolved trailing space mismatch: {BackgroundColors.CYAN}{path_variant}{BackgroundColors.YELLOW} -> {BackgroundColors.CYAN}{resolved}{Style.RESET_ALL}")  # Log resolved path.
+                    return True  # Return True for resolved path.
+            except Exception:  # Handle trailing-space resolution errors.
+                continue  # Continue to the next candidate.
+
+        return False  # Return False when no path exists.
+    except Exception as error:  # Report unexpected errors.
+        print(str(error))  # Print error to terminal logs.
+        raise  # Preserve original failure semantics.
+
+
 def get_weekday_directory_with_count(weekday_path: Path) -> Path:  # Build counted weekday path.
     """
     Return the weekday directory path with its child directory count.
