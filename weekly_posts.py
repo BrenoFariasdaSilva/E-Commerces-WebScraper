@@ -103,6 +103,21 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def index_all_weekday_child_directories() -> None:  # Index children inside all weekdays.
+    """
+    Index child directories inside every staged weekday directory.
+
+    :param: None
+    :return: None
+    """
+
+    for weekday in WEEKDAYS:  # Iterate weekday names.
+        weekday_path = TO_DISTRIBUTE_DIR / weekday  # Build staged weekday path.
+
+        if weekday_path.is_dir():  # Detect staged weekday directory.
+            index_weekday_child_directories(weekday_path)  # Index child directories.
+
+
 def distribute_platform_directories() -> None:  # Distribute post directories across weekdays.
     """
     Distribute platform directories evenly across weekdays.
