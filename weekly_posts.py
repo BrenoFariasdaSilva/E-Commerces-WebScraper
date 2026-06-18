@@ -103,6 +103,27 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def build_directory_signature(root: Path) -> list[tuple[str, int]]:  # Build comparable directory signature.
+    """
+    Build a directory signature from relative names and file sizes.
+
+    :param root: Directory root path.
+    :return: Directory signature list.
+    """
+
+    signature: list[tuple[str, int]] = []  # Initialize signature list.
+
+    for item in sorted(root.rglob("*"), key=lambda path: str(path.relative_to(root)).lower()):  # Iterate sorted directory entries.
+        relative = str(item.relative_to(root))  # Build relative path.
+
+        if item.is_dir():  # Detect directory entry.
+            signature.append((f"D:{relative}", 0))  # Add directory signature item.
+        else:  # Handle file entry.
+            signature.append((f"F:{relative}", item.stat().st_size))  # Add file signature item.
+
+    return signature  # Return signature list.
+
+
 def directories_are_equivalent(dir_a: Path, dir_b: Path) -> bool:  # Compare two directories.
     """
     Compare directory structure, file names, and file sizes.
