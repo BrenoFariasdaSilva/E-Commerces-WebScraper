@@ -103,6 +103,25 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def get_directory_stats(path: Path) -> tuple[int, int]:  # Calculate directory stats.
+    """
+    Return file count and total byte size for a directory.
+
+    :param path: Directory path.
+    :return: Tuple containing file count and total byte size.
+    """
+
+    file_count = 0  # Initialize file count.
+    total_size = 0  # Initialize total size.
+
+    for item in path.rglob("*"):  # Iterate recursively through directory contents.
+        if item.is_file():  # Detect file entry.
+            file_count += 1  # Increment file count.
+            total_size += item.stat().st_size  # Add file size.
+
+    return file_count, total_size  # Return directory stats.
+
+
 def build_directory_signature(root: Path) -> list[tuple[str, int]]:  # Build comparable directory signature.
     """
     Build a directory signature from relative names and file sizes.
