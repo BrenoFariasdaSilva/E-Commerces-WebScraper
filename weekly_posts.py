@@ -103,6 +103,46 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def finalize_distribution() -> None:  # Finalize staged distribution.
+    """
+    Move weekday directories to Outputs unless they already exist.
+
+    :param: None
+    :return: None
+    """
+
+    index_all_weekday_child_directories()  # Index child directories inside staged weekdays.
+
+    if outputs_already_has_weekdays():  # Detect existing weekday directories.
+        target_dir = get_next_week_directory()  # Get Next-Week target directory.
+
+        for weekday in WEEKDAYS:  # Iterate weekday names.
+            weekday_path = TO_DISTRIBUTE_DIR / weekday  # Build staged weekday path.
+
+            if weekday_path.exists():  # Detect staged weekday path.
+                rename_weekday_with_count(weekday_path)  # Rename weekday with count.
+
+        TO_DISTRIBUTE_DIR.rename(target_dir)  # Rename staging directory to Next-Week target.
+        return  # Stop finalization.
+
+    for weekday in WEEKDAYS:  # Iterate weekday names.
+        source = TO_DISTRIBUTE_DIR / weekday  # Build staged weekday source.
+
+        if not source.exists():  # Skip missing weekday source.
+            continue  # Continue to next weekday.
+
+        rename_weekday_with_count(source)  # Rename weekday with count.
+
+    for source in TO_DISTRIBUTE_DIR.iterdir():  # Iterate remaining staged entries.
+        if not source.is_dir():  # Skip non-directory entries.
+            continue  # Continue to next entry.
+
+        destination = OUTPUTS_DIR / source.name  # Build final destination path.
+        shutil.move(str(source), str(destination))  # Move directory to Outputs.
+
+    shutil.rmtree(TO_DISTRIBUTE_DIR)  # Remove staging directory.
+
+
 def run_weekly_posts_distribution() -> None:  # Run weekly post distribution workflow.
     """
     Run the weekly post distribution workflow.
