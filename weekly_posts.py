@@ -103,6 +103,20 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def get_platform_name(directory_name: str) -> str:  # Extract platform name.
+    """
+    Extract the platform name from a post directory name.
+
+    :param directory_name: Post directory name.
+    :return: Platform name or an empty string.
+    """
+
+    if " - " not in directory_name:  # Detect missing platform separator.
+        return ""  # Return empty platform name.
+
+    return directory_name.split(" - ", 1)[0]  # Return platform name before separator.
+
+
 def create_weekday_directories() -> dict[str, Path]:  # Create weekday directories.
     """
     Create weekday directories inside To-Distribute.
