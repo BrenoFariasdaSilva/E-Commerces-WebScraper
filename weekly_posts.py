@@ -103,6 +103,34 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def remove_indexes_from_post_directories() -> None:  # Normalize post directory names.
+    """
+    Remove leading indexes from post directories inside To-Distribute.
+
+    :param: None
+    :return: None
+    """
+
+    for path in list(TO_DISTRIBUTE_DIR.iterdir()):  # Iterate staged entries.
+        if not path.is_dir():  # Skip non-directory entries.
+            continue  # Continue to next entry.
+
+        match = POST_DIR_PATTERN.fullmatch(path.name)  # Match indexed post directory name.
+
+        if not match:  # Skip names outside the post pattern.
+            continue  # Continue to next entry.
+
+        platform_name = match.group(2)  # Extract platform name.
+        title = match.group(3)  # Extract title.
+        new_name = f"{platform_name} - {title}"  # Build normalized name.
+        destination = TO_DISTRIBUTE_DIR / new_name  # Build normalized destination.
+
+        if destination.exists():  # Detect duplicate normalized destination.
+            resolve_duplicate_directory(source=path, destination=destination)  # Resolve duplicate destination.
+        else:  # Handle available normalized destination.
+            path.rename(destination)  # Rename post directory.
+
+
 def get_platform_name(directory_name: str) -> str:  # Extract platform name.
     """
     Extract the platform name from a post directory name.
