@@ -103,6 +103,29 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def index_weekday_child_directories(weekday_path: Path) -> None:  # Index child directories inside one weekday.
+    """
+    Index child directories inside a weekday directory with two digits.
+
+    :param weekday_path: Weekday directory path.
+    :return: None
+    """
+
+    child_dirs = get_ordered_weekday_child_directories(weekday_path)  # Get ordered child directories.
+
+    if not child_dirs:  # Detect empty weekday directory.
+        return  # Stop indexing for this weekday.
+
+    targets = build_weekday_child_targets(child_dirs)  # Build indexed targets.
+
+    if all(source_path == target_path for source_path, target_path in targets.items()):  # Detect already normalized names.
+        return  # Stop when no rename is needed.
+
+    verify_weekday_child_targets_available(targets)  # Verify target availability.
+    temporary_paths = move_weekday_children_to_temporary_paths(targets)  # Move children to temporary paths.
+    rename_temporary_weekday_children(temporary_paths)  # Rename temporary paths to indexed targets.
+
+
 def index_all_weekday_child_directories() -> None:  # Index children inside all weekdays.
     """
     Index child directories inside every staged weekday directory.
