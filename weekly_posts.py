@@ -103,6 +103,17 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def is_timestamp_dir(path: Path) -> bool:  # Detect timestamp directory names.
+    """
+    Return whether a path matches the timestamp directory format.
+
+    :param path: Path to inspect.
+    :return: True when the path is a timestamp directory.
+    """
+
+    return path.is_dir() and bool(TIMESTAMP_DIR_PATTERN.fullmatch(path.name))  # Return timestamp directory result.
+
+
 def create_to_distribute_directory() -> None:  # Create staging directory.
     """
     Create the To-Distribute directory if it is missing.
