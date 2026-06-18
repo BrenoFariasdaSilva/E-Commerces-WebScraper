@@ -103,6 +103,24 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def create_weekday_directories() -> dict[str, Path]:  # Create weekday directories.
+    """
+    Create weekday directories inside To-Distribute.
+
+    :param: None
+    :return: Mapping of weekday names to paths.
+    """
+
+    weekday_paths: dict[str, Path] = {}  # Initialize weekday path mapping.
+
+    for weekday in WEEKDAYS:  # Iterate weekday names.
+        path = TO_DISTRIBUTE_DIR / weekday  # Build weekday path.
+        path.mkdir(exist_ok=True)  # Create weekday directory.
+        weekday_paths[weekday] = path  # Store weekday path.
+
+    return weekday_paths  # Return weekday paths.
+
+
 def get_child_directory_name_without_index(directory_name: str) -> str:  # Remove existing child index.
     """
     Return a weekday child directory name without a leading index.
