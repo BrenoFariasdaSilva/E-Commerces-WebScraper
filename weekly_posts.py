@@ -103,6 +103,25 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def verify_weekday_child_targets_available(targets: dict[Path, Path]) -> None:  # Verify indexed target availability.
+    """
+    Verify that indexed weekday child targets can be safely created.
+
+    :param targets: Mapping of source paths to target paths.
+    :return: None
+    """
+
+    source_paths = set(targets.keys())  # Capture source paths.
+    target_paths = set(targets.values())  # Capture target paths.
+
+    if len(target_paths) != len(targets):  # Detect duplicate target paths.
+        raise FileExistsError("Duplicate target paths were generated for weekday indexing.")  # Raise duplicate target error.
+
+    for target_path in target_paths:  # Iterate target paths.
+        if target_path.exists() and target_path not in source_paths:  # Detect external path collision.
+            raise FileExistsError(f"Cannot index weekday directory because target exists: {target_path}")  # Raise collision error.
+
+
 def get_temporary_weekday_child_path(child_dir: Path, index: int) -> Path:  # Build temporary child path.
     """
     Return an available temporary path for a weekday child directory.
