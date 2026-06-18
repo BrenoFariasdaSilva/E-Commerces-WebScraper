@@ -103,6 +103,66 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def resolve_full_trailing_space_path(filepath: str) -> str:  # Resolve trailing spaces across a path.
+    """
+    Resolve trailing space issues across all path components.
+
+    :param filepath: Path to resolve potential trailing space mismatches.
+    :return: Corrected full path if matches are found, otherwise original filepath.
+    """
+
+    try:  # Wrap full path resolution to keep callers stable.
+        verbose_output(true_string=f"{BackgroundColors.GREEN}Resolving full trailing space path for: {BackgroundColors.CYAN}{filepath}{Style.RESET_ALL}")  # Log resolution start.
+
+        if not isinstance(filepath, str) or not filepath:  # Validate filepath input.
+            verbose_output(true_string=f"{BackgroundColors.YELLOW}Invalid filepath provided, skipping existence verification.{Style.RESET_ALL}")  # Log invalid input.
+            return filepath  # Return original input.
+
+        filepath = os.path.expanduser(filepath)  # Expand user directory marker.
+        parts = filepath.split(os.sep)  # Split path into components.
+
+        if not parts:  # Detect empty path components.
+            return filepath  # Return original input.
+
+        if filepath.startswith(os.sep):  # Handle absolute path input.
+            current_path = os.sep  # Start from filesystem root.
+            parts = parts[1:]  # Remove the root placeholder.
+        else:  # Handle relative path input.
+            current_path = parts[0] if parts[0] else os.getcwd()  # Initialize base path.
+            parts = parts[1:] if parts[0] else parts  # Adjust remaining parts.
+
+        for part in parts:  # Iterate over path components.
+            if part == "":  # Skip empty components.
+                continue  # Continue to the next component.
+
+            try:  # Attempt to list the current directory.
+                entries = os.listdir(current_path) if os.path.isdir(current_path) else []  # Read current directory entries.
+            except Exception:  # Handle listing failure.
+                verbose_output(true_string=f"{BackgroundColors.RED}Failed to list directory: {BackgroundColors.CYAN}{current_path}{Style.RESET_ALL}")  # Log listing failure.
+                return filepath  # Return original input.
+
+            stripped_part = part.strip()  # Normalize current component.
+            match_found = False  # Track whether a matching entry was found.
+
+            for entry in entries:  # Iterate over current entries.
+                try:  # Attempt safe comparison.
+                    if entry.strip() == stripped_part:  # Compare normalized names.
+                        current_path = resolve_entry_with_trailing_space(current_path, entry, stripped_part)  # Resolve matched entry.
+                        match_found = True  # Mark the segment as found.
+                        break  # Stop searching current entries.
+                except Exception:  # Handle comparison errors.
+                    continue  # Continue to the next entry.
+
+            if not match_found:  # Detect missing segment match.
+                verbose_output(true_string=f"{BackgroundColors.YELLOW}No match for segment: {BackgroundColors.CYAN}{part}{Style.RESET_ALL}")  # Log missing segment.
+                return filepath  # Return original input.
+
+        return current_path  # Return resolved path.
+    except Exception:  # Handle unexpected path resolution errors.
+        verbose_output(true_string=f"{BackgroundColors.RED}Error resolving full path: {BackgroundColors.CYAN}{filepath}{Style.RESET_ALL}")  # Log resolution error.
+        return filepath  # Return original input.
+
+
 def verify_filepath_exists(filepath: str) -> bool:  # Verify file or folder existence.
     """
     Verify whether a file or folder exists at the specified path.
