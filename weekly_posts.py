@@ -103,6 +103,24 @@ WEEKDAYS = [  # Define weekday directory names.
 # Functions Definitions:
 
 
+def run_weekly_posts_distribution() -> None:  # Run weekly post distribution workflow.
+    """
+    Run the weekly post distribution workflow.
+
+    :param: None
+    :return: None
+    """
+
+    move_timestamp_directories()  # Move timestamp directories into staging.
+
+    if not TO_DISTRIBUTE_DIR.exists():  # Detect missing staging directory.
+        return  # Stop workflow when staging is absent.
+
+    remove_indexes_from_post_directories()  # Normalize post directory names.
+    distribute_platform_directories()  # Distribute post directories by weekday.
+    finalize_distribution()  # Finalize distribution output.
+
+
 def to_seconds(obj: Any) -> float | None:  # Convert time-like values.
     """
     Convert various time-like objects to seconds.
