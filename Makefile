@@ -119,6 +119,11 @@ renew_amazon_affiliate_urls: dependencies
 	$(CLEAR_CMD)
 	$(call RUN_AND_LOG, ./Scripts/affiliate_pages_downloader.py --only-renew-amazon-urls true $(ARGS))
 
+weekly_posts: dependencies
+	$(ENSURE_LOG_DIR)
+	$(CLEAR_CMD)
+	$(call RUN_AND_LOG, ./weekly_posts.py $(ARGS))
+
 # Update repository and run
 update_and_run: dependencies
 	@echo "Updating repository: reset to HEAD and pulling latest changes..."
@@ -159,4 +164,4 @@ clean:
 	find . -type f -name '*.pyc' -delete || del /S /Q *.pyc 2>nul
 	find . -type d -name '__pycache__' -delete || rmdir /S /Q __pycache__ 2>nul
 
-.PHONY: all run local main sort_products generate_template_files_from_local generate_template_files_from_prompt sort_latest_products merge_output_dirs restructure_product_outputs compressed_archives_renamer urls_input_file_adder affiliate_pages_downloader renew_amazon_affiliate_urls update_and_run clean dependencies generate_requirements
+.PHONY: all run local main sort_products generate_template_files_from_local generate_template_files_from_prompt sort_latest_products merge_output_dirs restructure_product_outputs compressed_archives_renamer urls_input_file_adder affiliate_pages_downloader renew_amazon_affiliate_urls weekly_posts update_and_run clean dependencies generate_requirements
