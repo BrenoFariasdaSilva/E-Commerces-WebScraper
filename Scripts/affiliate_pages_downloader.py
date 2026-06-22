@@ -3819,22 +3819,22 @@ def click_maybe_later(maybe_later_img: Path) -> bool:
     return False  # Return failure when the popup was not detected.
 
 
-def prevent_screen_lock(last_move_ts: float, interval_seconds: float = 50.0) -> float:
+def prevent_screen_lock(last_move_ts: float, interval_seconds: float = 15.0) -> float:  # Set the default cursor movement interval to 15 seconds.
     """
-    Moves the cursor by a single pixel every defined interval to prevent screen lock.
+    Moves the cursor approximately one pixel left or right every defined interval to prevent screen lock.
 
-    :param last_move_ts: Timestamp of the last cursor movement.
+    :param last_move_ts: Monotonic timestamp of the last cursor movement.
     :param interval_seconds: Minimum seconds between cursor movements.
     :return: Updated timestamp of last cursor movement.
     """
 
-    current_time = time.time()  # Capture current timestamp for interval comparison.
+    current_time = time.monotonic()  # Capture monotonic time for reliable interval comparison.
 
     if (current_time - last_move_ts) >= interval_seconds:  # Verify whether interval threshold was reached.
         try:  # Attempt cursor movement.
             x, y = pyautogui.position()  # Get current cursor position.
-            pyautogui.moveTo(x + 1, y)  # Move cursor by +1 pixel on X axis.
-            pyautogui.moveTo(x, y)  # Move cursor back to original position to avoid displacement.
+            move_direction = 1 if x % 2 == 0 else -1  # Alternate horizontal direction according to the current X-coordinate parity.
+            pyautogui.moveTo(x + move_direction, y)  # Move the cursor approximately one pixel left or right once per interval.
 
             verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Prevented screen lock via cursor jitter.{Style.RESET_ALL}")  # Log cursor movement action.
 
@@ -3880,23 +3880,28 @@ def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_i
     verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Watching for save dialog and confirmation...{Style.RESET_ALL}")  # Log start of save dialog and confirmation monitoring.
 
     start_time = time.time()  # Record start time to enforce same timeout behavior as confirmation polling.
-    last_cursor_move_ts = start_time  # Initialize last cursor movement timestamp for screen lock prevention.
+    last_cursor_move_ts = time.monotonic()  # Initialize monotonic cursor movement timing independently from the download timeout.
+    last_enter_press_ts = time.monotonic()  # Initialize monotonic Enter timing independently from mouse movement and the download timeout.
     max_wait_time = 60 * 10  # Match wait_for_download_confirmation total wait time (60 iterations * 5 seconds).
+    scroll_extension_tab_to_start_button()  # Scroll again after potential permission click to ensure the Start download button is visible regardless of permission prompt presence or screen size.
 
     while (time.time() - start_time) < max_wait_time:  # Loop until timeout window is reached.
-        scroll_extension_tab_to_start_button()  # Scroll again after potential permission click to ensure the Start download button is visible regardless of permission prompt presence or screen size.
-        last_cursor_move_ts = prevent_screen_lock(last_cursor_move_ts)  # Periodically move cursor to prevent screen lock.
+        last_cursor_move_ts = prevent_screen_lock(last_cursor_move_ts)  # Move the cursor by one pixel no more often than every 15 seconds.
+
+        current_wait_time = time.monotonic()  # Capture monotonic time for the Enter interval.
+
+        if (current_wait_time - last_enter_press_ts) >= 55.0:  # Verify whether at least 55 seconds elapsed since the previous Enter press.
+            pyautogui.press("enter")  # Press Enter once to preserve the existing download dialog behavior.
+            last_enter_press_ts = current_wait_time  # Record the Enter press time to enforce the minimum interval.
         
         click_hide_next_time_if_present(hide_next_time_img)  # Attempt to dismiss the hide-next-time overlay when present.
 
         box = enhanced_locate_image(save_button_img)  # Attempt to locate the optional save button image on screen.
-        pyautogui.press("enter")  # Confirm save action via Enter key when required.
         
         if box is not None:  # Verify image was found.
             verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Save button detected; clicking to confirm download.{Style.RESET_ALL}")  # Log save button detection and click action.
             click_box_center(box)  # Click center of detected save button box.
-            time.sleep(0.1)  # Wait briefly to allow UI to process click before sending key event.
-            pyautogui.press("enter")  # Confirm save action via Enter key when required.
+            time.sleep(0.1)  # Wait briefly to allow the save action to settle.
         
         if enhanced_locate_image(confirmation_img) is not None or enhanced_locate_image(confirmation_alt_img) is not None:  # Verify for confirmation images to allow early exit from waiting when detected.
             time.sleep(1)  # Wait briefly after confirmation detection to allow any UI changes to settle before proceeding.
@@ -3905,8 +3910,7 @@ def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_i
             if box is not None:  # Verify image was found.
                 verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Save button detected; clicking to confirm download.{Style.RESET_ALL}")  # Log save button detection and click action.
                 click_box_center(box)  # Click center of detected save button box.
-                time.sleep(0.1)  # Wait briefly to allow UI to process click before sending key event.
-                pyautogui.press("enter")  # Confirm save action via Enter key when required.
+                time.sleep(0.1)  # Wait briefly to allow the save action to settle.
             return "Image Detected"  # Return confirmation detection method.
         
         if enhanced_locate_image(failed_file_download_img) is not None:  # Verify for failed file download image to allow early exit with failure status when detected.
