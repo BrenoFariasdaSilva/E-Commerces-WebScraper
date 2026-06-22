@@ -145,6 +145,8 @@ DOWNLOAD_SETTINGS_STATE_BOTH_TOGGLES_ON = "Both Toggles On"  # Define state labe
 DOWNLOAD_SETTINGS_STATE_UNKNOWN = "Unknown"  # Define state label for an unresolved downloads settings configuration.
 MAX_DOWNLOAD_RETRY_ATTEMPTS = 2  # Define maximum number of download attempts per URL including the initial attempt.
 MAX_RETRY_MECHANISM_ATTEMPTS = 5  # Define maximum number of post-processing retry cycles for failed/unlinked URLs.
+CHROME_WINDOW_CLOSE_TIMEOUT_SECONDS = 10.0  # Define maximum wait for a dedicated Chrome window to disappear before another may be created.
+CHROME_WINDOW_CLOSE_POLL_SECONDS = 0.1  # Define polling interval while confirming that a dedicated Chrome window has closed.
 
 TARGET_CHROME_TITLE = ""  # Store selected Chrome window title for reuse.
 ACTIVE_CHROME_BOUNDS = {"left": 0, "top": 0, "width": 0, "height": 0}  # Store active Chrome window bounds for coordinate calculations.
@@ -841,11 +843,20 @@ def prepare_dedicated_chrome_window_for_automation() -> bool:
     global DEDICATED_AUTOMATION_HWND  # Reference global dedicated automation window handle.
     global ACTIVE_CHROME_BOUNDS  # Reference global active Chrome window bounds cache.
 
+    target_bounds = get_desired_monitor_bounds()  # Retrieve target monitor bounds before checking whether a dedicated window already exists.
+
+    if DEDICATED_AUTOMATION_HWND != 0:  # Enforce a single dedicated automation window for the entire browser lifecycle.
+        if is_window_handle_open(DEDICATED_AUTOMATION_HWND):  # Verify whether the previously registered automation window is still alive.
+            move_chrome_window_to_bounds(DEDICATED_AUTOMATION_HWND, target_bounds)  # Keep the existing dedicated window on the requested monitor.
+            verbose_output(f"{BackgroundColors.GREEN}[INFO] Reusing the existing dedicated Chrome automation window; no replacement window was opened.{Style.RESET_ALL}")  # Log reuse when verbose output is enabled.
+            return True  # Reuse the live window instead of ever creating an overlapping replacement.
+
+        DEDICATED_AUTOMATION_HWND = 0  # Clear a stale handle only after confirming that its window no longer exists.
+
     existing_windows = get_chrome_windows()  # Capture existing Chrome windows before opening any new window.
     existing_hwnds = {int(getattr(window, "_hWnd", 0)) for window in existing_windows if int(getattr(window, "_hWnd", 0)) != 0}  # Capture existing Chrome window handles for delta detection.
 
     any_window_open = len(existing_windows) > 0  # Detect whether any Chrome window is already open to determine launch count.
-    target_bounds = get_desired_monitor_bounds()  # Retrieve target monitor bounds once for placement of both user and automation windows.
 
     max_detection_attempts = 10  # Define maximum attempts to detect each newly opened window.
     detection_wait_seconds = 0.5  # Define wait time in seconds between detection attempts.
@@ -921,9 +932,75 @@ def close_dedicated_automation_window() -> bool:
 
     if DEDICATED_AUTOMATION_HWND == 0:  # Verify whether a dedicated handle is stored.
         return True  # Nothing to close when handle is zero.
-    
-    DEDICATED_AUTOMATION_HWND = 0  # Reset stored handle without sending focus-dependent hotkeys.
-    return True  # Return success after passive handle cleanup.
+
+    automation_hwnd = DEDICATED_AUTOMATION_HWND  # Preserve the exact window handle throughout close confirmation.
+
+    if not is_window_handle_open(automation_hwnd):  # Verify whether the stored window already disappeared independently.
+        DEDICATED_AUTOMATION_HWND = 0  # Clear the stale handle after confirming that no matching window remains.
+        return True  # Treat an already-closed dedicated window as successful cleanup.
+
+    close_requested = False  # Track whether a close request was successfully delivered to the target window.
+
+    if platform.system().lower() == "windows":  # Use the HWND directly on Windows so another Chrome window can never be closed accidentally.
+        try:  # Attempt a standard top-level window close message without changing focus.
+            WM_CLOSE = 0x0010  # Define the Win32 close-window message identifier.
+            close_requested = bool(ctypes.windll.user32.PostMessageW(ctypes.wintypes.HWND(automation_hwnd), WM_CLOSE, 0, 0))  # Request closure only for the dedicated automation HWND.
+        except Exception:  # Fall back to the cross-platform window object close method below.
+            close_requested = False  # Preserve failure state so the fallback can run.
+
+    if not close_requested:  # Use the window-management backend when Win32 close was unavailable or failed.
+        automation_window = find_window_by_hwnd(automation_hwnd)  # Resolve the exact dedicated window object from its persisted handle.
+        close_method = getattr(automation_window, "close", None) if automation_window is not None else None  # Resolve the backend close callable safely.
+
+        if callable(close_method):  # Verify that the backend supports targeted window closure.
+            try:  # Attempt closure without activating the window or sending global keyboard shortcuts.
+                close_method()  # Close only the window associated with the dedicated automation handle.
+                close_requested = True  # Record successful close request dispatch.
+            except Exception:  # Handle backend-specific close failures.
+                close_requested = False  # Preserve failure state for strict retry prevention.
+
+    if not close_requested:  # Never pretend cleanup succeeded when no targeted close request could be delivered.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to request closure of the dedicated Chrome automation window. A replacement window will not be opened.{Style.RESET_ALL}")  # Explain why retry context recreation is blocked.
+        return False  # Keep the stored handle and prevent a replacement Chrome window from being launched.
+
+    close_deadline = time.monotonic() + CHROME_WINDOW_CLOSE_TIMEOUT_SECONDS  # Compute deadline for positive window-disappearance confirmation.
+
+    while time.monotonic() < close_deadline:  # Wait until the operating system confirms that the old HWND no longer exists.
+        if not is_window_handle_open(automation_hwnd):  # Verify closure using the original handle rather than window titles.
+            DEDICATED_AUTOMATION_HWND = 0  # Clear the handle only after confirmed window destruction.
+            return True  # Allow callers to create a new automation window safely.
+
+        time.sleep(CHROME_WINDOW_CLOSE_POLL_SECONDS)  # Pause briefly before polling the old handle again.
+
+    print(f"{BackgroundColors.YELLOW}[WARNING] Dedicated Chrome automation window did not close within {BackgroundColors.CYAN}{CHROME_WINDOW_CLOSE_TIMEOUT_SECONDS:g}{BackgroundColors.YELLOW} seconds. A replacement window will not be opened.{Style.RESET_ALL}")  # Report strict cleanup timeout.
+    return False  # Preserve the live handle and block creation of a second dedicated window.
+
+
+def is_window_handle_open(hwnd: int) -> bool:
+    """
+    Checks whether an operating-system window handle still identifies a live window.
+
+    :param hwnd: Window handle to validate.
+    :return: True while the referenced window exists, otherwise False.
+    """
+
+    if int(hwnd) == 0:  # Reject the sentinel handle immediately.
+        return False  # A zero handle never identifies a live window.
+
+    if platform.system().lower() == "windows":  # Prefer Win32 validation because it also detects minimized and hidden windows.
+        try:  # Attempt direct operating-system handle validation.
+            return bool(ctypes.windll.user32.IsWindow(ctypes.wintypes.HWND(int(hwnd))))  # Return whether the HWND is still registered by Windows.
+        except Exception:  # Fall through to the cross-platform enumeration fallback.
+            pass  # Continue with desktop-window enumeration when Win32 validation is unavailable.
+
+    try:  # Attempt raw window enumeration without filtering minimized or hidden windows.
+        get_all_windows: Any = getattr(pyautogui, "getAllWindows", None)  # Resolve optional window listing API without relying on incomplete third-party type information.
+        windows_raw: Any = get_all_windows() if callable(get_all_windows) else []  # Retrieve all desktop windows when supported.
+        windows: List[Any] = windows_raw if isinstance(windows_raw, list) else []  # Normalize the dynamically typed backend result to an explicitly iterable list.
+
+        return any(int(getattr(window, "_hWnd", 0)) == int(hwnd) for window in windows)  # Match the exact persisted handle across all window states.
+    except Exception:  # Treat unavailable enumeration as no positive evidence that the window exists.
+        return False  # Return False when the backend cannot find or validate the handle.
 
 
 def find_window_by_hwnd(hwnd: int) -> Any:
@@ -3156,8 +3233,11 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
                     context_ready = reset_browser_context_for_retry(image_paths["close_download_tab_img"])  # Reset browser context by closing window and reopening automation environment.
                     opened_tabs = 0  # Reset opened tabs counter after browser window closure during retry.
 
-                    if context_ready:  # Verify browser context readiness before reopening URL for retry.
-                        opened_tabs = open_url_in_new_tab(url, opened_tabs)  # Reopen URL in new tab for retry attempt.
+                    if not context_ready:  # Verify browser context readiness before reopening URL for retry.
+                        print(f"{BackgroundColors.YELLOW}[WARNING] Browser context reset failed for URL: {BackgroundColors.CYAN}{url}{BackgroundColors.YELLOW}. Aborting processing so no second Chrome automation window can be created.{Style.RESET_ALL}")  # Log the strict lifecycle failure.
+                        return processed_count, url_to_download, False  # Stop all processing instead of interacting with an unconfirmed browser context.
+
+                    opened_tabs = open_url_in_new_tab(url, opened_tabs)  # Reopen URL in new tab only after safe context recreation.
                     continue  # Continue while loop for retry attempt execution.
                 print(f"{BackgroundColors.YELLOW}[WARNING] Download failed for URL: {BackgroundColors.CYAN}{url}{BackgroundColors.YELLOW} after {BackgroundColors.CYAN}{MAX_DOWNLOAD_RETRY_ATTEMPTS}{BackgroundColors.YELLOW} attempts. Moving to next URL.{Style.RESET_ALL}")  # Log final failure after exhausting all retry attempts.
                 break  # Exit while loop after exhausting all retry attempts.
@@ -4009,15 +4089,18 @@ def safely_close_product_tab(opened_tabs: int) -> int:
 
 def reset_browser_context_for_retry(close_download_tab_img: Path) -> bool:
     """
-    Resets the browser context for a download retry by closing tabs and reopening the automation window.
+    Resets the browser context for a download retry by fully closing the old automation window before opening another.
 
     :param close_download_tab_img: Path to close extension download tab image.
     :return: True when the fresh automation context is ready, otherwise False.
     """
 
     _ = close_download_tab_img  # Preserve function argument usage without triggering focus-dependent close actions.
-    
-    context_ready = prepare_dedicated_chrome_window_for_automation()  # Attempt dedicated window preparation without tab/window close hotkeys.
+
+    if not close_dedicated_automation_window():  # Require confirmed destruction of the previous dedicated window before retrying.
+        return False  # Abort context recreation so a failed close can never produce overlapping Chrome windows.
+
+    context_ready = prepare_dedicated_chrome_window_for_automation()  # Open a fresh dedicated window only after the previous handle is confirmed gone.
     return context_ready  # Return browser context readiness status.
 
 
