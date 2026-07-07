@@ -381,6 +381,78 @@ def resolve_duplicate_directory(source: Path, destination: Path) -> None:  # Res
         shutil.rmtree(source)  # Remove source directory.
 
 
+def path_is_inside_directory(path: Path, directory: Path) -> bool:  # Evaluate path containment.
+    """
+    Return whether a path is contained by a directory.
+
+    :param path: Path evaluated for containment.
+    :param directory: Directory used as the containment boundary.
+    :return: True when path is equal to or nested under directory.
+    """
+
+    try:  # Compare path against the boundary.
+        path.relative_to(directory)  # Verify containment using pathlib.
+        return True  # Return contained result.
+    except ValueError:  # Handle paths outside the boundary.
+        return False  # Return outside result.
+
+
+def remove_empty_directories_from_output_roots(output_roots: list[Path]) -> list[Path]:  # Remove empty output directories.
+    """
+    Remove empty directories under final output roots.
+
+    :param output_roots: Final output directory roots eligible for empty-directory removal.
+    :return: Directory paths removed during cleanup.
+    """
+
+    removed_directories: list[Path] = []  # Store removed directory paths.
+    output_scope = OUTPUTS_DIR.resolve(strict=False)  # Resolve the allowed output boundary.
+    ordered_roots = sorted(output_roots, key=lambda path: str(path).lower())  # Sort roots deterministically.
+
+    for output_root in ordered_roots:  # Iterate output roots in stable order.
+        try:  # Resolve root path for containment validation.
+            resolved_output_root = output_root.resolve(strict=False)  # Resolve root path without requiring existence.
+        except Exception:  # Ignore roots that cannot be resolved.
+            continue  # Continue with remaining roots.
+
+        if not path_is_inside_directory(resolved_output_root, output_scope):  # Verify root remains within the output boundary.
+            continue  # Skip roots outside the output boundary.
+
+        if not output_root.is_dir():  # Verify root exists as a directory.
+            continue  # Skip absent or non-directory roots.
+
+        try:  # Collect nested directories before bottom-up removal.
+            candidate_directories = [path for path in output_root.rglob("*") if path.is_dir()]  # Collect nested directory candidates.
+        except Exception:  # Ignore traversal failures.
+            continue  # Continue with remaining roots.
+
+        candidate_directories.append(output_root)  # Include the output root after nested candidates.
+        candidate_directories.sort(key=lambda path: (-len(path.parts), str(path).lower()))  # Sort deepest directories first.
+
+        for candidate_directory in candidate_directories:  # Iterate candidates from deepest to shallowest.
+            try:  # Resolve candidate path for containment validation.
+                resolved_candidate = candidate_directory.resolve(strict=False)  # Resolve candidate path without requiring existence.
+            except Exception:  # Ignore candidates that cannot be resolved.
+                continue  # Continue with remaining candidates.
+
+            if resolved_candidate == output_scope:  # Preserve the configured output boundary.
+                continue  # Skip the configured output boundary.
+
+            if not path_is_inside_directory(resolved_candidate, output_scope):  # Verify candidate remains within the output boundary.
+                continue  # Skip candidates outside the output boundary.
+
+            if not path_is_inside_directory(resolved_candidate, resolved_output_root):  # Verify candidate remains within its final output root.
+                continue  # Skip candidates outside the final output root.
+
+            try:  # Remove the directory only when the filesystem reports it empty.
+                candidate_directory.rmdir()  # Remove only an empty directory.
+                removed_directories.append(candidate_directory)  # Record successful removal.
+            except OSError:  # Preserve non-empty or unavailable directories.
+                continue  # Continue with remaining candidates.
+
+    return removed_directories  # Return removed directory paths.
+
+
 def move_timestamp_directories() -> None:  # Move timestamp directories into staging.
     """
     Move all timestamp directories into To-Distribute and delete originals.
@@ -721,6 +793,7 @@ def finalize_distribution() -> None:  # Finalize staged distribution.
                 rename_weekday_with_count(weekday_path)  # Rename weekday with count.
 
         TO_DISTRIBUTE_DIR.rename(target_dir)  # Rename staging directory to Next-Week target.
+        remove_empty_directories_from_output_roots([target_dir])  # Remove empty directories from final output root.
         return  # Stop finalization.
 
     for weekday in WEEKDAYS:  # Iterate weekday names.
@@ -731,14 +804,18 @@ def finalize_distribution() -> None:  # Finalize staged distribution.
 
         rename_weekday_with_count(source)  # Rename weekday with count.
 
+    final_output_roots: list[Path] = []  # Track final output directories produced by this run.
+
     for source in TO_DISTRIBUTE_DIR.iterdir():  # Iterate remaining staged entries.
         if not source.is_dir():  # Skip non-directory entries.
             continue  # Continue to next entry.
 
         destination = OUTPUTS_DIR / source.name  # Build final destination path.
-        shutil.move(str(source), str(destination))  # Move directory to Outputs.
+        moved_path = Path(shutil.move(str(source), str(destination)))  # Move directory to Outputs and capture final path.
+        final_output_roots.append(moved_path)  # Track moved directory for empty-directory cleanup.
 
     shutil.rmtree(TO_DISTRIBUTE_DIR)  # Remove staging directory.
+    remove_empty_directories_from_output_roots(final_output_roots)  # Remove empty directories from final output roots.
 
 
 def run_weekly_posts_distribution() -> None:  # Run weekly post distribution workflow.
