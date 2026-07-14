@@ -67,6 +67,7 @@ import shutil  # For removing directories
 import stat  # For handling file permissions during cleanup
 import subprocess  # For running system commands
 import sys  # For system-specific parameters and functions
+import tempfile  # For creating same-filesystem image replacement files
 import time  # For adding delays between requests
 import zipfile  # For handling zip files
 from AliExpress import AliExpress  # Import the AliExpress class
@@ -78,12 +79,13 @@ from Gemini import Gemini, PermanentApiFailureError, QuotaExceededError  # Impor
 from Logger import Logger  # For logging output to both terminal and file
 from MercadoLivre import MercadoLivre  # Import the MercadoLivre class
 from pathlib import Path  # For handling file paths
-from PIL import Image  # For image processing
+from PIL import Image, ImageChops, JpegImagePlugin  # For image processing, mask composition, and JPEG encoder preservation
+from PIL.PngImagePlugin import PngInfo  # For preserving PNG text metadata during cropped saves
 from Shein import Shein  # Import the Shein class
 from Shopee import Shopee  # Import the Shopee class
 from tkinter import Tk, messagebox  # For showing GUI warnings
 from tqdm import tqdm  # Progress bar for URL processing
-from typing import Dict, List, Optional, Set, Tuple, Union  # For type-annotated containers used by final verification functions
+from typing import Any, Dict, List, Optional, Set, Tuple, Union  # For type-annotated containers used by final verification functions
 from urllib.parse import urlparse  # For parsing URL hostnames
 from urls_utils import load_urls_to_process, preprocess_urls, write_urls_to_file, normalize_paths_to_unix  # URL helpers
 
@@ -259,7 +261,350 @@ ROOT_VIDEO_EXTENSIONS = {".mp4", ".webm", ".mkv", ".avi", ".mov", ".wmv", ".flv"
 ROOT_MEDIA_EXTENSIONS = ROOT_IMAGE_EXTENSIONS | ROOT_VIDEO_EXTENSIONS  # Union of root-level image and video extensions.
 REFERENCE_TEXT_EXTENSIONS = {".txt", ".json", ".html", ".htm", ".md", ".xml", ".yaml", ".yml", ".csv", ".js", ".ts", ".css"}  # Text-based extensions used for media reference update pass.
 
-# Functions Definitions:
+BORDER_REMOVAL_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff", ".gif", ".avif"}  # Raster image extensions eligible for format-preserving border removal.
+BORDER_NEAR_WHITE_CHANNEL_THRESHOLD = 245  # Minimum red, green, and blue channel value considered near-white.
+BORDER_REQUIRED_NEAR_WHITE_RATIO = 0.98  # Minimum near-white proportion required for every candidate edge row or column.
+BORDER_MAXIMUM_SIZE_PIXELS = 24  # Maximum absolute candidate border width accepted on one edge.
+BORDER_MAXIMUM_SIZE_FRACTION = 0.05  # Maximum candidate border width relative to its image axis.
+BORDER_INTERIOR_TRANSITION_DEPTH = 6  # Number of adjacent interior rows or columns used to validate a content transition.
+BORDER_MAXIMUM_INTERIOR_WHITE_RATIO = 0.20  # Maximum average near-white ratio accepted in the adjacent interior region.
+BORDER_MINIMUM_TRANSITION_DROP = 0.70  # Minimum near-white ratio drop required from a border candidate into image content.
+BORDER_MAXIMUM_IMAGE_WHITE_RATIO = 0.60  # Maximum overall near-white coverage allowed before preserving a mostly-white image.
+BORDER_MINIMUM_IMAGE_DIMENSION = 16  # Minimum width and height required for reliable edge transition analysis.
+BORDER_TEMPORARY_FILE_PREFIX = ".border-crop-"  # Prefix reserved for same-directory temporary replacement images.
+
+
+def is_border_removal_image_file(image_path: str) -> bool:  # Classify one final-output path for safe raster processing.
+    """
+    Determine whether a regular raster image path is eligible for border removal.
+
+    :param image_path: Absolute or relative image path to classify.
+    :return: True when the path is an eligible regular image file, otherwise False.
+    """
+
+    filename = os.path.basename(image_path)  # Extract the filename for temporary-file and extension filtering.
+    extension = os.path.splitext(filename)[1].lower()  # Normalize the filename extension for deterministic matching.
+
+    if filename.startswith(BORDER_TEMPORARY_FILE_PREFIX):  # Exclude replacement files from final-output traversal.
+        return False  # Return False because temporary replacement files are not final images.
+
+    if os.path.islink(image_path) or not os.path.isfile(image_path):  # Exclude links and entries that are not regular files.
+        return False  # Return False because only direct regular image files are eligible.
+
+    return extension in BORDER_REMOVAL_IMAGE_EXTENSIONS  # Return the extension-based raster image eligibility result.
+
+
+def build_opaque_near_white_mask(image: Image.Image) -> Image.Image:  # Build an alpha-aware near-white analysis mask.
+    """
+    Build a grayscale mask whose white pixels represent opaque near-white source pixels.
+
+    :param image: Loaded Pillow image used for pixel analysis.
+    :return: Grayscale mask containing 255 for opaque near-white pixels and 0 otherwise.
+    """
+
+    red_channel, green_channel, blue_channel, alpha_channel = image.convert("RGBA").split()  # Convert a temporary analysis copy to consistent RGBA channels.
+    near_white_lookup = [0] * BORDER_NEAR_WHITE_CHANNEL_THRESHOLD + [255] * (256 - BORDER_NEAR_WHITE_CHANNEL_THRESHOLD)  # Build a typed lookup table that maps near-white channel values to white.
+    opaque_lookup = [0] * 255 + [255]  # Build a typed lookup table that selects only fully opaque alpha values.
+    red_mask = red_channel.point(near_white_lookup)  # Threshold the red channel without changing the source image.
+    green_mask = green_channel.point(near_white_lookup)  # Threshold the green channel without changing the source image.
+    blue_mask = blue_channel.point(near_white_lookup)  # Threshold the blue channel without changing the source image.
+    alpha_mask = alpha_channel.point(opaque_lookup)  # Treat only fully opaque pixels as eligible near-white pixels.
+
+    near_white_mask = ImageChops.multiply(red_mask, green_mask)  # Combine red and green thresholds into one binary mask.
+    near_white_mask = ImageChops.multiply(near_white_mask, blue_mask)  # Require the blue threshold for every selected pixel.
+    near_white_mask = ImageChops.multiply(near_white_mask, alpha_mask)  # Exclude transparent and partially transparent pixels from white analysis.
+
+    return near_white_mask  # Return the completed opaque near-white mask.
+
+
+def calculate_near_white_axis_ratios(mask: Image.Image, measure_columns: bool) -> List[float]:  # Measure near-white coverage across one image axis.
+    """
+    Calculate near-white proportions for every row or column in a binary mask.
+
+    :param mask: Grayscale opaque near-white mask.
+    :param measure_columns: True to measure columns or False to measure rows.
+    :return: Ordered list of near-white ratios along the selected image axis.
+    """
+
+    projection_size = (mask.width, 1) if measure_columns else (1, mask.height)  # Select a one-pixel projection that preserves the requested axis.
+    projection = mask.resize(projection_size, Image.Resampling.BOX)  # Average each full row or column using box resampling.
+    projection_values = projection.tobytes()  # Materialize projected grayscale averages as typed single-channel byte values.
+
+    return [value / 255.0 for value in projection_values]  # Convert grayscale byte averages into normalized near-white proportions.
+
+
+def detect_white_border_width(ratios: List[float], maximum_border_size: int, reverse: bool) -> int:  # Detect one conservative edge-border width.
+    """
+    Detect a narrow contiguous white edge run with a meaningful interior transition.
+
+    :param ratios: Ordered near-white ratios for image rows or columns.
+    :param maximum_border_size: Maximum accepted border width for the analyzed axis.
+    :param reverse: True to analyze from the final axis edge or False from the initial edge.
+    :return: Detected border width in pixels or zero when the candidate is unsafe.
+    """
+
+    ordered_ratios = list(reversed(ratios)) if reverse else ratios  # Orient ratios so index zero always represents the analyzed edge.
+    candidate_width = 0  # Initialize the contiguous candidate width at the selected edge.
+
+    for ratio in ordered_ratios:  # Scan contiguous rows or columns beginning at the selected edge.
+        if ratio < BORDER_REQUIRED_NEAR_WHITE_RATIO:  # Stop when the edge run no longer meets the strict white proportion.
+            break  # End the contiguous edge scan at the first non-candidate row or column.
+
+        candidate_width += 1  # Extend the candidate for the current qualifying edge row or column.
+
+    if candidate_width == 0:  # Reject an edge that has no contiguous near-white candidate strip.
+        return 0  # Return zero because no edge border was detected.
+
+    if candidate_width > maximum_border_size:  # Reject white regions too wide to represent a small artificial border.
+        return 0  # Return zero to preserve legitimate large white backgrounds.
+
+    available_interior_depth = len(ordered_ratios) - candidate_width  # Calculate remaining axis depth beyond the candidate strip.
+    transition_depth = min(BORDER_INTERIOR_TRANSITION_DEPTH, available_interior_depth)  # Limit transition analysis to available interior rows or columns.
+
+    if transition_depth < 2:  # Reject candidates without enough interior pixels for a meaningful transition.
+        return 0  # Return zero to prevent invalid or near-empty crop dimensions.
+
+    candidate_ratios = ordered_ratios[:candidate_width]  # Select ratios belonging to the contiguous white edge candidate.
+    interior_ratios = ordered_ratios[candidate_width:candidate_width + transition_depth]  # Select the immediately adjacent interior transition region.
+    candidate_white_ratio = sum(candidate_ratios) / len(candidate_ratios)  # Calculate the candidate strip's average near-white proportion.
+    interior_white_ratio = sum(interior_ratios) / len(interior_ratios)  # Calculate the adjacent interior region's average near-white proportion.
+    transition_drop = candidate_white_ratio - interior_white_ratio  # Measure the strength of the transition into non-white content.
+
+    if interior_white_ratio > BORDER_MAXIMUM_INTERIOR_WHITE_RATIO:  # Reject candidates followed by predominantly white image content.
+        return 0  # Return zero to preserve natural white backgrounds that continue inward.
+
+    if transition_drop < BORDER_MINIMUM_TRANSITION_DROP:  # Reject candidates without a strong decrease in near-white coverage.
+        return 0  # Return zero because the edge does not show an artificial-border transition.
+
+    return candidate_width  # Return the validated small border width for this independent edge.
+
+
+def calculate_white_border_crop(image: Image.Image) -> Tuple[int, int, int, int]:  # Calculate one safe asymmetric crop rectangle.
+    """
+    Calculate a safe crop rectangle for independently detected white image edges.
+
+    :param image: Loaded Pillow image used for border analysis.
+    :return: Crop rectangle in left, top, right, bottom coordinates.
+    """
+
+    width, height = image.size  # Read the encoded source dimensions without applying EXIF rotation.
+    full_image_box = (0, 0, width, height)  # Define the unchanged crop rectangle for all rejected cases.
+
+    if width < BORDER_MINIMUM_IMAGE_DIMENSION or height < BORDER_MINIMUM_IMAGE_DIMENSION:  # Reject tiny images that cannot support reliable transitions.
+        return full_image_box  # Return the full image rectangle without cropping tiny images.
+
+    near_white_mask = build_opaque_near_white_mask(image)  # Build the binary pixel mask used for all four edge measurements.
+    near_white_histogram = near_white_mask.histogram()  # Count opaque near-white mask pixels across the complete image.
+    overall_white_ratio = float(near_white_histogram[255]) / float(width * height)  # Calculate total opaque near-white coverage for background preservation.
+
+    if overall_white_ratio > BORDER_MAXIMUM_IMAGE_WHITE_RATIO:  # Reject images whose overall content is predominantly white.
+        return full_image_box  # Return the full rectangle to preserve legitimate mostly-white photographic backgrounds.
+
+    column_ratios = calculate_near_white_axis_ratios(near_white_mask, True)  # Measure near-white coverage independently for every column.
+    row_ratios = calculate_near_white_axis_ratios(near_white_mask, False)  # Measure near-white coverage independently for every row.
+    maximum_horizontal_border = min(BORDER_MAXIMUM_SIZE_PIXELS, max(1, int(width * BORDER_MAXIMUM_SIZE_FRACTION)))  # Bound left and right candidates by pixels and width fraction.
+    maximum_vertical_border = min(BORDER_MAXIMUM_SIZE_PIXELS, max(1, int(height * BORDER_MAXIMUM_SIZE_FRACTION)))  # Bound top and bottom candidates by pixels and height fraction.
+
+    left_border = detect_white_border_width(column_ratios, maximum_horizontal_border, False)  # Detect a validated left-edge border independently.
+    right_border = detect_white_border_width(column_ratios, maximum_horizontal_border, True)  # Detect a validated right-edge border independently.
+    top_border = detect_white_border_width(row_ratios, maximum_vertical_border, False)  # Detect a validated top-edge border independently.
+    bottom_border = detect_white_border_width(row_ratios, maximum_vertical_border, True)  # Detect a validated bottom-edge border independently.
+
+    if left_border + right_border >= width or top_border + bottom_border >= height:  # Reject any result that would create invalid image dimensions.
+        return full_image_box  # Return the full image rectangle when detected edges overlap or consume an axis.
+
+    return left_border, top_border, width - right_border, height - bottom_border  # Return the safe asymmetric crop rectangle.
+
+
+def build_image_save_options(image: Image.Image, image_format: str) -> Dict[str, Any]:  # Preserve supported format metadata and encoder characteristics.
+    """
+    Build format-specific save options that preserve available image metadata safely.
+
+    :param image: Loaded source image containing format and metadata information.
+    :param image_format: Pillow source format name used for the replacement image.
+    :return: Dictionary of metadata and encoder options for the cropped save.
+    """
+
+    save_options: Dict[str, Any] = {}  # Initialize format-specific encoder and metadata options.
+    normalized_format = image_format.upper()  # Normalize the Pillow format name for deterministic branching.
+
+    if normalized_format in {"JPEG", "PNG", "WEBP", "TIFF", "AVIF"} and image.info.get("exif"):  # Preserve EXIF bytes only for formats with Pillow EXIF save support.
+        save_options["exif"] = image.info["exif"]  # Retain EXIF data including the existing orientation tag.
+
+    if normalized_format in {"JPEG", "PNG", "WEBP", "TIFF", "AVIF"} and image.info.get("icc_profile"):  # Preserve embedded color profiles for supported encoders.
+        save_options["icc_profile"] = image.info["icc_profile"]  # Retain the source ICC profile bytes.
+
+    if normalized_format in {"JPEG", "PNG", "TIFF", "BMP"} and image.info.get("dpi"):  # Preserve source resolution metadata for encoders that accept DPI values.
+        save_options["dpi"] = image.info["dpi"]  # Retain the source horizontal and vertical DPI values.
+
+    if normalized_format == "JPEG":  # Preserve original JPEG quantization and chroma subsampling when cropping is required.
+        save_options["quality"] = -1  # Reuse quantization tables instead of applying a new quality preset.
+        save_options["subsampling"] = JpegImagePlugin.get_sampling(image)  # Retain the source JPEG chroma subsampling mode.
+        quantization_tables = getattr(image, "quantization", None)  # Read source JPEG quantization tables without assuming a generic image attribute.
+
+        if quantization_tables:  # Preserve source JPEG quantization tables when Pillow exposes them.
+            save_options["qtables"] = quantization_tables  # Reuse the original JPEG quantization tables during the necessary crop encode.
+
+        if image.info.get("progressive") or image.info.get("progression"):  # Preserve progressive JPEG scan encoding when present.
+            save_options["progressive"] = True  # Retain progressive encoding for the cropped replacement.
+
+        if image.info.get("comment"):  # Preserve an embedded JPEG comment when present.
+            save_options["comment"] = image.info["comment"]  # Retain the source JPEG comment bytes.
+    elif normalized_format == "PNG":  # Preserve PNG textual and transparency metadata where Pillow supports it.
+        png_metadata = PngInfo()  # Create a PNG metadata container for source text entries.
+
+        for key, value in getattr(image, "text", {}).items():  # Iterate decoded PNG text metadata exposed by Pillow.
+            png_metadata.add_text(str(key), str(value))  # Copy each textual metadata entry into the replacement container.
+
+        if getattr(image, "text", {}):  # Add the PNG metadata container only when source text entries exist.
+            save_options["pnginfo"] = png_metadata  # Preserve available PNG textual metadata during the cropped save.
+
+        if "transparency" in image.info:  # Preserve indexed or grayscale PNG transparency metadata when present.
+            save_options["transparency"] = image.info["transparency"]  # Retain the source PNG transparency value.
+    elif normalized_format == "WEBP":  # Use high-quality WebP encoding only when a crop is actually required.
+        save_options.update({"quality": 100, "method": 6})  # Minimize avoidable WebP loss during the necessary re-encode.
+    elif normalized_format == "GIF":  # Preserve single-frame GIF timing and transparency metadata when available.
+        for metadata_key in ("transparency", "duration", "loop", "disposal"):  # Iterate GIF metadata keys accepted by Pillow's encoder.
+            if metadata_key in image.info:  # Include only metadata values that exist in the source image.
+                save_options[metadata_key] = image.info[metadata_key]  # Retain the available single-frame GIF metadata value.
+    elif normalized_format == "TIFF" and image.info.get("compression"):  # Preserve the source TIFF compression method when exposed by Pillow.
+        save_options["compression"] = image.info["compression"]  # Retain the TIFF compression method for the replacement image.
+    elif normalized_format == "AVIF":  # Use high-quality AVIF encoding only when a crop is actually required.
+        save_options["quality"] = 95  # Minimize avoidable AVIF loss during the necessary re-encode.
+
+    return save_options  # Return the completed format-specific save option dictionary.
+
+
+def save_cropped_image_to_temporary_file(image: Image.Image, crop_box: Tuple[int, int, int, int], image_path: str) -> str:  # Create and validate a same-directory replacement image.
+    """
+    Save and validate a cropped image in a same-directory temporary file.
+
+    :param image: Loaded source image to crop without changing its original path.
+    :param crop_box: Validated crop rectangle in left, top, right, bottom coordinates.
+    :param image_path: Original image path used for temporary file placement and permissions.
+    :return: Validated temporary image path ready for atomic replacement.
+    """
+
+    image_format = str(image.format or "").upper()  # Capture the source Pillow format before producing the cropped image.
+
+    if not image_format:  # Reject sources whose Pillow decoder did not identify a format.
+        raise ValueError("Unsupported Pillow save format: unknown")  # Raise a controlled format error while preserving the original image.
+
+    cropped_image = image.crop(crop_box)  # Crop source pixels in their encoded orientation without altering the source object.
+    temporary_path: Optional[str] = None  # Track the reserved replacement path for complete failure cleanup.
+
+    try:  # Protect the original image by containing all temporary save and validation failures.
+        cropped_image.load()  # Materialize cropped pixels before any source file handle is closed.
+        cropped_image.format = image_format  # Retain the source format marker required by format-specific encoder options.
+        save_options = build_image_save_options(image, image_format)  # Build safe metadata and encoder options from the loaded source.
+        image_directory = os.path.dirname(os.path.abspath(image_path))  # Resolve the original directory for same-filesystem temporary placement.
+        image_extension = os.path.splitext(image_path)[1]  # Preserve the original extension on the temporary image file.
+
+        with tempfile.NamedTemporaryFile(prefix=BORDER_TEMPORARY_FILE_PREFIX, suffix=image_extension, dir=image_directory, delete=False) as temporary_file:  # Reserve and close a unique same-directory temporary path safely.
+            temporary_path = temporary_file.name  # Capture the reserved temporary path for saving, validation, and cleanup.
+
+        if not temporary_path:  # Guard the encoder path against an unavailable temporary reservation.
+            raise OSError("Temporary image path reservation failed")  # Abort safely before any original-path mutation.
+
+        cropped_image.save(temporary_path, format=image_format, **save_options)  # Encode the cropped image and metadata into the temporary file.
+
+        with Image.open(temporary_path) as validation_image:  # Open the completed temporary image for structural validation.
+            validation_image.verify()  # Validate the encoded file structure without modifying the original image.
+
+        with Image.open(temporary_path) as validation_image:  # Reopen the temporary image to validate decoded dimensions and pixels.
+            validation_image.load()  # Decode all replacement pixels to expose truncated or unreadable files.
+
+            if validation_image.size != (crop_box[2] - crop_box[0], crop_box[3] - crop_box[1]):  # Verify the replacement dimensions match the validated crop rectangle.
+                raise OSError("Temporary cropped image dimensions do not match the requested crop")  # Reject a replacement with inconsistent decoded dimensions.
+
+        source_mode = stat.S_IMODE(os.stat(image_path).st_mode)  # Read the original file permission bits before atomic replacement.
+        os.chmod(temporary_path, source_mode)  # Apply the original permission bits to the validated replacement file.
+
+        return temporary_path  # Return the validated temporary path for atomic replacement after source closure.
+    except Exception:  # Handle any temporary save, metadata, validation, or permission failure.
+        if temporary_path and os.path.exists(temporary_path):  # Remove an incomplete temporary file only when reservation succeeded.
+            force_remove_path(temporary_path)  # Remove the incomplete temporary file using the existing cleanup convention.
+
+        raise  # Re-raise the failure for per-image warning handling by the caller.
+    finally:  # Guarantee release of cropped pixel resources across every save path.
+        cropped_image.close()  # Release cropped pixel resources after success or failure.
+
+
+def remove_small_white_border_from_image(image_path: str) -> bool:  # Process one image without risking its original bytes.
+    """
+    Remove validated small white edge borders from one image using atomic replacement.
+
+    :param image_path: Absolute or relative path to the final-output image.
+    :return: True when a cropped replacement was committed, otherwise False.
+    """
+
+    temporary_path: Optional[str] = None  # Track a validated temporary replacement for failure cleanup.
+
+    try:  # Isolate unreadable or concurrently changed files from the remaining output workflow.
+        with Image.open(image_path) as image:  # Open the source image while preserving its original path and encoded orientation.
+            image.load()  # Decode source pixels so read failures occur before any temporary replacement is created.
+
+            if int(getattr(image, "n_frames", 1)) != 1:  # Exclude animated images to avoid discarding frames during a single-frame crop.
+                return False  # Return without rewriting animated GIF or WebP files.
+
+            crop_box = calculate_white_border_crop(image)  # Analyze all four edges and calculate the conservative crop rectangle.
+            full_image_box = (0, 0, image.width, image.height)  # Define the unchanged rectangle for no-border comparison.
+
+            if crop_box == full_image_box:  # Preserve byte identity when no valid small border was detected.
+                return False  # Return without saving or re-encoding the source image.
+
+            temporary_path = save_cropped_image_to_temporary_file(image, crop_box, image_path)  # Create and validate the replacement before touching the original path.
+
+        os.replace(temporary_path, image_path)  # Atomically replace the original only after source closure and replacement validation.
+        temporary_path = None  # Clear the temporary path after ownership transfers to the original image path.
+        verbose_output(f"{BackgroundColors.GREEN}Removed small white image border: {BackgroundColors.CYAN}{image_path}{Style.RESET_ALL}")  # Log successful border removal in verbose mode.
+
+        return True  # Return success after the validated atomic replacement completes.
+    except Exception as error:  # Handle unreadable, corrupt, unsupported, missing, or replacement-failure cases per image.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to remove image border from {BackgroundColors.CYAN}{image_path}{BackgroundColors.YELLOW}: {error}{Style.RESET_ALL}")  # Emit a warning without terminating the production workflow.
+
+        return False  # Return failure while preserving the original image whenever replacement did not complete.
+    finally:  # Guarantee cleanup for validated temporary files left by replacement failures.
+        if temporary_path and os.path.exists(temporary_path):  # Remove only a still-existing temporary path owned by this operation.
+            force_remove_path(temporary_path)  # Delete the temporary replacement using the existing cleanup convention.
+
+
+def remove_small_white_borders_from_final_output(final_output_directory: str) -> int:  # Process each eligible image in one finalized output tree.
+    """
+    Remove small white borders from eligible images in one finalized output directory.
+
+    :param final_output_directory: Final run directory containing completed product outputs.
+    :return: Number of images successfully cropped during this traversal.
+    """
+
+    if not os.path.isdir(final_output_directory) or os.path.islink(final_output_directory):  # Reject missing directories and linked traversal roots.
+        return 0  # Return zero because no safe final-output traversal is available.
+
+    processed_paths: Set[str] = set()  # Track normalized image paths to prevent repeated processing in this execution.
+    cropped_count = 0  # Count images whose validated crop replacements were committed.
+
+    for root_directory, directory_names, filenames in os.walk(final_output_directory, topdown=True, followlinks=False):  # Traverse final output contents without following directory links.
+        directory_names[:] = sorted(directory_name for directory_name in directory_names if not os.path.islink(os.path.join(root_directory, directory_name)))  # Exclude linked directories and preserve deterministic traversal order.
+
+        for filename in sorted(filenames):  # Process final files once in deterministic lexical order.
+            image_path = os.path.join(root_directory, filename)  # Build the full path for the current final-output file.
+
+            if not is_border_removal_image_file(image_path):  # Exclude unsupported files, links, and reserved temporary replacements.
+                continue  # Continue to the next file when the current path is not eligible.
+
+            normalized_path = os.path.normcase(os.path.abspath(image_path))  # Normalize the image path for per-execution uniqueness tracking.
+
+            if normalized_path in processed_paths:  # Prevent duplicate processing if traversal exposes the same normalized path again.
+                continue  # Continue without applying a repeated transformation to the same path.
+
+            processed_paths.add(normalized_path)  # Mark the final image path as processed before opening it.
+
+            if remove_small_white_border_from_image(image_path):  # Apply conservative edge detection and safe replacement to this image.
+                cropped_count += 1  # Increment the successful crop count only after atomic replacement.
+
+    verbose_output(f"{BackgroundColors.GREEN}Small white border removal completed: {BackgroundColors.CYAN}{cropped_count}{BackgroundColors.GREEN} image(s) cropped in {BackgroundColors.CYAN}{final_output_directory}{Style.RESET_ALL}")  # Log the final traversal result in verbose mode.
+
+    return cropped_count  # Return the number of successfully cropped final-output images.
 
 
 def verbose_output(true_string="", false_string=""):
@@ -3502,6 +3847,7 @@ def handle_merge_mode(args: argparse.Namespace, start_time: datetime.datetime) -
         verbose_output(f"{BackgroundColors.GREEN}Sorting merged output directory by product name.{Style.RESET_ALL}")  # Log sorting stage activation after successful merge
         rename_plan = sort_output_directories_by_platform_and_product_name(merged_dir)  # Build deterministic full rename plan for the merged directory
         normalize_output_directory_indexes(rename_plan)  # Apply deterministic two-phase renaming using the frozen plan mapping
+        remove_small_white_borders_from_final_output(merged_dir)  # Remove validated small white borders after merge and directory normalization are complete.
         print(f"{BackgroundColors.GREEN}Merge and sort operation completed successfully.{Style.RESET_ALL}")  # Log completion of merge and sort pipeline
 
     finish_time = datetime.datetime.now()  # Get finish time after merge and sort operation
@@ -5336,6 +5682,8 @@ def restructure_product_outputs_before_finalize(context: dict) -> None:
             restructure_single_product_output_directory(product_directory)  # Restructure one product directory into Product Data/Product Metadata.
         except Exception as e:  # Handle unexpected per-directory failures while continuing other directories.
             print(f"{BackgroundColors.YELLOW}[WARNING] Failed to restructure product directory {BackgroundColors.CYAN}{product_directory}{BackgroundColors.YELLOW}: {e}{Style.RESET_ALL}")  # Emit warning and continue with remaining product directories.
+
+    remove_small_white_borders_from_final_output(target_output_directory)  # Remove validated borders only after every product move and rename operation is complete.
 
 
 def finalize_execution(start_time: datetime.datetime, args: argparse.Namespace, context: dict, total_urls: int) -> None:
