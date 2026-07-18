@@ -41,6 +41,7 @@ all: run
 run: dependencies
 	$(ENSURE_LOG_DIR)
 	$(CLEAR_CMD)
+	$(call RUN_AND_LOG, ./url_input_normalizer.py $(ARGS))
 	$(call RUN_AND_LOG, ./Scripts/affiliate_pages_downloader.py --process_only_unlinked_urls --headerless True $(ARGS))
 	$(call RUN_AND_LOG, ./main.py --headerless True --sort_products_by_product_name True $(ARGS))
 	$(call RUN_AND_LOG, ./main.py --restructure_product_outputs $(ARGS))
@@ -49,6 +50,7 @@ run: dependencies
 local: dependencies
 	$(ENSURE_LOG_DIR)
 	$(CLEAR_CMD)
+	$(call RUN_AND_LOG, ./url_input_normalizer.py $(ARGS))
 	$(call RUN_AND_LOG, ./main.py --sort_products_by_product_name True $(ARGS))
 	$(call RUN_AND_LOG, ./main.py --restructure_product_outputs $(ARGS))
 	$(call RUN_AND_LOG, ./weekly_posts.py $(ARGS))
