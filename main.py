@@ -569,9 +569,9 @@ def remove_small_white_border_from_image(image_path: str) -> bool:  # Process on
             force_remove_path(temporary_path)  # Delete the temporary replacement using the existing cleanup convention.
 
 
-def remove_small_white_borders_from_final_output(final_output_directory: str) -> int:  # Process each eligible image in one finalized output tree.
+def remove_small_white_borders_from_final_output(final_output_directory: str) -> int:  # Process eligible root images in each finalized product directory.
     """
-    Remove small white borders from eligible images in one finalized output directory.
+    Remove small white borders from root-level images in finalized product directories.
 
     :param final_output_directory: Final run directory containing completed product outputs.
     :return: Number of images successfully cropped during this traversal.
@@ -580,24 +580,19 @@ def remove_small_white_borders_from_final_output(final_output_directory: str) ->
     if not os.path.isdir(final_output_directory) or os.path.islink(final_output_directory):  # Reject missing directories and linked traversal roots.
         return 0  # Return zero because no safe final-output traversal is available.
 
-    processed_paths: Set[str] = set()  # Track normalized image paths to prevent repeated processing in this execution.
     cropped_count = 0  # Count images whose validated crop replacements were committed.
 
-    for root_directory, directory_names, filenames in os.walk(final_output_directory, topdown=True, followlinks=False):  # Traverse final output contents without following directory links.
-        directory_names[:] = sorted(directory_name for directory_name in directory_names if not os.path.islink(os.path.join(root_directory, directory_name)))  # Exclude linked directories and preserve deterministic traversal order.
+    for product_directory_name in sorted(os.listdir(final_output_directory)):  # Iterate immediate product entries in deterministic lexical order.
+        product_directory = os.path.join(final_output_directory, product_directory_name)  # Build the full path for the current product entry.
 
-        for filename in sorted(filenames):  # Process final files once in deterministic lexical order.
-            image_path = os.path.join(root_directory, filename)  # Build the full path for the current final-output file.
+        if not os.path.isdir(product_directory) or os.path.islink(product_directory):  # Exclude files, missing entries, and linked product directories.
+            continue  # Continue because only immediate regular product directories are eligible.
+
+        for filename in sorted(os.listdir(product_directory)):  # Process only immediate product-root entries in deterministic lexical order.
+            image_path = os.path.join(product_directory, filename)  # Build the full path for the current product-root entry.
 
             if not is_border_removal_image_file(image_path):  # Exclude unsupported files, links, and reserved temporary replacements.
                 continue  # Continue to the next file when the current path is not eligible.
-
-            normalized_path = os.path.normcase(os.path.abspath(image_path))  # Normalize the image path for per-execution uniqueness tracking.
-
-            if normalized_path in processed_paths:  # Prevent duplicate processing if traversal exposes the same normalized path again.
-                continue  # Continue without applying a repeated transformation to the same path.
-
-            processed_paths.add(normalized_path)  # Mark the final image path as processed before opening it.
 
             if remove_small_white_border_from_image(image_path):  # Apply conservative edge detection and safe replacement to this image.
                 cropped_count += 1  # Increment the successful crop count only after atomic replacement.
