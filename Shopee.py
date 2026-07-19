@@ -99,26 +99,31 @@ AFFILIATE_URL_PATTERN = r"https?://s\.shopee\.com(?:\.br)?/[A-Za-z0-9]+"
 # HTML Selectors Dictionary:
 HTML_SELECTORS = {
     "product_name": [  # List of CSS selectors for product name in priority order
+        ("h1", {"class": "auau1S"}),  # Match the current Shopee product title heading
         ("div", {"class": "vR6K3w"}),  # Shopee product name container with specific class
         ("div", {"class": re.compile(r".*product.*name.*", re.IGNORECASE)}),  # Generic product name pattern fallback
         ("h1", {}),  # Generic H1 heading as last resort fallback
     ],
     "current_price": [  # List of CSS selectors for current price in priority order
+        ("div", {"class": "pyzxvq"}),  # Match the current Shopee sale price container
         ("div", {"class": ["IZPeQz", "B67UQ0"]}),  # Shopee current price container with multiple classes
         ("div", {"class": re.compile(r".*price.*current.*", re.IGNORECASE)}),  # Generic current price pattern fallback
         ("span", {"class": re.compile(r".*price.*", re.IGNORECASE)}),  # Generic price span as last resort fallback
     ],
     "old_price": [  # List of CSS selectors for old price in priority order
+        ("div", {"class": "CcxgW6"}),  # Match the current Shopee original price container
         ("div", {"class": "ZA5sW5"}),  # Shopee old price container with specific class
         ("div", {"class": re.compile(r".*price.*original.*", re.IGNORECASE)}),  # Generic original price pattern fallback
         ("span", {"class": re.compile(r".*old.*price.*", re.IGNORECASE)}),  # Generic old price span as last resort fallback
     ],
     "discount": [  # List of CSS selectors for discount percentage in priority order
+        ("div", {"class": "JGPGqv"}),  # Match the current Shopee discount container
         ("div", {"class": "vms4_3"}),  # Shopee discount container with specific class
         ("span", {"class": re.compile(r".*discount.*", re.IGNORECASE)}),  # Generic discount span fallback
         ("div", {"class": re.compile(r".*sale.*badge.*", re.IGNORECASE)}),  # Sale badge container as last resort fallback
     ],
     "description": [  # List of CSS selectors for product description in priority order
+        ("div", {"class": "UBe8YR"}),  # Match the current Shopee product description container
         ("div", {"class": "e8lZp3"}),  # Shopee description container with specific class
         ("div", {"class": re.compile(r".*description.*", re.IGNORECASE)}),  # Generic description pattern fallback
         ("section", {"class": re.compile(r".*description.*", re.IGNORECASE)}),  # Section element containing description as last resort fallback
@@ -906,9 +911,9 @@ class Shopee:
 
     def find_image_urls(self, soup: BeautifulSoup) -> List[str]:
         """
-        Finds all image URLs from the product gallery (class="airUhU").
-        Extracts full-size images from thumbnail containers (class="UBG7wZ").
-        Replaces resize parameters with @resize_w900_nl to get the highest available resolution.
+        Finds ordered image references from current and legacy Shopee product galleries.
+        Resolves archived thumbnail references to full-size local files when available.
+        Replaces remote resize parameters with @resize_w900_nl when local files are unavailable.
         
         :param soup: BeautifulSoup object containing the parsed HTML
         :return: List of image URLs
@@ -922,10 +927,17 @@ class Shopee:
         )  # End of verbose output call
         
         try:  # Attempt to find images with error handling
-            gallery = soup.find("div", HTML_SELECTORS["gallery"])
+            gallery = soup.find("div", HTML_SELECTORS["gallery"])  # Search the legacy Shopee gallery container first
+            thumbnail_class = "UBG7wZ"  # Preserve the legacy thumbnail container class by default
+            image_class = "uXN1L5"  # Preserve the legacy gallery image class by default
+
+            if not gallery:  # Verify whether the legacy gallery container is absent
+                gallery = soup.find("section", class_="C21rQm")  # Search the current Shopee gallery section
+                thumbnail_class = "qIctnQ"  # Select the current thumbnail container class
+                image_class = "P39yUt"  # Select the current gallery image class
             
             if gallery and isinstance(gallery, Tag):  # Verify gallery container was found
-                thumbnails = gallery.find_all("div", class_="UBG7wZ")
+                thumbnails = gallery.find_all("div", class_=thumbnail_class)  # Collect thumbnail containers for the detected Shopee layout
                 
                 verbose_output(  # Log number of thumbnails found
                     f"{BackgroundColors.GREEN}Found {BackgroundColors.CYAN}{len(thumbnails)}{BackgroundColors.GREEN} thumbnail containers.{Style.RESET_ALL}"
@@ -935,7 +947,7 @@ class Shopee:
                     if not isinstance(thumbnail, Tag):  # Ensure element is a BeautifulSoup Tag
                         continue  # Skip non-Tag elements
                     
-                    img = thumbnail.find("img", class_="uXN1L5")
+                    img = thumbnail.find("img", class_=image_class)  # Select the gallery image for the detected Shopee layout
                     
                     if img and isinstance(img, Tag):  # Verify image tag was found
                         srcset = img.get("srcset")
@@ -977,11 +989,11 @@ class Shopee:
                     f"{BackgroundColors.YELLOW}Gallery container (class='airUhU') not found.{Style.RESET_ALL}"
                 )  # End of verbose output call
 
-            for display_div in soup.find_all("div", class_="UdI7e2"):  # Main display containers alongside the gallery
+            for display_div in soup.find_all("div", class_=re.compile(r"^(UdI7e2|_rXL5o)$")):  # Match legacy and current main display containers
                 if not isinstance(display_div, Tag):  # Ensure element is a BeautifulSoup Tag
                     continue  # Skip non-Tag elements
 
-                display_img = display_div.find("img", class_="uXN1L5")
+                display_img = display_div.find("img", class_=re.compile(r"^(uXN1L5|P39yUt)$"))  # Match legacy and current main display images
 
                 if display_img and isinstance(display_img, Tag):  # Verify image tag was found
                     srcset = display_img.get("srcset")
