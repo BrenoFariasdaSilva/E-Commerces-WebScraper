@@ -5478,12 +5478,13 @@ def collect_product_data_media_files(product_data_directory: str) -> Tuple[List[
     return image_filenames, video_filenames  # Return collected image/video filename lists for subsequent rename planning.
 
 
-def build_size_descending_rename_plan(product_data_directory: str, filenames: List[str]) -> List[Tuple[str, str, str]]:
+def build_size_descending_rename_plan(product_data_directory: str, filenames: List[str], preserve_filename_order: bool = False) -> List[Tuple[str, str, str]]:  # Support ordered Shopee media while retaining the existing default
     """
-    Build two-phase rename plan sorted by file size descending, then filename ascending.
+    Build a two-phase rename plan using filename order or descending file size.
 
     :param product_data_directory: Absolute Product Data directory path.
     :param filenames: List of media filenames to include in the rename plan.
+    :param preserve_filename_order: Whether to retain the existing lexical filename order.
     :return: List of (old_name, temp_name, new_name) tuples.
     """
 
@@ -5500,7 +5501,10 @@ def build_size_descending_rename_plan(product_data_directory: str, filenames: Li
             file_size = 0  # Use zero-size fallback when file size cannot be read.
         sortable_entries.append((file_size, filename))  # Append sortable metadata tuple for ordering.
 
-    sortable_entries.sort(key=lambda item: (-item[0], item[1].lower()))  # Sort by size descending and filename ascending for deterministic ordering.
+    if preserve_filename_order:  # Verify whether existing sequential filename order must be retained
+        sortable_entries.sort(key=lambda item: item[1].lower())  # Sort by existing filename so numeric gallery prefixes remain ordered
+    else:  # Preserve the shared default ordering for other platforms
+        sortable_entries.sort(key=lambda item: (-item[0], item[1].lower()))  # Sort by size descending and filename ascending for deterministic ordering
 
     digits = max(2, len(str(len(sortable_entries))))  # Determine zero-padding width for sequential numeric naming.
     rename_plan: List[Tuple[str, str, str]] = []  # Initialize two-phase rename plan list.
@@ -5644,7 +5648,8 @@ def restructure_single_product_output_directory(product_directory: str) -> None:
         move_entry_with_collision_resolution(source_path, product_data_directory)  # Move root Product Data file into Product Data with collision handling.
 
     image_filenames, video_filenames = collect_product_data_media_files(product_directory)  # Collect current image/video files in root product directory.
-    image_rename_plan = build_size_descending_rename_plan(product_directory, image_filenames)  # Build deterministic size-descending rename plan for root images only.
+    preserve_image_filename_order = os.path.basename(product_directory).lower().startswith("shopee - ")  # Preserve Shopee gallery order encoded by scraper prefixes
+    image_rename_plan = build_size_descending_rename_plan(product_directory, image_filenames, preserve_image_filename_order)  # Build the platform-appropriate root image rename plan
     video_rename_plan = build_size_descending_rename_plan(product_directory, video_filenames)  # Build deterministic size-descending rename plan for root videos only.
 
     original_to_new_media_names: Dict[str, str] = {}  # Initialize mapping from original root media filename to final numeric filename.
