@@ -43,6 +43,7 @@ Assumptions & Notes:
 from __future__ import annotations  # Enable postponed annotation evaluation.
 
 import atexit  # Register a finish action.
+import argparse  # Parse command-line arguments.
 import datetime  # Capture program timing.
 import os  # Run operating system commands.
 import platform  # Detect the operating system.
@@ -88,7 +89,9 @@ TO_DISTRIBUTE_DIR = OUTPUTS_DIR / "To-Distribute"  # Set the staging distributio
 TIMESTAMP_DIR_PATTERN = re.compile(r"^\d+\.\s\d{4}-\d{2}-\d{2}\s-\s\d{2}h\d{2}m\d{2}s$")  # Match timestamp directory names.
 POST_DIR_PATTERN = re.compile(r"^(\d+)\.\s(.+?)\s-\s(.+)$")  # Match indexed post directory names.
 CHILD_INDEX_PATTERN = re.compile(r"^\d+\.\s(.+)$")  # Match indexed weekday child directory names.
+WEEKDAY_OUTPUT_DIR_PATTERN = re.compile(r"^(\d+)\.\s(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)(?:\s\((\d+)\))?$")  # Match final weekday output directories.
 TEMP_INDEX_PREFIX = ".weekly-posts-indexing-"  # Set temporary indexing prefix.
+TEMP_WEEKDAY_PREFIX = ".weekly-posts-weekday-"  # Set temporary weekday merge prefix.
 WEEKDAYS = [  # Define weekday directory names.
     "1. Monday",  # Set Monday directory name.
     "2. Tuesday",  # Set Tuesday directory name.
@@ -773,6 +776,223 @@ def rename_weekday_with_count(weekday_path: Path) -> None:  # Rename weekday wit
     weekday_path.rename(get_weekday_directory_with_count(weekday_path))  # Rename weekday path with count.
 
 
+def parse_weekday_output_directory(path: Path) -> tuple[int, str, Path] | None:  # Parse final weekday output directory.
+    """
+    Parse a final weekday output directory.
+
+    :param path: Directory path to parse.
+    :return: Parsed prefix, weekday name, and path, or None when invalid.
+    """
+
+    match = WEEKDAY_OUTPUT_DIR_PATTERN.fullmatch(path.name)  # Match exact weekday output format.
+
+    if not path.is_dir() or not match:  # Reject non-directories and malformed names.
+        return None  # Return no parsed record.
+
+    return int(match.group(1)), match.group(2), path  # Return parsed weekday record.
+
+
+def discover_weekday_output_directories(outputs_dir: Path) -> list[tuple[int, str, Path]]:  # Discover final weekday output directories.
+    """
+    Discover valid final weekday output directories.
+
+    :param outputs_dir: Outputs directory to inspect.
+    :return: Parsed weekday output directory records sorted by numeric prefix.
+    """
+
+    if not outputs_dir.is_dir():  # Detect missing output directory.
+        return []  # Return no records.
+
+    records: list[tuple[int, str, Path]] = []  # Store parsed weekday records.
+
+    for path in outputs_dir.iterdir():  # Iterate immediate output entries.
+        parsed = parse_weekday_output_directory(path)  # Parse current output entry.
+
+        if parsed is None:  # Skip invalid entries.
+            continue  # Continue to next output entry.
+
+        records.append(parsed)  # Store valid weekday record.
+
+    records.sort(key=lambda record: (record[0], record[2].name.lower()))  # Sort records by numeric prefix.
+    return records  # Return sorted records.
+
+
+def split_contiguous_weekday_groups(records: list[tuple[int, str, Path]]) -> list[list[tuple[int, str, Path]]]:  # Split adjacent weekday records.
+    """
+    Split parsed weekday records into contiguous same-weekday groups.
+
+    :param records: Sorted weekday output directory records.
+    :return: Contiguous weekday record groups.
+    """
+
+    groups: list[list[tuple[int, str, Path]]] = []  # Store contiguous groups.
+
+    for record in records:  # Iterate sorted records.
+        if groups and groups[-1][-1][1] == record[1]:  # Detect same weekday as previous valid record.
+            groups[-1].append(record)  # Append to current contiguous group.
+        else:  # Start a new weekday occurrence.
+            groups.append([record])  # Store new contiguous group.
+
+    return groups  # Return grouped records.
+
+
+def verify_weekday_group_contains_only_directories(group: list[tuple[int, str, Path]]) -> None:  # Validate weekday group contents.
+    """
+    Validate that weekday merge sources contain only product directories.
+
+    :param group: Weekday output directory records in one contiguous group.
+    :return: None.
+    """
+
+    for _, _, weekday_path in group:  # Iterate weekday directories.
+        for child in weekday_path.iterdir():  # Iterate weekday children.
+            if not child.is_dir():  # Detect unsupported direct file.
+                raise FileExistsError(f"Cannot merge weekday directory containing non-directory entry: {child}")  # Reject unsafe content.
+
+
+def get_temporary_weekday_child_merge_path(target_weekday_path: Path, child_dir: Path, index: int) -> Path:  # Build temporary child merge path.
+    """
+    Return an available temporary path for a moved weekday child directory.
+
+    :param target_weekday_path: Weekday directory receiving merged children.
+    :param child_dir: Child directory being moved.
+    :param index: Temporary index number.
+    :return: Available temporary child path.
+    """
+
+    clean_name = get_child_directory_name_without_index(child_dir.name)  # Remove existing child index.
+    attempt = 1  # Initialize attempt counter.
+    temp_path = target_weekday_path / f"{index + 100000:06d}. {clean_name}"  # Build first numeric temporary merge path.
+
+    while temp_path.exists():  # Detect temporary merge collision.
+        attempt += 1  # Increment attempt counter.
+        temp_path = target_weekday_path / f"{(index + 100000) * 1000 + attempt}. {clean_name}"  # Build next numeric temporary merge path.
+
+    return temp_path  # Return available temporary path.
+
+
+def merge_contiguous_weekday_group(group: list[tuple[int, str, Path]]) -> Path:  # Merge one contiguous weekday group.
+    """
+    Merge one contiguous weekday directory group into its first directory.
+
+    :param group: Contiguous same-weekday records.
+    :return: Directory path containing the merged group.
+    """
+
+    target_path = group[0][2]  # Use first numeric occurrence as merge target.
+    merge_index = 1  # Initialize merge child counter.
+    verify_weekday_group_contains_only_directories(group)  # Validate merge source contents.
+
+    for _, _, source_path in group[1:]:  # Iterate duplicate weekday directories.
+        for child in source_path.iterdir():  # Iterate source product directories.
+            temporary_path = get_temporary_weekday_child_merge_path(target_path, child, merge_index)  # Build collision-free temporary child path.
+            shutil.move(str(child), str(temporary_path))  # Move child into target using neutral temporary name.
+            merge_index += 1  # Advance merge child counter.
+
+        source_path.rmdir()  # Remove emptied duplicate weekday directory.
+
+    index_weekday_child_directories(target_path)  # Reuse existing child directory reindexing.
+    return target_path  # Return merged target path.
+
+
+def get_temporary_weekday_output_path(weekday_path: Path, index: int) -> Path:  # Build temporary top-level weekday path.
+    """
+    Return an available temporary path for a top-level weekday directory.
+
+    :param weekday_path: Weekday directory path.
+    :param index: Temporary index number.
+    :return: Available temporary weekday path.
+    """
+
+    attempt = 1  # Initialize attempt counter.
+    temp_path = weekday_path.parent / f"{TEMP_WEEKDAY_PREFIX}{index:02d}-{weekday_path.name}"  # Build first temporary path.
+
+    while temp_path.exists():  # Detect temporary top-level collision.
+        attempt += 1  # Increment attempt counter.
+        temp_path = weekday_path.parent / f"{TEMP_WEEKDAY_PREFIX}{index:02d}-{attempt}-{weekday_path.name}"  # Build next temporary path.
+
+    return temp_path  # Return available temporary path.
+
+
+def normalize_weekday_output_directory_indexes(group_paths: list[tuple[str, Path]], start_index: int) -> None:  # Normalize top-level weekday indexes.
+    """
+    Normalize top-level weekday directory indexes and count suffixes.
+
+    :param group_paths: Ordered weekday names with their final directory paths.
+    :param start_index: Numeric index used for the first final weekday directory.
+    :return: None.
+    """
+
+    temporary_paths: list[tuple[str, Path]] = []  # Store temporary path mappings.
+    source_paths = {path for _, path in group_paths}  # Capture source paths.
+
+    for index, (weekday_name, weekday_path) in enumerate(group_paths):  # Iterate final weekday paths.
+        total_posts = sum(1 for child in weekday_path.iterdir() if child.is_dir())  # Count actual product directories.
+        final_path = weekday_path.parent / f"{start_index + index}. {weekday_name} ({total_posts})"  # Build normalized final path.
+
+        if final_path.exists() and final_path not in source_paths:  # Detect occupied external destination.
+            raise FileExistsError(f"Cannot normalize weekday directory because target exists: {final_path}")  # Reject unsafe destination.
+
+        temporary_path = get_temporary_weekday_output_path(weekday_path, index + 1)  # Build temporary top-level path.
+        weekday_path.rename(temporary_path)  # Move source to temporary path.
+        temporary_paths.append((weekday_name, temporary_path))  # Store temporary path for final rename.
+
+    for index, (weekday_name, temporary_path) in enumerate(temporary_paths):  # Iterate temporary weekday paths.
+        total_posts = sum(1 for child in temporary_path.iterdir() if child.is_dir())  # Count actual product directories.
+        final_path = temporary_path.parent / f"{start_index + index}. {weekday_name} ({total_posts})"  # Build final counted path.
+        temporary_path.rename(final_path)  # Rename temporary path to final path.
+
+
+def merge_weekday_output_directories(outputs_dir: Path = OUTPUTS_DIR) -> None:  # Merge duplicate weekday output directories.
+    """
+    Merge contiguous duplicate weekday output directories.
+
+    :param outputs_dir: Outputs directory containing weekday output directories.
+    :return: None.
+    """
+
+    records = discover_weekday_output_directories(outputs_dir)  # Discover valid weekday output records.
+
+    if not records:  # Detect no valid weekday outputs.
+        return  # Stop merge workflow.
+
+    groups = split_contiguous_weekday_groups(records)  # Split by adjacent weekday occurrence.
+    final_group_paths: list[tuple[str, Path]] = []  # Store final group paths in numeric order.
+    merged_any = False  # Track whether any merge occurred.
+
+    if not any(len(group) > 1 for group in groups):  # Detect no duplicate contiguous groups.
+        return  # Stop without changing existing weekday outputs.
+
+    for group in groups:  # Iterate contiguous groups.
+        weekday_name = group[0][1]  # Read group weekday name.
+
+        if len(group) > 1:  # Detect duplicate contiguous weekday group.
+            merged_path = merge_contiguous_weekday_group(group)  # Merge duplicate weekday directories.
+            merged_any = True  # Record merge activity.
+        else:  # Preserve single weekday occurrence.
+            merged_path = group[0][2]  # Keep existing directory path.
+            index_weekday_child_directories(merged_path)  # Reuse existing child directory reindexing.
+
+        final_group_paths.append((weekday_name, merged_path))  # Store final group path.
+
+    if merged_any:  # Detect whether top-level normalization is required.
+        normalize_weekday_output_directory_indexes(final_group_paths, groups[0][0][0])  # Normalize top-level indexes and counts.
+
+
+def parse_arguments() -> argparse.Namespace:  # Parse CLI arguments.
+    """
+    Parse and return command-line arguments.
+
+    :param: None.
+    :return: Parsed argument namespace.
+    """
+
+    parser = argparse.ArgumentParser(description="Distribute product output directories across weekday folders.")  # Create argument parser.
+    parser.add_argument("--merge_weekday_output_dirs", type=lambda value: str(value).lower() in ("true", "1", "yes", "y"), default=False, help="Whether to merge contiguous duplicate weekday output directories before distribution (default: False)")  # Register weekday merge flag.
+    args, _ = parser.parse_known_args()  # Parse known arguments and tolerate shared pipeline flags.
+    return args  # Return parsed arguments.
+
+
 def finalize_distribution() -> None:  # Finalize staged distribution.
     """
     Move weekday directories to Outputs unless they already exist.
@@ -818,13 +1038,21 @@ def finalize_distribution() -> None:  # Finalize staged distribution.
     remove_empty_directories_from_output_roots(final_output_roots)  # Remove empty directories from final output roots.
 
 
-def run_weekly_posts_distribution() -> None:  # Run weekly post distribution workflow.
+def run_weekly_posts_distribution(merge_weekday_output_dirs: bool = False) -> None:  # Run weekly post distribution workflow.
     """
     Run the weekly post distribution workflow.
 
     :param: None
     :return: None
     """
+
+    has_timestamp_dirs = OUTPUTS_DIR.is_dir() and any(is_timestamp_dir(path) for path in OUTPUTS_DIR.iterdir())  # Detect timestamp directories before staging.
+
+    if merge_weekday_output_dirs:  # Detect requested weekday output merge.
+        merge_weekday_output_directories(OUTPUTS_DIR)  # Merge existing duplicate weekday outputs.
+
+        if not has_timestamp_dirs:  # Detect merge-only execution.
+            return  # Stop before creating empty distribution output.
 
     move_timestamp_directories()  # Move timestamp directories into staging.
 
@@ -951,9 +1179,10 @@ def main() -> None:  # Run program entrypoint.
 
     print(f"{BackgroundColors.CLEAR_TERMINAL}{BackgroundColors.BOLD}{BackgroundColors.GREEN}Welcome to the {BackgroundColors.CYAN}Weekly Posts Distribution{BackgroundColors.GREEN} program!{Style.RESET_ALL}", end="\n\n")  # Output welcome message.
     
+    args = parse_arguments()  # Parse command-line arguments.
     start_time = datetime.datetime.now()  # Get program start time.
     
-    run_weekly_posts_distribution()  # Run weekly post distribution workflow.
+    run_weekly_posts_distribution(merge_weekday_output_dirs=args.merge_weekday_output_dirs)  # Run weekly post distribution workflow.
     
     finish_time = datetime.datetime.now()  # Get program finish time.
     
