@@ -33,6 +33,7 @@ import re  # Split URLs into numeric and nonnumeric sorting components.
 import tempfile  # Create staged files for atomic replacement.
 from pathlib import Path  # Resolve repository-relative input and output paths.
 from typing import Any, Dict, List, Optional, Tuple, Union  # Define compatible type annotations.
+from urllib.parse import urlsplit, urlunsplit  # Parse URLs with standard-library components.
 
 from colorama import Style  # Reset terminal formatting after colored output.
 
@@ -406,6 +407,7 @@ def extract_valid_urls(source_path: Path) -> List[str]:  # Read and retain trimm
     source_content = source_path.read_text(encoding="utf-8")  # Read the complete source file as UTF-8 text.
     normalized_lines = [line.strip() for line in source_content.splitlines()]  # Trim surrounding whitespace from every line.
     urls = [line for line in normalized_lines if line.startswith(("https://", "http://"))]  # Retain only HTTP and HTTPS URL lines.
+    urls = [urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", "")) for parsed in (urlsplit(url) for url in urls)]  # Remove query strings and fragments while preserving each base URL.
 
     return urls  # Return retained URLs with duplicates preserved.
 
