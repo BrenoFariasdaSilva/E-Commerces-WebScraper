@@ -19,7 +19,7 @@ endif
 
 # Logs directory
 LOG_DIR := ./Logs
-MERGE_WEEKDAY_OUTPUT_DIRS ?= False
+MERGE_WEEKDAY_OUTPUT_DIRS ?= True
 
 # Ensure logs directory exists (cross-platform)
 ENSURE_LOG_DIR := @mkdir -p $(LOG_DIR) 2>/dev/null || $(PYTHON_CMD) -c "import os; os.makedirs('$(LOG_DIR)', exist_ok=True)"
