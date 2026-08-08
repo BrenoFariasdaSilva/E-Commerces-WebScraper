@@ -19,6 +19,7 @@ endif
 
 # Logs directory
 LOG_DIR := ./Logs
+MERGE_WEEKDAY_OUTPUT_DIRS ?= False
 
 # Ensure logs directory exists (cross-platform)
 ENSURE_LOG_DIR := @mkdir -p $(LOG_DIR) 2>/dev/null || $(PYTHON_CMD) -c "import os; os.makedirs('$(LOG_DIR)', exist_ok=True)"
@@ -45,7 +46,7 @@ run: dependencies
 	$(call RUN_AND_LOG, ./Scripts/affiliate_pages_downloader.py --process_only_unlinked_urls --headerless True $(ARGS))
 	$(call RUN_AND_LOG, ./main.py --headerless True --sort_products_by_product_name True $(ARGS))
 	$(call RUN_AND_LOG, ./main.py --restructure_product_outputs $(ARGS))
-	$(call RUN_AND_LOG, ./weekly_posts.py $(ARGS))
+	$(call RUN_AND_LOG, ./weekly_posts.py --merge_weekday_output_dirs $(MERGE_WEEKDAY_OUTPUT_DIRS) $(ARGS))
 
 local: dependencies
 	$(ENSURE_LOG_DIR)
@@ -53,7 +54,7 @@ local: dependencies
 	$(call RUN_AND_LOG, ./url_input_normalizer.py $(ARGS))
 	$(call RUN_AND_LOG, ./main.py --sort_products_by_product_name True $(ARGS))
 	$(call RUN_AND_LOG, ./main.py --restructure_product_outputs $(ARGS))
-	$(call RUN_AND_LOG, ./weekly_posts.py $(ARGS))
+	$(call RUN_AND_LOG, ./weekly_posts.py --merge_weekday_output_dirs $(MERGE_WEEKDAY_OUTPUT_DIRS) $(ARGS))
 
 # Execute the main script with logging and updated dependency management
 main: dependencies
@@ -77,7 +78,7 @@ else
 endif
 	$(call RUN_AND_LOG, ./main.py --sort_products_by_product_name True --output_dir "$(OUTPUT_DIR)")
 	$(call RUN_AND_LOG, ./main.py --restructure_product_outputs $(ARGS))
-	$(call RUN_AND_LOG, ./weekly_posts.py $(ARGS))
+	$(call RUN_AND_LOG, ./weekly_posts.py --merge_weekday_output_dirs $(MERGE_WEEKDAY_OUTPUT_DIRS) $(ARGS))
 
 generate_template_files_from_local: dependencies
 	$(ENSURE_LOG_DIR)
@@ -127,7 +128,12 @@ renew_amazon_affiliate_urls: dependencies
 weekly_posts: dependencies
 	$(ENSURE_LOG_DIR)
 	$(CLEAR_CMD)
-	$(call RUN_AND_LOG, ./weekly_posts.py $(ARGS))
+	$(call RUN_AND_LOG, ./weekly_posts.py --merge_weekday_output_dirs $(MERGE_WEEKDAY_OUTPUT_DIRS) $(ARGS))
+
+merge_weekday_output_dirs: dependencies
+	$(ENSURE_LOG_DIR)
+	$(CLEAR_CMD)
+	$(call RUN_AND_LOG, ./weekly_posts.py --merge_weekday_output_dirs True $(ARGS))
 
 # Update repository and run
 update_and_run: dependencies
@@ -169,4 +175,4 @@ clean:
 	find . -type f -name '*.pyc' -delete || del /S /Q *.pyc 2>nul
 	find . -type d -name '__pycache__' -delete || rmdir /S /Q __pycache__ 2>nul
 
-.PHONY: all run local main sort_products generate_template_files_from_local generate_template_files_from_prompt sort_latest_products merge_output_dirs restructure_product_outputs compressed_archives_renamer urls_input_file_adder affiliate_pages_downloader renew_amazon_affiliate_urls weekly_posts update_and_run clean dependencies generate_requirements
+.PHONY: all run local main sort_products generate_template_files_from_local generate_template_files_from_prompt sort_latest_products merge_output_dirs merge_weekday_output_dirs restructure_product_outputs compressed_archives_renamer urls_input_file_adder affiliate_pages_downloader renew_amazon_affiliate_urls weekly_posts update_and_run clean dependencies generate_requirements
