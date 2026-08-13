@@ -5180,6 +5180,19 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
             print(f"{BackgroundColors.YELLOW}[WARNING] Chrome profile identity changed before extension initialization. Aborting to avoid configuring a different profile.{Style.RESET_ALL}")  # Log profile identity mismatch before initialization.
             return 1  # Return failure when profile identity is not stable.
 
+        pyautogui.hotkey("ctrl", "t")  # Open a constant empty tab so Chrome downloads settings can close its current tab safely.
+        time.sleep(0.2)  # Wait after opening the Chrome downloads settings staging tab.
+
+        chrome_download_settings_ready = verify_and_correct_chrome_download_settings(assets_dir, open_in_new_tab=False)  # Configure native Chrome downloads settings before extension initialization.
+
+        if not chrome_download_settings_ready:  # Verify whether native Chrome downloads settings were configured before dummy initialization.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Chrome downloads settings could not be verified or corrected automatically. Aborting initialization before dummy extension test.{Style.RESET_ALL}")  # Log blocking downloads settings failure before dummy initialization.
+            return 1  # Return failure so dummy extension initialization and real URL processing cannot continue.
+
+        if get_chrome_profile_identity() != extension_configuration_profile_identity:  # Verify the Chrome downloads settings stage used the captured persistent Chrome profile identity.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Chrome profile identity changed after Chrome downloads settings configuration. Aborting to avoid configuring a different profile.{Style.RESET_ALL}")  # Log profile identity mismatch after Chrome settings.
+            return 1  # Return failure when profile identity is not stable after native settings configuration.
+
         if not configure_extension_download_settings(image_paths, downloads_dirs):  # Configure extension downloads using the same persistent Chrome profile before real URL processing.
             return 1  # Return failure when extension initialization cannot be verified.
 
@@ -5203,14 +5216,6 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
 
         pyautogui.hotkey("ctrl", "t")  # Open a constant empty tab in the dedicated window for settings navigation.
         time.sleep(0.2)  # Wait after opening the constant empty tab.
-
-        chrome_download_settings_ready = True  # Initialize downloads settings readiness as true for only-renew mode.
-
-        if not only_renew_amazon_urls:  # Verify whether normal mode requires downloads settings validation.
-            chrome_download_settings_ready = verify_and_correct_chrome_download_settings(assets_dir, open_in_new_tab=False)  # Verify Chrome downloads settings in the current tab before processing product URLs.
-
-            if not chrome_download_settings_ready:  # Verify whether Chrome downloads settings could not be verified or corrected automatically.
-                print(f"{BackgroundColors.YELLOW}[WARNING] Chrome downloads settings could not be verified or corrected automatically. Continuing execution.{Style.RESET_ALL}")  # Log non-blocking downloads settings verification warning.
 
         ext_methods, download_methods, completion_methods, close_methods = setup_method_maps()  # Initialize grouped automation method maps for extension, download, completion, and close actions.
 
