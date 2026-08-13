@@ -143,6 +143,7 @@ DOWNLOAD_SETTINGS_STATE_TOGGLE_1_ON = "Toggle 1 On"  # Define state label for th
 DOWNLOAD_SETTINGS_STATE_TOGGLE_2_ON = "Toggle 2 On"  # Define state label for the second downloads settings toggle enabled.
 DOWNLOAD_SETTINGS_STATE_BOTH_TOGGLES_ON = "Both Toggles On"  # Define state label for both downloads settings toggles enabled.
 DOWNLOAD_SETTINGS_STATE_UNKNOWN = "Unknown"  # Define state label for an unresolved downloads settings configuration.
+CHROME_DOWNLOAD_SETTING_SEARCH_SECONDS = 2.0  # Define native Chrome downloads setting fallback search window in seconds.
 EXTENSION_DOWNLOAD_SETTING_SEARCH_SECONDS = 2.0  # Define extension download setting image search window in seconds.
 MAX_DOWNLOAD_RETRY_ATTEMPTS = 2  # Define maximum number of download attempts per URL including the initial attempt.
 MAX_RETRY_MECHANISM_ATTEMPTS = 5  # Define maximum number of post-processing retry cycles for failed/unlinked URLs.
@@ -1243,11 +1244,27 @@ def get_chrome_download_settings_region() -> Tuple[int, int, int, int] | None:
     :return: Tuple with left, top, width, and height or None when unavailable.
     """
 
+    global ACTIVE_CHROME_BOUNDS  # Reference cached active Chrome bounds for current region refresh.
+
+    if DEDICATED_AUTOMATION_HWND != 0:  # Verify whether the dedicated automation window handle is available.
+        window = find_window_by_hwnd(DEDICATED_AUTOMATION_HWND)  # Resolve the current dedicated Chrome window object from the live HWND.
+
+        if window is not None:  # Verify whether the dedicated Chrome window still exists.
+            ACTIVE_CHROME_BOUNDS = {"left": int(getattr(window, "left", 0)), "top": int(getattr(window, "top", 0)), "width": int(getattr(window, "width", 0)), "height": int(getattr(window, "height", 0))}  # Refresh cached bounds from the current Chrome window.
+
     window_bounds = get_active_window_bounds()  # Retrieve active Chrome window bounds for region capture.
     left = int(window_bounds.get("left", 0))  # Resolve left coordinate for region capture, preserving negative secondary-monitor offsets.
     top = int(window_bounds.get("top", 0))  # Resolve top coordinate for region capture, preserving negative secondary-monitor offsets.
     width = max(1, int(window_bounds.get("width", 0)))  # Resolve safe width for region capture.
     height = max(1, int(window_bounds.get("height", 0)))  # Resolve safe height for region capture.
+    vd_left, vd_top, vd_right, vd_bottom = get_virtual_desktop_bounds()  # Retrieve virtual desktop bounds for region validation.
+    right = min(left + width, vd_right)  # Clamp region right edge to the virtual desktop.
+    bottom = min(top + height, vd_bottom)  # Clamp region bottom edge to the virtual desktop.
+    left = max(left, vd_left)  # Clamp region left edge to the virtual desktop.
+    top = max(top, vd_top)  # Clamp region top edge to the virtual desktop.
+    width = max(0, right - left)  # Recompute validated region width.
+    height = max(0, bottom - top)  # Recompute validated region height.
+    verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Chrome downloads settings search region: x={BackgroundColors.CYAN}{left}{BackgroundColors.GREEN}, y={BackgroundColors.CYAN}{top}{BackgroundColors.GREEN}, width={BackgroundColors.CYAN}{width}{BackgroundColors.GREEN}, height={BackgroundColors.CYAN}{height}{Style.RESET_ALL}")  # Log current Chrome downloads settings search region.
 
     if width <= 0 or height <= 0:  # Verify whether the resolved region dimensions are invalid.
         return None  # Return None when the Chrome settings capture region is unavailable.
@@ -1549,6 +1566,128 @@ def verify_chrome_download_settings_correct_state(correct_imgs: List[Path]) -> b
     return False  # Return failure when the correct downloads settings state is not detected.
 
 
+def locate_chrome_toggle_image_in_region(image_path: Path, region: Tuple[int, int, int, int] | None) -> Any:
+    """
+    Locates a Chrome downloads toggle image inside the current Chrome region.
+
+    :param image_path: Path to the toggle image file.
+    :param region: Optional current Chrome window region.
+    :return: Box location when found, otherwise None.
+    """
+
+    if not image_path.exists():  # Verify image file existence before fallback image search.
+        print(f"{BackgroundColors.RED}Image file not found: {BackgroundColors.GREEN}{image_path}{Style.RESET_ALL}")  # Log missing fallback image file.
+        return None  # Return None when fallback image file is missing.
+
+    if region is None:  # Verify whether a current Chrome region is available.
+        return None  # Return None when bounded Chrome search cannot run.
+
+    box = enhanced_locate_image(image_path, region=region)  # Locate toggle image using bounded enhanced grayscale multi-scale matching.
+
+    if box is not None:  # Verify whether bounded enhanced search found the toggle.
+        return box  # Return absolute screen coordinates from bounded enhanced search.
+
+    diagnostic_box = enhanced_locate_image(image_path)  # Run broader enhanced diagnostic search after bounded region miss.
+
+    if diagnostic_box is not None:  # Verify whether broader enhanced search found an image missed by the bounded region.
+        verbose_output(f"{BackgroundColors.YELLOW}[DEBUG] Chrome toggle fallback region missed image found by broader search: {BackgroundColors.CYAN}{image_path.name}{Style.RESET_ALL}")  # Log region diagnostic result without using it for clicking.
+
+    return None  # Return None when bounded region search misses.
+
+
+def locate_chrome_toggle_image_until(image_path: Path, timeout_seconds: float, search_label: str) -> Any:
+    """
+    Locates a Chrome downloads toggle image during a bounded retry window.
+
+    :param image_path: Path to the toggle image file.
+    :param timeout_seconds: Maximum number of seconds to search.
+    :param search_label: Runtime label for debug logging.
+    :return: Box location when found, otherwise None.
+    """
+
+    verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Starting Chrome {search_label} fallback search for {BackgroundColors.CYAN}{timeout_seconds:g}{BackgroundColors.GREEN}s: {BackgroundColors.CYAN}{image_path.name}{Style.RESET_ALL}")  # Log bounded Chrome toggle fallback search start.
+    start_time = time.time()  # Capture bounded fallback search start timestamp.
+
+    while time.time() - start_time <= timeout_seconds:  # Repeat fallback detection until timeout expires.
+        region = get_chrome_download_settings_region()  # Refresh current Chrome settings region before each screenshot.
+        box = locate_chrome_toggle_image_in_region(image_path, region)  # Locate toggle image through bounded enhanced matching.
+
+        if box is not None:  # Verify whether the toggle image was detected.
+            verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Chrome {search_label} fallback image found: {BackgroundColors.CYAN}{image_path.name}{Style.RESET_ALL}")  # Log successful fallback image detection.
+            return box  # Return matched toggle image box.
+
+        time.sleep(DOWNLOAD_SETTINGS_VERIFICATION_WAIT_SECONDS)  # Wait using existing retry interval before the next screenshot.
+
+    verbose_output(f"{BackgroundColors.YELLOW}[DEBUG] Chrome {search_label} fallback search exhausted: {BackgroundColors.CYAN}{image_path.name}{Style.RESET_ALL}")  # Log fallback search exhaustion.
+    return None  # Return None when fallback image is not detected during the bounded window.
+
+
+def verify_chrome_toggle_off_visible(toggle_off_img: Path) -> bool:
+    """
+    Verifies that a Chrome downloads toggle off image is visible.
+
+    :param toggle_off_img: Path to the Toggle Off image file.
+    :return: True when Toggle Off is visible, otherwise False.
+    """
+
+    off_box = locate_chrome_toggle_image_until(toggle_off_img, CHROME_DOWNLOAD_SETTING_SEARCH_SECONDS, "Toggle Off")  # Search for Toggle Off using bounded enhanced matching.
+
+    if off_box is not None:  # Verify whether Toggle Off was detected.
+        verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Chrome Toggle Off fallback verification succeeded.{Style.RESET_ALL}")  # Log successful Toggle Off verification.
+        return True  # Return success after positive Toggle Off detection.
+
+    print(f"{BackgroundColors.YELLOW}[WARNING] Chrome Toggle Off fallback verification failed.{Style.RESET_ALL}")  # Log Toggle Off verification failure.
+    return False  # Return failure when Toggle Off cannot be detected.
+
+
+def run_chrome_download_toggle_on_fallback(toggle_on_img: Path, toggle_off_img: Path) -> bool:
+    """
+    Disables visible Chrome downloads Toggle On controls using image fallback.
+
+    :param toggle_on_img: Path to the Toggle On image file.
+    :param toggle_off_img: Path to the Toggle Off image file.
+    :return: True when no Toggle On remains and off state is verified, otherwise False.
+    """
+
+    verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Existing native Chrome settings detection failed; Toggle On fallback starting.{Style.RESET_ALL}")  # Log fallback start after primary detection failure.
+    corrected_count = 0  # Track how many visible Toggle On controls were clicked.
+
+    for toggle_index in range(1, 3):  # Process up to two relevant visible Toggle On controls.
+        verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Searching for Chrome Toggle On fallback match {BackgroundColors.CYAN}{toggle_index}/2{Style.RESET_ALL}")  # Log current Toggle On fallback pass.
+        on_box = locate_chrome_toggle_image_until(toggle_on_img, CHROME_DOWNLOAD_SETTING_SEARCH_SECONDS, "Toggle On")  # Search current screen for one Toggle On image.
+
+        if on_box is None:  # Verify whether no Toggle On image remains visible.
+            break  # Stop fallback loop when no Toggle On is found.
+
+        click_box_center(on_box)  # Click the center of the matched Toggle On image.
+        corrected_count += 1  # Increment corrected Toggle On count after click.
+        verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Chrome Toggle On fallback match {BackgroundColors.CYAN}{toggle_index}{BackgroundColors.GREEN} clicked.{Style.RESET_ALL}")  # Log fallback click.
+        time.sleep(DOWNLOAD_SETTINGS_TOGGLE_CLICK_WAIT_SECONDS)  # Wait for Chrome settings UI to update after toggle click.
+
+        if not verify_chrome_toggle_off_visible(toggle_off_img):  # Verify whether Toggle Off became visible after the click.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Chrome Toggle On fallback could not verify Toggle Off after click; continuing automation later as best-effort.{Style.RESET_ALL}")  # Log failed post-click verification.
+            return False  # Return failure so caller can report unresolved best-effort state.
+
+    if corrected_count == 0:  # Verify whether fallback found no enabled toggle to change.
+        off_visible = verify_chrome_toggle_off_visible(toggle_off_img)  # Search for Toggle Off as positive already-off confirmation.
+
+        if off_visible:  # Verify whether existing off state was visible.
+            verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Chrome Toggle On fallback found no enabled toggles; Toggle Off is visible.{Style.RESET_ALL}")  # Log already-off fallback result.
+            return True  # Return success when no Toggle On is visible and Toggle Off is visible.
+
+        print(f"{BackgroundColors.YELLOW}[WARNING] Chrome Toggle On fallback found no Toggle On or Toggle Off state; automation will continue.{Style.RESET_ALL}")  # Log unresolved fallback state.
+        return False  # Return failure when fallback cannot verify native setting state.
+
+    remaining_on_box = locate_chrome_toggle_image_until(toggle_on_img, CHROME_DOWNLOAD_SETTING_SEARCH_SECONDS, "remaining Toggle On")  # Search current screen for any remaining enabled toggle.
+
+    if remaining_on_box is not None:  # Verify whether an enabled toggle remains after two allowed passes.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Chrome Toggle On fallback still detected an enabled toggle after {BackgroundColors.CYAN}{corrected_count}{BackgroundColors.YELLOW} correction(s).{Style.RESET_ALL}")  # Log remaining enabled toggle warning.
+        return False  # Return failure when fallback cannot clear all visible enabled toggles.
+
+    verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Chrome Toggle On fallback corrected {BackgroundColors.CYAN}{corrected_count}{BackgroundColors.GREEN} enabled toggle(s); no Toggle On remains.{Style.RESET_ALL}")  # Log successful fallback completion.
+    return True  # Return success when enabled toggles were corrected and none remain.
+
+
 def close_chrome_download_settings_tab() -> bool:
     """
     Closes the Chrome downloads settings tab and restores focus.
@@ -1566,11 +1705,12 @@ def close_chrome_download_settings_tab() -> bool:
     return activate_automation_window()  # Restore dedicated automation window focus after closing the downloads settings tab.
 
 
-def verify_and_correct_chrome_download_settings(assets_dir: Path, open_in_new_tab: bool = True) -> bool:
+def verify_and_correct_chrome_download_settings(assets_dir: Path, image_paths: Dict[str, Path] | None = None, open_in_new_tab: bool = True) -> bool:
     """
     Verifies and corrects Chrome downloads settings before automation starts.
 
     :param assets_dir: Path to the browser assets directory.
+    :param image_paths: Optional dictionary mapping browser image keys to asset paths.
     :param open_in_new_tab: Whether to open the settings page in a new tab.
     :return: True when Chrome downloads settings are ready, otherwise False.
     """
@@ -1579,6 +1719,8 @@ def verify_and_correct_chrome_download_settings(assets_dir: Path, open_in_new_ta
     wrong_toggle_1_imgs = [assets_dir / "AskUserDownloadConfirmation - Black - Wrong - Toggle 1 On.png", assets_dir / "AskUserDownloadConfirmation - White - Wrong - Toggle 1 On.png"]  # Define image paths for Toggle 1 enabled (both color variants).
     wrong_toggle_2_imgs = [assets_dir / "AskUserDownloadConfirmation - Black - Wrong - Toggle 2 On.png", assets_dir / "AskUserDownloadConfirmation - White - Wrong - Toggle 2 On.png"]  # Define image paths for Toggle 2 enabled (both color variants).
     wrong_both_imgs = [assets_dir / "AskUserDownloadConfirmation - Black - Wrong - Both Toggles On.png", assets_dir / "AskUserDownloadConfirmation - White - Wrong - Both Toggles On.png"]  # Define image paths for both toggles enabled (both color variants).
+    toggle_on_img = image_paths["ask_user_download_confirmation_toggle_on_img"] if image_paths is not None else assets_dir / "AskUserDownloadConfirmation - Toggle On.png"  # Resolve Toggle On fallback image from dictionary when available.
+    toggle_off_img = image_paths["ask_user_download_confirmation_toggle_off_img"] if image_paths is not None else assets_dir / "AskUserDownloadConfirmation - Toggle Off.png"  # Resolve Toggle Off fallback image from dictionary when available.
 
     if not open_chrome_download_settings_page(open_in_new_tab=open_in_new_tab):  # Verify whether the Chrome downloads settings page was opened successfully.
         return False  # Return failure when the Chrome downloads settings page cannot be opened.
@@ -1586,14 +1728,22 @@ def verify_and_correct_chrome_download_settings(assets_dir: Path, open_in_new_ta
     correction_result = correct_chrome_download_settings_state(correct_imgs, wrong_toggle_1_imgs, wrong_toggle_2_imgs, wrong_both_imgs)  # Correct settings state with iterative re-detection between clicks.
 
     if not correction_result:  # Verify whether automatic settings correction failed.
-        close_result = close_chrome_download_settings_tab()  # Close the downloads settings tab before aborting.
+        fallback_result = run_chrome_download_toggle_on_fallback(toggle_on_img, toggle_off_img)  # Run Toggle On fallback only after primary native detection fails.
+        close_result = close_chrome_download_settings_tab()  # Close the downloads settings tab before continuing.
 
-        if not close_result:  # Verify whether Chrome focus restoration succeeded after aborting.
-            print(f"{BackgroundColors.YELLOW}[WARNING] Chrome focus restoration failed after downloads settings detection error.{Style.RESET_ALL}")  # Log Chrome focus restoration failure after aborting.
+        if not close_result:  # Verify whether Chrome focus restoration succeeded before continuing.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Chrome focus restoration failed after downloads settings detection error.{Style.RESET_ALL}")  # Log Chrome focus restoration failure before continuing.
 
-        return False  # Return failure when the downloads settings state cannot be resolved.
+        if not fallback_result:  # Verify whether Toggle On fallback resolved the native downloads state.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Chrome downloads settings fallback could not fully verify state; continuing with extension initialization.{Style.RESET_ALL}")  # Log non-fatal fallback failure.
+
+        return fallback_result  # Return truthful fallback result after primary native detection failure.
 
     verified = verify_chrome_download_settings_correct_state(correct_imgs)  # Verify whether the downloads settings are now in the correct state using all color variants.
+
+    if not verified:  # Verify whether primary final-state verification failed.
+        verified = run_chrome_download_toggle_on_fallback(toggle_on_img, toggle_off_img)  # Run Toggle On fallback after primary final verification failure.
+
     close_result = close_chrome_download_settings_tab()  # Close the downloads settings tab and restore Chrome focus.
 
     if not close_result:  # Verify whether Chrome focus restoration succeeded after settings handling.
@@ -2286,6 +2436,8 @@ def setup_image_paths(assets_dir: Path) -> Dict[str, Path]:
         "failed_file_download_img": assets_dir / "FileDownloadFailed.png",  # Define failed download image path
         "get_amazon_url_img": assets_dir / "GetAffiliateURL-Amazon.png",  # Define Amazon URL retrieval image path    
         "hide_next_time_img": assets_dir / "ConfirmationFileDownloaded-HideNextTime.png",  # Define hide next time image path
+        "ask_user_download_confirmation_toggle_off_img": assets_dir / "AskUserDownloadConfirmation - Toggle Off.png",  # Define Chrome downloads Toggle Off fallback image path.
+        "ask_user_download_confirmation_toggle_on_img": assets_dir / "AskUserDownloadConfirmation - Toggle On.png",  # Define Chrome downloads Toggle On fallback image path.
         "marked_ask_download_configuration_setting_extension_tab_img": assets_dir / "Marked Ask for Download Configuration Setting - ExtensionTab.png",  # Define marked extension download setting image path.
         "mercado_livre_img": assets_dir / "MercadoLivre-GoToProduct.png",  # Define MercadoLivre navigation image path
         "mercado_livre_invalid_url_img": assets_dir / "MercadoLivre-InvalidURL.png",  # Define MercadoLivre invalid URL image path
@@ -3652,17 +3804,25 @@ def load_template(image_path: Path) -> Any:
     return template  # Return loaded template.
 
 
-def capture_screen_grayscale() -> Any:
+def capture_screen_grayscale(region: Tuple[int, int, int, int] | None = None) -> Any:
     """
     Captures the current screen and converts it to grayscale.
 
+    :param region: Optional screen region tuple used for bounded screenshot capture.
     :return: Grayscale screenshot as numpy array.
     """
 
     try:  # Attempt all-monitor screenshot capture for full virtual desktop coverage.
-        vd_left, vd_top, vd_right, vd_bottom = get_virtual_desktop_bounds()  # Retrieve full virtual desktop bounds for all-screen capture.
-        screen = ImageGrab.grab(bbox=(vd_left, vd_top, vd_right, vd_bottom), all_screens=True)  # Capture full virtual desktop across all monitors.
+        if region is not None:  # Verify whether bounded capture was requested.
+            reg_left, reg_top, reg_width, reg_height = region  # Unpack bounded screenshot region.
+            screen = ImageGrab.grab(bbox=(reg_left, reg_top, reg_left + reg_width, reg_top + reg_height), all_screens=True)  # Capture bounded region across all monitors.
+        else:  # Capture full virtual desktop when no region was provided.
+            vd_left, vd_top, vd_right, vd_bottom = get_virtual_desktop_bounds()  # Retrieve full virtual desktop bounds for all-screen capture.
+            screen = ImageGrab.grab(bbox=(vd_left, vd_top, vd_right, vd_bottom), all_screens=True)  # Capture full virtual desktop across all monitors.
     except Exception:  # Fall back to primary monitor capture on failure.
+        if region is not None:  # Verify whether bounded capture failed before absolute coordinate conversion.
+            raise  # Stop bounded search so region origin cannot be applied to a fallback full screenshot.
+
         screen = pyautogui.screenshot()  # Capture primary monitor screen as fallback.
 
     return cv2.cvtColor(np.array(screen), cv2.COLOR_RGB2GRAY)  # Convert to grayscale and return.
@@ -3729,12 +3889,13 @@ def validate_match(best_match: Any, best_val: float, threshold: float = 0.9) -> 
     return best_match  # Return valid match.
 
 
-def enhanced_locate_image(image_path: Path, threshold: float = 0.90) -> Any:
+def enhanced_locate_image(image_path: Path, threshold: float = 0.90, region: Tuple[int, int, int, int] | None = None) -> Any:
     """
     Locates an image on screen using multi-scale template matching.
 
     :param image_path: Path to the image file.
     :param threshold: Minimum allowed confidence for match validation.
+    :param region: Optional screen region tuple used for bounded image search.
     :return: Box location when found, otherwise None.
     """
     
@@ -3748,7 +3909,7 @@ def enhanced_locate_image(image_path: Path, threshold: float = 0.90) -> Any:
         if template is None:  # Verify template load success.
             return None  # Return None when template loading fails.
 
-        screen = capture_screen_grayscale()  # Capture grayscale screen.
+        screen = capture_screen_grayscale(region)  # Capture grayscale screen or bounded region.
         scales = get_scale_factors()  # Retrieve scale factors.
 
         best_match, best_val = match_template_multi_scale(screen, template, scales, verbose=False)  # Perform multi-scale matching.
@@ -3758,6 +3919,10 @@ def enhanced_locate_image(image_path: Path, threshold: float = 0.90) -> Any:
             return None  # Return None when invalid match.
 
         (x, y), (w, h) = validated_match  # Unpack match result.
+
+        if region is not None:  # Verify whether match coordinates came from a bounded region.
+            reg_left, reg_top, _, _ = region  # Unpack region origin for absolute coordinate conversion.
+            return Box(left=reg_left + x, top=reg_top + y, width=w, height=h)  # Return absolute coordinates from bounded match result.
 
         vd_left, vd_top, _, _ = get_virtual_desktop_bounds()  # Retrieve virtual desktop origin for coordinate conversion.
         return Box(left=vd_left + x, top=vd_top + y, width=w, height=h)  # Return virtual desktop coordinates as Box for matched result.
@@ -5183,11 +5348,10 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
         pyautogui.hotkey("ctrl", "t")  # Open a constant empty tab so Chrome downloads settings can close its current tab safely.
         time.sleep(0.2)  # Wait after opening the Chrome downloads settings staging tab.
 
-        chrome_download_settings_ready = verify_and_correct_chrome_download_settings(assets_dir, open_in_new_tab=False)  # Configure native Chrome downloads settings before extension initialization.
+        chrome_download_settings_ready = verify_and_correct_chrome_download_settings(assets_dir, image_paths, open_in_new_tab=False)  # Configure native Chrome downloads settings before extension initialization.
 
         if not chrome_download_settings_ready:  # Verify whether native Chrome downloads settings were configured before dummy initialization.
-            print(f"{BackgroundColors.YELLOW}[WARNING] Chrome downloads settings could not be verified or corrected automatically. Aborting initialization before dummy extension test.{Style.RESET_ALL}")  # Log blocking downloads settings failure before dummy initialization.
-            return 1  # Return failure so dummy extension initialization and real URL processing cannot continue.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Chrome downloads settings could not be verified or corrected automatically; continuing with dummy extension initialization.{Style.RESET_ALL}")  # Log non-fatal native downloads settings failure before dummy initialization.
 
         if get_chrome_profile_identity() != extension_configuration_profile_identity:  # Verify the Chrome downloads settings stage used the captured persistent Chrome profile identity.
             print(f"{BackgroundColors.YELLOW}[WARNING] Chrome profile identity changed after Chrome downloads settings configuration. Aborting to avoid configuring a different profile.{Style.RESET_ALL}")  # Log profile identity mismatch after Chrome settings.
