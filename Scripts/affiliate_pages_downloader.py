@@ -147,6 +147,7 @@ MAX_DOWNLOAD_RETRY_ATTEMPTS = 2  # Define maximum number of download attempts pe
 MAX_RETRY_MECHANISM_ATTEMPTS = 5  # Define maximum number of post-processing retry cycles for failed/unlinked URLs.
 CHROME_WINDOW_CLOSE_TIMEOUT_SECONDS = 10.0  # Define maximum wait for a dedicated Chrome window to disappear before another may be created.
 CHROME_WINDOW_CLOSE_POLL_SECONDS = 0.1  # Define polling interval while confirming that a dedicated Chrome window has closed.
+EXTENSION_INITIALIZATION_URL = "https://www.google.com/"  # Define extension initialization URL used before processing affiliate URLs.
 
 TARGET_CHROME_TITLE = ""  # Store selected Chrome window title for reuse.
 ACTIVE_CHROME_BOUNDS = {"left": 0, "top": 0, "width": 0, "height": 0}  # Store active Chrome window bounds for coordinate calculations.
@@ -395,7 +396,7 @@ def open_chrome_with_profile(display_name: str) -> bool:
     """
 
     try:  # Attempt profile-aware Chrome launch using OS-specific commands
-        profile_dir = resolve_chrome_profile_with_fallback(display_name)  # Resolve profile directory using display name with Default fallback.
+        profile_dir = CHROME_PROFILE_DIRECTORY if CHROME_PROFILE_DIRECTORY is not None else resolve_chrome_profile_with_fallback(display_name)  # Reuse the already resolved persistent profile directory when available.
 
         user_data_dir = str(Path(CHROME_USER_DATA_DIR).resolve())  # Resolve absolute user-data directory path for Chrome.
 
@@ -2275,6 +2276,7 @@ def setup_image_paths(assets_dir: Path) -> Dict[str, Path]:
 
     image_paths = {  # Initialize dictionary containing all resolved image asset paths
         "close_download_tab_img": assets_dir / "CloseDownloadTab.png",  # Define close tab image path
+        "configuration_settings_extension_tab_img": assets_dir / "ConfigurationSettings - ExtensionTab.png",  # Define extension configuration image path.
         "confirmation_img": assets_dir / "ConfirmationFileDownloaded.png",  # Define download confirmation image path
         "download_img": assets_dir / "DownloadButton.png",  # Define download button image path
         "enable_permission_img": assets_dir / "Extension Enable Permission.png",  # Define extension permission image path
@@ -2283,13 +2285,252 @@ def setup_image_paths(assets_dir: Path) -> Dict[str, Path]:
         "failed_file_download_img": assets_dir / "FileDownloadFailed.png",  # Define failed download image path
         "get_amazon_url_img": assets_dir / "GetAffiliateURL-Amazon.png",  # Define Amazon URL retrieval image path    
         "hide_next_time_img": assets_dir / "ConfirmationFileDownloaded-HideNextTime.png",  # Define hide next time image path
+        "marked_ask_download_configuration_setting_extension_tab_img": assets_dir / "Marked Ask for Download Configuration Setting - ExtensionTab.png",  # Define marked extension download setting image path.
         "mercado_livre_img": assets_dir / "MercadoLivre-GoToProduct.png",  # Define MercadoLivre navigation image path
         "mercado_livre_invalid_url_img": assets_dir / "MercadoLivre-InvalidURL.png",  # Define MercadoLivre invalid URL image path
         "save_button_img": assets_dir / "SaveFileButton.png",  # Define MercadoLivre save button image path
         "share_button_img": assets_dir / "ShareAffiliateURL-Amazon.png",  # Define Amazon share button image path
+        "unmarked_ask_download_configuration_setting_extension_tab_img": assets_dir / "Unmarked Ask for Download Configuration Setting - ExtensionTab.png",  # Define unmarked extension download setting image path.
     }  # End dictionary initialization
 
     return image_paths  # Return dictionary containing all resolved image paths
+
+
+def get_chrome_profile_identity() -> Tuple[str, str]:
+    """
+    Resolves the persistent Chrome profile identity used by automation launches.
+
+    :return: Tuple containing the resolved user-data directory and profile directory.
+    """
+
+    user_data_dir = str(Path(CHROME_USER_DATA_DIR).resolve())  # Resolve the persistent Chrome user-data directory used by launch commands.
+    profile_dir = CHROME_PROFILE_DIRECTORY if CHROME_PROFILE_DIRECTORY is not None else resolve_chrome_profile_with_fallback(CHROME_PROFILE_DISPLAY_NAME)  # Resolve the persistent Chrome profile directory used by launch commands.
+    return user_data_dir, str(profile_dir)  # Return the profile identity values used by Chrome startup.
+
+
+def navigate_current_tab_to_url(url: str) -> bool:
+    """
+    Navigates the current Chrome tab to the provided URL.
+
+    :param url: URL to load in the current Chrome tab.
+    :return: True when navigation input was sent, otherwise False.
+    """
+
+    try:  # Attempt current-tab navigation using existing keyboard automation conventions.
+        pyautogui.hotkey("ctrl", "l")  # Focus the browser address bar.
+        time.sleep(0.08)  # Wait after focusing the address bar.
+        pyautogui.hotkey("ctrl", "a")  # Select existing address-bar content.
+        time.sleep(0.05)  # Wait after selecting the address-bar content.
+        pyautogui.press("backspace")  # Clear selected address-bar content.
+        time.sleep(0.05)  # Wait after clearing the address-bar content.
+        pyautogui.typewrite(url, interval=0.0)  # Type the target URL into the address bar.
+        time.sleep(0.1)  # Wait after typing the target URL.
+        pyautogui.press("enter")  # Navigate to the target URL.
+        time.sleep(3)  # Wait for page loading using the existing URL navigation delay.
+        return True  # Return success after navigation input completes.
+    except Exception as e:  # Handle browser navigation failures.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to navigate current tab to URL: {BackgroundColors.CYAN}{url}{BackgroundColors.YELLOW} - {e}{Style.RESET_ALL}")  # Log navigation failure with URL context.
+        return False  # Return failure when navigation input cannot complete.
+
+
+def click_configuration_settings_section(configuration_img: Path) -> bool:
+    """
+    Clicks the center of the extension Configuration section image.
+
+    :param configuration_img: Path to the extension Configuration image.
+    :return: True when the Configuration image is detected and clicked, otherwise False.
+    """
+
+    start = time.time()  # Store start timestamp for the image retry window.
+
+    while time.time() - start <= 3.0:  # Retry until the Configuration section is visible or timeout expires.
+        box = locate_image(configuration_img)  # Locate the Configuration section image on screen.
+
+        if box is not None:  # Verify whether the Configuration image was detected.
+            click_box_center(box)  # Click the middle of the matched Configuration image region.
+            time.sleep(0.5)  # Wait after opening the Configuration section.
+            return True  # Return success when the Configuration section was clicked.
+
+        time.sleep(0.2)  # Wait before retrying Configuration image detection.
+
+    print(f"{BackgroundColors.YELLOW}[WARNING] Extension Configuration section image was not detected: {BackgroundColors.CYAN}{configuration_img}{Style.RESET_ALL}")  # Log unresolved Configuration section detection.
+    return False  # Return failure when the Configuration section cannot be opened.
+
+
+def resolve_extension_download_setting_click_position(box: Any) -> Tuple[int, int]:
+    """
+    Resolves the setting control click position inside a marked extension download setting image.
+
+    :param box: Matched bounding box for the marked extension download setting image.
+    :return: Tuple containing the setting control click coordinates.
+    """
+
+    left = int(getattr(box, "left", 0))  # Retrieve matched image left coordinate.
+    top = int(getattr(box, "top", 0))  # Retrieve matched image top coordinate.
+    height = max(1, int(getattr(box, "height", 1)))  # Retrieve matched image height using a safe minimum.
+    click_x = left + max(1, int(height / 4))  # Target the setting control center from the matched asset geometry.
+    click_y = top + int(height / 2)  # Target the vertical center of the setting row.
+    return click_x, click_y  # Return computed setting control coordinates.
+
+
+def locate_extension_download_setting_image(image_path: Path) -> Any:
+    """
+    Locates an extension download setting image within the active automation window.
+
+    :param image_path: Path to the extension download setting image.
+    :return: Box location when found, otherwise None.
+    """
+
+    detection_region = get_chrome_download_settings_region()  # Reuse the active automation window region for extension image detection.
+    box = locate_image_in_region(image_path, detection_region) if detection_region is not None else locate_image(image_path)  # Locate the image using the existing region-aware image logic.
+    return box  # Return located image box or None.
+
+
+def verify_extension_download_setting_unmarked(unmarked_img: Path) -> bool:
+    """
+    Verifies that the extension download setting is visible in the unmarked state.
+
+    :param unmarked_img: Path to the unmarked extension download setting image.
+    :return: True when the unmarked state is detected, otherwise False.
+    """
+
+    for _ in range(DOWNLOAD_SETTINGS_VERIFICATION_ATTEMPTS):  # Retry final-state detection using the existing settings verification count.
+        if locate_extension_download_setting_image(unmarked_img) is not None:  # Verify whether the unmarked image is visible.
+            return True  # Return success after explicit unmarked-state detection.
+
+        time.sleep(DOWNLOAD_SETTINGS_VERIFICATION_WAIT_SECONDS)  # Wait before retrying unmarked-state detection.
+
+    print(f"{BackgroundColors.YELLOW}[WARNING] Extension download setting did not reach the unmarked state.{Style.RESET_ALL}")  # Log final unmarked-state detection failure.
+    return False  # Return failure when the desired state is not detected.
+
+
+def ensure_extension_download_setting_unmarked(marked_img: Path, unmarked_img: Path) -> bool:
+    """
+    Ensures the extension download setting is unmarked using explicit state images.
+
+    :param marked_img: Path to the marked extension download setting image.
+    :param unmarked_img: Path to the unmarked extension download setting image.
+    :return: True when the unmarked state is verified, otherwise False.
+    """
+
+    marked_box = locate_extension_download_setting_image(marked_img)  # First detect the marked state before evaluating any other state.
+
+    if marked_box is not None:  # Verify whether the incorrect marked state is visible.
+        click_x, click_y = resolve_extension_download_setting_click_position(marked_box)  # Resolve the setting control target inside the marked setting image.
+        pyautogui.click(click_x, click_y)  # Click the setting control inside the marked setting image.
+        time.sleep(DOWNLOAD_SETTINGS_TOGGLE_CLICK_WAIT_SECONDS)  # Wait after changing the extension download setting.
+        return verify_extension_download_setting_unmarked(unmarked_img)  # Verify the unmarked state after the click.
+
+    unmarked_box = locate_extension_download_setting_image(unmarked_img)  # Explicitly search for the desired unmarked state after marked state is absent.
+
+    if unmarked_box is not None:  # Verify whether the desired unmarked state is already visible.
+        return True  # Return success without clicking when the setting is already correct.
+
+    print(f"{BackgroundColors.YELLOW}[WARNING] Extension download setting state could not be detected from marked or unmarked images.{Style.RESET_ALL}")  # Log unresolved extension setting state.
+    return False  # Return failure without guessing the current setting state.
+
+
+def delete_initialization_download_file(detected_download_dir: str, detected_filename: str) -> bool:
+    """
+    Deletes the file produced by the extension initialization download.
+
+    :param detected_download_dir: Directory where the initialization download was detected.
+    :param detected_filename: Filename detected from the initialization download snapshot.
+    :return: True when the detected initialization file is deleted, otherwise False.
+    """
+
+    if detected_download_dir == "" or detected_filename == "":  # Verify that the initialization download detection produced a concrete file.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Initialization download file was not detected for cleanup.{Style.RESET_ALL}")  # Log missing initialization download cleanup target.
+        return False  # Return failure when no specific file can be deleted.
+
+    downloaded_path = Path(detected_download_dir) / detected_filename  # Build the exact detected initialization download path.
+
+    if not downloaded_path.exists():  # Verify that the detected initialization download still exists.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Initialization download file no longer exists: {BackgroundColors.CYAN}{downloaded_path}{Style.RESET_ALL}")  # Log missing detected file.
+        return False  # Return failure when the detected file is unavailable.
+
+    try:  # Attempt deletion of only the detected initialization download file.
+        downloaded_path.unlink()  # Delete the detected initialization download file only.
+        verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Initialization download file deleted: {BackgroundColors.CYAN}{downloaded_path}{Style.RESET_ALL}")  # Log successful initialization file deletion.
+        return True  # Return success after deleting the detected file.
+    except Exception as e:  # Handle deletion failures without deleting any fallback target.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to delete initialization download file: {BackgroundColors.CYAN}{downloaded_path}{BackgroundColors.YELLOW} - {e}{Style.RESET_ALL}")  # Log deletion failure with exact path.
+        return False  # Return failure when deletion cannot complete.
+
+
+def run_extension_initialization_download(image_paths: Dict[str, Path], downloads_dirs: List[str]) -> bool:
+    """
+    Runs the extension initialization download and deletes only the produced file.
+
+    :param image_paths: Dictionary mapping browser image keys to asset paths.
+    :param downloads_dirs: Paths to monitored downloads directories.
+    :return: True when the initialization download finishes and its file is deleted, otherwise False.
+    """
+
+    pre_download_snapshots = snapshot_download_directories(downloads_dirs)  # Capture downloads directory snapshots before the initialization download.
+    download_method = click_download_button(image_paths["download_img"])  # Click the existing Start download control using existing image logic.
+    confirmation_alt_img = image_paths["confirmation_img"].with_name(f"{image_paths['confirmation_img'].stem}-Alternative{image_paths['confirmation_img'].suffix}")  # Build alternative confirmation image path using existing naming convention.
+    confirmation_method = watch_for_save_dialog_and_confirmation(image_paths["save_button_img"], image_paths["confirmation_img"], confirmation_alt_img, image_paths["failed_file_download_img"], image_paths["hide_next_time_img"])  # Wait for initialization download confirmation using existing logic.
+    download_failed = confirmation_method == "Timeout" or confirmation_method == "Download Failed"  # Derive initialization download failure from existing confirmation statuses.
+
+    verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Extension initialization download action: {BackgroundColors.CYAN}{download_method}{BackgroundColors.GREEN}; confirmation: {BackgroundColors.CYAN}{confirmation_method}{Style.RESET_ALL}")  # Log initialization download methods when verbose.
+
+    if download_failed:  # Verify whether initialization download failed before file detection.
+        return False  # Return failure when no reliable initialization download completion exists.
+
+    wait_for_download_file_stabilization(downloads_dirs)  # Wait for initialization download writes and temporary files to settle.
+    post_download_snapshots = snapshot_download_directories(downloads_dirs)  # Capture downloads directory snapshots after initialization download completion.
+
+    if len(downloads_dirs) > 1:  # Verify whether the active downloads directory still needs narrowing.
+        resolved_download_dir = resolve_first_download_directory(downloads_dirs, pre_download_snapshots, post_download_snapshots)  # Resolve the directory that received the initialization download.
+
+        if resolved_download_dir is not None:  # Verify whether a download directory was detected.
+            update_active_download_directory(resolved_download_dir)  # Persist the detected downloads directory for later real URL processing.
+            downloads_dirs[:] = ACTIVE_DOWNLOADS_DIRS  # Update local downloads directory list from the shared cache.
+
+    detected_download_dir, detected_filename = detect_new_download_from_directories(pre_download_snapshots, post_download_snapshots, downloads_dirs, EXTENSION_INITIALIZATION_URL)  # Detect only files added after the initialization snapshot.
+    detected_filename = filter_and_delete_detected_filenames(detected_filename, delete_temp_files=False)  # Reuse existing filename filtering without deleting by relative path.
+    return delete_initialization_download_file(detected_download_dir, detected_filename)  # Delete only the exact file detected for initialization.
+
+
+def configure_extension_download_settings(image_paths: Dict[str, Path], downloads_dirs: List[str]) -> bool:
+    """
+    Configures extension download settings in the active persistent Chrome profile.
+
+    :param image_paths: Dictionary mapping browser image keys to asset paths.
+    :param downloads_dirs: Paths to monitored downloads directories.
+    :return: True when extension settings are verified and initialization download is cleaned up, otherwise False.
+    """
+
+    if not activate_automation_window():  # Verify whether the dedicated automation window is ready for extension configuration.
+        return False  # Return failure when the automation window is unavailable.
+
+    if not navigate_current_tab_to_url(EXTENSION_INITIALIZATION_URL):  # Navigate the current tab to the exact initialization URL.
+        return False  # Return failure when initialization navigation cannot complete.
+
+    extension_method = click_extension_image(image_paths["extension_img"])  # Open the extension using the existing extension image action.
+
+    if extension_method == "NotFound":  # Verify whether the extension entry image was detected.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Extension image not found during initialization configuration.{Style.RESET_ALL}")  # Log extension image failure for initialization.
+        return False  # Return failure when the extension cannot be opened.
+
+    maybe_later_clicked = click_maybe_later(image_paths["maybe_later_img"])  # Click the optional Maybe later popup when visible.
+    enable_permission_method = click_enable_permission(image_paths["enable_permission_img"])  # Click the optional Allow permission control when visible.
+    verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Extension initialization prompts: Maybe later={BackgroundColors.CYAN}{maybe_later_clicked}{BackgroundColors.GREEN}; Allow={BackgroundColors.CYAN}{enable_permission_method}{Style.RESET_ALL}")  # Log optional prompt actions when verbose.
+
+    if not click_configuration_settings_section(image_paths["configuration_settings_extension_tab_img"]):  # Open the Configuration section by clicking the matched image center.
+        return False  # Return failure when Configuration cannot be opened.
+
+    for _ in range(3):  # Scroll downward sufficiently inside the extension tab using the existing scroll function.
+        scroll_extension_tab_to_start_button()  # Scroll down inside the extension configuration UI.
+
+    if not ensure_extension_download_setting_unmarked(image_paths["marked_ask_download_configuration_setting_extension_tab_img"], image_paths["unmarked_ask_download_configuration_setting_extension_tab_img"]):  # Verify the extension download setting reaches the unmarked state.
+        return False  # Return failure when marked or unmarked state cannot be resolved.
+
+    for _ in range(3):  # Scroll upward to return toward the Start download control using the existing scroll function.
+        scroll_extension_tab_to_start_button(500)  # Scroll up inside the extension configuration UI.
+
+    return run_extension_initialization_download(image_paths, downloads_dirs)  # Run initialization download and delete only the file produced by that snapshot.
 
 
 def snapshot_download_directory(downloads_dir: Path) -> Dict[str, float]:
@@ -4886,6 +5127,7 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
     if not activate_chrome_window():  # Verify Chrome activation before sending hotkeys.
         return 1  # Return failure exit code when activation fails.
 
+    extension_configuration_profile_identity = get_chrome_profile_identity()  # Capture the persistent Chrome profile identity before extension initialization.
     dedicated_created = False  # Track dedicated automation window creation state.
     
     if not prepare_dedicated_chrome_window_for_automation():  # Verify dedicated Chrome window preparation before opening automation tabs.
@@ -4894,6 +5136,31 @@ def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bo
     dedicated_created = True  # Mark that a dedicated window was prepared for later cleanup.
 
     try:  # Begin main processing block so dedicated window can be closed in finally.
+        if get_chrome_profile_identity() != extension_configuration_profile_identity:  # Verify the initialization window uses the captured persistent Chrome profile identity.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Chrome profile identity changed before extension initialization. Aborting to avoid configuring a different profile.{Style.RESET_ALL}")  # Log profile identity mismatch before initialization.
+            return 1  # Return failure when profile identity is not stable.
+
+        if not configure_extension_download_settings(image_paths, downloads_dirs):  # Configure extension downloads using the same persistent Chrome profile before real URL processing.
+            return 1  # Return failure when extension initialization cannot be verified.
+
+        if not close_dedicated_automation_window():  # Close the configured initialization browser window before real URL processing.
+            return 1  # Return failure when the configured browser window cannot be closed cleanly.
+
+        dedicated_created = False  # Mark initialization window as already closed to avoid duplicate cleanup.
+
+        if get_chrome_profile_identity() != extension_configuration_profile_identity:  # Verify the persistent Chrome profile identity before reopening for real URLs.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Chrome profile identity changed after extension initialization. Aborting to preserve extension state integrity.{Style.RESET_ALL}")  # Log profile identity mismatch after initialization.
+            return 1  # Return failure when profile identity changed after initialization.
+
+        if not prepare_dedicated_chrome_window_for_automation():  # Reopen the real URL automation browser using the same existing launch path and profile.
+            return 1  # Return failure exit code when real URL automation window is unavailable.
+
+        dedicated_created = True  # Mark that the real URL automation window was prepared for final cleanup.
+
+        if get_chrome_profile_identity() != extension_configuration_profile_identity:  # Verify the real URL browser uses the same captured persistent Chrome profile identity.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Chrome profile identity changed before real URL processing. Aborting to avoid profile drift.{Style.RESET_ALL}")  # Log profile identity mismatch before real URLs.
+            return 1  # Return failure when real URL processing would use a different profile.
+
         pyautogui.hotkey("ctrl", "t")  # Open a constant empty tab in the dedicated window for settings navigation.
         time.sleep(0.2)  # Wait after opening the constant empty tab.
 
