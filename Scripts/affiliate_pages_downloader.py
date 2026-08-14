@@ -145,6 +145,7 @@ DOWNLOAD_SETTINGS_STATE_BOTH_TOGGLES_ON = "Both Toggles On"  # Define state labe
 DOWNLOAD_SETTINGS_STATE_UNKNOWN = "Unknown"  # Define state label for an unresolved downloads settings configuration.
 CHROME_DOWNLOAD_SETTING_SEARCH_SECONDS = 2.0  # Define native Chrome downloads setting fallback search window in seconds.
 EXTENSION_DOWNLOAD_SETTING_SEARCH_SECONDS = 2.0  # Define extension download setting image search window in seconds.
+EXTENSION_DOWNLOAD_SETTING_STATE_CONFIDENCE = 0.95  # Define strict extension download setting state match confidence.
 MAX_DOWNLOAD_RETRY_ATTEMPTS = 2  # Define maximum number of download attempts per URL including the initial attempt.
 MAX_RETRY_MECHANISM_ATTEMPTS = 5  # Define maximum number of post-processing retry cycles for failed/unlinked URLs.
 CHROME_WINDOW_CLOSE_TIMEOUT_SECONDS = 10.0  # Define maximum wait for a dedicated Chrome window to disappear before another may be created.
@@ -2526,34 +2527,36 @@ def resolve_extension_download_setting_click_position(box: Any) -> Tuple[int, in
     return click_x, click_y  # Return computed setting control coordinates.
 
 
-def locate_extension_download_setting_image(image_path: Path) -> Any:
+def locate_extension_download_setting_image(image_path: Path, threshold: float = EXTENSION_DOWNLOAD_SETTING_STATE_CONFIDENCE) -> Any:
     """
     Locates an extension download setting image with the enhanced image path.
 
     :param image_path: Path to the extension download setting image.
+    :param threshold: Minimum allowed image confidence.
     :return: Box location when found, otherwise None.
     """
 
-    box = enhanced_locate_image(image_path)  # Locate the image using the existing multi-scale grayscale image logic.
+    box = enhanced_locate_image(image_path, threshold=threshold)  # Locate the image using the existing multi-scale grayscale image logic.
     return box  # Return located image box or None.
 
 
-def locate_extension_download_setting_image_until(image_path: Path, timeout_seconds: float, search_label: str) -> Any:
+def locate_extension_download_setting_image_until(image_path: Path, timeout_seconds: float, search_label: str, threshold: float = EXTENSION_DOWNLOAD_SETTING_STATE_CONFIDENCE) -> Any:
     """
     Locates an extension download setting image during a bounded retry window.
 
     :param image_path: Path to the extension download setting image.
     :param timeout_seconds: Maximum number of seconds to search.
     :param search_label: Runtime label for debug logging.
+    :param threshold: Minimum allowed image confidence.
     :return: Box location when found, otherwise None.
     """
 
-    verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Starting {search_label} setting search for {BackgroundColors.CYAN}{timeout_seconds:g}{BackgroundColors.GREEN}s using enhanced image detection.{Style.RESET_ALL}")  # Log bounded enhanced search start.
+    verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Starting {search_label} setting search for {BackgroundColors.CYAN}{timeout_seconds:g}{BackgroundColors.GREEN}s using enhanced image detection at {BackgroundColors.CYAN}{threshold:.2f}{BackgroundColors.GREEN} confidence.{Style.RESET_ALL}")  # Log bounded enhanced search start.
 
     start_time = time.time()  # Capture bounded search start timestamp.
 
     while time.time() - start_time <= timeout_seconds:  # Repeat enhanced detection until timeout expires.
-        box = locate_extension_download_setting_image(image_path)  # Locate the setting image through the enhanced image path.
+        box = locate_extension_download_setting_image(image_path, threshold)  # Locate the setting image through the enhanced image path.
 
         if box is not None:  # Verify whether the setting image was detected.
             verbose_output(f"{BackgroundColors.GREEN}[DEBUG] {search_label} setting image found: {BackgroundColors.CYAN}{image_path.name}{Style.RESET_ALL}")  # Log successful setting image detection.
@@ -2574,7 +2577,7 @@ def verify_extension_download_setting_unmarked(unmarked_img: Path, timeout_secon
     :return: True when the unmarked state is detected, otherwise False.
     """
 
-    box = locate_extension_download_setting_image_until(unmarked_img, timeout_seconds, "UNMARKED")  # Search for the unmarked state through the bounded enhanced image path.
+    box = locate_extension_download_setting_image_until(unmarked_img, timeout_seconds, "UNMARKED", EXTENSION_DOWNLOAD_SETTING_STATE_CONFIDENCE)  # Search for the unmarked state through the bounded enhanced image path.
 
     if box is not None:  # Verify whether the unmarked state was detected.
         return True  # Return success after explicit unmarked-state detection.
@@ -2594,7 +2597,14 @@ def ensure_extension_download_setting_unmarked(marked_img: Path, unmarked_img: P
 
     time.sleep(DOWNLOAD_SETTINGS_TOGGLE_CLICK_WAIT_SECONDS)  # Wait after scrolling so the extension Configuration UI can settle.
 
-    marked_box = locate_extension_download_setting_image_until(marked_img, EXTENSION_DOWNLOAD_SETTING_SEARCH_SECONDS, "MARKED")  # Search for the marked state for the full bounded window before any unmarked-state search.
+    unmarked_box = locate_extension_download_setting_image_until(unmarked_img, EXTENSION_DOWNLOAD_SETTING_SEARCH_SECONDS, "UNMARKED", EXTENSION_DOWNLOAD_SETTING_STATE_CONFIDENCE)  # Search for the desired unmarked state before any click is considered.
+
+    if unmarked_box is not None:  # Verify whether the desired unmarked state is already visible.
+        verbose_output(f"{BackgroundColors.GREEN}[DEBUG] UNMARKED setting found; initialization can safely continue without changing it.{Style.RESET_ALL}")  # Log already-correct setting state.
+        return True  # Return success without clicking when the setting is already correct.
+
+    verbose_output(f"{BackgroundColors.YELLOW}[DEBUG] UNMARKED setting search window exhausted; starting strict MARKED setting search.{Style.RESET_ALL}")  # Log transition to strict marked-state search only after unmarked search timeout.
+    marked_box = locate_extension_download_setting_image_until(marked_img, EXTENSION_DOWNLOAD_SETTING_SEARCH_SECONDS, "MARKED", EXTENSION_DOWNLOAD_SETTING_STATE_CONFIDENCE)  # Search for the marked state with strict confidence before clicking.
 
     if marked_box is not None:  # Verify whether the incorrect marked state is visible.
         click_x, click_y = resolve_extension_download_setting_click_position(marked_box)  # Resolve the setting control target inside the marked setting image.
@@ -2610,13 +2620,6 @@ def ensure_extension_download_setting_unmarked(marked_img: Path, unmarked_img: P
 
         print(f"{BackgroundColors.YELLOW}[WARNING] Post-click UNMARKED setting verification failed. Initialization cannot safely continue.{Style.RESET_ALL}")  # Log failed post-click unmarked verification.
         return False  # Return failure when post-click unmarked state is not detected.
-
-    verbose_output(f"{BackgroundColors.YELLOW}[DEBUG] MARKED setting search window exhausted; starting UNMARKED setting search.{Style.RESET_ALL}")  # Log transition to unmarked-state search only after marked search timeout.
-    unmarked_box = locate_extension_download_setting_image_until(unmarked_img, EXTENSION_DOWNLOAD_SETTING_SEARCH_SECONDS, "UNMARKED")  # Explicitly search for the desired unmarked state after marked state times out.
-
-    if unmarked_box is not None:  # Verify whether the desired unmarked state is already visible.
-        verbose_output(f"{BackgroundColors.GREEN}[DEBUG] UNMARKED setting found; initialization can safely continue without changing it.{Style.RESET_ALL}")  # Log already-correct setting state.
-        return True  # Return success without clicking when the setting is already correct.
 
     print(f"{BackgroundColors.YELLOW}[WARNING] Extension download setting state could not be detected from marked or unmarked images.{Style.RESET_ALL}")  # Log unresolved extension setting state.
     return False  # Return failure without guessing the current setting state.
