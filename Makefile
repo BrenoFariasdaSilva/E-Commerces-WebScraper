@@ -19,7 +19,6 @@ endif
 
 # Logs directory
 LOG_DIR := ./Logs
-MERGE_WEEKDAY_OUTPUT_DIRS ?= True
 
 # Ensure logs directory exists (cross-platform)
 ENSURE_LOG_DIR := @mkdir -p $(LOG_DIR) 2>/dev/null || $(PYTHON_CMD) -c "import os; os.makedirs('$(LOG_DIR)', exist_ok=True)"
@@ -46,7 +45,7 @@ run: dependencies
 	$(call RUN_AND_LOG, ./Scripts/affiliate_pages_downloader.py --process_only_unlinked_urls --headerless True $(ARGS))
 	$(call RUN_AND_LOG, ./main.py --headerless True --sort_products_by_product_name True $(ARGS))
 	$(call RUN_AND_LOG, ./main.py --restructure_product_outputs $(ARGS))
-	$(call RUN_AND_LOG, ./weekly_posts.py --merge_weekday_output_dirs $(MERGE_WEEKDAY_OUTPUT_DIRS) $(ARGS))
+	$(call RUN_AND_LOG, ./weekly_posts.py --merge_weekday_output_dirs True $(ARGS))
 
 local: dependencies
 	$(ENSURE_LOG_DIR)
@@ -54,7 +53,7 @@ local: dependencies
 	$(call RUN_AND_LOG, ./url_input_normalizer.py $(ARGS))
 	$(call RUN_AND_LOG, ./main.py --sort_products_by_product_name True $(ARGS))
 	$(call RUN_AND_LOG, ./main.py --restructure_product_outputs $(ARGS))
-	$(call RUN_AND_LOG, ./weekly_posts.py --merge_weekday_output_dirs $(MERGE_WEEKDAY_OUTPUT_DIRS) $(ARGS))
+	$(call RUN_AND_LOG, ./weekly_posts.py --merge_weekday_output_dirs True $(ARGS))
 
 # Execute the main script with logging and updated dependency management
 main: dependencies
@@ -78,7 +77,7 @@ else
 endif
 	$(call RUN_AND_LOG, ./main.py --sort_products_by_product_name True --output_dir "$(OUTPUT_DIR)")
 	$(call RUN_AND_LOG, ./main.py --restructure_product_outputs $(ARGS))
-	$(call RUN_AND_LOG, ./weekly_posts.py --merge_weekday_output_dirs $(MERGE_WEEKDAY_OUTPUT_DIRS) $(ARGS))
+	$(call RUN_AND_LOG, ./weekly_posts.py --merge_weekday_output_dirs True $(ARGS))
 
 generate_template_files_from_local: dependencies
 	$(ENSURE_LOG_DIR)
@@ -128,7 +127,7 @@ renew_amazon_affiliate_urls: dependencies
 weekly_posts: dependencies
 	$(ENSURE_LOG_DIR)
 	$(CLEAR_CMD)
-	$(call RUN_AND_LOG, ./weekly_posts.py --merge_weekday_output_dirs $(MERGE_WEEKDAY_OUTPUT_DIRS) $(ARGS))
+	$(call RUN_AND_LOG, ./weekly_posts.py --merge_weekday_output_dirs True $(ARGS))
 
 merge_weekday_output_dirs: dependencies
 	$(ENSURE_LOG_DIR)
