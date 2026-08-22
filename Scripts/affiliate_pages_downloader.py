@@ -117,7 +117,7 @@ DOWNLOADS_DIR = {
 }  # Define monitored downloads directory candidates by operating system.
 
 CHROME_USER_DATA_DIR = os.path.join(os.path.expanduser("~"), "AppData", "Local", "Google", "Chrome", "User Data")  # Chrome User Data dir (Windows default)
-CHROME_PROFILE_DISPLAY_NAME = "Achadinhos Brasil Amanda"  # Profile display name to use
+CHROME_PROFILE_DISPLAY_NAME = ["Achadinhos", "Achadinhos Brasil Amanda"]  # Candidate profile display names to use during profile resolution.
 CHROME_PROFILE_DIRECTORY: str | None = None  # Resolved profile folder name (e.g. "Profile 1")
 pyautogui.FAILSAFE = True  # Enable fail-safe by moving cursor to the top-left corner.
 pyautogui.PAUSE = 0.05  # Apply default pause between pyautogui actions.
@@ -240,10 +240,29 @@ def parse_arguments(repo_root: Path) -> argparse.Namespace:
     return args  # Return parsed argument namespace
 
 
-def resolve_chrome_profile_directory(display_name: str) -> str | None:
+def normalize_chrome_profile_match_terms(display_name: Union[str, List[str], Tuple[str, ...]]) -> List[str]:
+    """
+    Normalize one or many Chrome profile search terms into a cleaned list.
+
+    :param display_name: Single search term or list/tuple of candidate terms.
+    :return: Cleaned non-empty list of case-insensitive search terms.
+    """
+
+    if isinstance(display_name, str):  # Normalize single string input to a list.
+        candidate_terms = [display_name]  # Wrap string so downstream matching is consistent.
+    else:  # Accept iterable string containers such as list/tuple.
+        candidate_terms = list(display_name)  # Convert iterable container to a concrete list.
+
+    return [str(term).strip().lower() for term in candidate_terms if str(term).strip() != ""]  # Keep only non-empty normalized terms.
+
+
+def resolve_chrome_profile_directory(display_name: Union[str, List[str], Tuple[str, ...]]) -> str | None:
     """
     Resolve Chrome profile directory folder (e.g. "Profile 1" or "Default")
     from the Chrome "Local State" file by matching the profile display name.
+
+    Matching is case-insensitive and succeeds when any provided term is
+    contained in the Chrome profile display name.
 
     Returns the directory name when found, otherwise None.
     """
@@ -257,8 +276,13 @@ def resolve_chrome_profile_directory(display_name: str) -> str | None:
         data = json.loads(raw)  # Parse Local State JSON
         info_cache = data.get("profile", {}).get("info_cache", {})  # Get profile info cache
 
+        profile_match_terms = normalize_chrome_profile_match_terms(display_name)  # Normalize requested profile match terms for containment checks.
+        if len(profile_match_terms) == 0:  # Verify there is at least one term to compare.
+            return None  # Return None when there is nothing meaningful to match.
+
         for profile_dir, info in info_cache.items():  # Iterate profile entries
-            if info.get("name") == display_name:  # Match profile display name
+            profile_name = str(info.get("name", "")).strip().lower()  # Normalize current Chrome profile display name for case-insensitive matching.
+            if any(term in profile_name for term in profile_match_terms):  # Match when any provided term is contained in the Chrome profile display name.
                 return profile_dir  # Return matching profile directory
 
     except Exception:  # Return None on any error during resolution
@@ -267,11 +291,11 @@ def resolve_chrome_profile_directory(display_name: str) -> str | None:
     return None  # Return None when no matching profile is found
 
 
-def resolve_chrome_profile_with_fallback(display_name: str, fallback_folder_name: str = "Default") -> str | None:
+def resolve_chrome_profile_with_fallback(display_name: Union[str, List[str], Tuple[str, ...]], fallback_folder_name: str = "Default") -> str | None:
     """
     Resolve profile directory or fallback to the main profile.
 
-    :param display_name: Display name of the desired profile.
+    :param display_name: Display name or candidate search terms of the desired profile.
     :param fallback_folder_name: Folder name to use as fallback (default "Default").
     :return: Resolved profile folder name or fallback when resolution fails.
     """
@@ -290,11 +314,11 @@ def resolve_chrome_profile_with_fallback(display_name: str, fallback_folder_name
         return fallback_folder_name  # Return fallback folder name on error
 
 
-def update_chrome_profile(display_name: str) -> None:
+def update_chrome_profile(display_name: Union[str, List[str], Tuple[str, ...]]) -> None:
     """
     Update CHROME_PROFILE_DIRECTORY from the provided display name.
 
-    :param display_name: Display name of the desired profile.
+    :param display_name: Display name or candidate search terms of the desired profile.
     :return: None.
     """
 
