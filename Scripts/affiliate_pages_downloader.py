@@ -430,14 +430,14 @@ def open_chrome_with_profile(display_name: str) -> bool:
         current_os = platform.system().lower()  # Retrieve normalized operating system name.
 
         if current_os == "windows":  # Verify whether the current operating system is Windows.
-            os.system(f'start "" chrome --new-window --user-data-dir="{user_data_dir}" --profile-directory="{profile_dir}" about:blank')  # Dispatch Windows start command to open a new Chrome window with profile flags.
+            os.system(f'start "" chrome --new-window --start-maximized --user-data-dir="{user_data_dir}" --profile-directory="{profile_dir}" about:blank')  # Dispatch Windows start command to open a maximized Chrome window with profile flags.
         elif current_os == "darwin":  # Verify whether the current operating system is macOS.
-            os.system(f'open -a "Google Chrome" --args --new-window --user-data-dir="{user_data_dir}" --profile-directory="{profile_dir}" about:blank')  # Dispatch macOS open command with Chrome args to open a new specific-profile window.
+            os.system(f'open -a "Google Chrome" --args --new-window --start-maximized --user-data-dir="{user_data_dir}" --profile-directory="{profile_dir}" about:blank')  # Dispatch macOS open command with Chrome args to open a new specific-profile window.
         elif current_os == "linux":  # Verify whether the current operating system is Linux.
-            launch_code = os.system(f'google-chrome --new-window --user-data-dir="{user_data_dir}" --profile-directory="{profile_dir}" about:blank >/dev/null 2>&1 &')  # Dispatch Linux chrome command in background with new-window profile flags.
+            launch_code = os.system(f'google-chrome --new-window --start-maximized --user-data-dir="{user_data_dir}" --profile-directory="{profile_dir}" about:blank >/dev/null 2>&1 &')  # Dispatch Linux chrome command in background with new-window profile flags.
 
             if launch_code != 0:  # Verify whether primary Linux Chrome command failed.
-                os.system(f'chromium-browser --new-window --user-data-dir="{user_data_dir}" --profile-directory="{profile_dir}" about:blank >/dev/null 2>&1 &')  # Dispatch Linux Chromium fallback command in background with new-window profile flags.
+                os.system(f'chromium-browser --new-window --start-maximized --user-data-dir="{user_data_dir}" --profile-directory="{profile_dir}" about:blank >/dev/null 2>&1 &')  # Dispatch Linux Chromium fallback command in background with new-window profile flags.
         else:  # Handle unsupported operating systems.
             print(f"{BackgroundColors.YELLOW}[WARNING] Unsupported operating system for Chrome auto-launch: {current_os}{Style.RESET_ALL}")  # Log unsupported operating system warning.
             return False  # Return failure status for unsupported operating systems.
@@ -615,10 +615,88 @@ def move_chrome_window_to_bounds(hwnd: int, bounds: Tuple[int, int, int, int]) -
     SWP_NOZORDER = 0x0004  # Define SetWindowPos flag to preserve current Z-order.
 
     try:  # Attempt Win32 SetWindowPos call for the provided HWND only.
+        SW_RESTORE = 9  # Define ShowWindow command to restore a maximized/minimized window before moving.
+        ctypes.windll.user32.ShowWindow(ctypes.wintypes.HWND(int(hwnd)), SW_RESTORE)  # Restore target window so SetWindowPos applies to the intended monitor.
+        time.sleep(0.1)  # Wait briefly after restore before repositioning.
         ctypes.windll.user32.SetWindowPos(ctypes.wintypes.HWND(int(hwnd)), ctypes.wintypes.HWND(0), int(left), int(top), int(width), int(height), SWP_NOZORDER)  # Move and size the target HWND to requested bounds.
         time.sleep(0.2)  # Wait briefly after window reposition call.
     except Exception:  # Handle Win32 positioning failures.
         print(f"{BackgroundColors.YELLOW}[WARNING] Failed to reposition Chrome window for the target profile.{Style.RESET_ALL}")  # Log profile-scoped reposition failure.
+
+
+def refresh_chrome_window_bounds_from_hwnd(hwnd: int) -> bool:
+    """
+    Refreshes cached Chrome bounds from a specific HWND.
+
+    :param hwnd: Target Chrome window handle.
+    :return: True when bounds were refreshed, otherwise False.
+    """
+
+    if int(hwnd) == 0 or platform.system().lower() != "windows":  # Verify HWND and platform support.
+        return False  # Return failure when direct HWND bounds are unavailable.
+
+    try:  # Attempt to read the exact HWND rectangle from Windows.
+        rect = ctypes.wintypes.RECT()  # Allocate RECT for window bounds refresh.
+        if not ctypes.windll.user32.GetWindowRect(ctypes.wintypes.HWND(int(hwnd)), ctypes.byref(rect)):  # Read target HWND bounds.
+            return False  # Return failure when Windows cannot provide the rectangle.
+
+        ACTIVE_CHROME_BOUNDS["left"] = int(rect.left)  # Cache left coordinate for multi-monitor offsets.
+        ACTIVE_CHROME_BOUNDS["top"] = int(rect.top)  # Cache top coordinate for multi-monitor offsets.
+        ACTIVE_CHROME_BOUNDS["width"] = max(1, int(rect.right) - int(rect.left))  # Cache current window width.
+        ACTIVE_CHROME_BOUNDS["height"] = max(1, int(rect.bottom) - int(rect.top))  # Cache current window height.
+        return True  # Return success after updating cached bounds.
+    except Exception:  # Handle Win32 bounds failures.
+        return False  # Return failure when bounds cannot be refreshed.
+
+
+def is_foreground_window(hwnd: int) -> bool:
+    """
+    Checks whether the provided HWND is the current foreground window.
+
+    :param hwnd: Target window handle.
+    :return: True when the HWND is foreground, otherwise False.
+    """
+
+    if int(hwnd) == 0 or platform.system().lower() != "windows":  # Verify HWND and platform support.
+        return False  # Return failure when foreground verification is unavailable.
+
+    try:  # Attempt direct Win32 foreground comparison.
+        return int(ctypes.windll.user32.GetForegroundWindow()) == int(hwnd)  # Compare foreground HWND to target.
+    except Exception:  # Handle foreground lookup failures.
+        return False  # Return failure when foreground state cannot be verified.
+
+
+def maximize_chrome_window(hwnd: int) -> bool:
+    """
+    Maximizes a single Chrome window identified by HWND.
+
+    :param hwnd: Target Chrome window handle.
+    :return: True when the maximize request appears successful, otherwise False.
+    """
+
+    if int(hwnd) == 0:  # Verify HWND value is valid before maximizing.
+        return False  # Return immediately when HWND is invalid.
+
+    if platform.system().lower() != "windows":  # Verify Windows platform before Win32 maximize call.
+        return True  # Treat non-Windows as success because launch flags handle best effort there.
+
+    try:  # Attempt Win32 maximize call for the provided HWND only.
+        SW_MAXIMIZE = 3  # Define ShowWindow command to maximize a window.
+        for _ in range(10):  # Retry because freshly launched Chrome can ignore the first maximize while initializing.
+            ctypes.windll.user32.ShowWindow(ctypes.wintypes.HWND(int(hwnd)), SW_MAXIMIZE)  # Maximize the target HWND.
+            ctypes.windll.user32.BringWindowToTop(ctypes.wintypes.HWND(int(hwnd)))  # Bring target above other windows.
+            ctypes.windll.user32.SetForegroundWindow(ctypes.wintypes.HWND(int(hwnd)))  # Focus target while maximizing.
+            time.sleep(0.2)  # Wait briefly after maximize call.
+
+            is_zoomed = bool(ctypes.windll.user32.IsZoomed(ctypes.wintypes.HWND(int(hwnd))))  # Verify Windows maximized state.
+            refresh_chrome_window_bounds_from_hwnd(hwnd)  # Refresh cached bounds from the actual HWND rect.
+            if is_zoomed:  # Stop retrying once Windows reports the target is maximized.
+                return True  # Return success after verified maximize.
+
+        return False  # Return failure when Windows never reports maximized state.
+    except Exception:  # Handle Win32 maximize failures.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to maximize Chrome window for the target profile.{Style.RESET_ALL}")  # Log profile-scoped maximize failure.
+        return False  # Return failure when maximize cannot complete.
 
 
 def select_chrome_window(chrome_windows: List[Any]) -> Any:
@@ -692,16 +770,38 @@ def activate_window_with_fallback(target_window: Any) -> bool:
     if target_window is None:  # Verify window reference exists before bounds capture.
         return False  # Return failure status when target window is missing.
 
-    try:  # Attempt passive bounds capture without focus or activation.
+    try:  # Attempt bounds capture before focus changes.
         left = int(getattr(target_window, "left", 0))  # Retrieve window left coordinate.
         top = int(getattr(target_window, "top", 0))  # Retrieve window top coordinate.
         width = int(getattr(target_window, "width", 0))  # Retrieve window width value.
         height = int(getattr(target_window, "height", 0))  # Retrieve window height value.
         ACTIVE_CHROME_BOUNDS = {"left": left, "top": top, "width": width, "height": height}  # Cache window bounds for coordinate calculations.
-        return True  # Return success status after passive bounds capture.
     except Exception:  # Handle passive bounds capture failures.
-        print(f"{BackgroundColors.YELLOW}[WARNING] Window activation is disabled to avoid user interference; continuing without focus operations.{Style.RESET_ALL}")  # Log passive activation bypass warning.
-        return True  # Return success status to preserve execution flow without focus operations.
+        pass  # Continue with activation attempts even if bounds capture fails.
+
+    try:  # Prefer backend activation when available.
+        activate_method = getattr(target_window, "activate", None)  # Resolve optional activate method.
+        if callable(activate_method):  # Verify backend activation support.
+            activate_method()  # Bring the selected Chrome window to the foreground.
+            time.sleep(0.3)  # Wait for foreground focus to settle.
+            return True  # Return success after backend activation.
+    except Exception:  # Fall back to Win32 activation when backend activation fails.
+        pass  # Continue to Win32 activation path.
+
+    hwnd = int(getattr(target_window, "_hWnd", 0))  # Retrieve HWND for Win32 activation fallback.
+    if platform.system().lower() == "windows" and hwnd != 0:  # Verify Windows HWND activation support.
+        try:  # Attempt direct Win32 foreground activation for the selected Chrome window.
+            SW_RESTORE = 9  # Restore command used before foreground activation.
+            ctypes.windll.user32.ShowWindow(ctypes.wintypes.HWND(hwnd), SW_RESTORE)  # Restore the target window if minimized.
+            ctypes.windll.user32.BringWindowToTop(ctypes.wintypes.HWND(hwnd))  # Bring the exact target HWND above other windows.
+            ctypes.windll.user32.SetForegroundWindow(ctypes.wintypes.HWND(hwnd))  # Set keyboard focus to the exact target HWND.
+            time.sleep(0.3)  # Wait for focus to settle.
+            return True  # Return success after Win32 activation attempt.
+        except Exception:  # Handle Win32 activation failures below.
+            pass  # Fall through to failure.
+
+    print(f"{BackgroundColors.YELLOW}[WARNING] Failed to focus the Chrome automation window before sending keyboard input.{Style.RESET_ALL}")  # Log activation failure.
+    return False  # Return failure when no activation strategy succeeded.
 
 
 def monitor_enum_callback(hMonitor, hdcMonitor, lprcMonitor, dwData) -> bool:
@@ -876,6 +976,9 @@ def prepare_dedicated_chrome_window_for_automation() -> bool:
     if DEDICATED_AUTOMATION_HWND != 0:  # Enforce a single dedicated automation window for the entire browser lifecycle.
         if is_window_handle_open(DEDICATED_AUTOMATION_HWND):  # Verify whether the previously registered automation window is still alive.
             move_chrome_window_to_bounds(DEDICATED_AUTOMATION_HWND, target_bounds)  # Keep the existing dedicated window on the requested monitor.
+            if not maximize_chrome_window(DEDICATED_AUTOMATION_HWND):  # Ensure the reused automation window is maximized before tab automation.
+                print(f"{BackgroundColors.YELLOW}[WARNING] Reused Chrome automation window could not be maximized. Automation will stop to avoid clicking the wrong window.{Style.RESET_ALL}")  # Log strict maximize failure.
+                return False  # Stop instead of interacting with an unverified window.
             verbose_output(f"{BackgroundColors.GREEN}[INFO] Reusing the existing dedicated Chrome automation window; no replacement window was opened.{Style.RESET_ALL}")  # Log reuse when verbose output is enabled.
             return True  # Reuse the live window instead of ever creating an overlapping replacement.
 
@@ -908,6 +1011,8 @@ def prepare_dedicated_chrome_window_for_automation() -> bool:
 
             if user_hwnd != 0:  # Verify HWND is valid before moving user profile window.
                 move_chrome_window_to_bounds(user_hwnd, target_bounds)  # Place the user profile window on the target monitor.
+                if not maximize_chrome_window(user_hwnd):  # Maximize the user profile window after placement.
+                    print(f"{BackgroundColors.YELLOW}[WARNING] Initial Chrome profile window could not be maximized.{Style.RESET_ALL}")  # Log non-fatal maximize warning for initialization.
 
         existing_hwnds = {int(getattr(window, "_hWnd", 0)) for window in get_chrome_windows() if int(getattr(window, "_hWnd", 0)) != 0}  # Refresh HWND snapshot to include the user window before opening the automation window.
 
@@ -936,11 +1041,15 @@ def prepare_dedicated_chrome_window_for_automation() -> bool:
         return False  # Return failure when HWND is invalid.
 
     move_chrome_window_to_bounds(automation_hwnd, target_bounds)  # Move ONLY the newly created automation window to the target monitor.
+    if not maximize_chrome_window(automation_hwnd):  # Maximize the newly created automation window after monitor placement.
+        print(f"{BackgroundColors.RED}[WARNING] New Chrome automation window could not be maximized. Automation cannot continue safely.{Style.RESET_ALL}")  # Log strict maximize failure.
+        return False  # Stop instead of interacting with a hidden or background window.
 
-    bounds_left = target_bounds[0]  # Extract left coordinate from target monitor bounds tuple.
-    bounds_top = target_bounds[1]  # Extract top coordinate from target monitor bounds tuple.
-    bounds_width = max(1, target_bounds[2] - target_bounds[0])  # Compute width from target monitor bounds tuple.
-    bounds_height = max(1, target_bounds[3] - target_bounds[1])  # Compute height from target monitor bounds tuple.
+    refreshed_window = find_window_by_hwnd(automation_hwnd)  # Resolve the maximized automation window to refresh bounds.
+    bounds_left = int(getattr(refreshed_window, "left", target_bounds[0])) if refreshed_window is not None else target_bounds[0]  # Extract current left coordinate after maximize.
+    bounds_top = int(getattr(refreshed_window, "top", target_bounds[1])) if refreshed_window is not None else target_bounds[1]  # Extract current top coordinate after maximize.
+    bounds_width = max(1, int(getattr(refreshed_window, "width", target_bounds[2] - target_bounds[0]))) if refreshed_window is not None else max(1, target_bounds[2] - target_bounds[0])  # Compute current width after maximize.
+    bounds_height = max(1, int(getattr(refreshed_window, "height", target_bounds[3] - target_bounds[1]))) if refreshed_window is not None else max(1, target_bounds[3] - target_bounds[1])  # Compute current height after maximize.
     ACTIVE_CHROME_BOUNDS = {"left": bounds_left, "top": bounds_top, "width": bounds_width, "height": bounds_height}  # Update cached bounds to reflect the automation window position on the target monitor.
 
     DEDICATED_AUTOMATION_HWND = automation_hwnd  # Persist dedicated automation OS window handle for lifecycle management.
@@ -1061,8 +1170,72 @@ def activate_automation_window() -> bool:
     :return: True when the dedicated automation window is activated, otherwise False.
     """
 
-    _ = DEDICATED_AUTOMATION_HWND  # Preserve global variable read semantics without triggering focus behavior.
-    return True  # Skip activation to avoid interfering with user environment.
+    if DEDICATED_AUTOMATION_HWND == 0:  # Verify that a dedicated automation window handle has been captured.
+        print(f"{BackgroundColors.YELLOW}[WARNING] No dedicated Chrome automation window is registered for activation.{Style.RESET_ALL}")  # Log missing handle.
+        return False  # Return failure because keyboard automation would target an unknown window.
+
+    if not is_window_handle_open(DEDICATED_AUTOMATION_HWND):  # Verify the stored automation window still exists.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Dedicated Chrome automation window is no longer available.{Style.RESET_ALL}")  # Log stale handle.
+        return False  # Return failure when the target window disappeared.
+
+    automation_window = find_window_by_hwnd(DEDICATED_AUTOMATION_HWND)  # Resolve the exact automation window by stored HWND.
+
+    if automation_window is not None:  # Prefer backend activation when the matching window object is available.
+        try:  # Attempt activation through the pyautogui window backend.
+            activate_method = getattr(automation_window, "activate", None)  # Resolve optional activate method.
+            if callable(activate_method):  # Verify backend activation support.
+                activate_method()  # Bring the selected Chrome window to the foreground.
+        except Exception:  # Fall back to Win32 activation below.
+            pass  # Preserve activation fallback flow.
+
+    if platform.system().lower() == "windows":  # Use direct HWND activation on Windows.
+        try:  # Attempt Win32 activation even when pyautogui window activation is unreliable.
+            SW_RESTORE = 9  # Restore command used before foreground activation.
+            ctypes.windll.user32.ShowWindow(ctypes.wintypes.HWND(DEDICATED_AUTOMATION_HWND), SW_RESTORE)  # Restore the automation window if minimized.
+            maximize_chrome_window(DEDICATED_AUTOMATION_HWND)  # Keep automation window maximized before focus-dependent actions.
+            ctypes.windll.user32.BringWindowToTop(ctypes.wintypes.HWND(DEDICATED_AUTOMATION_HWND))  # Bring the exact automation HWND above other windows.
+            ctypes.windll.user32.SetForegroundWindow(ctypes.wintypes.HWND(DEDICATED_AUTOMATION_HWND))  # Focus the exact automation HWND.
+            refresh_chrome_window_bounds_from_hwnd(DEDICATED_AUTOMATION_HWND)  # Refresh bounds from the exact HWND.
+        except Exception as e:  # Handle direct activation failure.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Failed to activate dedicated Chrome automation window by HWND: {e}{Style.RESET_ALL}")  # Log activation failure.
+            return False  # Return failure when the exact target window cannot be focused.
+
+    time.sleep(0.3)  # Wait for focus to settle before keyboard automation.
+    if platform.system().lower() == "windows" and not is_foreground_window(DEDICATED_AUTOMATION_HWND):  # Verify Windows accepted foreground focus.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Dedicated Chrome automation window is not foreground after activation. Automation will not click background coordinates.{Style.RESET_ALL}")  # Log strict foreground failure.
+        return False  # Return failure instead of allowing clicks to hit another window.
+
+    move_cursor_to_active_window_center()  # Move cursor into the automation window to keep mouse-based actions scoped.
+    return True  # Return success after focusing the dedicated automation window.
+
+
+def focus_automation_window_for_keyboard() -> bool:
+    """
+    Focuses the dedicated Chrome automation window immediately before keyboard shortcuts.
+
+    :param: None.
+    :return: True when focus input was delivered to the automation window, otherwise False.
+    """
+
+    if not activate_automation_window():  # Activate exact automation HWND first.
+        return False  # Return failure when activation could not be confirmed.
+
+    if platform.system().lower() == "windows" and not is_foreground_window(DEDICATED_AUTOMATION_HWND):  # Verify focus before any coordinate click.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Refusing to click-focus Chrome because the automation HWND is not foreground.{Style.RESET_ALL}")  # Log strict foreground failure.
+        return False  # Return failure instead of clicking a background coordinate.
+
+    window_bounds = get_active_window_bounds()  # Retrieve active Chrome bounds for a safe focus click.
+    focus_x = int(window_bounds["left"] + (window_bounds["width"] / 2))  # Use the horizontal center of the Chrome window.
+    focus_y = int(window_bounds["top"] + max(50, window_bounds["height"] * 0.055))  # Click the address-bar area, not the tab strip or page content.
+
+    try:  # Deliver a mouse click so Windows grants foreground keyboard input to Chrome.
+        pyautogui.moveTo(focus_x, focus_y, duration=0.05)  # Move to Chrome address-bar area.
+        pyautogui.click(focus_x, focus_y)  # Click address-bar area to force input focus.
+        time.sleep(0.15)  # Wait for focus to settle after click.
+        return True  # Return success after the focus click.
+    except Exception as e:  # Handle mouse-focus failures.
+        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to click-focus Chrome automation window before keyboard shortcut: {e}{Style.RESET_ALL}")  # Log focus click failure.
+        return False  # Return failure when focus click cannot be delivered.
 
 
 def resolve_downloads_directories() -> List[str]:
@@ -4193,8 +4366,11 @@ def handle_only_renew_amazon_urls(opened_tabs: int) -> int:
 
     try:  # Attempt safe tab closure and focus restoration in only-renew mode.
         if opened_tabs > 0:  # Verify that a tab opened by this loop exists before closing.
-            close_current_tab()  # Close the current product tab that was opened earlier.
-            opened_tabs -= 1  # Decrement opened tabs counter after successful closure.
+            close_sent = close_current_tab()  # Close the current product tab that was opened earlier.
+            if close_sent:  # Verify Ctrl+W was sent only after Chrome focus was forced.
+                opened_tabs -= 1  # Decrement opened tabs counter after successful close shortcut dispatch.
+            else:
+                print(f"{BackgroundColors.YELLOW}[WARNING] Renew-only product tab was not closed because Chrome focus could not be guaranteed.{Style.RESET_ALL}")  # Log close failure.
             time.sleep(0.2)  # Wait briefly to stabilize focus after closing the tab.
         else:  # When no opened tabs tracked, skip closure to avoid closing base tab.
             print(f"{BackgroundColors.YELLOW}[DEBUG] No opened tab to close; skipping to preserve main tab{Style.RESET_ALL}")  # Log skipping closure.
@@ -4493,19 +4669,28 @@ def click_go_to_product_button(mercado_livre_img: Path) -> str:
     return "Not Found / Skipped"  # Return skipped status.
 
 
-def close_current_tab() -> None:
+def close_current_tab() -> bool:
     """
     Closes the current browser tab.
 
-    :return: None
+    :return: True when the close-tab hotkey was sent after focusing Chrome, otherwise False.
     """
 
     try:  # Attempt to close the current browser tab with graceful handling.
+        if not focus_automation_window_for_keyboard():  # Force-focus the dedicated Chrome window immediately before Ctrl+W.
+            print(f"{BackgroundColors.YELLOW}[WARNING] Could not focus Chrome automation window before Ctrl+W.{Style.RESET_ALL}")  # Log focus failure.
+            return False  # Return failure when focus cannot be guaranteed.
+
+        verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Chrome automation window focused before Ctrl+W.{Style.RESET_ALL}")  # Log verified focus step.
+        pyautogui.hotkey("ctrl", "l")  # Focus Chrome address bar as an additional foreground-input confirmation.
+        time.sleep(0.1)  # Wait briefly after focusing the address bar.
         pyautogui.hotkey("ctrl", "w")  # Trigger close-tab hotkey.
-        time.sleep(0.4)  # Wait after closing the tab to allow focus stabilization.
-        verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Closed browser tab after processing URL{Style.RESET_ALL}")  # Log debug success message.
+        time.sleep(0.8)  # Wait after closing the tab to allow focus stabilization.
+        verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Sent Ctrl+W to close browser tab after processing URL{Style.RESET_ALL}")  # Log close shortcut dispatch.
+        return True  # Return success after sending the shortcut.
     except Exception as e:  # Handle failures to close the tab without crashing.
         print(f"{BackgroundColors.YELLOW}[WARNING] Failed to close browser tab: {e}{Style.RESET_ALL}")  # Log warning when closure fails.
+        return False  # Return failure when close-tab hotkey cannot be sent.
 
 
 def add_method(methods: Dict[str, List[int]], method: str, tab_index: int) -> None:
@@ -4553,8 +4738,11 @@ def safely_close_product_tab(opened_tabs: int) -> int:
 
     try:  # Attempt safe tab closure and focus restoration for download flow.
         if opened_tabs > 0:  # Verify that a tab opened by this loop exists before closing.
-            close_current_tab()  # Close the current product tab that was opened earlier.
-            opened_tabs -= 1  # Decrement opened tabs counter after successful closure.
+            close_sent = close_current_tab()  # Close the current product tab that was opened earlier.
+            if close_sent:  # Verify Ctrl+W was sent only after Chrome focus was forced.
+                opened_tabs -= 1  # Decrement opened tabs counter after successful close shortcut dispatch.
+            else:
+                print(f"{BackgroundColors.YELLOW}[WARNING] Product tab was not closed because Chrome focus could not be guaranteed.{Style.RESET_ALL}")  # Log close failure.
             time.sleep(0.2)  # Wait briefly to stabilize focus after closing the tab.
         else:  # When no opened tabs tracked, skip closure to avoid closing base tab.
             print(f"{BackgroundColors.YELLOW}[DEBUG] No opened tab to close; skipping to preserve main tab{Style.RESET_ALL}")  # Log skipping closure.
