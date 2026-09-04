@@ -22,10 +22,11 @@ Dependencies:
 Assumptions & Notes:
     - Input is read from Inputs/urls.txt before Input/urls.txt.
     - Only trimmed HTTP and HTTPS URL lines are retained.
-    - Duplicate URL occurrences are preserved.
+    - Duplicate URL occurrences are removed after URL normalization.
 """
 
 import atexit  # Register the optional completion sound.
+from collections import Counter  # Count normalized URLs per detected platform domain.
 import datetime  # Capture program start and finish times.
 import os  # Access operating-system and file replacement operations.
 import platform  # Identify the current operating system.
@@ -401,15 +402,67 @@ def extract_valid_urls(source_path: Path) -> List[str]:  # Read and retain trimm
     Read a source file and extract valid trimmed URL lines.
 
     :param source_path: Existing URL source file path.
-    :return: URL lines that begin with HTTP or HTTPS after trimming.
+    :return: Normalized URL lines that begin with HTTP or HTTPS after trimming.
     """
 
     source_content = source_path.read_text(encoding="utf-8")  # Read the complete source file as UTF-8 text.
     normalized_lines = [line.strip() for line in source_content.splitlines()]  # Trim surrounding whitespace from every line.
     urls = [line for line in normalized_lines if line.startswith(("https://", "http://"))]  # Retain only HTTP and HTTPS URL lines.
-    urls = [urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", "")) for parsed in (urlsplit(url) for url in urls)]  # Remove query strings and fragments while preserving each base URL.
+    urls = [urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", "")) for parsed in (urlsplit(url) for url in urls)]  # Remove query strings and fragments before duplicate detection.
 
-    return urls  # Return retained URLs with duplicates preserved.
+    return urls  # Return retained normalized URLs.
+
+
+def remove_duplicate_urls(urls: List[str]) -> Tuple[List[str], int]:  # Remove duplicate normalized URL entries while preserving first occurrence order.
+    """
+    Remove duplicate URLs after normalization.
+
+    :param urls: Normalized URL entries.
+    :return: Unique URLs and duplicate count removed.
+    """
+
+    unique_urls: List[str] = []  # Store first occurrences in source order.
+    seen_urls = set()  # Track normalized URLs already retained.
+
+    for url in urls:  # Traverse every normalized URL entry.
+        if url in seen_urls:  # Detect a duplicate normalized URL.
+            continue  # Skip duplicate occurrences.
+
+        seen_urls.add(url)  # Record the first occurrence.
+        unique_urls.append(url)  # Preserve the first occurrence for downstream sorting.
+
+    duplicate_count = len(urls) - len(unique_urls)  # Calculate how many duplicate entries were removed.
+
+    return unique_urls, duplicate_count  # Return unique URLs and removal count.
+
+
+def detect_platform_domain(url: str) -> str:  # Detect the normalized domain/platform label from a URL.
+    """
+    Detect the platform domain from a URL.
+
+    :param url: Normalized URL entry.
+    :return: Lowercase hostname without a leading www. prefix, or unknown.
+    """
+
+    hostname = (urlsplit(url).hostname or "").lower().strip()  # Parse and normalize hostname from the URL.
+
+    if hostname.startswith("www."):  # Normalize common presentation-only www prefix.
+        hostname = hostname[4:]  # Remove the leading www prefix.
+
+    return hostname or "unknown"  # Return a stable fallback when parsing produces no hostname.
+
+
+def count_urls_by_platform(urls: List[str]) -> Counter:  # Count retained URLs by detected platform domain.
+    """
+    Count URLs per detected platform domain.
+
+    :param urls: Unique normalized URL entries.
+    :return: Counter keyed by detected platform domain.
+    """
+
+    platform_counts = Counter(detect_platform_domain(url) for url in urls)  # Dynamically count URLs per domain.
+
+    return platform_counts  # Return platform counts for logging.
 
 
 def natural_sort_key(url: str) -> Tuple[Tuple[Tuple[int, Union[int, str]], ...], str, str]:  # Build a deterministic case-insensitive natural sorting key.
@@ -433,11 +486,11 @@ def sort_urls(urls: List[str]) -> List[str]:  # Sort URLs with deterministic cas
     """
     Sort URL occurrences using deterministic case-insensitive natural ordering.
 
-    :param urls: URL occurrences to sort.
+    :param urls: Unique URL entries to sort.
     :return: New naturally sorted URL list.
     """
 
-    sorted_urls = sorted(urls, key=natural_sort_key)  # Sort without removing duplicate occurrences.
+    sorted_urls = sorted(urls, key=natural_sort_key)  # Sort URL entries after duplicate removal.
 
     return sorted_urls  # Return the naturally sorted URL list.
 
@@ -551,11 +604,11 @@ def write_normalized_urls(output_paths: Tuple[Path, Path], urls: List[str]) -> N
         raise  # Re-raise the original write or verification failure.
 
 
-def normalize_url_files() -> Tuple[Path, int, Tuple[Path, Path], bool]:  # Coordinate source resolution, normalization, sorting, and output writing.
+def normalize_url_files() -> Tuple[Path, int, int, Counter, Tuple[Path, Path], bool]:  # Coordinate source resolution, normalization, sorting, and output writing.
     """
     Normalize the repository URL source into canonical and backup outputs.
 
-    :return: Source path, retained count, output paths, and source-conflict state.
+    :return: Source path, retained count, duplicate count, platform counts, output paths, and source-conflict state.
     """
 
     script_directory = Path(__file__).resolve().parent  # Resolve paths from the executing script location.
@@ -565,13 +618,15 @@ def normalize_url_files() -> Tuple[Path, int, Tuple[Path, Path], bool]:  # Coord
     if not urls:  # Verify whether the readable source contains any valid URLs.
         raise ValueError(f'URL input file "{source_path}" contains no HTTP or HTTPS URL lines.')  # Reject headings-only or URL-empty input.
 
-    sorted_urls = sort_urls(urls)  # Apply deterministic case-insensitive natural ordering.
+    unique_urls, duplicate_count = remove_duplicate_urls(urls)  # Remove duplicate normalized URLs while preserving first occurrences.
+    sorted_urls = sort_urls(unique_urls)  # Apply deterministic case-insensitive natural ordering.
+    platform_counts = count_urls_by_platform(sorted_urls)  # Count retained URLs by detected platform domain.
     output_directory = script_directory / "Inputs"  # Build the canonical output directory path.
     output_directory.mkdir(parents=True, exist_ok=True)  # Create the output directory only after successful source processing.
     output_paths = (output_directory / "urls.txt", output_directory / "urls-backup.txt")  # Build both required output paths.
     write_normalized_urls(output_paths, sorted_urls)  # Publish identical normalized content safely.
 
-    return source_path, len(sorted_urls), output_paths, both_sources_exist  # Return the completed operation details.
+    return source_path, len(sorted_urls), duplicate_count, platform_counts, output_paths, both_sources_exist  # Return the completed operation details.
 
 
 def main() -> None:  # Execute URL normalization within the preserved template workflow.
@@ -587,7 +642,7 @@ def main() -> None:  # Execute URL normalization within the preserved template w
     )  # Output the preserved welcome message.
 
     start_time = datetime.datetime.now()  # Capture the program start time.
-    source_path, retained_count, output_paths, both_sources_exist = normalize_url_files()  # Normalize and write the URL input files.
+    source_path, retained_count, duplicate_count, platform_counts, output_paths, both_sources_exist = normalize_url_files()  # Normalize and write the URL input files.
 
     if both_sources_exist:  # Verify whether both candidate source files were present.
         print(
@@ -600,6 +655,18 @@ def main() -> None:  # Execute URL normalization within the preserved template w
     print(
         f"{BackgroundColors.GREEN}URL entries retained: {BackgroundColors.CYAN}{retained_count}{Style.RESET_ALL}"
     )  # Report the retained URL count.
+    print(
+        f"{BackgroundColors.GREEN}Duplicate URL entries removed: {BackgroundColors.CYAN}{duplicate_count}{Style.RESET_ALL}"
+    )  # Report the duplicate removal count.
+    print(
+        f"{BackgroundColors.GREEN}URL entries per platform:{Style.RESET_ALL}"
+    )  # Report the platform-count section header.
+
+    for platform_domain, url_count in sorted(platform_counts.items()):  # Output platform counts deterministically.
+        print(
+            f"{BackgroundColors.GREEN}- {BackgroundColors.CYAN}{platform_domain}{BackgroundColors.GREEN}: {BackgroundColors.CYAN}{url_count}{Style.RESET_ALL}"
+        )  # Report one detected platform/domain count.
+
     print(
         f"{BackgroundColors.GREEN}Output files written:\n{BackgroundColors.CYAN}{output_paths[0]}\n{output_paths[1]}{Style.RESET_ALL}"
     )  # Report both successfully written output files.
