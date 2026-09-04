@@ -24,10 +24,6 @@ endif
 # Logs directory
 LOG_DIR := ./Logs
 
-# Git helper defaults
-PATHS ?= .
-MSG ?= Update project automation
-
 # Ensure logs directory exists (cross-platform)
 ENSURE_LOG_DIR := @mkdir -p $(LOG_DIR) 2>/dev/null || $(PYTHON_CMD) -c "import os; os.makedirs('$(LOG_DIR)', exist_ok=True)"
 
@@ -172,13 +168,6 @@ merge_weekday_output_dirs: dependencies
 	$(CLEAR_CMD)
 	$(call RUN_AND_LOG, ./weekly_posts.py --merge_weekday_output_dirs True $(ARGS))
 
-commit:
-	git add -- "$(PATHS)"
-	git commit -m "$(MSG)"
-
-commit_push: commit
-	git push
-
 # Update repository and run
 update_and_run: dependencies
 	@echo "Updating repository: reset to HEAD and pulling latest changes..."
@@ -219,4 +208,4 @@ clean:
 	find . -type f -name '*.pyc' -delete || del /S /Q *.pyc 2>nul
 	find . -type d -name '__pycache__' -delete || rmdir /S /Q __pycache__ 2>nul
 
-.PHONY: all run local normalize_urls add_zip_names rename_archives prepare_inputs parse_inputs parse_local_inputs main sort_products generate_template_files_from_local generate_template_files_from_prompt sort_latest_products merge_output_dirs merge_weekday_output_dirs restructure_product_outputs compressed_archives_renamer urls_input_file_adder affiliate_pages_downloader renew_amazon_affiliate_urls weekly_posts commit commit_push update_and_run clean dependencies generate_requirements
+.PHONY: all run local normalize_urls add_zip_names rename_archives prepare_inputs parse_inputs parse_local_inputs main sort_products generate_template_files_from_local generate_template_files_from_prompt sort_latest_products merge_output_dirs merge_weekday_output_dirs restructure_product_outputs compressed_archives_renamer urls_input_file_adder affiliate_pages_downloader renew_amazon_affiliate_urls weekly_posts update_and_run clean dependencies generate_requirements
