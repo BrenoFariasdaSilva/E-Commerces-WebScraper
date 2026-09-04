@@ -14,6 +14,7 @@ Usage:
 Outputs:
     - Inputs/urls.txt
     - Inputs/urls-backup.txt
+    - Weekly_Urls_Sorted.txt beside the selected input file
 
 Dependencies:
     - Python
@@ -61,6 +62,17 @@ SOUND_FILE = "./.assets/Sounds/NotificationSound.wav"  # Store the completion so
 RUN_FUNCTIONS = {  # Control optional program behaviors.
     "Play Sound": True,  # Enable the completion sound registration.
 }  # Complete the runtime behavior mapping.
+
+WEEKLY_URLS_FILENAME = "Weekly_Urls_Sorted.txt"  # Store the Google Keep weekly URL output filename.
+WEEKDAY_LABELS = (  # Store weekday labels in the required Google Keep order.
+    "Segunda-Feira",
+    "Terça-Feira",
+    "Quarta-Feira",
+    "Quinta-Feira",
+    "Sexta-Feira",
+    "Sábado",
+    "Domingo",
+)  # Complete the weekday label tuple.
 
 
 def verbose_output(true_string: str = "", false_string: str = "") -> None:  # Output the configured verbose or fallback message.
@@ -465,6 +477,132 @@ def count_urls_by_platform(urls: List[str]) -> Counter:  # Count retained URLs b
     return platform_counts  # Return platform counts for logging.
 
 
+def group_urls_by_platform(urls: List[str]) -> Dict[str, List[str]]:  # Group URLs by detected platform domain without changing URL values.
+    """
+    Group URLs by detected platform domain.
+
+    :param urls: Unique normalized URL entries.
+    :return: Dictionary keyed by detected platform domain.
+    """
+
+    grouped_urls: Dict[str, List[str]] = {}  # Store URL lists by detected platform domain.
+
+    for url in urls:  # Traverse every URL selected for weekly output.
+        platform_domain = detect_platform_domain(url)  # Detect the platform domain consistently with platform counting.
+        grouped_urls.setdefault(platform_domain, []).append(url)  # Append the unchanged URL to its platform group.
+
+    return grouped_urls  # Return grouped URL entries.
+
+
+def distribute_platform_urls_across_week(urls: List[str]) -> List[List[str]]:  # Distribute one sorted platform URL list across weekdays.
+    """
+    Distribute one platform's sorted URLs across the seven configured weekdays.
+
+    :param urls: Sorted URLs for one platform.
+    :return: Seven URL chunks in weekday order.
+    """
+
+    base_count = len(urls) // len(WEEKDAY_LABELS)  # Calculate the same base count for every weekday.
+    remainder = len(urls) % len(WEEKDAY_LABELS)  # Calculate the remainder that must go entirely to Sunday.
+    distributed_urls: List[List[str]] = []  # Store seven weekday chunks.
+    cursor = 0  # Track the next URL index to consume.
+
+    for weekday_index, _ in enumerate(WEEKDAY_LABELS):  # Build chunks in exact weekday order.
+        day_count = base_count + (remainder if weekday_index == len(WEEKDAY_LABELS) - 1 else 0)  # Put all remainder URLs on Sunday.
+        next_cursor = cursor + day_count  # Calculate the end index for this weekday chunk.
+        distributed_urls.append(urls[cursor:next_cursor])  # Preserve sorted sequence inside the assigned chunk.
+        cursor = next_cursor  # Advance to the next unassigned URL.
+
+    assert sum(len(day_urls) for day_urls in distributed_urls) == len(urls)  # Ensure no platform URL is lost or duplicated.
+
+    return distributed_urls  # Return seven weekday chunks for one platform.
+
+
+def build_weekly_url_distribution(urls: List[str]) -> Tuple[List[List[str]], Dict[str, List[int]]]:  # Build the full weekly distribution across all platforms.
+    """
+    Build weekday URL lists by independently distributing each sorted platform.
+
+    :param urls: Unique normalized URL entries selected for weekly output.
+    :return: Weekday URL lists and per-platform weekday counts.
+    """
+
+    grouped_urls = group_urls_by_platform(urls)  # Group URLs by detected platform domain before sorting or distribution.
+    weekly_urls: List[List[str]] = [[] for _ in WEEKDAY_LABELS]  # Store final weekday URL lists.
+    platform_distributions: Dict[str, List[int]] = {}  # Store per-platform Monday-Sunday counts for reporting.
+
+    for platform_domain in sorted(grouped_urls):  # Process platforms in deterministic alphabetical order.
+        platform_urls = sort_urls(grouped_urls[platform_domain])  # Sort URLs within this platform only.
+        distributed_platform_urls = distribute_platform_urls_across_week(platform_urls)  # Distribute this platform independently.
+        platform_distributions[platform_domain] = [len(day_urls) for day_urls in distributed_platform_urls]  # Store weekday counts for this platform.
+
+        for weekday_index, day_urls in enumerate(distributed_platform_urls):  # Merge platform chunks into the final weekday lists.
+            weekly_urls[weekday_index].extend(day_urls)  # Preserve platform order inside each weekday without adding headings.
+
+    source_url_count = len(urls)  # Store expected total URL count.
+    output_url_count = sum(len(day_urls) for day_urls in weekly_urls)  # Count URLs assigned to the weekly output.
+    assert output_url_count == source_url_count  # Ensure the complete weekly output contains every selected URL exactly once.
+    assert len({url for day_urls in weekly_urls for url in day_urls}) == source_url_count  # Ensure distribution did not duplicate URLs.
+
+    return weekly_urls, platform_distributions  # Return rendered distribution data and per-platform counts.
+
+
+def build_weekly_urls_content(weekly_urls: List[List[str]]) -> str:  # Build the exact Google Keep note text.
+    """
+    Build the weekly URL output text using the required Google Keep structure.
+
+    :param weekly_urls: Seven weekday URL lists in configured weekday order.
+    :return: Complete UTF-8 text content ending with exactly one newline.
+    """
+
+    assert len(weekly_urls) == len(WEEKDAY_LABELS)  # Ensure a complete seven-day distribution is provided.
+    lines: List[str] = ["- Links da Semana:"]  # Start with the exact required root heading.
+
+    for weekday_index, weekday_label in enumerate(WEEKDAY_LABELS):  # Render every weekday section in exact order.
+        lines.append(f"-- {weekday_label}:")  # Add the exact weekday heading.
+        lines.extend(weekly_urls[weekday_index])  # Add one unchanged URL per line directly below the heading.
+
+        if weekday_index != len(WEEKDAY_LABELS) - 1:  # Add exactly one blank line between weekday sections.
+            lines.append("")  # Insert the required inter-section blank line.
+
+    return "\n".join(lines) + "\n"  # Return content with exactly one final newline.
+
+
+def resolve_weekly_urls_output_path(source_path: Path) -> Path:  # Resolve weekly output path beside the selected input file.
+    """
+    Resolve the weekly URL output path beside the selected input file.
+
+    :param source_path: Selected source URL input file.
+    :return: Weekly_Urls_Sorted.txt path in the same directory.
+    """
+
+    return source_path.parent / WEEKLY_URLS_FILENAME  # Return the required sibling output path.
+
+
+def write_weekly_urls_file(output_path: Path, content: str) -> None:  # Write the weekly URL file safely using the existing staged replace helper.
+    """
+    Write the weekly URL output file as UTF-8 text.
+
+    :param output_path: Destination path for Weekly_Urls_Sorted.txt.
+    :param content: Complete weekly output text.
+    :return: None.
+    """
+
+    expected_bytes = content.encode("utf-8")  # Encode the weekly note content as UTF-8.
+    output_path.parent.mkdir(parents=True, exist_ok=True)  # Ensure the selected input directory exists.
+    staged_path = stage_file_content(output_path, expected_bytes)  # Stage content beside the final destination.
+
+    try:  # Replace the weekly output file atomically.
+        os.replace(staged_path, output_path)  # Publish the staged weekly output.
+    except Exception:  # Clean up the staged file if replacement fails.
+        if staged_path.exists():  # Verify whether the staged file still exists.
+            staged_path.unlink()  # Remove the unpublished staged output.
+
+        raise  # Preserve the original replacement failure.
+
+    if output_path.read_bytes() != expected_bytes:  # Verify byte-for-byte weekly output content.
+        raise RuntimeError(f'Weekly URL output verification failed for "{output_path}".')  # Reject corrupted weekly output writes.
+
+
 def natural_sort_key(url: str) -> Tuple[Tuple[Tuple[int, Union[int, str]], ...], str, str]:  # Build a deterministic case-insensitive natural sorting key.
     """
     Build a deterministic case-insensitive natural sorting key for a URL.
@@ -604,11 +742,11 @@ def write_normalized_urls(output_paths: Tuple[Path, Path], urls: List[str]) -> N
         raise  # Re-raise the original write or verification failure.
 
 
-def normalize_url_files() -> Tuple[Path, int, int, Counter, Tuple[Path, Path], bool]:  # Coordinate source resolution, normalization, sorting, and output writing.
+def normalize_url_files() -> Tuple[Path, int, int, Counter, Dict[str, List[int]], Tuple[Path, Path], Path, bool]:  # Coordinate source resolution, normalization, sorting, and output writing.
     """
     Normalize the repository URL source into canonical and backup outputs.
 
-    :return: Source path, retained count, duplicate count, platform counts, output paths, and source-conflict state.
+    :return: Source path, retained count, duplicate count, platform counts, platform distributions, output paths, weekly output path, and source-conflict state.
     """
 
     script_directory = Path(__file__).resolve().parent  # Resolve paths from the executing script location.
@@ -621,12 +759,16 @@ def normalize_url_files() -> Tuple[Path, int, int, Counter, Tuple[Path, Path], b
     unique_urls, duplicate_count = remove_duplicate_urls(urls)  # Remove duplicate normalized URLs while preserving first occurrences.
     sorted_urls = sort_urls(unique_urls)  # Apply deterministic case-insensitive natural ordering.
     platform_counts = count_urls_by_platform(sorted_urls)  # Count retained URLs by detected platform domain.
+    weekly_urls, platform_distributions = build_weekly_url_distribution(sorted_urls)  # Build the required independent weekly distribution.
+    weekly_urls_content = build_weekly_urls_content(weekly_urls)  # Render the exact Google Keep note structure.
+    weekly_urls_output_path = resolve_weekly_urls_output_path(source_path)  # Resolve weekly output beside the selected input file.
     output_directory = script_directory / "Inputs"  # Build the canonical output directory path.
     output_directory.mkdir(parents=True, exist_ok=True)  # Create the output directory only after successful source processing.
     output_paths = (output_directory / "urls.txt", output_directory / "urls-backup.txt")  # Build both required output paths.
     write_normalized_urls(output_paths, sorted_urls)  # Publish identical normalized content safely.
+    write_weekly_urls_file(weekly_urls_output_path, weekly_urls_content)  # Publish the weekly URL output without platform headings.
 
-    return source_path, len(sorted_urls), duplicate_count, platform_counts, output_paths, both_sources_exist  # Return the completed operation details.
+    return source_path, len(sorted_urls), duplicate_count, platform_counts, platform_distributions, output_paths, weekly_urls_output_path, both_sources_exist  # Return the completed operation details.
 
 
 def main() -> None:  # Execute URL normalization within the preserved template workflow.
@@ -642,7 +784,7 @@ def main() -> None:  # Execute URL normalization within the preserved template w
     )  # Output the preserved welcome message.
 
     start_time = datetime.datetime.now()  # Capture the program start time.
-    source_path, retained_count, duplicate_count, platform_counts, output_paths, both_sources_exist = normalize_url_files()  # Normalize and write the URL input files.
+    source_path, retained_count, duplicate_count, platform_counts, platform_distributions, output_paths, weekly_urls_output_path, both_sources_exist = normalize_url_files()  # Normalize and write the URL input files.
 
     if both_sources_exist:  # Verify whether both candidate source files were present.
         print(
@@ -668,8 +810,21 @@ def main() -> None:  # Execute URL normalization within the preserved template w
         )  # Report one detected platform/domain count.
 
     print(
+        f"{BackgroundColors.GREEN}Weekly distribution per platform:{Style.RESET_ALL}"
+    )  # Report the platform distribution section header.
+
+    for platform_domain, weekday_counts in sorted(platform_distributions.items()):  # Output per-platform weekday counts deterministically.
+        formatted_counts = ", ".join(f"{weekday}: {count}" for weekday, count in zip(WEEKDAY_LABELS, weekday_counts))  # Build the Monday-Sunday distribution summary.
+        print(
+            f"{BackgroundColors.GREEN}- {BackgroundColors.CYAN}{platform_domain}{BackgroundColors.GREEN}: {BackgroundColors.CYAN}{formatted_counts}{Style.RESET_ALL}"
+        )  # Report one platform's weekly distribution.
+
+    print(
         f"{BackgroundColors.GREEN}Output files written:\n{BackgroundColors.CYAN}{output_paths[0]}\n{output_paths[1]}{Style.RESET_ALL}"
     )  # Report both successfully written output files.
+    print(
+        f"{BackgroundColors.GREEN}Weekly URL output written: {BackgroundColors.CYAN}{weekly_urls_output_path}{Style.RESET_ALL}"
+    )  # Report the weekly URL output path.
 
     finish_time = datetime.datetime.now()  # Capture the program finish time.
 
