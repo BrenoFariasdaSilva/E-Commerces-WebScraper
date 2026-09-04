@@ -1,9 +1,13 @@
 # Variables
 VENV := venv
-OS := $(shell uname 2>/dev/null || echo Windows)
+ifeq ($(OS),Windows_NT)
+	DETECTED_OS := Windows
+else
+	DETECTED_OS := $(shell uname 2>/dev/null || echo Windows)
+endif
 
 # Detect correct Python and Pip commands based on OS
-ifeq ($(OS), Windows) # Windows
+ifeq ($(DETECTED_OS), Windows) # Windows
 	PYTHON := $(VENV)/Scripts/python.exe
 	PIP := $(VENV)/Scripts/pip.exe
 	PYTHON_CMD := python
@@ -20,6 +24,10 @@ endif
 # Logs directory
 LOG_DIR := ./Logs
 
+# Git helper defaults
+PATHS ?= .
+MSG ?= Update project automation
+
 # Ensure logs directory exists (cross-platform)
 ENSURE_LOG_DIR := @mkdir -p $(LOG_DIR) 2>/dev/null || $(PYTHON_CMD) -c "import os; os.makedirs('$(LOG_DIR)', exist_ok=True)"
 
@@ -28,7 +36,7 @@ ENSURE_LOG_DIR := @mkdir -p $(LOG_DIR) 2>/dev/null || $(PYTHON_CMD) -c "import o
 # On Unix-like systems: supports DETACH variable
 #   - If DETACH is set, runs the script in detached mode and tails the log file
 #   - Else, runs the script normally
-ifeq ($(OS), Windows) # Windows
+ifeq ($(DETECTED_OS), Windows) # Windows
 RUN_AND_LOG = $(PYTHON) $(1)
 else
 # Single-line shell form to avoid line-continuation/backslash issues in recipes
@@ -55,6 +63,36 @@ local: dependencies
 	$(call RUN_AND_LOG, ./main.py --restructure_product_outputs $(ARGS))
 	$(call RUN_AND_LOG, ./weekly_posts.py --merge_weekday_output_dirs True $(ARGS))
 
+normalize_urls: dependencies
+	$(ENSURE_LOG_DIR)
+	$(CLEAR_CMD)
+	$(call RUN_AND_LOG, ./url_input_normalizer.py $(ARGS))
+
+add_zip_names: dependencies
+	$(ENSURE_LOG_DIR)
+	$(CLEAR_CMD)
+	$(call RUN_AND_LOG, ./urls_input_file_adder.py $(ARGS))
+
+rename_archives: dependencies
+	$(ENSURE_LOG_DIR)
+	$(CLEAR_CMD)
+	$(call RUN_AND_LOG, ./compressed_archives_renamer.py $(ARGS))
+
+prepare_inputs: dependencies
+	$(ENSURE_LOG_DIR)
+	$(CLEAR_CMD)
+	$(call RUN_AND_LOG, ./url_input_normalizer.py $(ARGS))
+	$(call RUN_AND_LOG, ./urls_input_file_adder.py $(ARGS))
+	$(call RUN_AND_LOG, ./compressed_archives_renamer.py $(ARGS))
+
+parse_inputs: prepare_inputs
+	$(call RUN_AND_LOG, ./main.py --headerless True --sort_products_by_product_name True $(ARGS))
+	$(call RUN_AND_LOG, ./main.py --restructure_product_outputs $(ARGS))
+
+parse_local_inputs: prepare_inputs
+	$(call RUN_AND_LOG, ./main.py --sort_products_by_product_name True $(ARGS))
+	$(call RUN_AND_LOG, ./main.py --restructure_product_outputs $(ARGS))
+
 # Execute the main script with logging and updated dependency management
 main: dependencies
 	$(ENSURE_LOG_DIR)
@@ -65,7 +103,7 @@ main: dependencies
 sort_products: dependencies
 	$(ENSURE_LOG_DIR)
 	$(CLEAR_CMD)
-ifeq ($(OS), Windows)
+ifeq ($(DETECTED_OS), Windows)
 	@if not defined OUTPUT_DIR ( \
 		echo ERROR: OUTPUT_DIR variable must be set. Example: make sort_products OUTPUT_DIR=Outputs/1. 2026-04-14 - 07h31m39s && exit 1 \
 	)
@@ -134,6 +172,13 @@ merge_weekday_output_dirs: dependencies
 	$(CLEAR_CMD)
 	$(call RUN_AND_LOG, ./weekly_posts.py --merge_weekday_output_dirs True $(ARGS))
 
+commit:
+	git add -- "$(PATHS)"
+	git commit -m "$(MSG)"
+
+commit_push: commit
+	git push
+
 # Update repository and run
 update_and_run: dependencies
 	@echo "Updating repository: reset to HEAD and pulling latest changes..."
@@ -174,4 +219,4 @@ clean:
 	find . -type f -name '*.pyc' -delete || del /S /Q *.pyc 2>nul
 	find . -type d -name '__pycache__' -delete || rmdir /S /Q __pycache__ 2>nul
 
-.PHONY: all run local main sort_products generate_template_files_from_local generate_template_files_from_prompt sort_latest_products merge_output_dirs merge_weekday_output_dirs restructure_product_outputs compressed_archives_renamer urls_input_file_adder affiliate_pages_downloader renew_amazon_affiliate_urls weekly_posts update_and_run clean dependencies generate_requirements
+.PHONY: all run local normalize_urls add_zip_names rename_archives prepare_inputs parse_inputs parse_local_inputs main sort_products generate_template_files_from_local generate_template_files_from_prompt sort_latest_products merge_output_dirs merge_weekday_output_dirs restructure_product_outputs compressed_archives_renamer urls_input_file_adder affiliate_pages_downloader renew_amazon_affiliate_urls weekly_posts commit commit_push update_and_run clean dependencies generate_requirements
