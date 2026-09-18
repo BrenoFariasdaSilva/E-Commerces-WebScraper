@@ -107,6 +107,7 @@ VERBOSE = False  # Set to True to output verbose messages
 RENEW_AMAZON_AFFILIATE_URL = True  # Set to True to enable Amazon affiliate URL renewal attempts (currently disabled for safety)
 ONLY_RENEW_AMAZON_AFFILIATE_URLS = False  # Control mode to only renew Amazon affiliate URLs without downloading content
 RENEWED_URL_MAP: Dict[str, str] = {}  # Store renewed Amazon URL pairs as original-to-renewed mapping.
+MERCADO_LIVRE_AFFILIATE_URL_PATTERN = r"https?://(?:www\.)?meli\.la/[A-Za-z0-9]+/?"  # MercadoLivre.py AFFILIATE_URL_PATTERN mirror for meli.la short links without importing module side effects.
 
 ACTIVE_DOWNLOADS_DIRS = []  # Store the resolved active downloads directories path for reuse.
 
@@ -147,6 +148,8 @@ CHROME_DOWNLOAD_SETTING_SEARCH_SECONDS = 2.0  # Define native Chrome downloads s
 EXTENSION_DOWNLOAD_SETTING_SEARCH_SECONDS = 2.0  # Define extension download setting image search window in seconds.
 EXTENSION_DOWNLOAD_SETTING_STATE_CONFIDENCE = 0.95  # Define strict extension download setting state match confidence.
 MAX_DOWNLOAD_RETRY_ATTEMPTS = 2  # Define maximum number of download attempts per URL including the initial attempt.
+MAX_MERCADO_LIVRE_EMPTY_URL_RETRY_ATTEMPTS = 3  # Define maximum MercadoLivre empty-page reload attempts before marking the URL expired.
+MERCADO_LIVRE_EMPTY_URL_RETRY_WAIT_SECONDS = 0.8  # Define wait time after detecting a MercadoLivre empty page before retrying.
 MAX_RETRY_MECHANISM_ATTEMPTS = 5  # Define maximum number of post-processing retry cycles for failed/unlinked URLs.
 CHROME_WINDOW_CLOSE_TIMEOUT_SECONDS = 10.0  # Define maximum wait for a dedicated Chrome window to disappear before another may be created.
 CHROME_WINDOW_CLOSE_POLL_SECONDS = 0.1  # Define polling interval while confirming that a dedicated Chrome window has closed.
@@ -187,7 +190,7 @@ PLATFORM_INVALID_URL_RULES: Dict[str, Any] = {  # Platform-specific invalid URL 
         "invalid_image_keys": [],  # No image asset keys for Amazon invalid URL detection.
     },  # End Amazon platform configuration.
     "Mercado Livre": {  # Mercado Livre platform configuration for invalid URL detection.
-        "url_domains": ["mercadolivre.", "mercadolivro.", "mercadolibre."],  # Domain keyword substrings used to identify Mercado Livre URLs.
+        "url_domains": ["meli.la", "mercadolivre.", "mercadolivro.", "mercadolibre."],  # Domain keyword substrings used to identify Mercado Livre URLs.
         "homepage_patterns": [  # Compiled regex patterns for Mercado Livre homepage redirect detection.
             re.compile(r"^https?://(?:[a-z0-9-]+\.)*(?:mercadolivre|mercadolivro|mercadolibre)\.[a-z][a-z.]*/?(?:\?[^#]*)?$", re.IGNORECASE),  # Detect Mercado Livre domain root without product path segments.
         ],  # Finalize Mercado Livre homepage patterns list.
@@ -2637,6 +2640,7 @@ def setup_image_paths(assets_dir: Path) -> Dict[str, Path]:
         "ask_user_download_confirmation_toggle_off_img": assets_dir / "AskUserDownloadConfirmation - Toggle Off.png",  # Define Chrome downloads Toggle Off fallback image path.
         "ask_user_download_confirmation_toggle_on_img": assets_dir / "AskUserDownloadConfirmation - Toggle On.png",  # Define Chrome downloads Toggle On fallback image path.
         "marked_ask_download_configuration_setting_extension_tab_img": assets_dir / "Marked Ask for Download Configuration Setting - ExtensionTab.png",  # Define marked extension download setting image path.
+        "mercado_livre_empty_url_img": assets_dir / "MercadoLivre-Empty-URL.png",  # Define MercadoLivre empty loaded URL image path.
         "mercado_livre_img": assets_dir / "MercadoLivre-GoToProduct.png",  # Define MercadoLivre navigation image path
         "mercado_livre_invalid_url_img": assets_dir / "MercadoLivre-InvalidURL.png",  # Define MercadoLivre invalid URL image path
         "save_button_img": assets_dir / "SaveFileButton.png",  # Define MercadoLivre save button image path
@@ -3765,6 +3769,11 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
 
         opened_tabs = open_url_in_new_tab(url, opened_tabs)  # Open URL in new tab and update opened tabs counter.
 
+        opened_tabs, mercado_livre_url_loaded = retry_mercado_livre_empty_url_load(url, opened_tabs, urls_file, url_to_download, image_paths)  # Retry MercadoLivre meli.la URLs that load the known empty page.
+
+        if not mercado_livre_url_loaded:  # Verify whether MercadoLivre empty-page retry handling exhausted this URL.
+            continue  # Continue with the next URL after the helper closes and marks the expired current URL.
+
         current_tab = index  # Store current tab index.
         original_url = url  # Preserve original URL before potential Amazon affiliate renewal modification.
 
@@ -4299,6 +4308,70 @@ def open_url_in_new_tab(url: str, opened_tabs: int) -> int:
     time.sleep(3)  # Wait for page loading.
 
     return opened_tabs  # Return updated opened tabs count.
+
+
+def is_mercado_livre_affiliate_url(url: str) -> bool:
+    """
+    Verify whether a URL is a MercadoLivre meli.la affiliate short link.
+
+    :param url: URL string to test.
+    :return: True when the URL matches the MercadoLivre affiliate URL pattern, otherwise False.
+    """
+
+    return re.search(MERCADO_LIVRE_AFFILIATE_URL_PATTERN, str(url).strip(), re.IGNORECASE) is not None  # Match MercadoLivre short affiliate links.
+
+
+def detect_mercado_livre_empty_url_page(image_paths: Dict[str, Path]) -> bool:
+    """
+    Detect whether the current MercadoLivre page loaded as an empty URL page.
+
+    :param image_paths: Dictionary mapping image variable names to resolved image asset paths.
+    :return: True when the MercadoLivre empty URL image is detected, otherwise False.
+    """
+
+    empty_url_img = image_paths.get("mercado_livre_empty_url_img")  # Resolve MercadoLivre empty URL screenshot asset.
+
+    if empty_url_img is None:  # Verify image path exists in the configured image map.
+        return False  # Skip detection when the image path is unavailable.
+
+    return locate_image(empty_url_img) is not None  # Return whether the empty URL marker image is visible.
+
+
+def retry_mercado_livre_empty_url_load(url: str, opened_tabs: int, urls_file: Path, url_to_download: Dict[str, str], image_paths: Dict[str, Path]) -> Tuple[int, bool]:
+    """
+    Retry MercadoLivre affiliate URLs that opened to an empty page, then mark them expired after repeated failures.
+
+    :param url: Original URL opened in Chrome.
+    :param opened_tabs: Current opened tab counter.
+    :param urls_file: Path to the URLs input file for invalid URL persistence.
+    :param url_to_download: In-memory URL-to-filename mapping updated when the URL is expired.
+    :param image_paths: Dictionary mapping image variable names to resolved image asset paths.
+    :return: Tuple of updated opened tab count and whether processing may continue for this URL.
+    """
+
+    if not is_mercado_livre_affiliate_url(url):  # Verify whether the current URL is a MercadoLivre meli.la short link before running page-specific detection.
+        return opened_tabs, True  # Continue normally for non-MercadoLivre affiliate URLs.
+
+    for attempt in range(1, MAX_MERCADO_LIVRE_EMPTY_URL_RETRY_ATTEMPTS + 1):  # Count consecutive empty-page detections for this URL.
+        if not detect_mercado_livre_empty_url_page(image_paths):  # Verify whether the current page loaded usable content.
+            return opened_tabs, True  # Continue processing when the empty URL image is not detected.
+
+        if attempt >= MAX_MERCADO_LIVRE_EMPTY_URL_RETRY_ATTEMPTS:  # Verify whether empty-page retries are exhausted.
+            loaded_url = get_browser_current_url() or "MercadoLivre empty URL page detected"  # Capture loaded URL for diagnostics when available.
+            handle_invalid_url(url, urls_file, url_to_download, "Mercado Livre", loaded_url)  # Mark the URL as expired using the existing invalid URL persistence path.
+            opened_tabs = safely_close_product_tab(opened_tabs)  # Close the failed MercadoLivre tab before moving to the next URL.
+            return opened_tabs, False  # Stop processing this URL after three consecutive empty-page detections.
+
+        print(f"{BackgroundColors.YELLOW}[WARNING] MercadoLivre URL loaded an empty page for URL: {BackgroundColors.CYAN}{url}{BackgroundColors.YELLOW}. Retrying load attempt {BackgroundColors.CYAN}{attempt + 1}{BackgroundColors.YELLOW}/{BackgroundColors.CYAN}{MAX_MERCADO_LIVRE_EMPTY_URL_RETRY_ATTEMPTS}{BackgroundColors.YELLOW}.{Style.RESET_ALL}")  # Log retry reason and attempt count.
+        opened_tabs = safely_close_product_tab(opened_tabs)  # Close the current empty page tab before reopening the URL.
+        time.sleep(MERCADO_LIVRE_EMPTY_URL_RETRY_WAIT_SECONDS)  # Wait briefly before opening a replacement tab.
+
+        if not activate_automation_window():  # Verify automation window focus before opening the retry tab.
+            return opened_tabs, False  # Stop current URL processing when browser focus cannot be guaranteed.
+
+        opened_tabs = open_url_in_new_tab(url, opened_tabs)  # Open the same URL in a fresh tab for the next empty-page check.
+
+    return opened_tabs, True  # Defensive fallback; the loop returns earlier in all expected paths.
 
 
 def scroll_window_to_top_center() -> None:
