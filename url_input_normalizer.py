@@ -22,7 +22,7 @@ Dependencies:
 
 Assumptions & Notes:
     - Input is read from Inputs/urls.txt before Input/urls.txt.
-    - Plain HTTP/HTTPS URL lines and Markdown links whose destination is HTTP/HTTPS are retained.
+    - Plain HTTP/HTTPS URLs, Markdown links, and URL + whitespace + .zip reference lines are retained.
     - Duplicate URL occurrences are removed after URL normalization.
 """
 
@@ -409,18 +409,42 @@ def resolve_url_source(script_directory: Path) -> Tuple[Path, bool]:  # Resolve 
     )  # Complete the missing-input failure.
 
 
-def extract_url_candidate(line: str) -> Optional[str]:  # Extract one HTTP/HTTPS URL candidate from a supported input-line format.
+def split_url_entry_suffix(line: str) -> Tuple[str, Optional[str]]:  # Split an optional trailing ZIP reference from one URL-entry line.
     """
-    Extract one URL candidate from a plain URL line or Markdown link line.
+    Split an optional single-token ZIP reference from a URL-entry line.
+
+    Supported example:
+        https://example.com/item product.example.com-item-123.zip
+
+    The trailing reference is deliberately restricted to one whitespace-free
+    token ending in ``.zip`` so ordinary prose after a URL is not accepted as
+    part of a URL entry.
+
+    :param line: Trimmed candidate line.
+    :return: Primary URL presentation and optional trailing ZIP reference.
+    """
+
+    parts = line.rsplit(None, 1)  # Split only the final whitespace-separated token when one is present.
+
+    if len(parts) == 2 and parts[1].lower().endswith(".zip"):  # Recognize the supported URL + ZIP-reference record format.
+        return parts[0], parts[1]  # Preserve the ZIP reference exactly as supplied.
+
+    return line, None  # Treat all other lines as ordinary single URL presentations.
+
+
+def extract_url_candidate(line: str) -> Optional[Tuple[str, Optional[str]]]:  # Extract one HTTP/HTTPS URL candidate and optional ZIP reference.
+    """
+    Extract one URL candidate from a supported input-line format.
 
     Supported examples:
         https://example.com/path
+        https://example.com/path product.example.com-item-123.zip
         [https://example.com/path](https://example.com/path)
         [Link text](https://example.com/path)
         <https://example.com/path>
 
     :param line: Raw source-file line.
-    :return: Extracted HTTP/HTTPS URL candidate, or None when the line is not a supported URL line.
+    :return: Primary HTTP/HTTPS URL plus optional trailing ZIP reference, or None when unsupported.
     """
 
     stripped_line = line.strip()  # Remove surrounding whitespace before recognizing the line format.
@@ -428,62 +452,69 @@ def extract_url_candidate(line: str) -> Optional[str]:  # Extract one HTTP/HTTPS
     if not stripped_line:  # Reject empty or whitespace-only lines.
         return None  # Signal that the line does not contain a supported URL entry.
 
+    url_presentation, zip_reference = split_url_entry_suffix(stripped_line)  # Separate a supported trailing ZIP reference before URL parsing.
+
     markdown_match = re.fullmatch(
         r"\[[^\]]*\]\(\s*(https?://\S+?)\s*\)",
-        stripped_line,
+        url_presentation,
         flags=re.IGNORECASE,
     )  # Match a complete Markdown link and capture only its destination URL.
 
     if markdown_match is not None:  # Prefer the Markdown destination so the visible label is never counted as a second URL.
         candidate = markdown_match.group(1)  # Extract the single destination URL from the Markdown link.
-    elif stripped_line.startswith("<") and stripped_line.endswith(">"):  # Support standard angle-bracket URL presentation.
-        candidate = stripped_line[1:-1].strip()  # Remove the surrounding angle brackets.
-    else:  # Treat the complete trimmed line as a possible plain URL.
-        candidate = stripped_line  # Preserve the original URL value for validation and normalization.
+    elif url_presentation.startswith("<") and url_presentation.endswith(">"):  # Support standard angle-bracket URL presentation.
+        candidate = url_presentation[1:-1].strip()  # Remove the surrounding angle brackets.
+    else:  # Treat the complete URL presentation as a possible plain URL.
+        candidate = url_presentation  # Preserve the primary URL value for validation and normalization.
 
     candidate = re.sub(r"\\([\\`*_{}\[\]()#+\-.!])", r"\1", candidate)  # Undo Markdown backslash escapes that may appear inside copied URLs.
 
     if not candidate.lower().startswith(("https://", "http://")):  # Reject headings, descriptions, prices, and other non-URL text.
         return None  # Signal that this line is not a supported URL entry.
 
-    if any(character.isspace() for character in candidate):  # Reject malformed candidates containing whitespace.
-        return None  # Prevent partial or ambiguous URL parsing.
+    if any(character.isspace() for character in candidate):  # Reject whitespace inside the primary URL itself.
+        return None  # Prevent malformed or ambiguous primary URL parsing.
 
     parsed = urlsplit(candidate)  # Parse the candidate before accepting it as a valid HTTP/HTTPS URL.
 
     if parsed.scheme.lower() not in {"http", "https"} or not parsed.netloc:  # Require a supported scheme and nonempty network location.
         return None  # Reject malformed HTTP/HTTPS-looking values.
 
-    return candidate  # Return the validated URL candidate.
+    return candidate, zip_reference  # Return the validated primary URL and any supported trailing ZIP reference.
 
 
 def extract_valid_urls(source_path: Path) -> List[str]:  # Read and retain supported HTTP and HTTPS URL entries.
     """
     Read a source file and extract valid URL entries from supported line formats.
 
-    Plain HTTP/HTTPS lines and Markdown links are accepted. For Markdown links,
-    only the destination is retained, so ``[url](url)`` contributes exactly one
-    URL instead of two. Query strings and fragments are removed exactly as in
-    the previous normalization behavior.
+    Plain HTTP/HTTPS lines, Markdown links, and ``URL + whitespace + .zip``
+    reference lines are accepted. For Markdown links, only the destination is
+    retained. Query strings and fragments are removed from the primary URL,
+    while an accepted trailing ZIP reference is preserved unchanged.
 
     :param source_path: Existing URL source file path.
-    :return: Normalized HTTP/HTTPS URL entries in source order.
+    :return: Normalized URL entries in source order.
     """
 
     source_content = source_path.read_text(encoding="utf-8")  # Read the complete source file as UTF-8 text.
-    urls: List[str] = []  # Store one normalized URL for every supported URL line.
+    urls: List[str] = []  # Store one normalized URL entry for every supported source line.
 
     for source_line in source_content.splitlines():  # Inspect every source line independently.
-        candidate = extract_url_candidate(source_line)  # Extract a URL from plain or Markdown presentation.
+        extracted_entry = extract_url_candidate(source_line)  # Extract a primary URL and optional trailing ZIP reference.
 
-        if candidate is None:  # Ignore headings, product descriptions, prices, coupon text, and other non-URL lines.
+        if extracted_entry is None:  # Ignore headings, product descriptions, prices, coupon text, and other unsupported lines.
             continue  # Continue scanning the remaining source lines.
 
-        parsed = urlsplit(candidate)  # Parse the validated URL for canonical query/fragment removal.
-        normalized_url = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", ""))  # Remove query strings and fragments before duplicate detection.
-        urls.append(normalized_url)  # Preserve the normalized URL occurrence in source order.
+        candidate, zip_reference = extracted_entry  # Unpack the validated primary URL and optional ZIP reference.
+        parsed = urlsplit(candidate)  # Parse the validated primary URL for canonical query/fragment removal.
+        normalized_url = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", ""))  # Remove query strings and fragments from the primary URL only.
 
-    return urls  # Return retained normalized URLs.
+        if zip_reference is not None:  # Preserve a supported trailing ZIP reference after primary-URL normalization.
+            normalized_url = f"{normalized_url} {zip_reference}"  # Rebuild the two-part record with exactly one separating space.
+
+        urls.append(normalized_url)  # Preserve the normalized URL entry in source order.
+
+    return urls  # Return retained normalized URL entries.
 
 
 def remove_duplicate_urls(urls: List[str]) -> Tuple[List[str], int]:  # Remove duplicate normalized URL entries while preserving first occurrence order.
