@@ -4310,15 +4310,32 @@ def open_url_in_new_tab(url: str, opened_tabs: int) -> int:
     return opened_tabs  # Return updated opened tabs count.
 
 
-def is_mercado_livre_affiliate_url(url: str) -> bool:
+def is_mercado_livre_url(url: str) -> bool:
     """
-    Verify whether a URL is a MercadoLivre meli.la affiliate short link.
+    Verify whether a URL belongs to MercadoLivre using the configured platform domain rules.
 
     :param url: URL string to test.
-    :return: True when the URL matches the MercadoLivre affiliate URL pattern, otherwise False.
+    :return: True when the URL matches a configured MercadoLivre domain or the meli.la affiliate pattern, otherwise False.
     """
 
-    return re.search(MERCADO_LIVRE_AFFILIATE_URL_PATTERN, str(url).strip(), re.IGNORECASE) is not None  # Match MercadoLivre short affiliate links.
+    normalized_url = str(url).strip().lower()  # Normalize URL for domain keyword checks.
+    mercado_livre_domains = PLATFORM_INVALID_URL_RULES.get("Mercado Livre", {}).get("url_domains", [])  # Reuse configured MercadoLivre domain keywords.
+
+    if any(domain_keyword.lower() in normalized_url for domain_keyword in mercado_livre_domains):  # Verify whether URL contains any configured MercadoLivre domain.
+        return True  # Return True when the URL belongs to MercadoLivre by domain rule.
+
+    return re.search(MERCADO_LIVRE_AFFILIATE_URL_PATTERN, str(url).strip(), re.IGNORECASE) is not None  # Match MercadoLivre short affiliate links as a final fallback.
+
+
+def is_mercado_livre_affiliate_url(url: str) -> bool:
+    """
+    Verify whether a URL belongs to MercadoLivre.
+
+    :param url: URL string to test.
+    :return: True when the URL belongs to MercadoLivre, otherwise False.
+    """
+
+    return is_mercado_livre_url(url)  # Preserve existing helper name for callers while supporting all MercadoLivre domains.
 
 
 def detect_mercado_livre_empty_url_page(image_paths: Dict[str, Path]) -> bool:
@@ -4349,7 +4366,7 @@ def retry_mercado_livre_empty_url_load(url: str, opened_tabs: int, urls_file: Pa
     :return: Tuple of updated opened tab count and whether processing may continue for this URL.
     """
 
-    if not is_mercado_livre_affiliate_url(url):  # Verify whether the current URL is a MercadoLivre meli.la short link before running page-specific detection.
+    if not is_mercado_livre_url(url):  # Verify whether the current URL belongs to MercadoLivre before running page-specific detection.
         return opened_tabs, True  # Continue normally for non-MercadoLivre affiliate URLs.
 
     for attempt in range(1, MAX_MERCADO_LIVRE_EMPTY_URL_RETRY_ATTEMPTS + 1):  # Count consecutive empty-page detections for this URL.
