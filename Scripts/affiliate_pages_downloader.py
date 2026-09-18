@@ -108,6 +108,7 @@ RENEW_AMAZON_AFFILIATE_URL = True  # Set to True to enable Amazon affiliate URL 
 ONLY_RENEW_AMAZON_AFFILIATE_URLS = False  # Control mode to only renew Amazon affiliate URLs without downloading content
 RENEWED_URL_MAP: Dict[str, str] = {}  # Store renewed Amazon URL pairs as original-to-renewed mapping.
 MERCADO_LIVRE_AFFILIATE_URL_PATTERN = r"https?://(?:www\.)?meli\.la/[A-Za-z0-9]+/?"  # MercadoLivre.py AFFILIATE_URL_PATTERN mirror for meli.la short links without importing module side effects.
+SHOPEE_AFFILIATE_URL_PATTERNS = [r"https?://s\.shopee\.com(?:\.br)?/[A-Za-z0-9]+", r"https?://(?:[a-z0-9-]+\.)?shp\.ee/[A-Za-z0-9/?=&._%-]+"]  # Shopee short-link patterns mirrored locally without importing Shopee.py side effects.
 
 ACTIVE_DOWNLOADS_DIRS = []  # Store the resolved active downloads directories path for reuse.
 
@@ -150,6 +151,8 @@ EXTENSION_DOWNLOAD_SETTING_STATE_CONFIDENCE = 0.95  # Define strict extension do
 MAX_DOWNLOAD_RETRY_ATTEMPTS = 2  # Define maximum number of download attempts per URL including the initial attempt.
 MAX_MERCADO_LIVRE_EMPTY_URL_RETRY_ATTEMPTS = 3  # Define maximum MercadoLivre empty-page reload attempts before marking the URL expired.
 MERCADO_LIVRE_EMPTY_URL_RETRY_WAIT_SECONDS = 0.8  # Define wait time after detecting a MercadoLivre empty page before retrying.
+MAX_SHOPEE_EMPTY_URL_RETRY_ATTEMPTS = 3  # Define maximum Shopee empty-page reload attempts before marking the URL expired.
+SHOPEE_EMPTY_URL_RETRY_WAIT_SECONDS = 0.8  # Define wait time after detecting a Shopee empty page before retrying.
 MAX_RETRY_MECHANISM_ATTEMPTS = 5  # Define maximum number of post-processing retry cycles for failed/unlinked URLs.
 CHROME_WINDOW_CLOSE_TIMEOUT_SECONDS = 10.0  # Define maximum wait for a dedicated Chrome window to disappear before another may be created.
 CHROME_WINDOW_CLOSE_POLL_SECONDS = 0.1  # Define polling interval while confirming that a dedicated Chrome window has closed.
@@ -204,7 +207,7 @@ PLATFORM_INVALID_URL_RULES: Dict[str, Any] = {  # Platform-specific invalid URL 
         "invalid_image_keys": [],  # No image asset keys for Shein invalid URL detection.
     },  # End Shein platform configuration.
     "Shopee": {  # Shopee platform configuration for invalid URL detection.
-        "url_domains": ["shopee.", "shope.ee"],  # Domain keyword substrings used to identify Shopee URLs.
+        "url_domains": ["shopee.", "shope.ee", "shp.ee"],  # Domain keyword substrings used to identify Shopee URLs.
         "homepage_patterns": [  # Compiled regex patterns for Shopee error page detection.
             re.compile(r"^https?://shope\.ee/error_page(?:[/?#].*)?$", re.IGNORECASE),  # Detect Shopee error page URL pattern.
         ],  # Finalize Shopee homepage patterns list.
@@ -2645,6 +2648,7 @@ def setup_image_paths(assets_dir: Path) -> Dict[str, Path]:
         "mercado_livre_invalid_url_img": assets_dir / "MercadoLivre-InvalidURL.png",  # Define MercadoLivre invalid URL image path
         "save_button_img": assets_dir / "SaveFileButton.png",  # Define MercadoLivre save button image path
         "share_button_img": assets_dir / "ShareAffiliateURL-Amazon.png",  # Define Amazon share button image path
+        "shopee_empty_url_img": assets_dir / "Shopee-Empty-URL.png",  # Define Shopee empty loaded URL image path.
         "unmarked_ask_download_configuration_setting_extension_tab_img": assets_dir / "Unmarked Ask for Download Configuration Setting - ExtensionTab.png",  # Define unmarked extension download setting image path.
     }  # End dictionary initialization
 
@@ -3774,6 +3778,11 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         if not mercado_livre_url_loaded:  # Verify whether MercadoLivre empty-page retry handling exhausted this URL.
             continue  # Continue with the next URL after the helper closes and marks the expired current URL.
 
+        opened_tabs, shopee_url_loaded = retry_shopee_empty_url_load(url, opened_tabs, urls_file, url_to_download, image_paths)  # Retry Shopee URLs that load the known empty page.
+
+        if not shopee_url_loaded:  # Verify whether Shopee empty-page retry handling exhausted this URL.
+            continue  # Continue with the next URL after the helper closes and marks the expired current URL.
+
         current_tab = index  # Store current tab index.
         original_url = url  # Preserve original URL before potential Amazon affiliate renewal modification.
 
@@ -4382,6 +4391,76 @@ def retry_mercado_livre_empty_url_load(url: str, opened_tabs: int, urls_file: Pa
         print(f"{BackgroundColors.YELLOW}[WARNING] MercadoLivre URL loaded an empty page for URL: {BackgroundColors.CYAN}{url}{BackgroundColors.YELLOW}. Retrying load attempt {BackgroundColors.CYAN}{attempt + 1}{BackgroundColors.YELLOW}/{BackgroundColors.CYAN}{MAX_MERCADO_LIVRE_EMPTY_URL_RETRY_ATTEMPTS}{BackgroundColors.YELLOW}.{Style.RESET_ALL}")  # Log retry reason and attempt count.
         opened_tabs = safely_close_product_tab(opened_tabs)  # Close the current empty page tab before reopening the URL.
         time.sleep(MERCADO_LIVRE_EMPTY_URL_RETRY_WAIT_SECONDS)  # Wait briefly before opening a replacement tab.
+
+        if not activate_automation_window():  # Verify automation window focus before opening the retry tab.
+            return opened_tabs, False  # Stop current URL processing when browser focus cannot be guaranteed.
+
+        opened_tabs = open_url_in_new_tab(url, opened_tabs)  # Open the same URL in a fresh tab for the next empty-page check.
+
+    return opened_tabs, True  # Defensive fallback; the loop returns earlier in all expected paths.
+
+
+def is_shopee_url(url: str) -> bool:
+    """
+    Verify whether a URL belongs to Shopee using configured platform domains and known affiliate short-link patterns.
+
+    :param url: URL string to test.
+    :return: True when the URL matches a configured Shopee domain or affiliate short-link pattern, otherwise False.
+    """
+
+    normalized_url = str(url).strip().lower()  # Normalize URL for domain keyword checks.
+    shopee_domains = PLATFORM_INVALID_URL_RULES.get("Shopee", {}).get("url_domains", [])  # Reuse configured Shopee domain keywords.
+
+    if any(domain_keyword.lower() in normalized_url for domain_keyword in shopee_domains):  # Verify whether URL contains any configured Shopee domain.
+        return True  # Return True when the URL belongs to Shopee by domain rule.
+
+    return any(re.search(pattern, str(url).strip(), re.IGNORECASE) is not None for pattern in SHOPEE_AFFILIATE_URL_PATTERNS)  # Match known Shopee affiliate short-link formats.
+
+
+def detect_shopee_empty_url_page(image_paths: Dict[str, Path]) -> bool:
+    """
+    Detect whether the current Shopee page loaded as an empty URL page.
+
+    :param image_paths: Dictionary mapping image variable names to resolved image asset paths.
+    :return: True when the Shopee empty URL image is detected, otherwise False.
+    """
+
+    empty_url_img = image_paths.get("shopee_empty_url_img")  # Resolve Shopee empty URL screenshot asset.
+
+    if empty_url_img is None:  # Verify image path exists in the configured image map.
+        return False  # Skip detection when the image path is unavailable.
+
+    return locate_image(empty_url_img) is not None  # Return whether the empty URL marker image is visible.
+
+
+def retry_shopee_empty_url_load(url: str, opened_tabs: int, urls_file: Path, url_to_download: Dict[str, str], image_paths: Dict[str, Path]) -> Tuple[int, bool]:
+    """
+    Retry Shopee URLs that opened to an empty page, then mark them expired after repeated failures.
+
+    :param url: Original URL opened in Chrome.
+    :param opened_tabs: Current opened tab counter.
+    :param urls_file: Path to the URLs input file for invalid URL persistence.
+    :param url_to_download: In-memory URL-to-filename mapping updated when the URL is expired.
+    :param image_paths: Dictionary mapping image variable names to resolved image asset paths.
+    :return: Tuple of updated opened tab count and whether processing may continue for this URL.
+    """
+
+    if not is_shopee_url(url):  # Verify whether the current URL belongs to Shopee before running page-specific detection.
+        return opened_tabs, True  # Continue normally for non-Shopee URLs.
+
+    for attempt in range(1, MAX_SHOPEE_EMPTY_URL_RETRY_ATTEMPTS + 1):  # Count consecutive empty-page detections for this URL.
+        if not detect_shopee_empty_url_page(image_paths):  # Verify whether the current page loaded usable content.
+            return opened_tabs, True  # Continue processing when the empty URL image is not detected.
+
+        if attempt >= MAX_SHOPEE_EMPTY_URL_RETRY_ATTEMPTS:  # Verify whether empty-page retries are exhausted.
+            loaded_url = get_browser_current_url() or "Shopee empty URL page detected"  # Capture loaded URL for diagnostics when available.
+            handle_invalid_url(url, urls_file, url_to_download, "Shopee", loaded_url)  # Mark the URL as expired using the existing invalid URL persistence path.
+            opened_tabs = safely_close_product_tab(opened_tabs)  # Close the failed Shopee tab before moving to the next URL.
+            return opened_tabs, False  # Stop processing this URL after three consecutive empty-page detections.
+
+        print(f"{BackgroundColors.YELLOW}[WARNING] Shopee URL loaded an empty page for URL: {BackgroundColors.CYAN}{url}{BackgroundColors.YELLOW}. Retrying load attempt {BackgroundColors.CYAN}{attempt + 1}{BackgroundColors.YELLOW}/{BackgroundColors.CYAN}{MAX_SHOPEE_EMPTY_URL_RETRY_ATTEMPTS}{BackgroundColors.YELLOW}.{Style.RESET_ALL}")  # Log retry reason and attempt count.
+        opened_tabs = safely_close_product_tab(opened_tabs)  # Close the current empty page tab before reopening the URL.
+        time.sleep(SHOPEE_EMPTY_URL_RETRY_WAIT_SECONDS)  # Wait briefly before opening a replacement tab.
 
         if not activate_automation_window():  # Verify automation window focus before opening the retry tab.
             return opened_tabs, False  # Stop current URL processing when browser focus cannot be guaranteed.
