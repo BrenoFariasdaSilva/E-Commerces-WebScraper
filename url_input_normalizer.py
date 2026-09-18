@@ -22,7 +22,7 @@ Dependencies:
 
 Assumptions & Notes:
     - Input is read from Inputs/urls.txt before Input/urls.txt.
-    - Only trimmed HTTP and HTTPS URL lines are retained.
+    - Plain HTTP/HTTPS URL lines and Markdown links whose destination is HTTP/HTTPS are retained.
     - Duplicate URL occurrences are removed after URL normalization.
 """
 
@@ -409,18 +409,79 @@ def resolve_url_source(script_directory: Path) -> Tuple[Path, bool]:  # Resolve 
     )  # Complete the missing-input failure.
 
 
-def extract_valid_urls(source_path: Path) -> List[str]:  # Read and retain trimmed HTTP and HTTPS URL lines.
+def extract_url_candidate(line: str) -> Optional[str]:  # Extract one HTTP/HTTPS URL candidate from a supported input-line format.
     """
-    Read a source file and extract valid trimmed URL lines.
+    Extract one URL candidate from a plain URL line or Markdown link line.
+
+    Supported examples:
+        https://example.com/path
+        [https://example.com/path](https://example.com/path)
+        [Link text](https://example.com/path)
+        <https://example.com/path>
+
+    :param line: Raw source-file line.
+    :return: Extracted HTTP/HTTPS URL candidate, or None when the line is not a supported URL line.
+    """
+
+    stripped_line = line.strip()  # Remove surrounding whitespace before recognizing the line format.
+
+    if not stripped_line:  # Reject empty or whitespace-only lines.
+        return None  # Signal that the line does not contain a supported URL entry.
+
+    markdown_match = re.fullmatch(
+        r"\[[^\]]*\]\(\s*(https?://\S+?)\s*\)",
+        stripped_line,
+        flags=re.IGNORECASE,
+    )  # Match a complete Markdown link and capture only its destination URL.
+
+    if markdown_match is not None:  # Prefer the Markdown destination so the visible label is never counted as a second URL.
+        candidate = markdown_match.group(1)  # Extract the single destination URL from the Markdown link.
+    elif stripped_line.startswith("<") and stripped_line.endswith(">"):  # Support standard angle-bracket URL presentation.
+        candidate = stripped_line[1:-1].strip()  # Remove the surrounding angle brackets.
+    else:  # Treat the complete trimmed line as a possible plain URL.
+        candidate = stripped_line  # Preserve the original URL value for validation and normalization.
+
+    candidate = re.sub(r"\\([\\`*_{}\[\]()#+\-.!])", r"\1", candidate)  # Undo Markdown backslash escapes that may appear inside copied URLs.
+
+    if not candidate.lower().startswith(("https://", "http://")):  # Reject headings, descriptions, prices, and other non-URL text.
+        return None  # Signal that this line is not a supported URL entry.
+
+    if any(character.isspace() for character in candidate):  # Reject malformed candidates containing whitespace.
+        return None  # Prevent partial or ambiguous URL parsing.
+
+    parsed = urlsplit(candidate)  # Parse the candidate before accepting it as a valid HTTP/HTTPS URL.
+
+    if parsed.scheme.lower() not in {"http", "https"} or not parsed.netloc:  # Require a supported scheme and nonempty network location.
+        return None  # Reject malformed HTTP/HTTPS-looking values.
+
+    return candidate  # Return the validated URL candidate.
+
+
+def extract_valid_urls(source_path: Path) -> List[str]:  # Read and retain supported HTTP and HTTPS URL entries.
+    """
+    Read a source file and extract valid URL entries from supported line formats.
+
+    Plain HTTP/HTTPS lines and Markdown links are accepted. For Markdown links,
+    only the destination is retained, so ``[url](url)`` contributes exactly one
+    URL instead of two. Query strings and fragments are removed exactly as in
+    the previous normalization behavior.
 
     :param source_path: Existing URL source file path.
-    :return: Normalized URL lines that begin with HTTP or HTTPS after trimming.
+    :return: Normalized HTTP/HTTPS URL entries in source order.
     """
 
     source_content = source_path.read_text(encoding="utf-8")  # Read the complete source file as UTF-8 text.
-    normalized_lines = [line.strip() for line in source_content.splitlines()]  # Trim surrounding whitespace from every line.
-    urls = [line for line in normalized_lines if line.startswith(("https://", "http://"))]  # Retain only HTTP and HTTPS URL lines.
-    urls = [urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", "")) for parsed in (urlsplit(url) for url in urls)]  # Remove query strings and fragments before duplicate detection.
+    urls: List[str] = []  # Store one normalized URL for every supported URL line.
+
+    for source_line in source_content.splitlines():  # Inspect every source line independently.
+        candidate = extract_url_candidate(source_line)  # Extract a URL from plain or Markdown presentation.
+
+        if candidate is None:  # Ignore headings, product descriptions, prices, coupon text, and other non-URL lines.
+            continue  # Continue scanning the remaining source lines.
+
+        parsed = urlsplit(candidate)  # Parse the validated URL for canonical query/fragment removal.
+        normalized_url = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", ""))  # Remove query strings and fragments before duplicate detection.
+        urls.append(normalized_url)  # Preserve the normalized URL occurrence in source order.
 
     return urls  # Return retained normalized URLs.
 
