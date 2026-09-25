@@ -2869,8 +2869,8 @@ def run_extension_initialization_download(image_paths: Dict[str, Path], download
 
     pre_download_snapshots = snapshot_download_directories(downloads_dirs)  # Capture downloads directory snapshots before the initialization download.
     download_method = click_download_button(image_paths["download_img"])  # Click the existing Start download control using existing image logic.
-    confirmation_alt_img = image_paths["confirmation_img"].with_name(f"{image_paths['confirmation_img'].stem}-Alternative{image_paths['confirmation_img'].suffix}")  # Build alternative confirmation image path using existing naming convention.
-    confirmation_method = watch_for_save_dialog_and_confirmation(image_paths["save_button_img"], image_paths["confirmation_img"], confirmation_alt_img, image_paths["failed_file_download_img"], image_paths["hide_next_time_img"])  # Wait for initialization download confirmation using existing logic.
+    confirmation_imgs = [image_paths["confirmation_img"]] + [image_paths["confirmation_img"].with_name(f"{image_paths['confirmation_img'].stem} - Alternative {variant}{image_paths['confirmation_img'].suffix}") for variant in range(1, 4)]  # Build accepted confirmation image variants from the same assets directory.
+    confirmation_method = watch_for_save_dialog_and_confirmation(image_paths["save_button_img"], confirmation_imgs, image_paths["failed_file_download_img"], image_paths["hide_next_time_img"])  # Wait for initialization download confirmation using existing logic.
     download_failed = confirmation_method == "Timeout" or confirmation_method == "Download Failed"  # Derive initialization download failure from existing confirmation statuses.
 
     verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Extension initialization download action: {BackgroundColors.CYAN}{download_method}{BackgroundColors.GREEN}; confirmation: {BackgroundColors.CYAN}{confirmation_method}{Style.RESET_ALL}")  # Log initialization download methods when verbose.
@@ -3823,8 +3823,8 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
             verbose_output(f"{BackgroundColors.GREEN}Enable permission action: {BackgroundColors.CYAN}{enable_permission_method}{BackgroundColors.GREEN}{Style.RESET_ALL}")  # Log enable-permission action when verbose.
 
             download_method = click_download_button(image_paths["download_img"])  # Execute download click action.
-            confirmation_alt_img = image_paths["confirmation_img"].with_name(f"{image_paths['confirmation_img'].stem}-Alternative{image_paths['confirmation_img'].suffix}")  # Build alternative confirmation image path using deterministic naming pattern.
-            confirmation_method = watch_for_save_dialog_and_confirmation(image_paths["save_button_img"], image_paths["confirmation_img"], confirmation_alt_img, image_paths["failed_file_download_img"], image_paths["hide_next_time_img"]  )  # Watch and handle optional save dialog while waiting.
+            confirmation_imgs = [image_paths["confirmation_img"]] + [image_paths["confirmation_img"].with_name(f"{image_paths['confirmation_img'].stem} - Alternative {variant}{image_paths['confirmation_img'].suffix}") for variant in range(1, 4)]  # Build accepted confirmation image variants from the same assets directory.
+            confirmation_method = watch_for_save_dialog_and_confirmation(image_paths["save_button_img"], confirmation_imgs, image_paths["failed_file_download_img"], image_paths["hide_next_time_img"]  )  # Watch and handle optional save dialog while waiting.
 
             download_failed = confirmation_method == "Timeout" or confirmation_method == "Download Failed"  # Set download failure flag based on confirmation timeout or failed download result.
             
@@ -4682,14 +4682,13 @@ def click_hide_next_time_if_present(hide_next_time_img: Path) -> bool:
     return True  # Return success when the hide-next-time button was clicked.
 
 
-def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_img: Path, confirmation_alt_img: Path, failed_file_download_img: Path, hide_next_time_img: Path) -> str:
+def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_imgs: List[Path], failed_file_download_img: Path, hide_next_time_img: Path) -> str:
     """
     Watches for the optional Chrome "Save As" dialog and clicks the save button if it appears,
     while also monitoring for the confirmation image to stop early.
 
     :param save_button_img: Path to the save button image.
-    :param confirmation_img: Path to the confirmation image.
-    :param confirmation_alt_img: Path to the alternative confirmation image.
+    :param confirmation_imgs: Paths to accepted confirmation image variants.
     :param failed_file_download_img: Path to the failed file download image.
     :param hide_next_time_img: Path to the hide-next-time image for optional overlay dismissal.
     :return: Detection status string.
@@ -4721,7 +4720,7 @@ def watch_for_save_dialog_and_confirmation(save_button_img: Path, confirmation_i
             click_box_center(box)  # Click center of detected save button box.
             time.sleep(0.1)  # Wait briefly to allow the save action to settle.
         
-        if enhanced_locate_image(confirmation_img) is not None or enhanced_locate_image(confirmation_alt_img) is not None:  # Verify for confirmation images to allow early exit from waiting when detected.
+        if any(enhanced_locate_image(confirmation_img) is not None for confirmation_img in confirmation_imgs):  # Verify for confirmation images to allow early exit from waiting when detected.
             time.sleep(1)  # Wait briefly after confirmation detection to allow any UI changes to settle before proceeding.
             verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Confirmation detected during save dialog watch; exiting early.{Style.RESET_ALL}")  # Log early exit due to confirmation detection.
             box = enhanced_locate_image(save_button_img)  # Attempt to locate the optional save button image on screen.
