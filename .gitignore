@@ -201,7 +201,7 @@ Icon? # match Icon<CR>
 **/*.txt
 **/*.parquet
 **/*.arff
-**/*.png
+# **/*.png
 **/*.jpg
 **/*.jpeg
 **/*.gif
