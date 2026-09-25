@@ -149,6 +149,7 @@ CHROME_DOWNLOAD_SETTING_SEARCH_SECONDS = 2.0  # Define native Chrome downloads s
 EXTENSION_DOWNLOAD_SETTING_SEARCH_SECONDS = 2.0  # Define extension download setting image search window in seconds.
 EXTENSION_DOWNLOAD_SETTING_STATE_CONFIDENCE = 0.95  # Define strict extension download setting state match confidence.
 MAX_DOWNLOAD_RETRY_ATTEMPTS = 2  # Define maximum number of download attempts per URL including the initial attempt.
+CAPTCHA_WARNING_THRESHOLD = 5  # Define consecutive CAPTCHA detections that require user intervention.
 MAX_MERCADO_LIVRE_EMPTY_URL_RETRY_ATTEMPTS = 3  # Define maximum MercadoLivre empty-page reload attempts before marking the URL expired.
 MERCADO_LIVRE_EMPTY_URL_RETRY_WAIT_SECONDS = 0.8  # Define wait time after detecting a MercadoLivre empty page before retrying.
 MAX_SHOPEE_EMPTY_URL_RETRY_ATTEMPTS = 3  # Define maximum Shopee empty-page reload attempts before marking the URL expired.
@@ -3733,6 +3734,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
     url_to_download: Dict[str, str] = {}  # Initialize URL to downloaded filename mapping dictionary.
     processed_count = 0  # Initialize processed URL counter.
     initial_consecutive_download_failures = 0  # Initialize consecutive download-failure counter for the first processed URLs when Chrome downloads settings are unresolved.
+    consecutive_captcha_downloads = 0  # Initialize consecutive CAPTCHA download counter across URL attempts.
     downloads_dirs[:] = [str(Path(downloads_dir).resolve()) for downloads_dir in downloads_dirs]  # Resolve and normalize monitored downloads directory paths.
     opened_tabs = 0  # Track number of tabs opened by this processing loop to avoid closing the base tab.
     renewal_success_count: int = 0  # Track total successful Amazon URL renewals for final report in only-renew mode.
@@ -3756,6 +3758,8 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
         fragmented_skip = False  # Initialize fragmented skip flag for for-loop continuation after while-loop exit.
         invalid_url_skip = False  # Initialize invalid URL skip flag for for-loop continuation after homepage redirect detection.
         extension_unavailable_skip = False  # Initialize extension-unavailable skip flag for for-loop continuation after extension lookup failure.
+        captcha_retry_attempt = 0  # Initialize CAPTCHA-specific retry counter for bounded current-URL recovery.
+        captcha_detected = False  # Initialize CAPTCHA detection flag for current download attempt.
 
         if only_renew_amazon_urls:  # Verify whether only-renew mode is active before executing download-specific workflow.
             opened_tabs, renewal_succeeded, renewal_original_url = only_renew_amazon_url_mode(url, index, urls, urls_file, image_paths, renew_amazon_affiliate, opened_tabs)  # Execute isolated renew-only flow and unpack tabs count, success flag, and original URL identifier.
@@ -3848,6 +3852,54 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
                 if detected_download_dir != "" and len(downloads_dirs) > 1:  # Verify whether detected directory exists while local list remains unresolved.
                     update_active_download_directory(detected_download_dir)  # Persist detected monitored downloads directory in global cache.
                     downloads_dirs[:] = ACTIVE_DOWNLOADS_DIRS  # Update local monitored downloads directories list with detected cache.
+
+                captcha_detected = detected_filenames != "" and "captcha" in detected_filenames.lower()  # Detect CAPTCHA content from actual downloaded filename.
+
+                if captcha_detected:  # Handle downloaded CAPTCHA content as invalid result.
+                    captcha_download_path = Path(detected_download_dir) / detected_filenames  # Build CAPTCHA artifact path from detected download data.
+
+                    try:  # Attempt CAPTCHA artifact disposal before retrying current URL.
+                        if captcha_download_path.exists():  # Verify CAPTCHA artifact remains available for disposal.
+                            captcha_download_path.unlink()  # Delete CAPTCHA artifact so it cannot become a future detection candidate.
+                    except Exception as e:  # Handle CAPTCHA artifact disposal failures without recording success.
+                        print(f"{BackgroundColors.YELLOW}[WARNING] Failed to discard CAPTCHA download: {BackgroundColors.CYAN}{captcha_download_path}{BackgroundColors.YELLOW} - {e}{Style.RESET_ALL}")  # Log CAPTCHA artifact disposal failure.
+
+                    consecutive_captcha_downloads += 1  # Increment consecutive CAPTCHA download counter.
+                    print(f"{BackgroundColors.RED}[WARNING] CAPTCHA download detected for URL: {BackgroundColors.CYAN}{url}{BackgroundColors.RED}. Discarding file and restarting current URL.{Style.RESET_ALL}")  # Log CAPTCHA detection and current-URL restart.
+
+                    if consecutive_captcha_downloads == CAPTCHA_WARNING_THRESHOLD:  # Require acknowledgement after repeated consecutive CAPTCHA downloads.
+                        maybe_show_messagebox("CAPTCHA Warning", "Repeated CAPTCHA pages were detected. Resolve the CAPTCHA situation before continuing.", True)  # Display blocking red CAPTCHA warning before retrying.
+
+                    close_extension_download_tab(image_paths["close_download_tab_img"])  # Close extension tab before CAPTCHA browser recreation.
+                    opened_tabs = safely_close_product_tab(opened_tabs)  # Close current product tab before CAPTCHA browser recreation.
+
+                    if captcha_retry_attempt < CAPTCHA_WARNING_THRESHOLD:  # Recreate browser for bounded CAPTCHA-specific retries.
+                        captcha_retry_attempt += 1  # Increment CAPTCHA-specific retry counter before recreation.
+                        context_ready = reset_browser_context_for_retry(image_paths["close_download_tab_img"])  # Recreate dedicated browser context after CAPTCHA detection.
+                        opened_tabs = 0  # Reset opened tabs counter after CAPTCHA browser closure.
+
+                        if not context_ready:  # Verify browser context readiness before CAPTCHA retry navigation.
+                            print(f"{BackgroundColors.YELLOW}[WARNING] Browser context reset failed after CAPTCHA detection for URL: {BackgroundColors.CYAN}{url}{BackgroundColors.YELLOW}. Aborting processing so no second Chrome automation window can be created.{Style.RESET_ALL}")  # Log strict CAPTCHA lifecycle failure.
+                            return processed_count, url_to_download, False  # Stop processing when CAPTCHA browser recreation fails.
+
+                        opened_tabs = open_url_in_new_tab(url, opened_tabs)  # Reopen current URL after confirmed CAPTCHA browser recreation.
+                        continue  # Continue current URL lifecycle after CAPTCHA retry setup.
+
+                    retry_attempt += 1  # Increment normal retry counter after CAPTCHA-specific retries end.
+
+                    if retry_attempt <= MAX_DOWNLOAD_RETRY_ATTEMPTS:  # Verify normal retry availability after CAPTCHA-specific retries.
+                        context_ready = reset_browser_context_for_retry(image_paths["close_download_tab_img"])  # Recreate dedicated browser context for normal retry.
+                        opened_tabs = 0  # Reset opened tabs counter after normal browser closure.
+
+                        if not context_ready:  # Verify browser context readiness before normal retry navigation.
+                            print(f"{BackgroundColors.YELLOW}[WARNING] Browser context reset failed after CAPTCHA detection for URL: {BackgroundColors.CYAN}{url}{BackgroundColors.YELLOW}. Aborting processing so no second Chrome automation window can be created.{Style.RESET_ALL}")  # Log strict CAPTCHA lifecycle failure.
+                            return processed_count, url_to_download, False  # Stop processing when CAPTCHA browser recreation fails.
+
+                        opened_tabs = open_url_in_new_tab(url, opened_tabs)  # Reopen current URL after confirmed normal browser recreation.
+                        continue  # Continue current URL lifecycle after normal retry setup.
+
+                    print(f"{BackgroundColors.YELLOW}[WARNING] CAPTCHA download persisted for URL: {BackgroundColors.CYAN}{url}{BackgroundColors.YELLOW} after all retry attempts. Moving to next URL.{Style.RESET_ALL}")  # Log CAPTCHA retry exhaustion without recording success.
+                    break  # Exit current URL after bounded CAPTCHA retries.
                 
                 initial_consecutive_download_failures, abort_result = handle_initial_chrome_download_failures(chrome_download_settings_ready, index, detected_filenames, initial_consecutive_download_failures, url, processed_count, url_to_download)  # Verify initial downloads and possibly request manual intervention.
                 
@@ -3864,6 +3916,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
                     if should_continue:  # Verify whether fragmented processing requested loop continuation.
                         verbose_output(f"{BackgroundColors.YELLOW}[WARNING] Skipping URL mapping update due to fragmented ZIP processing failure for URL: {url}{Style.RESET_ALL}")  # Log mapping skip due to fragmented processing failure with URL details when verbose.
                         fragmented_skip = True  # Mark fragmented skip flag for outer for-loop continuation without processed_count increment.
+                        consecutive_captcha_downloads = 0  # Reset CAPTCHA sequence after non-CAPTCHA fragmented result.
                         break  # Exit while loop without closing tabs, preserving original fragmented skip behavior.
                     
                     associate_url_with_download(url_to_download, url, effective_filename)  # Persist URL to downloaded filename mapping when detection succeeds.
@@ -3871,6 +3924,8 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
                     effective_filename = move_downloaded_file_for_url(downloads_dirs, urls_file.resolve().parent, url, effective_filename, url_to_download)  # Move downloaded file for current URL and update mapping with new location.
                     success = True  # Mark download as successful for processed_count increment after while loop.
                     
+            consecutive_captcha_downloads = 0  # Reset CAPTCHA sequence after non-CAPTCHA download result.
+
             close_method = close_extension_download_tab(image_paths["close_download_tab_img"])  # Execute close extension tab action.
             if not download_failed:  # Execute post-download tab closure only when download was not marked as failed to allow for retry attempts without reopening the URL.
                 handle_post_download_methods(ext_methods, download_methods, completion_methods, close_methods, extension_method, download_method, confirmation_method, close_method, current_tab)  # Execute extracted method tracking logic.
@@ -5639,12 +5694,13 @@ def strip_ansi(text: str) -> str:
     return re.sub(r"\x1B\[[0-?]*[ -/]*[@-~]", "", text)  # This regex matches most ANSI escape sequences (CSI and related codes).
 
 
-def maybe_show_messagebox(title: str, message: str) -> None:
+def maybe_show_messagebox(title: str, message: str, is_error: bool = False) -> None:
     """
     Displays messagebox when tkinter is available.
 
     :param title: Messagebox title string.
     :param message: Messagebox body string.
+    :param is_error: Whether user intervention requires error presentation.
     :return: None
     """
 
@@ -5655,7 +5711,10 @@ def maybe_show_messagebox(title: str, message: str) -> None:
         clean_title = strip_ansi(title)  # Strip ANSI codes from title for clean display.
         clean_message = strip_ansi(message)  # Strip ANSI codes from message for clean display.
 
-        messagebox.showinfo(clean_title, clean_message)  # Show informational messagebox without ANSI codes.
+        if is_error:  # Select red error dialog when user intervention is required.
+            messagebox.showerror(clean_title, clean_message)  # Show blocking red error messagebox without ANSI codes.
+        else:  # Select informational dialog for normal completion reports.
+            messagebox.showinfo(clean_title, clean_message)  # Show informational messagebox without ANSI codes.
         root.destroy()  # Destroy root window.
     except Exception:  # Handle tkinter availability and GUI exceptions.
         pass  # Skip messagebox display on exception.
