@@ -3868,7 +3868,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
                     print(f"{BackgroundColors.RED}[WARNING] CAPTCHA download detected for URL: {BackgroundColors.CYAN}{url}{BackgroundColors.RED}. Discarding file and restarting current URL.{Style.RESET_ALL}")  # Log CAPTCHA detection and current-URL restart.
 
                     if consecutive_captcha_downloads == CAPTCHA_WARNING_THRESHOLD:  # Require acknowledgement after repeated consecutive CAPTCHA downloads.
-                        maybe_show_messagebox("CAPTCHA Warning", "Repeated CAPTCHA pages were detected. Resolve the CAPTCHA situation before continuing.", True)  # Display blocking red CAPTCHA warning before retrying.
+                        show_captcha_warning("CAPTCHA Warning", "Repeated CAPTCHA pages were detected. Resolve the CAPTCHA situation before continuing.")  # Display blocking flashing CAPTCHA warning before retrying.
 
                     close_extension_download_tab(image_paths["close_download_tab_img"])  # Close extension tab before CAPTCHA browser recreation.
                     opened_tabs = safely_close_product_tab(opened_tabs)  # Close current product tab before CAPTCHA browser recreation.
@@ -5694,13 +5694,12 @@ def strip_ansi(text: str) -> str:
     return re.sub(r"\x1B\[[0-?]*[ -/]*[@-~]", "", text)  # This regex matches most ANSI escape sequences (CSI and related codes).
 
 
-def maybe_show_messagebox(title: str, message: str, is_error: bool = False) -> None:
+def maybe_show_messagebox(title: str, message: str) -> None:
     """
     Displays messagebox when tkinter is available.
 
     :param title: Messagebox title string.
     :param message: Messagebox body string.
-    :param is_error: Whether user intervention requires error presentation.
     :return: None
     """
 
@@ -5711,13 +5710,67 @@ def maybe_show_messagebox(title: str, message: str, is_error: bool = False) -> N
         clean_title = strip_ansi(title)  # Strip ANSI codes from title for clean display.
         clean_message = strip_ansi(message)  # Strip ANSI codes from message for clean display.
 
-        if is_error:  # Select red error dialog when user intervention is required.
-            messagebox.showerror(clean_title, clean_message)  # Show blocking red error messagebox without ANSI codes.
-        else:  # Select informational dialog for normal completion reports.
-            messagebox.showinfo(clean_title, clean_message)  # Show informational messagebox without ANSI codes.
+        messagebox.showinfo(clean_title, clean_message)  # Show informational messagebox without ANSI codes.
         root.destroy()  # Destroy root window.
     except Exception:  # Handle tkinter availability and GUI exceptions.
         pass  # Skip messagebox display on exception.
+
+
+def show_captcha_warning(title: str, message: str) -> None:
+    """
+    Displays a blocking flashing CAPTCHA warning window.
+
+    :param title: Warning window title string.
+    :param message: Warning window body string.
+    :return: None.
+    """
+
+    root = tk.Tk()  # Create dedicated Tkinter root for CAPTCHA warning.
+    root.title(strip_ansi(title))  # Set warning window title without ANSI codes.
+    root.configure(background="#B00020")  # Set initial red warning background.
+    root.attributes("-topmost", True)  # Keep warning window above normal windows while active.
+    root.resizable(False, False)  # Prevent warning window layout changes during flashing.
+
+    alert_label = tk.Label(root, text="CAPTCHA WARNING", background="#B00020", foreground="#FFFFFF", font=("Arial", 16, "bold"), padx=24, pady=16)  # Create prominent warning label.
+    alert_label.pack(fill="x")  # Place warning label across window width.
+    message_label = tk.Label(root, text=strip_ansi(message), background="#B00020", foreground="#FFFFFF", font=("Arial", 11), justify="center", wraplength=420, padx=24, pady=16)  # Create warning message label.
+    message_label.pack(fill="x")  # Place warning message below alert label.
+
+    flash_after_id: str | None = None  # Store scheduled flash callback identifier.
+    flash_red = True  # Track active warning background color.
+
+    def flash_warning() -> None:  # Alternate warning colors while modal window remains open.
+        nonlocal flash_after_id, flash_red  # Allow flash state updates within nested callback.
+
+        flash_red = not flash_red  # Toggle warning color state.
+        background = "#B00020" if flash_red else "#FFD000"  # Select red or high-contrast warning background.
+        foreground = "#FFFFFF" if flash_red else "#000000"  # Select readable foreground for active background.
+        root.configure(background=background)  # Apply active background to warning window.
+        alert_label.configure(background=background, foreground=foreground)  # Apply active colors to alert label.
+        message_label.configure(background=background, foreground=foreground)  # Apply active colors to warning message.
+        flash_after_id = root.after(500, flash_warning)  # Schedule next flash without busy waiting.
+
+    def acknowledge_warning() -> None:  # Stop flashing and close warning after explicit acknowledgement.
+        nonlocal flash_after_id  # Allow callback identifier cleanup within nested acknowledgement.
+
+        if flash_after_id is not None:  # Verify scheduled flash callback exists before cancellation.
+            root.after_cancel(flash_after_id)  # Cancel pending flash callback before window destruction.
+            flash_after_id = None  # Clear callback identifier after cancellation.
+
+        root.grab_release()  # Release modal input capture before window destruction.
+        root.destroy()  # Destroy warning root after user acknowledgement.
+
+    def retain_warning() -> None:  # Keep warning visible when window-close control is requested.
+        root.focus_force()  # Return focus to warning window until Continue is clicked.
+
+    continue_button = tk.Button(root, text="Continue", command=acknowledge_warning, background="#FFFFFF", foreground="#B00020", font=("Arial", 11, "bold"), padx=20, pady=8)  # Create explicit acknowledgement button.
+    continue_button.pack(pady=(0, 20))  # Place acknowledgement button below warning message.
+    root.protocol("WM_DELETE_WINDOW", retain_warning)  # Prevent window-close control from bypassing acknowledgement.
+    root.grab_set()  # Capture Tkinter input until acknowledgement.
+    root.lift()  # Raise warning window above other windows.
+    root.focus_force()  # Focus warning window for immediate user attention.
+    root.after(0, flash_warning)  # Start flashing after Tkinter event loop begins.
+    root.mainloop()  # Block processing until user acknowledgement destroys warning window.
 
 
 def run(tab_count: int | None, urls_file: Path, assets_dir: Path, headerless: bool = True, renew_amazon_affiliate: bool = False, only_renew_amazon_urls: bool = False, process_only_unlinked_urls: bool = False, retry_mechanism: bool = True) -> int:
