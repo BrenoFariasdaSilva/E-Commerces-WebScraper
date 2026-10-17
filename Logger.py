@@ -89,9 +89,9 @@ class Logger:
         if message is None:  # Ignore None messages
             return  # Early exit
 
-        out = str(message)  # Convert message to string
-        if not out.endswith("\n"):  # Ensure newline termination
-            out += "\n"  # Append newline if missing
+        out = str(message)  # Preserve the exact output-stream content
+        if not out:  # Ignore empty writes without inserting line breaks
+            return  # No content to emit
 
         clean_out = ANSI_ESCAPE_REGEX.sub("", out)  # Strip ANSI sequences for log file
 
