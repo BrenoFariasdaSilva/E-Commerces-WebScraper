@@ -2637,6 +2637,8 @@ def setup_image_paths(assets_dir: Path) -> Dict[str, Path]:
         "download_img": assets_dir / "DownloadButton.png",  # Define download button image path
         "enable_permission_img": assets_dir / "Extension Enable Permission.png",  # Define extension permission image path
         "maybe_later_img": assets_dir / "ExtensionMaybeLater.png",  # Define extension maybe later image path
+        "maybe_later_alternative_img": assets_dir / "ExtensionMaybeLater-Alternative.png",  # Define first alternative extension maybe later image path.
+        "maybe_later_alternative2_img": assets_dir / "ExtensionMaybeLater-Alternative2.png",  # Define second alternative extension maybe later image path.
         "extension_img": assets_dir / "Extension.png",  # Define extension image path
         "failed_file_download_img": assets_dir / "FileDownloadFailed.png",  # Define failed download image path
         "get_amazon_url_img": assets_dir / "GetAffiliateURL-Amazon.png",  # Define Amazon URL retrieval image path    
@@ -2915,8 +2917,10 @@ def configure_extension_download_settings(image_paths: Dict[str, Path], download
         print(f"{BackgroundColors.YELLOW}[WARNING] Extension image not found during initialization configuration.{Style.RESET_ALL}")  # Log extension image failure for initialization.
         return False  # Return failure when the extension cannot be opened.
 
-    maybe_later_clicked = click_maybe_later(image_paths["maybe_later_img"])  # Click the optional Maybe later popup when visible.
+    maybe_later_clicked = click_maybe_later(image_paths["maybe_later_img"], image_paths["maybe_later_alternative_img"], image_paths["maybe_later_alternative2_img"])  # Click the optional Maybe later popup when visible.
     enable_permission_method = click_enable_permission(image_paths["enable_permission_img"])  # Click the optional Allow permission control when visible.
+    if not maybe_later_clicked:  # Try clicking the maybe button again, if it wasn't yet
+        maybe_later_clicked = click_maybe_later(image_paths["maybe_later_img"], image_paths["maybe_later_alternative_img"], image_paths["maybe_later_alternative2_img"])  # Click the optional Maybe later popup when visible.
     verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Extension initialization prompts: Maybe later={BackgroundColors.CYAN}{maybe_later_clicked}{BackgroundColors.GREEN}; Allow={BackgroundColors.CYAN}{enable_permission_method}{Style.RESET_ALL}")  # Log optional prompt actions when verbose.
 
     if not click_configuration_settings_section(image_paths["configuration_settings_extension_tab_img"]):  # Open the Configuration section by clicking the matched image center.
@@ -3820,7 +3824,7 @@ def process_urls_with_download_tracking(urls: List[str], urls_file: Path, tab_co
             
             enable_permission_method = click_enable_permission(image_paths["enable_permission_img"])  # Attempt to dismiss optional extension popup or click enable permission using passed asset variables.
             
-            maybe_later_method = click_maybe_later(image_paths["maybe_later_img"])  # Attempt to dismiss optional extension popup using passed asset variables.
+            maybe_later_method = click_maybe_later(image_paths["maybe_later_img"], image_paths["maybe_later_alternative_img"], image_paths["maybe_later_alternative2_img"])  # Attempt to dismiss optional extension popup using passed asset variables.
             
             scroll_extension_tab_to_start_button()  # Scroll again after potential permission click to ensure the Start download button is visible regardless of permission prompt presence or screen size.
             
@@ -4667,29 +4671,33 @@ def click_enable_permission(enable_img: Path) -> str:
     return "NotFound"  # Return NotFound when no enable-permission image was detected.
 
 
-def click_maybe_later(maybe_later_img: Path) -> bool:
+def click_maybe_later(maybe_later_img: Path, maybe_later_alternative_img: Path, maybe_later_alternative2_img: Path) -> bool:
     """
     Clicks the extension "maybe later" popup dismissal button when present.
 
     :param maybe_later_img: Path to the extension "maybe later" image.
+    :param maybe_later_alternative_img: Path to the first alternative extension "maybe later" image.
+    :param maybe_later_alternative2_img: Path to the second alternative extension "maybe later" image.
     :return: True when the popup was found and clicked, otherwise False.
     """
 
-    start = time.time()  # Store start timestamp for optional retry window.
+    maybe_later_images = [maybe_later_img, maybe_later_alternative_img, maybe_later_alternative2_img]  # Define extension "maybe later" images in priority order.
 
-    while time.time() - start <= 1.2:  # Repeat until timeout window expires.
-        maybe_later_box = locate_image(maybe_later_img)  # Locate extension "maybe later" image on screen.
+    for image in maybe_later_images:  # Check each image in priority order before moving to the next alternative.
+        for attempt in range(2):  # Attempt each image twice before moving to the next image.
+            maybe_later_box = locate_image(image)  # Locate current extension "maybe later" image on screen.
 
-        if maybe_later_box is not None:  # Verify image was found before clicking.
-            box_left, box_top, box_width, box_height = maybe_later_box  # Unpack detected bounding box coordinates.
-            click_x = box_left + (box_width // 2)  # Calculate horizontal center of detected image.
-            click_y = box_top + ((box_height * 3) // 4)  # Calculate midpoint of the lower half of the detected image.
-            click_specific_coordinates(click_x, click_y)  # Click computed coordinates to dismiss the popup.
-            return True  # Return success when the popup was clicked.
+            if maybe_later_box is not None:  # Verify image was found before clicking.
+                box_left, box_top, box_width, box_height = maybe_later_box  # Unpack detected bounding box coordinates.
+                click_x = box_left + (box_width // 2)  # Calculate horizontal center of detected image.
+                click_y = box_top + ((box_height * 3) // 4)  # Calculate midpoint of the lower half of the detected image.
+                click_specific_coordinates(click_x, click_y)  # Click computed coordinates to dismiss the popup.
+                return True  # Return success when the popup was clicked.
 
-        time.sleep(0.1)  # Wait before retrying image search when not found.
+            if attempt == 0:  # Verify another attempt remains for the current image.
+                time.sleep(0.1)  # Wait before retrying image search when not found.
 
-    return False  # Return failure when the popup was not detected.
+    return False  # Return failure when no image was detected after two attempts each.
 
 
 def prevent_screen_lock(last_move_ts: float, interval_seconds: float = 15.0) -> float:  # Set the default cursor movement interval to 15 seconds.
