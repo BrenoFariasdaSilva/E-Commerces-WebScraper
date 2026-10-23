@@ -2923,6 +2923,9 @@ def configure_extension_download_settings(image_paths: Dict[str, Path], download
         maybe_later_clicked = click_maybe_later(image_paths["maybe_later_img"], image_paths["maybe_later_alternative_img"], image_paths["maybe_later_alternative2_img"])  # Click the optional Maybe later popup when visible.
     verbose_output(f"{BackgroundColors.GREEN}[DEBUG] Extension initialization prompts: Maybe later={BackgroundColors.CYAN}{maybe_later_clicked}{BackgroundColors.GREEN}; Allow={BackgroundColors.CYAN}{enable_permission_method}{Style.RESET_ALL}")  # Log optional prompt actions when verbose.
 
+    for _ in range(3):  # Scroll downward sufficiently inside the extension tab using the existing scroll function.
+        scroll_extension_tab_to_start_button()  # Scroll down inside the extension configuration UI.
+
     if not click_configuration_settings_section(image_paths["configuration_settings_extension_tab_img"]):  # Open the Configuration section by clicking the matched image center.
         return False  # Return failure when Configuration cannot be opened.
 
