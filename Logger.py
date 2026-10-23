@@ -105,11 +105,16 @@ class Logger:
             if os.fstat(self._lockfile.fileno()).st_size == 0:
                 self._lockfile.write(b"\0")
                 self._lockfile.flush()
-        self.is_tty = sys.stdout.isatty()  # Verify if stdout is a TTY
+        self.is_tty = bool(sys.__stdout__ is not None and sys.__stdout__.isatty())  # Detect the actual terminal, even if stdout already points to another Logger
         self.timestamp_zone = ZoneInfo(str(timestamp_timezone)) if timestamp_timezone is not None else None  # Resolve the explicit timezone once per logger instance
         self.timestamp_now = timestamp_now if timestamp_now is not None else datetime.now  # Use an injectable timezone-aware emission clock
         self._pending = ""  # Buffer partial print messages until the terminating newline arrives
         self._thread_lock = threading.RLock()  # Synchronize pending fragments and explicit flushes between threads
+
+    def isatty(self):  # Support the standard text-stream interface after stdout/stderr redirection
+        """Return whether the original output stream is connected to a terminal."""
+
+        return self.is_tty  # Report the captured terminal status without following redirected streams
 
     def format_message(self, message):  # Prefix every non-empty physical line at emission time
         """
