@@ -32,10 +32,35 @@ A production-ready web scraper for extracting product information from multiple 
 </div>
 
 <div align="center">
-  
-![RepoBeats Statistics](https://repobeats.axiom.co/api/embed/09e9fa0d7bef614ea753a5312bcf3612a4f12a8c.svg "Repobeats analytics image")
+
+![Update Submodule](https://github.com/BrenoFariasdaSilva/E-Commerces-WebScraper/actions/workflows/update-submodule.yml/badge.svg)
+![Lines Of Code](https://raw.githubusercontent.com/BrenoFariasdaSilva/E-Commerces-WebScraper/image-data/badge.svg)
+![GitHub Code Size in Bytes](https://img.shields.io/github/languages/code-size/BrenoFariasdaSilva/E-Commerces-WebScraper)
+![GitHub Commits](https://img.shields.io/github/commit-activity/t/BrenoFariasdaSilva/E-Commerces-WebScraper/main)
+![GitHub Last Commit](https://img.shields.io/github/last-commit/BrenoFariasdaSilva/E-Commerces-WebScraper)
+![GitHub Forks](https://img.shields.io/github/forks/BrenoFariasdaSilva/E-Commerces-WebScraper)
+![GitHub Language Count](https://img.shields.io/github/languages/count/BrenoFariasdaSilva/E-Commerces-WebScraper)
+![GitHub License](https://img.shields.io/github/license/BrenoFariasdaSilva/E-Commerces-WebScraper)
+![GitHub Stars](https://img.shields.io/github/stars/BrenoFariasdaSilva/E-Commerces-WebScraper)
+![GitHub Contributors](https://img.shields.io/github/contributors/BrenoFariasdaSilva/E-Commerces-WebScraper)
+![GitHub Created At](https://img.shields.io/github/created-at/BrenoFariasdaSilva/E-Commerces-WebScraper)
+![wakatime](https://wakatime.com/badge/user/28f6c354-43b3-4634-8ec1-631893fe27d0/project/18106b85-18de-468a-8962-0c29e908be43.svg)
+[![GitHub Repository Size](https://img.shields.io/github/repo-size/BrenoFariasdaSilva/E-Commerces-WebScraper)](https://github.com/BrenoFariasdaSilva/E-Commerces-WebScraper)
+[![Open Issues](https://img.shields.io/github/issues/BrenoFariasdaSilva/E-Commerces-WebScraper)](https://github.com/BrenoFariasdaSilva/E-Commerces-WebScraper/issues)
+[![Closed Issues](https://img.shields.io/github/issues-closed/BrenoFariasdaSilva/E-Commerces-WebScraper)](https://github.com/BrenoFariasdaSilva/E-Commerces-WebScraper/issues?q=is%3Aissue+is%3Aclosed)
+[![Open Pull Requests](https://img.shields.io/github/issues-pr/BrenoFariasdaSilva/E-Commerces-WebScraper)](https://github.com/BrenoFariasdaSilva/E-Commerces-WebScraper/pulls)
+[![Closed Pull Requests](https://img.shields.io/github/issues-pr-closed/BrenoFariasdaSilva/E-Commerces-WebScraper)](https://github.com/BrenoFariasdaSilva/E-Commerces-WebScraper/pulls?q=is%3Apr+is%3Aclosed)
+[![Monthly Commits](https://img.shields.io/github/commit-activity/m/BrenoFariasdaSilva/E-Commerces-WebScraper/main)](https://github.com/BrenoFariasdaSilva/E-Commerces-WebScraper/commits)
+[![Merged PRs](https://img.shields.io/github/issues-search/BrenoFariasdaSilva/E-Commerces-WebScraper?query=is%3Apr%20is%3Amerged&label=merged%20PRs&color=blue)](https://github.com/BrenoFariasdaSilva/E-Commerces-WebScraper/pulls?q=is%3Apr+is%3Amerged)
+![Language](https://img.shields.io/badge/Language-Python-3776AB)
+![Browser Automation](https://img.shields.io/badge/Browser%20Automation-Playwright-29b67c)
+![Features](https://img.shields.io/badge/Features-Batch%20Scraping-0769ad)
+![AI](https://img.shields.io/badge/AI-Gemini%20Integration-805ad5)
+
+![Repobeats Statistics](https://repobeats.axiom.co/api/embed/09e9fa0d7bef614ea753a5312bcf3612a4f12a8.svg)
 
 </div>
+
 
 ## Table of Contents
 - [E-Commerces-WebScraper. ](#e-commerces-webscraper-)
