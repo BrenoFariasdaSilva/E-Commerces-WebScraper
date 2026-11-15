@@ -28,7 +28,6 @@ A production-ready web scraper for extracting product information from multiple 
 ![GitHub Contributors](https://img.shields.io/github/contributors/BrenoFariasdaSilva/E-Commerces-WebScraper)
 ![GitHub Created At](https://img.shields.io/github/created-at/BrenoFariasdaSilva/E-Commerces-WebScraper)
 [![wakatime project](https://wakatime.com/badge/user/28f6c354-43b3-4634-8ec1-631893fe27d0/project/18106b85-18de-468a-8962-0c29e908be43.svg)](https://wakatime.com/badge/user/28f6c354-43b3-4634-8ec1-631893fe27d0/project/18106b85-18de-468a-8962-0c29e908be43)
-[![GitHub Repository Size](https://img.shields.io/github/repo-size/BrenoFariasdaSilva/E-Commerces-WebScraper)](https://github.com/BrenoFariasdaSilva/E-Commerces-WebScraper)
 [![Open Issues](https://img.shields.io/github/issues/BrenoFariasdaSilva/E-Commerces-WebScraper)](https://github.com/BrenoFariasdaSilva/E-Commerces-WebScraper/issues)
 [![Closed Issues](https://img.shields.io/github/issues-closed/BrenoFariasdaSilva/E-Commerces-WebScraper)](https://github.com/BrenoFariasdaSilva/E-Commerces-WebScraper/issues?q=is%3Aissue+is%3Aclosed)
 [![Open Pull Requests](https://img.shields.io/github/issues-pr/BrenoFariasdaSilva/E-Commerces-WebScraper)](https://github.com/BrenoFariasdaSilva/E-Commerces-WebScraper/pulls)
